@@ -18,11 +18,21 @@ class Settings(BaseSettings):
     )
 
     environment: Literal["development", "test", "production"] = "development"
-    supabase_url: AnyHttpUrl = Field(description="URL of an experimental Supabase project")
-    supabase_anon_key: SecretStr = Field(description="Anonymous key for that project")
-    supabase_service_role_key: SecretStr | None = Field(
+    supabase_project_ref: str = Field(
+        default="csaefdkpwukshtouyixg",
+        description="Labs Supabase project reference",
+    )
+    supabase_url: AnyHttpUrl | None = Field(
         default=None,
-        description="Server-only key; never expose this value to browser code",
+        description="URL of the experimental Supabase project",
+    )
+    supabase_publishable_key: SecretStr | None = Field(
+        default=None,
+        description="Publishable key for client-safe Supabase access",
+    )
+    supabase_secret_key: SecretStr | None = Field(
+        default=None,
+        description="Server-only secret key; never expose this value to browser code",
     )
     openai_api_key: SecretStr | None = None
 
@@ -31,7 +41,6 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return validated settings.
 
-    Pydantic raises a clear validation error here when required values are missing.
     Importing this module alone does not require local credentials.
     """
 
