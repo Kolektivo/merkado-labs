@@ -1,0 +1,52 @@
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+
+# Python environments and generated files
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Scraped and generated data
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+*.html
+*.htm
+*.warc
+*.warc.gz
+data/**/*.[jJ][pP][gG]
+data/**/*.[jJ][pP][eE][gG]
+data/**/*.[pP][nN][gG]
+data/**/*.[wW][eE][bB][pP]
+data/**/*.[gG][iI][fF]
+*.parquet
+*.feather
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+~$*
+
+# Local IDE configuration that may contain secrets
+.cursor/*.local.*
+.vscode/settings.json
+
+# Supabase and Vercel local state
+supabase/.temp/
+supabase/.branches/
+.vercel/

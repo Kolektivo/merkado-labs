@@ -1,0 +1,2 @@
+-- Merkado Labs seed file.
+-- Intentionally empty until a dedicated experimental Supabase project is confirmed.
