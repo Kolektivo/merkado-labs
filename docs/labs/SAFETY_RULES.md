@@ -16,8 +16,8 @@ Never:
 - run SQL against production;
 - reset any database;
 - copy production users, schemas, credentials, secrets, or private data;
-- modify the live Vercel project;
-- deploy to the live domain;
+- modify the live production Merkado Vercel project;
+- deploy Labs work to the live Merkado domain;
 - write test data to production;
 - use production service-role credentials;
 - push changes to GitHub without explicit approval;
@@ -37,14 +37,17 @@ experimental target.
 All approved database changes must be represented by reviewed migration files. Enable RLS on
 every table created in an exposed schema. Never run destructive SQL without explicit approval.
 
-Service-role credentials may be used only by local backend scripts. Never commit, print, log,
-or expose them to browser code.
+Service-role credentials may be used only by local backend scripts or the Labs-only GitHub
+Action. Never commit, print, log, or expose them to browser code.
 
 Preserve scraped source data in raw form before normalization.
 
-Vercel is deferred until a frontend or API prototype is needed. Do not create or link a
-project, change environment variables, deploy, or modify the production Merkado project
-without explicit approval.
+## Vercel
+
+A Labs-only dashboard lives in `apps/labs-dashboard`. If deployed, it must be a **separate**
+Vercel project with root directory `apps/labs-dashboard` and Labs publishable env vars only.
+Do not link this directory to the production Merkado Vercel project. Do not create, link,
+change environment variables, or deploy without explicit repository-owner approval.
 
 Never commit real secrets. Keep local credentials in ignored environment files, preserve
 `.env.example` as placeholders only, and never expose a service-role key to browser code,
@@ -52,6 +55,6 @@ logs, reports, or source control.
 
 Do not commit, push, deploy, or promote experiments automatically.
 
-Do not introduce a frontend, browser automation, AI frameworks, vector databases, or
+Do not introduce browser automation, AI frameworks, vector databases, or additional
 knowledge-graph technology without an explicit task. Keep work focused on Curaçao marketplace
 experiments.

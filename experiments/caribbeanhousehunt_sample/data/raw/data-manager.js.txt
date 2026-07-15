@@ -1,0 +1,607 @@
+/**
+ * @fileoverview Data Manager Module - Handles loading, parsing, storing,
+ *               filtering, and providing access to property listing data.
+ *               Uses a publish/subscribe pattern for data loading events.
+ * @module DataManager
+ */
+const DataManager = (function() {
+  /**
+   * Simple logging utility specific to the DataManager module.
+   * @namespace Logger
+   */
+  const Logger = {
+    /**
+     * Gets the current timestamp in ISO format.
+     * @returns {string} ISO timestamp string.
+     */
+    timestamp: function() {
+      return new Date().toISOString();
+    },
+    /**
+     * Logs a standard message.
+     * @param {string} message - The message to log.
+     */
+    log: function(message) {
+      // console.log(`[${this.timestamp()}] [DataManager] ${message}`);
+    },
+    /**
+     * Logs an error message.
+     * @param {string} message - The error description.
+     * @param {*} [error] - Optional error object or details.
+     */
+    error: function(message, error) {
+      // console.error(`[${this.timestamp()}] [DataManager] ERROR: ${message}`, error || '');
+    },
+    /**
+     * Logs a warning message.
+     * @param {string} message - The warning message.
+     */
+    warn: function(message) {
+      // console.warn(`[${this.timestamp()}] [DataManager] WARNING: ${message}`);
+    },
+    /**
+     * Logs an informational message.
+     * @param {string} message - The info message.
+     */
+    info: function(message) {
+      // console.info(`[${this.timestamp()}] [DataManager] INFO: ${message}`);
+    },
+    /**
+     * Logs a debug message.
+     * @param {string} message - The debug message.
+     */
+    debug: function(message) {
+      // console.debug(`[${this.timestamp()}] [DataManager] DEBUG: ${message}`);
+    }
+  };
+
+
+  /**
+   * Internal storage for all property data, keyed by property ID.
+   * @type {Object<string|number, object>}
+   * @private
+   */
+  let propertyData = {};
+
+  /**
+   * Stores event subscribers (callbacks) keyed by event name.
+   * Currently only supports 'dataloaded'.
+   * @type {Object<string, Array<Function>>}
+   * @private
+   */
+  let eventSubscribers = {
+    'dataloaded': [] // Single event for data loading
+  };
+
+  /**
+   * Notifies all registered subscribers for a given event name.
+   * Currently only supports the 'dataloaded' event.
+   * @param {string} eventName - The name of the event ('dataloaded').
+   * @private
+   */
+  function notifySubscribers(eventName) {
+
+    if (!eventSubscribers[eventName]) {
+      Logger.warn(`No subscribers found for event: ${eventName}`);
+      return;
+    }
+    
+    const subscriberCount = eventSubscribers[eventName].length;
+    
+    eventSubscribers[eventName].forEach((callback, index) => {
+      try {
+        callback();
+      } catch (error) {
+        Logger.error(`Error in subscriber callback #${index + 1}/${subscriberCount} for ${eventName}:`, error);
+      }
+    });
+    
+  }
+
+
+  // Public interface of the DataManager module
+  return {
+    /**
+     * Subscribes a callback function to the 'dataloaded' event.
+     * The callback will be executed when the initial property data has been loaded and processed.
+     * If data is already loaded when subscribing, the callback is executed immediately.
+     * @param {string} eventName - The name of the event (currently only 'dataloaded').
+     * @param {Function} callback - The function to execute when the event occurs.
+     * @public
+     */
+    subscribe: function(eventName, callback) {
+
+      if (!callback || typeof callback !== 'function') {
+        Logger.error(`Invalid callback provided for event: ${eventName}`);
+        return;
+      }
+      
+      if (!eventSubscribers[eventName]) {
+        eventSubscribers[eventName] = [];
+      }
+      
+      eventSubscribers[eventName].push(callback);
+      
+      // If data is already loaded and someone subscribes to the dataloaded event, notify them immediately
+      if (eventName === 'dataloaded' && this.isDataLoaded()) {
+        try {
+          callback();
+        } catch (error) {
+          Logger.error('Error executing immediate callback:', error);
+        }
+      }
+    },
+
+    /**
+     * Sets the internal property data store. Clears existing data and populates
+     * it with the provided array of property objects. Notifies 'dataloaded' subscribers.
+     * Expects each item in the data array to have an 'id' property.
+     * @param {Array<object>} data - An array of property listing objects.
+     * @public
+     */
+    setPropertyData: function(data) {
+
+      // Create or update property data entries
+      let validItemsCount = 0;
+      data.forEach((item, index) => {
+        if (item.id) {
+          // Create a new object if it doesn't exist
+          if (!propertyData[item.id]) {
+            propertyData[item.id] = {};
+          }
+          
+          // Copy all data fields to the property data object
+          Object.assign(propertyData[item.id], item);
+          validItemsCount++;
+        } else {
+          Logger.warn(`Skipping property data item at index ${index} because it has no ID`);
+        }
+      });
+      
+      
+      // Notify subscribers that data is loaded
+      notifySubscribers('dataloaded');
+    },
+
+    /**
+     * Loads property data using a Web Worker for better performance.
+     * The worker fetches and parses JSON data off the main thread.
+     * @returns {Promise<Array<object>>} A promise that resolves to the loaded property data.
+     * @public
+     */
+    loadPropertyData: function() {
+      return new Promise((resolve, reject) => {
+        // Check if Web Workers are supported
+        if (typeof Worker === 'undefined') {
+          // Fallback to main thread loading for older browsers
+          Logger.warn('Web Workers not supported, falling back to main thread loading');
+          return this._loadPropertyDataFallback().then(resolve).catch(reject);
+        }
+
+        try {
+          // Create a new Web Worker
+          const worker = new Worker(`/map-assets/js/data-loader.worker.js?rnd=${AppConfig.cachebust}`);
+
+          // Set up timeout in case worker takes too long
+          const timeout = setTimeout(() => {
+            worker.terminate();
+            Logger.error('Data loading timeout - worker took too long');
+            reject(new Error('Data loading timeout'));
+          }, 30000); // 30 second timeout
+
+          // Handle messages from the worker
+          worker.addEventListener('message', (event) => {
+            clearTimeout(timeout);
+
+            if (event.data.status === 'success') {
+              Logger.log(`Loaded ${event.data.count} properties via Web Worker`);
+              this.setPropertyData(event.data.data);
+              worker.terminate();
+              resolve(event.data.data);
+            } else if (event.data.status === 'error') {
+              Logger.error('Worker error:', event.data.error);
+              worker.terminate();
+              // Fall back to main thread loading on worker error
+              this._loadPropertyDataFallback().then(resolve).catch(reject);
+            }
+          });
+
+          // Handle worker errors
+          worker.addEventListener('error', (error) => {
+            clearTimeout(timeout);
+            Logger.error('Worker error:', error);
+            worker.terminate();
+            // Fall back to main thread loading
+            this._loadPropertyDataFallback().then(resolve).catch(reject);
+          });
+
+          // Start the worker - pass language code for language-specific data file
+          worker.postMessage({
+            action: 'loadData',
+            cacheBuster: AppConfig.cachebust,
+            lang: document.documentElement.lang || 'en'
+          });
+
+        } catch (error) {
+          Logger.error('Failed to create Web Worker:', error);
+          // Fall back to main thread loading
+          this._loadPropertyDataFallback().then(resolve).catch(reject);
+        }
+      });
+    },
+
+    /**
+     * Fallback method for loading property data on the main thread.
+     * Used when Web Workers are not available or encounter errors.
+     * @returns {Promise<Array<object>>} A promise that resolves to the loaded property data.
+     * @private
+     */
+    _loadPropertyDataFallback: function() {
+      Logger.warn('Using fallback data loading on main thread');
+
+      const lang = document.documentElement.lang || 'en';
+      return fetch(`/map-assets/data/${AppConfig.cachebust}-${lang}.json`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load property data: ${response.status} ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data && Array.isArray(data)) {
+            this.setPropertyData(data);
+            return data;
+          } else {
+            Logger.error('Invalid property data format');
+            throw new Error('Invalid property data format');
+          }
+        })
+        .catch(error => {
+          Logger.error('Error loading property data:', error);
+          this.setPropertyData([]);
+          return [];
+        });
+    },
+
+    /**
+     * Initializes the DataManager by triggering the loading of property data.
+     * Should be called once when the application starts.
+     * @public
+     */
+    init: function() {
+      
+      // Load property data
+      this.loadPropertyData()
+        .then((propertyData) => {
+        })
+        .catch(error => {
+          Logger.error('Error during data initialization:', error);
+        });
+    },
+
+    /**
+     * Retrieves all loaded property data objects as an array.
+     * @returns {Array<object>} An array containing all property listing objects.
+     * @public
+     */
+    getAllPropertyData: function() {
+      return Object.values(propertyData);
+    },
+
+    /**
+     * Retrieves a single property listing object by its unique ID.
+     * @param {number|string} id - The ID of the property to retrieve.
+     * @returns {object|null} The property object if found, otherwise null.
+     * @public
+     */
+    getItemById: function(id) {
+      return propertyData[id] || null;
+    },
+
+    /**
+     * Retrieves a single property listing object by its URL ID.
+     * URL ID is stable across data rebuilds, unlike the regular ID.
+     *
+     * CONTEXT: Used for deep-linking to a specific property via URL.
+     * UPSTREAM: Called by MapModule.openPropertyPopup() when loading from URL.
+     * DOWNSTREAM: Returns the property object or null if not found.
+     *
+     * @param {number|string} urlid - The URL ID of the property to retrieve.
+     * @returns {object|null} The property object if found, otherwise null.
+     * @public
+     */
+    getItemByUrlId: function(urlid) {
+      const urlIdStr = String(urlid);
+      for (const id in propertyData) {
+        if (String(propertyData[id].urlid) === urlIdStr) {
+          return propertyData[id];
+        }
+      }
+      return null;
+    },
+
+    /**
+     * Selects property items based on filter criteria, with optional sorting and pagination.
+     * If only filtering is needed (no sorting/pagination options provided), it returns an array of matching IDs.
+     * Otherwise, it returns an object containing the paginated/sorted items and metadata.
+     *
+     * @param {object} filter - The filter criteria object. Structure depends on FilterModule, but generally includes:
+     *   @param {object} [filter.status] - Key-value pairs of status (e.g., 'for rent', 'for sale', 'under contract') and boolean indicating if selected.
+     *   @param {object} [filter.propertyType] - Key-value pairs of property type (e.g., 'house', 'apartment') and boolean.
+     *   @param {number} [filter.bedrooms] - Minimum number of bedrooms (e.g., 3 for 3+).
+     *   @param {object} [filter.rentPrice] - Rent price filter details.
+     *     @param {number} filter.rentPrice.min - Minimum rent price (USD).
+     *     @param {number} filter.rentPrice.max - Maximum rent price (USD).
+     *     @param {boolean} filter.rentPrice.includeNoPrice - Include listings with no price.
+     *     @param {boolean} filter.rentPrice.includeLower - Include listings below min price.
+     *     @param {boolean} filter.rentPrice.includeHigher - Include listings above max price.
+     *   @param {object} [filter.salePrice] - Sale price filter details (similar structure to rentPrice).
+     *    @param {object} [filter.amenities] - Amenities to filter on. If the array is empty, it matches all listings regardless of amenities.
+     * @param {object} [options={}] - Optional settings for sorting and pagination.
+     * @param {string} [options.sortBy] - Sorting criteria: 'price_high', 'price_low', 'initial' (default random).
+     * @param {number} [options.page] - The zero-based page number for pagination.
+     * @param {number} [options.pageSize] - The number of items per page.
+     * @returns {Array<string|number>|{items: Array<object>, totalCount: number, pageCount: number}}
+     *          Returns an array of matching property IDs if no sorting/pagination options are provided.
+     *          Otherwise, returns an object with the array of sorted/paginated property objects (`items`),
+     *          the total number of matching items before pagination (`totalCount`), and the total number of pages (`pageCount`).
+     * @public
+     */
+    selectItems: function(filter, options = {}) {
+      // Step 1: Apply filters to get matching IDs
+      const matchingIds = this.filterItems(filter);
+      
+      // If only IDs are needed (for map markers), return them directly
+      if (!options.sortBy && !options.hasOwnProperty('page')) {
+        return matchingIds;
+      }
+      
+      // Step 2: Convert IDs to full property objects
+      let items = matchingIds.map(id => propertyData[id]);
+      
+      // Step 3: Sort the items if specified
+      if (options.sortBy) {
+        items = this.sortItems(items, options.sortBy);
+      }
+      
+      // Step 4: Apply pagination if specified
+      const result = this.paginateItems(items, options);
+      
+      return result;
+    },
+
+    /**
+     * Filters the internal `propertyData` based on the provided filter criteria object.
+     * @param {object} filter - The filter criteria object (see `selectItems` for structure).
+     * @returns {Array<string|number>} An array of property IDs that match the filter criteria.
+     * @private
+     */
+    filterItems: function(filter) {
+      const matchingIds = [];
+
+      for (const id in propertyData) {
+        const listing = propertyData[id];
+        let matches = true;
+        // Apply filter logic
+        if (filter) {
+          // Status filter
+          // Check if any status filter is active (i.e., at least one status is true)
+          if (filter.status && Object.values(filter.status).some(val => val === true)) {
+            const status = listing.status ? listing.status.toLowerCase() : 'unknown';
+            // A listing matches only if its status is explicitly set to true in the filter
+            if (!filter.status[status]) { // If the listing's status is not true in the filter, it doesn't match
+              matches = false;
+            }
+          }
+          
+          // Property type filter
+          if (matches && filter.propertyType && Object.keys(filter.propertyType).length > 0) {
+            const propertyType = listing.property_type ? listing.property_type.toLowerCase() : 'other';
+            if (!filter.propertyType[propertyType]) {
+              matches = false;
+            }
+          }
+          
+          // Bedroom filter
+          if (matches && filter.bedrooms && filter.bedrooms > 0) {
+            const bedrooms = parseInt(listing.bedrooms);
+            if (isNaN(bedrooms) || bedrooms < filter.bedrooms) {
+              matches = false;
+            }
+          }
+          
+          // Price filter for rent
+          if (matches && filter.rentPrice && listing.status && listing.status.toLowerCase() === 'for rent') {
+            const priceUSD = AppUtils.getListingPriceUSD(listing);
+            
+            if (isNaN(priceUSD)) {
+              // No price information
+              if (!filter.rentPrice.includeNoPrice) {
+                matches = false;
+              }
+            } else if (priceUSD < filter.rentPrice.min) {
+              // Price below minimum
+              if (!filter.rentPrice.includeLower) {
+                matches = false;
+              }
+            } else if (priceUSD > filter.rentPrice.max) {
+              // Price above maximum
+              if (!filter.rentPrice.includeHigher) {
+                matches = false;
+              }
+            }
+          }
+          
+          // Price filter for sale
+          if (matches && filter.salePrice && listing.status && (listing.status.toLowerCase() === 'for sale' || listing.status.toLowerCase() === 'under contract')  ) {
+            const priceUSD = AppUtils.getListingPriceUSD(listing);
+            
+            if (isNaN(priceUSD)) {
+              // No price information
+              if (!filter.salePrice.includeNoPrice) {
+                matches = false;
+              }
+            } else if (priceUSD < filter.salePrice.min) {
+              // Price below minimum
+              if (!filter.salePrice.includeLower) {
+                matches = false;
+              }
+            } else if (priceUSD > filter.salePrice.max) {
+              // Price above maximum
+              if (!filter.salePrice.includeHigher) {
+                matches = false;
+              }
+            }
+          }
+          
+          // Amenity filter
+          if (matches && filter.amenities && filter.amenities.length>0) {
+            //the integers in filter.amenities should all be present in listing.amenities
+            const listingAmenities = listing.amenity ? listing.amenity.map(a => parseInt(a)) : [];
+            const filterAmenities = filter.amenities.map(a => parseInt(a));
+            // Check if all filter amenities are present in the listing's amenities
+            if (!filterAmenities.every(amenity => listingAmenities.includes(amenity))) {
+              matches = false;
+            }
+          }
+
+          // Realtor filter
+          if (matches && filter.realtor && filter.realtor !== '') {
+            if (!listing.realtor_name || listing.realtor_name !== filter.realtor) {
+              matches = false;
+            }
+          }
+
+          // Keywords filter - only apply if matchingUrlIds array is not empty
+          if (matches && filter.keywords && filter.keywords.matchingUrlIds && filter.keywords.matchingUrlIds.length > 0) {
+            const urlId = listing.urlid; // Get the URL ID from the listing
+            if (!urlId || (!filter.keywords.matchingUrlIds.includes(urlId.toString()) && !filter.keywords.matchingUrlIds.includes(parseInt(urlId)))) {
+              matches = false;
+            }
+          }
+
+          //geobounds filter - only apply if in list view in the map view we simply show all markers on the map but the map view itself will narrow it down for the user
+          if(App.getCurrentView()==='list' && filter.usergeoboundsforlist!=null){
+            //map bounds of the type google.maps.LatLngBounds object
+            let bounds = filter.usergeoboundsforlist
+            
+            //the listing has a lng en lat and needs to fall withing the bounds otherwise the match is false
+            if (bounds && listing.lng && listing.lat) {
+              const lat = parseFloat(listing.lat);
+              const lng = parseFloat(listing.lng);
+              
+              if (!isNaN(lat) && !isNaN(lng)) {
+                const position = new google.maps.LatLng(lat, lng);
+                if (!bounds.contains(position)) {
+                  matches = false;
+                }
+              } else {
+                // Invalid coordinates, exclude from results
+                matches = false;
+              }
+            }
+          }
+        }
+        
+        if (matches) {
+          matchingIds.push(id);
+        }
+      }
+      
+      return matchingIds;
+    },
+
+    /**
+     * Sorts an array of property listing objects based on the specified criteria.
+     * @param {Array<object>} items - The array of property objects to sort.
+     * @param {string} sortBy - The sorting criteria ('price_high', 'price_low', 'urlid_asc', 'urlid_desc', 'initial').
+     * @returns {Array<object>} The sorted array of property objects.
+     * @private
+     */
+    sortItems: function(items, sortBy) {
+      return items.sort((a, b) => {
+        switch (sortBy) {
+          case 'price_high':
+            const priceA = AppUtils.getListingPriceUSD(a) || 0;
+            const priceB = AppUtils.getListingPriceUSD(b) || 0;
+            return priceB - priceA;
+
+          case 'price_low':
+            const priceLowA = AppUtils.getListingPriceUSD(a) || Number.MAX_SAFE_INTEGER;
+            const priceLowB = AppUtils.getListingPriceUSD(b) || Number.MAX_SAFE_INTEGER;
+            return priceLowA - priceLowB;
+
+          case 'urlid_asc':
+            const urlidA = parseInt(a.urlid) || 0;
+            const urlidB = parseInt(b.urlid) || 0;
+            return urlidA - urlidB;
+
+          case 'urlid_desc':
+            const urlidDescA = parseInt(a.urlid) || 0;
+            const urlidDescB = parseInt(b.urlid) || 0;
+            return urlidDescB - urlidDescA;
+
+          case 'initial': // Sort by the random value generated during build
+          default:
+            // Use the rnd property for default ordering (now called 'initial')
+            // This property is generated during build time with Math.random()
+            // If for some reason rnd is not available, generate a random value on the fly
+            const rndA = a.rnd !== undefined ? a.rnd : Math.random();
+            const rndB = b.rnd !== undefined ? b.rnd : Math.random();
+            return rndB - rndA; // Descending order
+        }
+      });
+    },
+
+    /**
+     * Applies pagination to an array of items.
+     * @param {Array<object>} items - The array of items to paginate.
+     * @param {object} options - Pagination options.
+     * @param {number} options.page - The zero-based page number.
+     * @param {number} options.pageSize - The number of items per page.
+     * @returns {{items: Array<object>, totalCount: number, pageCount: number}} An object containing:
+     *   - `items`: The array slice for the requested page.
+     *   - `totalCount`: The total number of items before pagination.
+     *   - `pageCount`: The total number of pages.
+     * @private
+     */
+    paginateItems: function(items, options) {
+      const totalCount = items.length;
+      let paginatedItems = items;
+      
+      if (options.hasOwnProperty('page') && options.pageSize) {
+        const startIndex = options.page * options.pageSize;
+        const endIndex = startIndex + options.pageSize;
+        paginatedItems = items.slice(startIndex, endIndex);
+      }
+      
+      return {
+        items: paginatedItems,
+        totalCount: totalCount,
+        pageCount: options.pageSize ? Math.ceil(totalCount / options.pageSize) : 1
+      };
+    },
+
+    /**
+     * Checks if the initial property data has been loaded and processed.
+     * @returns {boolean} True if data is loaded, false otherwise.
+     * @public
+     */
+    isDataLoaded: function() {
+      return Object.values(propertyData).length > 0;
+    }
+  };
+})();
+
+/**
+ * Exposes the DataManager module globally on the window object
+ * for easy access by other modules.
+ */
+window.DataManager = DataManager;
+
+/**
+ * Initializes the DataManager data loading process once the DOM is fully loaded.
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  DataManager.init();
+});

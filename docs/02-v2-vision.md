@@ -1,8 +1,8 @@
 # 02 — Merkado V2 Vision
 
-**Purpose:** the direction the business is designed around, from Luuk's application, deck, and workflow diagram. None of this is built yet unless it overlaps with `01-live-product-state.md`.
+**Purpose:** the direction the business is designed around, from Luuk's application, deck, and workflow diagram. Live product ground truth remains `01-live-product-state.md`. Experimental Labs progress (harvest, schema, dashboard) is documented in `07`–`09` and must not be described as live on merkado.cw.
 
-**Tag legend:** `[WIP]` being scoped · `[RISK]` concern.
+**Tag legend:** `[WIP]` being scoped · `[LABS]` built in Merkado Labs only · `[RISK]` concern.
 
 ---
 
@@ -17,6 +17,15 @@ Merkado becomes a premium hybrid ecosystem for hard assets, with a two-tier stru
 **Tier 2 — gated WealthTech (accredited investors only) `[WIP]`.** Fractional ownership via SPV + permissioned tokens, stablecoin payouts, behind a KYC/AML/accreditation wall. Intended revenue: origination, AUM, carry.
 
 **The flywheel:** affluent buyers reveal themselves by buying on Tier 1, then get funneled into Tier 2 verification. Claimed edge: near-zero investor acquisition cost.
+
+### The intelligence layer between both tiers
+
+The intelligence layer is not a secondary analytics feature. It is the core data system that makes the marketplace more useful over time and makes the Passport and future asset products possible. Its two continuous jobs are:
+
+- [x] **Harvest data:** `[LABS]` collect public listing and market data, preserve source history, normalize it, and turn fragmented records into structured asset data.
+- [~] **Create a knowledge graph:** `[LABS]` partial — connect listings, neighbourhoods, sources, prices, contracts, and market signals in Supabase; canonical asset linking and production Passport UI remain open.
+
+For the 21-day buildathon, this should be implemented as a lightweight relational knowledge graph in Supabase, not a separate graph database. Dedicated graph infrastructure is only justified later if source count, ownership chains, or relationship queries become materially more complex. See `07-intelligence-layer.md`.
 
 ## 3. The asset-class arc
 
@@ -40,7 +49,7 @@ The central innovation. A standardized, AI-generated, verifiable digital record 
 
 Intended pipeline (Luuk's diagram, 5 agents): Crawler → Entity Resolution (vector DB) → Reconcile (vs Kadaster title/sales) → Valuation (AVM: price, rent, ROI) → Risk & Compliance (legal/zoning flags, KYC/AML). Human review on exceptions.
 
-The Passport is meant to be the bridge: the same verified record that makes a PropTech purchase safe is the record a Tier 2 SPV tokenizes.
+The Passport is the user-facing record produced by the intelligence layer. The knowledge graph is the underlying system that connects evidence and relationships; the Passport is the clear, confidence-scored view presented to a user. The same record that improves PropTech trust can later support a Tier 2 asset product.
 
 **Reality note `[RISK]`:** only the crawl + a simplified enrichment step exist today, for cars. Entity resolution (vector DB), Kadaster reconciliation, AVM, and the risk agent are all new builds. See `04-reality-check.md`.
 
@@ -65,4 +74,4 @@ Stack named: Celo (via Kolektivo), ERC-3643 / ERC-1400 permissioned tokens, stab
 
 ## 7. Five-year vision (from application)
 
-Merkado as the Caribbean's hard-asset and private-investment operating system: discover, verify, buy, sell, finance, and fractionally invest in the region's biggest assets. The Passport dataset is the moat (every closed transaction deepens a comparable-sales record no competitor can see). Public marketplace across cars and property, multiple islands; gated WealthTech tier for fractional real estate and regional development; the Passport on its way to a regional standard banks, notaries, and governments build on, with EcoLabs onchain rails underneath.
+Merkado as the Caribbean's hard-asset and private-investment operating system: discover, verify, buy, sell, finance, and fractionally invest in the region's biggest assets. The intelligence layer is the moat: every harvested listing, resolved asset, price change, market signal, and later closed transaction deepens the knowledge graph and comparable-sales record. Public marketplace across cars and property, multiple islands; gated WealthTech tier for fractional real estate and regional development; the Passport on its way to a regional standard banks, notaries, and governments build on, with EcoLabs onchain rails underneath.

@@ -1,0 +1,93 @@
+# Daily CaribbeanHouseHunt harvest → Labs Supabase (csaefdkpwukshtouyixg only).
+# Requires repository secrets: SUPABASE_URL, SUPABASE_SECRET_KEY.
+# Manual run: Actions → "CHH daily harvest" → Run workflow.
+
+name: CHH daily harvest
+
+on:
+  schedule:
+    # 03:00 UTC daily (23:00 AST previous evening / after production car scrapers at 01:00 UTC)
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chh-daily-harvest
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ENVIRONMENT: production
+      SUPABASE_PROJECT_REF: csaefdkpwukshtouyixg
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Labs-only Supabase secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SECRET_KEY:-}" ]; then
+            echo "Missing required secrets: SUPABASE_URL and SUPABASE_SECRET_KEY"
+            exit 1
+          fi
+          case "$SUPABASE_URL" in
+            https://csaefdkpwukshtouyixg.supabase.co|https://csaefdkpwukshtouyixg.supabase.co/*) ;;
+            *)
+              echo "Refusing non-Labs SUPABASE_URL (expected https://csaefdkpwukshtouyixg.supabase.co)"
+              exit 1
+              ;;
+          esac
+          if [ "$SUPABASE_PROJECT_REF" != "csaefdkpwukshtouyixg" ]; then
+            echo "Refusing non-Labs SUPABASE_PROJECT_REF"
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Restore prior snapshots
+        uses: actions/cache@v4
+        with:
+          path: |
+            experiments/caribbeanhousehunt_sample/snapshots
+            experiments/caribbeanhousehunt_sample/snapshot-health.json
+            experiments/caribbeanhousehunt_sample/request-log.json
+          key: chh-snapshots-${{ github.run_id }}
+          restore-keys: |
+            chh-snapshots-
+
+      - name: Create CHH snapshot
+        run: python experiments/caribbeanhousehunt_sample/create_snapshot.py
+
+      - name: Import snapshot into Labs Supabase
+        run: python experiments/caribbeanhousehunt_sample/import_supabase.py
+
+      - name: Resolve latest snapshot id
+        id: snapshot
+        run: |
+          set -euo pipefail
+          latest="$(ls -1 experiments/caribbeanhousehunt_sample/snapshots | sort | tail -n 1)"
+          echo "id=${latest}" >> "$GITHUB_OUTPUT"
+          echo "Latest snapshot: ${latest}"
+
+      - name: Upload latest snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chh-snapshot-${{ steps.snapshot.outputs.id }}
+          path: experiments/caribbeanhousehunt_sample/snapshots/${{ steps.snapshot.outputs.id }}
+          if-no-files-found: error
+          retention-days: 90

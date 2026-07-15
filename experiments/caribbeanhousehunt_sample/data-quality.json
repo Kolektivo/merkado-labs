@@ -1,0 +1,46 @@
+{
+  "sample_size": 12,
+  "coverage": {
+    "price": {
+      "present": 12,
+      "total": 12,
+      "percentage": 100.0
+    },
+    "bedrooms": {
+      "present": 12,
+      "total": 12,
+      "percentage": 100.0
+    },
+    "bathrooms": {
+      "present": 0,
+      "total": 12,
+      "percentage": 0.0
+    },
+    "floor_area": {
+      "present": 9,
+      "total": 12,
+      "percentage": 75.0
+    },
+    "neighbourhood": {
+      "present": 10,
+      "total": 12,
+      "percentage": 83.3
+    },
+    "coordinates": {
+      "present": 12,
+      "total": 12,
+      "percentage": 100.0
+    },
+    "image": {
+      "present": 11,
+      "total": 12,
+      "percentage": 91.7
+    },
+    "stable_id": {
+      "present": 12,
+      "total": 12,
+      "percentage": 100.0
+    }
+  },
+  "suspicious_records": []
+}

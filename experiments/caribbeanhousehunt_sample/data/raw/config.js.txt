@@ -1,0 +1,161 @@
+/**
+ * @fileoverview Configuration settings for the Property Listings Map application.
+ * @module AppConfig
+ */
+
+/**
+ * Main configuration object for the application.
+ * @namespace AppConfig
+* @property {string} cachebust - used for adding in querystring of assets to prevent caching
+* @property {object} map - Google Maps specific settings.
+ * @property {object} markerCluster - Settings for marker clustering.
+ * @property {object} prices - Price range definitions for filters.
+ * @property {object} sliders - Configuration for price range sliders.
+ * @property {object} currency - Currency related settings.
+ */
+const AppConfig = {
+    /**
+   * value used to bust the cache of assets.
+   * This value will be replaced with a random string by a build script
+   */
+  cachebust:'EPxHyi6w', // Placeholder for cachebusting string
+  /**
+   * Google Maps configuration.
+   * @property {object} center - Initial map center coordinates.
+   * @property {number} center.lat - Latitude.
+   * @property {number} center.lng - Longitude.
+   * @property {number} zoom - Initial map zoom level.
+   * @property {string} mapId - Google Maps Cloud Map ID.
+   * @property {boolean} fullscreenControl - Show fullscreen button.
+   * @property {boolean} mapTypeControl - Show map type (Roadmap/Satellite) control.
+   * @property {object} mapTypeControlOptions - Options for map type control.
+   * @property {number} mapTypeControlOptions.style - Style constant (e.g., 1 for HORIZONTAL_BAR).
+   * @property {number} mapTypeControlOptions.position - Position constant (e.g., 6 for LEFT_BOTTOM).
+   * @property {string[]} mapTypeControlOptions.mapTypeIds - Map types to include.
+   * @property {boolean} streetViewControl - Show Street View Pegman control.
+   * @property {boolean} zoomControl - Show zoom control.
+   */
+  map: {
+    center: { lat: 12.1696, lng: -69.0176 }, // Center on Curaçao, shifted 3km west of original
+    zoom: 12,
+    mapId: 'LISTINGS_MAP', // Google Maps ID
+    fullscreenControl: false,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: 1, // HORIZONTAL_BAR style
+      position: 6, // LEFT_BOTTOM position
+      mapTypeIds: ['roadmap', 'satellite'] // Default map types
+    },
+    streetViewControl: true,
+    zoomControl: true
+  },
+
+  /**
+   * Marker clustering configuration.
+   * @property {object} algorithm - Clustering algorithm settings.
+   * @property {number} algorithm.radius - Cluster radius in pixels.
+   * @property {number} algorithm.maxZoom - Maximum zoom level to cluster at.
+   * @property {boolean} onClusterClick - Whether clicking a cluster zooms in.
+   * @property {object} marker - Configuration for the cluster marker appearance.
+   * @property {object} marker.colors - Color definitions for the cluster marker.
+   * @property {string} marker.colors.base - Base fill color.
+   * @property {string} marker.colors.stroke - Stroke color.
+   * @property {string} marker.colors.text - Text color for the count.
+   * @property {string} marker.fontSize - Font size for the count text.
+   * @property {number} marker.strokeWeight - Stroke weight for the marker circle.
+   * @property {function(number): number} marker.getScale - Function to determine cluster marker size based on count.
+   */
+  markerCluster: {
+    algorithm: {
+      radius: 100,
+      maxZoom: 15
+    },
+    // Ensure markers are rendered by cluster only
+    onClusterClick: true,
+    marker: {
+      colors: {
+        base: "#f7A100",//"#1a73e8",
+        stroke: "#ffffff",
+        text: "white"
+      },
+      fontSize: "12px",
+      strokeWeight: 2,
+      /**
+       * Calculates the scale (size) of the cluster marker based on the number of markers it contains.
+       * @param {number} count - The number of markers in the cluster.
+       * @returns {number} The scale factor (pixel size) for the marker.
+       */
+      getScale: function(count) {
+        return count < 10 ? 20 : count < 100 ? 24 : 28;
+      }
+    }
+  },
+
+  /**
+   * Price range definitions used for filters.
+   * @property {object} rent - Rental price range settings.
+   * @property {number} rent.min - Minimum rental price.
+   * @property {number} rent.max - Maximum rental price.
+   * @property {number} rent.roundTo - Value to round rental prices to in sliders/display.
+   * @property {object} sale - Sale price range settings.
+   * @property {number} sale.min - Minimum sale price.
+   * @property {number} sale.max - Maximum sale price.
+   * @property {number} sale.roundTo - Value to round sale prices to in sliders/display.
+   */
+  prices: {
+    rent: {
+      min: 250,
+      max: 3000,
+      roundTo: 10
+    },
+    sale: {
+      min: 50000,
+      max: 2500000,
+      roundTo: 5000
+    }
+  },
+
+  /**
+   * Configuration for the price range sliders (using noUiSlider).
+   * @property {object} rent - Rental slider settings.
+   * @property {number} rent.exponent - Exponent for non-linear scaling (higher = more focus on lower values).
+   * @property {object} sale - Sale slider settings.
+   * @property {number} sale.exponent - Exponent for non-linear scaling.
+   */
+  sliders: {
+    rent: {
+      exponent: 2 // Higher values give more weight to lower price ranges
+    },
+    sale: {
+      exponent: 2.5
+    }
+  },
+
+  /**
+   * Currency related settings.
+   * @property {number} nafToUsd - Conversion rate from NAF/XCG (Netherlands Antillean Guilder or caribean Guilder) to USD (US Dollar).
+   */
+  currency: {
+    nafToUsd: 0.56 // Conversion rate from NAF to USD
+  },
+  /**
+   * Search area indication in filter panel related settings.
+   * @property {number} boundsMap - The lat/lng bounds of the map image used in the minimap.
+   * @property {number} minWidthIndicator - Minimum width of the search area indicator as a percentage of the minimap width.
+   * @property {number} minHeightIndicator - Minimum height of the search area indicator as a percentage of the minimap height.
+   */
+  miniMapInFilter: {
+    boundsMap: {//the top,left,bottom and right coordinates of the image of curacao that is being used as background image for the search area indicatot in the filter panel
+        lat:{hi:12.392973,lo:12.034274},
+        lng:{hi:-68.736649,lo:-69.162713}
+      },
+      minWidthIndicator:8,//minimal width of search area indicator in percentage of the minimap width
+      minHeightIndicator:8//minimal height of search area indicator in percentage of the minimap height
+  }
+};
+
+/**
+ * Exposes the AppConfig object globally on the window object
+ * for easy access by other modules and inline scripts.
+ */
+window.AppConfig = AppConfig;

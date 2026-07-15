@@ -1,0 +1,18 @@
+{
+  "current_snapshot_id": "20260715T133530328719Z",
+  "current_snapshot_date": "2026-07-15T13:35:30.429250+00:00",
+  "current_record_count": 1449,
+  "previous_snapshot_id": "20260715T132203306099Z",
+  "previous_snapshot_date": "2026-07-15T13:22:03.413612+00:00",
+  "shared_ids": 1449,
+  "new_listings": 0,
+  "disappeared_listings": 0,
+  "changed_prices": 0,
+  "duplicate_ids": 0,
+  "identity_collisions": 0,
+  "identifier_stability_status": "insufficient_evidence",
+  "stability_reasons": [
+    "The bulk source checksum is unchanged.",
+    "Snapshots are only 0.22 hours apart; at least 6 hours is required."
+  ]
+}

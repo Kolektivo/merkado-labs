@@ -1,0 +1,90 @@
+[
+  {
+    "request_number": 1,
+    "url": "https://caribbeanhousehunt.com/robots.txt",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:25:42.463170+00:00",
+    "status": 200,
+    "content_type": "text/plain",
+    "byte_count": 75,
+    "saved_to": "evidence\\robots.txt",
+    "error": null
+  },
+  {
+    "request_number": 2,
+    "url": "https://caribbeanhousehunt.com/curacao/map/",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:25:42.677121+00:00",
+    "status": 200,
+    "content_type": "text/html",
+    "byte_count": 25746,
+    "saved_to": "evidence\\map-page.html",
+    "error": null
+  },
+  {
+    "request_number": 3,
+    "url": "https://caribbeanhousehunt.com/map-assets/js/config.js?rnd=MVl27O",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:26:21.139600+00:00",
+    "status": 200,
+    "content_type": "text/javascript",
+    "byte_count": 0,
+    "saved_to": null,
+    "error": "Non-text content type rejected: text/javascript"
+  },
+  {
+    "request_number": 4,
+    "url": "https://caribbeanhousehunt.com/map-assets/js/data-manager.js?rnd=MVl27O",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:26:21.249697+00:00",
+    "status": 200,
+    "content_type": "text/javascript",
+    "byte_count": 0,
+    "saved_to": null,
+    "error": "Non-text content type rejected: text/javascript"
+  },
+  {
+    "request_number": 5,
+    "url": "https://caribbeanhousehunt.com/map-assets/js/app.js?rnd=MVl27O",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:26:57.039577+00:00",
+    "status": 200,
+    "content_type": "text/javascript",
+    "byte_count": 24601,
+    "saved_to": "evidence\\app.js.txt",
+    "error": null
+  },
+  {
+    "request_number": 6,
+    "url": "https://caribbeanhousehunt.com/sitemap.xml",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:27:16.392491+00:00",
+    "status": 200,
+    "content_type": "application/xml",
+    "byte_count": 37797,
+    "saved_to": "evidence\\sitemap.xml",
+    "error": null
+  },
+  {
+    "request_number": 7,
+    "url": "https://caribbeanhousehunt.com/termsofuse/",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:27:54.396973+00:00",
+    "status": 200,
+    "content_type": "text/html",
+    "byte_count": 28186,
+    "saved_to": "evidence\\terms.html",
+    "error": null
+  },
+  {
+    "request_number": 8,
+    "url": "https://caribbeanhousehunt.com/map-assets/js/list-view.js?rnd=MVl27O",
+    "method": "GET",
+    "timestamp": "2026-07-14T18:28:21.218178+00:00",
+    "status": 200,
+    "content_type": "text/javascript",
+    "byte_count": 27461,
+    "saved_to": "evidence\\list-view.js.txt",
+    "error": null
+  }
+]

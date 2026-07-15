@@ -20,52 +20,63 @@
 
 ---
 
-## Decision 2 — Passport pipeline stack
+## Decision 2 — Intelligence layer and Passport pipeline stack
 
 **RESOLVED — direction set.** Luuk wants to move away from LangGraph/CrewAI if the current n8n + AI stack can do the job, and asked for a draft of what that architecture looks like.
 
-**Two new sub-needs he flagged, still to clarify:**
-- A tool for handling **complex relationships** in the data — he mentioned "Obsidian or comparable." Likely means something for entity/relationship modeling (e.g. same property appearing across sources, ownership chains) rather than literally the note-taking app. Needs a follow-up question: what specific relationship problem is this meant to solve?
-- A **cheap estimation approach** for valuation — needs scoping once the AVM step is designed.
+**Core intelligence-layer requirement:**
+- [ ] **Harvest data:** collect source-traceable listing observations and preserve enough evidence to reproduce or challenge a market signal.
+- [ ] **Create a knowledge graph:** connect external listings to canonical assets, locations, sources, price/rent observations, contracts, and derived signals.
+
+For the MVP, "knowledge graph" means a relational graph implemented with Supabase tables, foreign keys, and focused join tables. It does not require Neo4j, Obsidian, pgvector, or another new infrastructure layer. A separate graph exploration tool remains optional and can be revisited when relationships become difficult to query or explain.
+
+**Remaining sub-need:** a cheap estimation approach for valuation, scoped first as transparent comparables and basic aggregates before any AI reasoning.
 
 **Proposed n8n-based architecture (draft, replaces LangGraph/CrewAI):**
 
 ```
-1. CRAWL (n8n, per-source workflow — same pattern as car scrapers)
+1. HARVEST (n8n, per-source workflow — same pattern as car scrapers)
    → CaribbeanHouseHunt listing pages
-   → raw HTML/text stored in a staging table
+   → preserve source URL, external ID, raw evidence, and observed_at timestamp
 
 2. STRUCTURE (n8n + GPT-5-mini, same as current enrichment)
-   → extract: address, price, size, bedrooms, type, images, listing date
-   → write to `properties` table (mirrors `listings` schema pattern)
+   → extract: address, neighbourhood, price/rent, size, bedrooms, type, images, listing date
+   → normalize fields without inventing missing facts
 
-3. ENTITY RESOLUTION / DEDUP (new — this is the "complex relationships" piece)
+3. LINK / KNOWLEDGE GRAPH (new, lightweight relational model)
+   → external property_listing links to one canonical property_asset
+   → asset links to location/neighbourhood and source observations
+   → price/rent changes become timestamped observations rather than overwritten history
+   → market signals retain links to the observations used to calculate them
+
+4. ENTITY RESOLUTION / DEDUP
    → rule-based first pass: normalize address text, compare geocoded lat/long,
-     compare price/m2 — cheap, deterministic, no AI needed for clear matches
-   → AI fallback only for ambiguous cases (e.g. GPT-5-mini comparing two
-     listings and returning same/different + confidence)
-   → this replaces "vector DB entity resolution" — a full vector DB is
-     optional overkill at Curaçao's property volume (dozens to low hundreds
-     of listings), a targeted comparison step is enough
+     compare size and price/m2 — cheap, deterministic, no AI needed for clear matches
+   → AI fallback only for ambiguous cases (same/different + confidence)
+   → no vector database required at the initial Curaçao property volume
 
-4. RECONCILE (new, depends on Decision 3 — Kadaster)
+5. RECONCILE (new, depends on Decision 3 — Kadaster)
    → if Kadaster access exists: match against title records
    → if not: skip or flag as "unverified" until access is confirmed
 
-5. VALUATION (new — the "cheap estimation" piece to scope)
+6. SIGNALS / VALUATION (new — start with transparent market signals)
    → comparables-based estimate (nearby properties, price/m2) as the cheap
      first layer, no AI required for a baseline number
    → optional GPT-5-mini reasoning pass on top for a written rationale
    → confidence score based on how many comparables + how recent
 
-6. PASSPORT PAGE (new, frontend + data)
+7. PASSPORT PAGE (new, frontend + data)
    → confidence-scored record per property, same "validated_at" concept
      as the current listing_details table
 ```
 
-This whole thing runs on the same n8n + Supabase + GPT-5-mini pattern already in production. No LangGraph, no CrewAI, no vector database required to hit this scope. If entity resolution or valuation later needs something more sophisticated, that can be added as a targeted upgrade to steps 3 or 5, not a full pipeline rebuild.
+This whole thing runs on the same n8n + Supabase + GPT-5-mini pattern already in production. No LangGraph, CrewAI, vector database, or dedicated graph database is required for the buildathon. The relational knowledge graph is an architectural foundation, not an excuse to expand scope. More specialized infrastructure can be added later behind the same entity and relationship model.
 
-**Status:** direction confirmed by Luuk. Open: define the "complex relationships" tool and the "cheap estimation" approach with him before building steps 3 and 5.
+**Status:** pipeline direction confirmed by Luuk. The intelligence-layer foundation is now explicit: harvest source-traceable data, connect it in Supabase, and calculate transparent market signals. Open: exact valuation methodology beyond the first basic signal, and whether a separate relationship-visualization tool is useful later.
+
+**Labs note (July 2026):** the first property harvest in this repo uses Python snapshots + a
+Labs-only GitHub Action rather than n8n. That does not change the production direction above;
+Labs proved the relational model and signals first. See `07`–`09` and `apps/labs-dashboard`.
 
 ---
 
@@ -101,14 +112,14 @@ This whole thing runs on the same n8n + Supabase + GPT-5-mini pattern already in
 |---|---|---|---|
 | 1 | Transaction model | **Resolved** | Boost payments only; no asset checkout/escrow this sprint. |
 | 1a | Real estate "buying" model | **Resolved (phased)** | Phase 1 = connect + paid support service (XCG fee). Plus new: mock deed-transfer flow for cars. |
-| 2 | Pipeline stack | **Resolved (direction)** | Moving to n8n-based, draft architecture above. Two sub-pieces still need scoping with Luuk. |
+| 2 | Intelligence layer / pipeline stack | **Resolved (direction)** | n8n + GPT-5-mini + Supabase; harvest data and build a lightweight relational knowledge graph before adding specialized graph/vector infrastructure. |
 | 3 | Kadaster access | **Open** | Luuk to reach out. Build with sample-set fallback until resolved. |
 | 4 | Tokenization ownership + realism | **Resolved** | Luis builds SC; builder+Luuk scope; simulated but with real tokens, informal/voluntary pilot. |
 | 5 | Wallet UX | **Open** | Joint decision needed — custodial vs non-custodial, not yet discussed in depth. |
 
 ## What this unblocks (docs to create/update next)
 
-- Decision 2 (pipeline direction) → draft `property-passport-spec.md` using the architecture above.
+- Decision 2 (pipeline direction) → use `07-intelligence-layer.md` as the foundation, then draft `property-passport-spec.md` as its user-facing record/spec.
 - Decision 1a (CHH as only source for now) → draft `proptech-data-sources.md`, scoped to CaribbeanHouseHunt only.
 - Decision 1 + 1a → update `merkado-monetization` — the real Tier 1 PropTech revenue model is now the XCG paid-support-service, not escrow/transaction fees.
 - Decision 4 → still write `wealthtech-compliance-notes.md`, but scoped to "informal/voluntary pilot with real tokens," not a full regulated SPV flow.

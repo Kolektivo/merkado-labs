@@ -10,6 +10,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
+    "streamlit",
     "supabase",
 ]
 
@@ -17,6 +18,9 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
+]
+geo = [
+    "shapely>=2.0",
 ]
 
 [tool.pytest.ini_options]

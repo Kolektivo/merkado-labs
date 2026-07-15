@@ -4,6 +4,11 @@
 
 **Rule to adopt:** nothing goes in the final application/deck describing a feature as live/built unless it is true today on merkado.cw.
 
+**Labs caveat:** this repository has a working property harvest, Labs schema, and read-only
+dashboard. That is real build progress, but it is **not** the live Merkado product. When
+sharing a Vercel Labs link with partners, say clearly: experimental Merkado Labs dataset /
+analytics, separate from merkado.cw.
+
 ---
 
 ## Claim vs actual

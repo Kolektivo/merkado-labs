@@ -28,7 +28,7 @@
 |---|---|---|---|
 | 7 | Which property sites/feeds do we have confirmed access to (named)? | **Answered** | Start with **CaribbeanHouseHunt only** — either scrape it directly or use whatever pages/feed they provide. |
 | 8 | Is the CaribbeanHouseHunt data relationship real and citable? | **Open** | Not explicitly confirmed as a data partnership — sounds like it may just be scraping their listings rather than a formal relationship. Worth clarifying before calling it a "relationship" in any deck. |
-| 9 | Set on LangGraph/CrewAI + pgvector, or is extending the current n8n + AI pipeline acceptable? | **Answered — decision made** | Luuk prefers moving **away** from LangGraph/CrewAI if the current stack can do the job. Wants a draft of what that architecture looks like (see `06-technical-decisions.md`). Also flagged needing something like Obsidian, or comparable, for complex relationships, and a cheap estimation approach. |
+| 9 | Set on LangGraph/CrewAI + pgvector, or is extending the current n8n + AI pipeline acceptable? | **Answered — direction defined** | Use n8n + GPT-5-mini + Supabase. The intelligence layer must harvest source-traceable data and create a lightweight relational knowledge graph. No separate graph/vector database is required for the MVP. A visualization tool and more advanced valuation can be considered later. See `06-technical-decisions.md` and `07-intelligence-layer.md`. |
 
 ## Blockchain
 
@@ -58,7 +58,7 @@
 1. Schedule the "what exactly gets demoed on day 21" conversation — Luuk wants this live, not async.
 2. Clarify custodial vs non-custodial wallet approach together — open decision, no default yet.
 3. Confirm whether CaribbeanHouseHunt is a real data relationship or just a scrape target — matters for what can be claimed publicly.
-4. Ask what tool Luuk has in mind for "Obsidian or comparable" for complex relationships, and what he means by a cheap estimation approach — needs clarification before it can be scoped.
+4. Ask whether Luuk wants a specific visual interface for exploring the knowledge graph. The MVP storage model itself is no longer blocked: use Supabase relationships. Separately clarify how far valuation should go beyond the first transparent neighbourhood signal.
 5. Scope the "digitized deed-transfer + payment" mock flow for cars — new deliverable, not in the original four.
 6. Scope the paid real-estate support service (templates, pricing rec, XCG fee) — this may become the actual Tier 1 PropTech revenue model, worth formalizing.
 7. Follow up on Kadaster access once Luuk has reached out.

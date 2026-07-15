@@ -1,0 +1,749 @@
+/**
+ * @fileoverview Main Application Module - Coordinates UI modules, manages view state,
+ *               and provides centralized functionality like logging.
+ * @module App
+ */
+const App = (function() {
+  /**
+   * Enum for filter panel states.
+   * @readonly
+   * @enum {string}
+   */
+  const PANEL_STATE = {
+    HIDDEN: 'hidden',
+    VISIBLE: 'visible',
+    HIDDEN: 'hidden',
+    VISIBLE: 'visible',
+    COLLAPSED: 'collapsed'
+  };
+
+  /**
+   * Enum for main view states.
+   * @readonly
+   * @enum {string}
+   */
+  const VIEW_STATE = {
+    MAP: 'map',
+    LIST: 'list'
+  };
+
+  /**
+   * Simple logging utility for the App module.
+   * @namespace Logger
+   */
+  const Logger = {
+    /**
+     * Checks if debug mode is enabled by looking for #debug in the URL hash.
+     * @returns {boolean} True if debug mode is enabled.
+     */
+    isDebugEnabled: function() {
+      return window.location.hash.includes('debug');
+    },
+    /**
+     * Gets the current timestamp in ISO format.
+     * @returns {string} ISO timestamp string.
+     */
+    timestamp: function() {
+      return new Date().toISOString();
+    },
+    /**
+     * Logs a standard message.
+     * @param {string} message - The message to log.
+     */
+    log: function(message) {
+      if (this.isDebugEnabled()) {
+        console.log(`[${this.timestamp()}] [App] ${message}`);
+      }
+    },
+    /**
+     * Logs an error message.
+     * @param {string} message - The error description.
+     * @param {*} [error] - Optional error object or details.
+     */
+    error: function(message, error) {
+      if (this.isDebugEnabled()) {
+        console.error(`[${this.timestamp()}] [App] ERROR: ${message}`, error || '');
+      }
+    },
+    /**
+     * Logs a warning message.
+     * @param {string} message - The warning message.
+     */
+    warn: function(message) {
+      if (this.isDebugEnabled()) {
+        console.warn(`[${this.timestamp()}] [App] WARNING: ${message}`);
+      }
+    },
+    /**
+     * Logs an informational message.
+     * @param {string} message - The info message.
+     */
+    info: function(message) {
+      if (this.isDebugEnabled()) {
+        console.info(`[${this.timestamp()}] [App] INFO: ${message}`);
+      }
+    },
+    /**
+     * Logs a debug message.
+     * @param {string} message - The debug message.
+     */
+    debug: function(message) {
+      if (this.isDebugEnabled()) {
+        console.debug(`[${this.timestamp()}] [App] DEBUG: ${message}`);
+      }
+    }
+  };
+
+  /**
+   * Tracks the current state of the filter panel.
+   * @type {PANEL_STATE}
+   */
+  let filterPanelState = PANEL_STATE.HIDDEN;
+  /**
+   * Tracks the current active view (map or list).
+   * @type {VIEW_STATE}
+   */
+  let currentView = VIEW_STATE.MAP;
+
+
+  /**
+   * Gets the filter panel DOM element
+   * @returns {HTMLElement|null} - The filter panel element or null
+   */
+  function getFilterPanel() {
+    return document.getElementById('filter-panel');
+  }
+  
+  /**
+   * Sets the filter panel to the specified state
+   * @param {string} state - The desired state from PANEL_STATE
+   */
+  function setFilterPanelState(state) {
+    const panel = getFilterPanel();
+    if (!panel) {
+      Logger.error(`Failed to get filter panel when setting state to ${state}`);
+      return;
+    }
+    
+    
+    // Update internal state tracker
+    filterPanelState = state;
+    
+    switch (state) {
+      case PANEL_STATE.HIDDEN:
+        panel.style.visibility = 'hidden';
+        panel.classList.remove('visible');
+        panel.classList.remove('collapsed');
+        break;
+        
+      case PANEL_STATE.VISIBLE:
+        panel.style.visibility = 'visible';
+        panel.classList.add('visible');
+        panel.classList.remove('collapsed');
+        
+        // Update icon classes but don't change rotation - CSS will handle that
+        const toggleIconVisible = document.querySelector('#collapse-toggle i');
+        if (toggleIconVisible) {
+          toggleIconVisible.setAttribute('class', 'bi bi-chevron-up');
+        }
+        break;
+      default:
+        Logger.error(`Unknown filter panel state: ${state}`);
+        break;
+    }
+    
+  }
+  
+  /**
+   * Reset the filter panel position to bottom-left corner
+   */
+  function resetFilterPanelPosition() {
+    const panel = getFilterPanel();
+    if (panel) {
+      // Calculate position to place panel at bottom using top property
+      const windowHeight = window.innerHeight;
+      const panelHeight = panel.offsetHeight || 400; // Use 400px as fallback if height not available yet
+      const newTopPosition = windowHeight - panelHeight - 20; // 20px bottom margin
+      
+      
+      // Reset position to bottom-left corner
+      panel.style.top = `${Math.max(20, newTopPosition)}px`; // Ensure minimum top of 20px
+      panel.style.left = '20px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      
+      // Reset any transforms that might be applied
+      panel.style.transform = 'none';
+    }
+  }
+  
+  /**
+   * Moves the filter panel between the floating panel and sidebar
+   * @param {string} targetContainer - The ID of the container to move the filter panel to
+   */
+  function moveFilterPanel(targetContainer) {
+    const filterPanel = document.getElementById('filter-panel');
+    
+    // For other containers
+    const targetElement = document.getElementById(targetContainer);
+    if (filterPanel && targetElement) {
+      // Remember filter panel state before moving
+      const wasVisible = filterPanel.classList.contains('visible');
+      const wasCollapsed = filterPanel.classList.contains('collapsed');
+      
+      // Remove shadow class for filter panel in sidebar
+      filterPanel.classList.remove('shadow');
+      
+      // Move the filter panel to the target container
+      targetElement.appendChild(filterPanel);
+      
+      // Show list view toggle button and hide map view toggle button
+      const mapViewToggle = document.getElementById('collapse-toggle');
+      const listViewToggle = document.getElementById('sidebar-toggle');
+      
+      if (mapViewToggle) {
+        mapViewToggle.style.display = 'none';
+      }
+      
+      if (listViewToggle) {
+        listViewToggle.style.display = 'block';
+      }
+      
+      // Restore panel state after moving
+      if (wasVisible) {
+        filterPanel.classList.add('visible');
+      }
+      if (wasCollapsed) {
+        filterPanel.classList.add('collapsed');
+      }
+    }
+  }
+
+  /**
+   * Toggles the collapsed state of the list view sidebar.
+   * @param {boolean} [collapsed] - Optional. Force a specific state (true=collapse, false=expand). Toggles if omitted.
+   */
+  function toggleSidebar(collapsed) {
+    const sidebar = document.getElementById('filter-sidebar');
+    const body = document.body;
+    const showFiltersBtn = document.getElementById('show-filters-btn');
+    
+    if (!sidebar) {
+      Logger.error('Failed to find filter sidebar element with ID "filter-sidebar"');
+      return;
+    }
+    
+    
+    if (collapsed === undefined) {
+      // Toggle mode
+      sidebar.classList.toggle('collapsed');
+      body.classList.toggle('sidebar-collapsed');
+      body.classList.toggle('sidebar-visible');
+      collapsed = sidebar.classList.contains('collapsed');
+    } else {
+      // Set to specific state
+      if (collapsed) {
+        sidebar.classList.add('collapsed');
+        body.classList.add('sidebar-collapsed');
+        body.classList.remove('sidebar-visible');
+      } else {
+        sidebar.classList.remove('collapsed');
+        body.classList.remove('sidebar-collapsed');
+        body.classList.add('sidebar-visible');
+      }
+    }
+    
+    // Update UI based on state
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+      if (collapsed) {
+        sidebarToggle.setAttribute('title', t('sidebar.expand'));
+        // Always keep the icon pointing left
+        const sidebarToggleIcon = sidebarToggle.querySelector('i');
+        if (sidebarToggleIcon) {
+          sidebarToggleIcon.classList.remove('bi-chevron-right');
+          sidebarToggleIcon.classList.add('bi-chevron-left');
+        }
+        
+        if (showFiltersBtn) {
+          showFiltersBtn.style.display = 'block';
+        }
+      } else {
+        sidebarToggle.setAttribute('title', t('sidebar.collapse'));
+        // Always keep the icon pointing left
+        const sidebarToggleIcon = sidebarToggle.querySelector('i');
+        if (sidebarToggleIcon) {
+          sidebarToggleIcon.classList.remove('bi-chevron-right');
+          sidebarToggleIcon.classList.add('bi-chevron-left');
+        }
+        
+        if (showFiltersBtn) {
+          showFiltersBtn.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  /**
+   * Switch between map and list views
+   * @param {string} view - The view to switch to (from VIEW_STATE)
+   * @param {Object} [options={}] - Options
+   * @param {boolean} [options.fromPopState=false] - True if triggered by browser back/forward
+   */
+  function switchView(view, options = {}) {
+    const mapContainer = document.getElementById('map');
+    const listContainer = document.getElementById('list-container');
+    const showFiltersBtn = document.getElementById('show-filters-btn');
+    const sidebar = document.getElementById('filter-sidebar');
+    const minimap = document.getElementById('search-area-section');
+
+    const filterPanel = getFilterPanel();
+    const body = document.body;
+
+    // Update current view state
+    currentView = view;
+
+    // Update URL (source of truth) unless triggered by browser back/forward
+    if (!options.fromPopState) {
+      UrlState.set({ view: view });
+    }
+    
+    // Check if we're on mobile (screen width <= 768px)
+    const isMobile = window.innerWidth <= 768;
+    
+    if (view === VIEW_STATE.MAP) {
+      // Show map, hide list
+      mapContainer.style.display = 'block';
+      listContainer.style.display = 'none';
+      minimap.style.display = 'none';
+      
+      // Show sidebar in map view
+      if (sidebar) {
+        sidebar.style.display = 'flex';
+      }
+      
+      // Handle sidebar visibility based on device type
+      if (isMobile) {
+        // On mobile: start with collapsed sidebar in map view
+        body.classList.add('sidebar-collapsed');
+        body.classList.remove('sidebar-visible');
+        if (sidebar) {
+          sidebar.classList.add('collapsed');
+        }
+      } else {
+        // On desktop: ensure sidebar is expanded
+        body.classList.add('sidebar-visible');
+        body.classList.remove('sidebar-collapsed');
+        if (sidebar) {
+          sidebar.classList.remove('collapsed');
+        }
+      }
+      
+      // Show the filter button in the toolbar on mobile, hide on desktop
+      if (showFiltersBtn) {
+        showFiltersBtn.style.display = isMobile ? 'block' : 'none';
+      }
+      
+      // Move filter panel to the sidebar
+      moveFilterPanel('filter-sidebar-container');
+      
+      // Handle filter panel state based on device type
+      if (isMobile) {
+        // On mobile: set filter panel to collapsed state in map view
+        if (DataManager.isDataLoaded()) {
+          setFilterPanelState(PANEL_STATE.COLLAPSED);
+        }
+      } else {
+        // On desktop: ensure filter panel is fully expanded when switching to map view
+        if (filterPanel && filterPanel.classList.contains('collapsed')) {
+          filterPanel.classList.remove('collapsed');
+          
+          // Update the toggle button icon if needed
+          const toggleIcon = document.querySelector('#collapse-toggle i');
+          if (toggleIcon) {
+            toggleIcon.classList.remove('bi-chevron-down');
+            toggleIcon.classList.add('bi-chevron-up');
+          }
+        }
+        
+        // Ensure filter panel is visible and expanded on desktop
+        if (DataManager.isDataLoaded()) {
+          setFilterPanelState(PANEL_STATE.VISIBLE);
+          FilterModule.applyFilters();
+        }
+      }
+    } else {
+      // Show list and sidebar, hide map
+      mapContainer.style.display = 'none';
+      listContainer.style.display = 'block';
+      minimap.style.display = 'block';
+      
+      if (sidebar) {
+        sidebar.style.display = 'flex';
+      }
+      
+      // Move filter panel to the sidebar
+      moveFilterPanel('filter-sidebar-container');
+      
+      // Handle sidebar visibility based on device type
+      if (sidebar) {
+        if (isMobile) {
+          // On mobile: always start with collapsed sidebar in list view
+          sidebar.classList.add('collapsed');
+          body.classList.add('sidebar-collapsed');
+          body.classList.remove('sidebar-visible');
+          
+          // Show the filters button in the toolbar on mobile
+          if (showFiltersBtn) {
+            showFiltersBtn.style.display = 'block';
+          }
+        } else {
+          // On desktop: expand sidebar if it was collapsed
+          if (sidebar.classList.contains('collapsed')) {
+            sidebar.classList.remove('collapsed');
+          }
+          
+          // Update body classes for sidebar state
+          body.classList.remove('sidebar-collapsed');
+          body.classList.add('sidebar-visible');
+          
+          // Hide filters button on desktop (sidebar always expanded by default)
+          if (showFiltersBtn) {
+            showFiltersBtn.style.display = 'none';
+          }
+        }
+      }
+      
+      // Update list view with current filtered IDs
+      if (typeof FilterModule !== 'undefined') {
+        FilterModule.applyFilters();
+      }
+      
+      // Ensure filter panel is visible (though sidebar may be collapsed on mobile)
+      if (DataManager.isDataLoaded()) {
+        setFilterPanelState(PANEL_STATE.VISIBLE);
+      }
+
+      FilterModule.syncMiniMapSearchArea();
+    }
+    
+    // Trigger event for other modules
+    $(document).trigger('view:changed', view);
+  }
+  
+  return {
+    // State constants (for use by other modules)
+    PANEL_STATE: PANEL_STATE,
+    VIEW_STATE: VIEW_STATE,
+    
+    /**
+     * Toggles the sidebar visibility
+     * @param {boolean} [collapsed] - Optional. Force a specific state (true=collapse, false=expand). Toggles if omitted.
+     */
+    toggleSidebar: toggleSidebar,
+    
+    /**
+     * Initializes the application
+     * @returns {void}
+     */
+    init: function() {
+
+      // Initially hide the filter panel - will be shown when details are loaded
+      this.hideFilterPanel();
+
+      // Read initial view from URL (URL is source of truth)
+      const urlView = UrlState.get('view');
+      if (urlView === VIEW_STATE.LIST) {
+        currentView = VIEW_STATE.LIST;
+      } else {
+        // Default to map view (handles 'map', null, or invalid values)
+        currentView = VIEW_STATE.MAP;
+      }
+
+      // Subscribe to URL changes for browser back/forward navigation
+      UrlState.onChange(function(state) {
+        const newView = state.view || VIEW_STATE.MAP;
+        if (newView !== currentView) {
+          switchView(newView, { fromPopState: true });
+        }
+      });
+
+      // Get the filter panel
+      const filterPanel = document.getElementById('filter-panel');
+      if (!filterPanel) {
+        Logger.error('Failed to find filter panel element with ID "filter-panel"');
+        return;
+      } else {
+      }
+      
+      // Position the filter panel at the bottom of the page using top property
+      const windowHeight = window.innerHeight;
+      const panelHeight = filterPanel.offsetHeight || 400; // Use 400px as fallback if height not available yet
+      const newTopPosition = windowHeight - panelHeight - 20; // 20px bottom margin
+      
+      filterPanel.style.top = `${Math.max(20, newTopPosition)}px`; // Ensure minimum top of 20px
+      
+      // Ensure filter panel is in the correct container based on current view
+      
+      // Always move filter panel to sidebar container
+      filterPanel.classList.remove('shadow');
+      moveFilterPanel('filter-sidebar-container');
+      
+      // Show sidebar in map view
+      if (currentView === VIEW_STATE.MAP) {
+        const sidebar = document.getElementById('filter-sidebar');
+        if (sidebar) {
+          sidebar.style.display = 'flex';
+        }
+        
+        // Check if we're on mobile
+        const isMobile = window.innerWidth <= 768;
+        
+        if (isMobile) {
+          // On mobile: start with collapsed sidebar
+          document.body.classList.add('sidebar-collapsed');
+          document.body.classList.remove('sidebar-visible');
+          if (sidebar) {
+            sidebar.classList.add('collapsed');
+          }
+          
+          // Show the filter button
+          const showFiltersBtn = document.getElementById('show-filters-btn');
+          if (showFiltersBtn) {
+            showFiltersBtn.style.display = 'block';
+          }
+        } else {
+          // On desktop: ensure sidebar is expanded
+          document.body.classList.add('sidebar-visible');
+          document.body.classList.remove('sidebar-collapsed');
+          if (sidebar) {
+            sidebar.classList.remove('collapsed');
+          }
+        }
+      }
+      
+      // Set up sidebar toggle button for list view
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      if (!sidebarToggle) {
+        Logger.warn('Sidebar toggle button not found');
+      } else {
+        
+        // Ensure the icon is always pointing left
+        const sidebarToggleIcon = sidebarToggle.querySelector('i');
+        if (sidebarToggleIcon) {
+          sidebarToggleIcon.classList.remove('bi-chevron-right');
+          sidebarToggleIcon.classList.add('bi-chevron-left');
+        }
+      }
+      
+      const showFiltersBtn = document.getElementById('show-filters-btn');
+      if (!showFiltersBtn) {
+        Logger.warn('Show filters button not found');
+      } else {
+      }
+
+      
+      // Set up event handlers
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function(e) {
+          e.preventDefault(); // Prevent default behavior
+          e.stopPropagation(); // Stop event propagation
+
+          // On mobile (≤768px), apply filters before closing sidebar
+          if (window.innerWidth <= 768) {
+            if (typeof FilterModule !== 'undefined' && typeof FilterModule.applyFilters === 'function') {
+              FilterModule.applyFilters();
+            }
+          }
+
+          toggleSidebar();
+        });
+      }
+      
+      if (showFiltersBtn) {
+        showFiltersBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Get the sidebar element
+          const sidebar = document.getElementById('filter-sidebar');
+          if (sidebar) {
+            // Check if sidebar is collapsed
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            // Toggle sidebar - expand if collapsed, collapse if expanded
+            toggleSidebar(!isCollapsed);
+          }
+        });
+      }
+      
+      // Listen for orientation change on mobile devices
+      window.addEventListener('orientationchange', function() {
+        // Add transitioning class to prevent unwanted animations during orientation change
+        const panel = getFilterPanel();
+        if (panel) {
+          panel.classList.add('transitioning');
+          
+          // No need to reset position as we're using sidebar in both views
+          
+          // Remove transitioning class after orientation change is complete
+          setTimeout(() => {
+            panel.classList.remove('transitioning');
+          }, 500);
+        } else {
+          Logger.warn('Filter panel not found during orientation change');
+        }
+      });
+      
+      // Listen for window resize events to adjust UI
+      $(window).on('resize', function() {
+        
+        // Check if we're on mobile
+        const isMobile = window.innerWidth <= 768;
+        
+        // Handle sidebar visibility based on screen size for both map and list views
+        const sidebar = document.getElementById('filter-sidebar');
+        const showFiltersBtn = document.getElementById('show-filters-btn');
+        
+        if (sidebar) {
+          if (isMobile) {
+            // On mobile: ensure sidebar is collapsed
+            if (!sidebar.classList.contains('collapsed')) {
+              sidebar.classList.add('collapsed');
+              document.body.classList.add('sidebar-collapsed');
+              document.body.classList.remove('sidebar-visible');
+              
+              // Show filters button
+              if (showFiltersBtn) {
+                showFiltersBtn.style.display = 'block';
+              }
+            }
+          } else {
+            // On desktop: ensure sidebar is expanded
+            if (sidebar.classList.contains('collapsed')) {
+              sidebar.classList.remove('collapsed');
+              document.body.classList.remove('sidebar-collapsed');
+              document.body.classList.add('sidebar-visible');
+              
+              // Hide filters button
+              if (showFiltersBtn) {
+                showFiltersBtn.style.display = 'none';
+              }
+            }
+          }
+        }
+      });
+
+      // Apply initial view from URL (if list view was requested)
+      // Use fromPopState to avoid creating a history entry for initial page load
+      if (currentView === VIEW_STATE.LIST) {
+        switchView(VIEW_STATE.LIST, { fromPopState: true });
+      }
+    },
+
+    /**
+     * Show the filter panel
+     * @param {boolean} [withAnimation=true] - Whether to animate the transition
+     */
+    showFilterPanel: function(withAnimation = true) {
+      
+      // Always show the filter panel in the sidebar
+      const panel = getFilterPanel();
+      if (!panel) {
+        Logger.error('Failed to find filter panel when showing panel');
+        return;
+      }
+      
+      // Check if we're on mobile
+      const isMobile = window.innerWidth <= 768;
+      
+      // On mobile, collapse the sidebar
+      if (isMobile) {
+        const sidebar = document.getElementById('filter-sidebar');
+        if (sidebar) {
+          sidebar.classList.add('collapsed');
+          document.body.classList.add('sidebar-collapsed');
+          document.body.classList.remove('sidebar-visible');
+        }
+      }
+      
+      // Normal behavior for desktop or list view
+      if (withAnimation) {
+        // First make visible without slide-in
+        const panel = getFilterPanel();
+        if (panel) {
+          panel.style.visibility = 'visible';
+          // Small delay for better visual flow
+          setTimeout(() => {
+            setFilterPanelState(PANEL_STATE.VISIBLE);
+          }, 50);
+        } else {
+          Logger.error('Failed to find filter panel when showing panel');
+        }
+      } else {
+        setFilterPanelState(PANEL_STATE.VISIBLE);
+      }
+    },
+    
+    /**
+     * Hide the filter panel
+     */
+    hideFilterPanel: function() {
+      setFilterPanelState(PANEL_STATE.HIDDEN);
+    },
+    
+    /**
+     * Get current filter panel state
+     * @returns {string} - Current state from PANEL_STATE
+     */
+    getFilterPanelState: function() {
+      return filterPanelState;
+    },
+    
+    /**
+     * Get current view state
+     * @returns {string} - Current view (map or list)
+     */
+    getCurrentView: function() {
+      return currentView;
+    },
+    
+    /**
+     * Switch between map and list views
+     * @param {string} view - The view to switch to
+     * @param {Object} [options={}] - Options (e.g., { fromPopState: true })
+     */
+    switchView: function(view, options) {
+      switchView(view, options);
+    },
+    
+    /**
+     * Reset filter panel position (exposed for use from other modules)
+     */
+    resetFilterPanelPosition: resetFilterPanelPosition
+  };
+})();
+
+/**
+ * Initializes the application once the DOM is fully loaded.
+ * Also sets the filter slide indicator color to match the header.
+ */
+$(document).ready(function() {
+  App.init();
+
+  // Match the filter indicator color with the filter header background color
+  const filterHeader = document.getElementById('filter-header');
+  const filterSlideIndicator = document.getElementById('filter-slide-indicator');
+  
+  if (filterHeader && filterSlideIndicator) {
+    // Get the computed background color of the filter header
+    const headerStyle = window.getComputedStyle(filterHeader);
+    const headerBgColor = headerStyle.backgroundColor;
+    
+    // Apply the same background color to the slide indicator
+    filterSlideIndicator.style.backgroundColor = headerBgColor;
+    
+    // If the header has bg-primary class, add it to the indicator too
+    if (filterHeader.classList.contains('bg-primary')) {
+      filterSlideIndicator.classList.add('bg-primary');
+    }
+  }
+});

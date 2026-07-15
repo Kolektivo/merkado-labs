@@ -1,0 +1,12 @@
+{
+  "contract_reference": "PILOT-EXAMPLE-001",
+  "neighbourhood": "Punda",
+  "monthly_rent_xcg": 2500,
+  "floor_area_m2": 80,
+  "start_date": "2026-07-01",
+  "end_date": null,
+  "property_type": "apartment",
+  "latitude": null,
+  "longitude": null,
+  "notes": "Synthetic demonstration data. Not a real or legally binding rental contract."
+}
