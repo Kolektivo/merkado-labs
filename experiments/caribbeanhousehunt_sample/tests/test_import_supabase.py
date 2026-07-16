@@ -43,6 +43,18 @@ def test_neighbourhood_slug_collisions_do_not_merge_distinct_names() -> None:
     assert len({row["slug"] for row in rows}) == 3
 
 
+def test_neighbourhood_slugs_respect_existing_database_reservations() -> None:
+    rows = neighbourhood_rows(
+        {"blue bay b-section": "Blue Bay B-section"},
+        reserved_slugs={"blue-bay-b-section": "blue bay - b-section"},
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["normalized_name"] == "blue bay b-section"
+    assert rows[0]["slug"] != "blue-bay-b-section"
+    assert rows[0]["slug"].startswith("blue-bay-b-section-")
+
+
 def test_database_timestamp_formatting_does_not_trigger_updates() -> None:
     assert _same_value(
         "2026-07-15T13:35:30.42925+00:00",

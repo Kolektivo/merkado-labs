@@ -9,7 +9,7 @@ import math
 import re
 import unicodedata
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -152,9 +152,18 @@ def neighbourhood_slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", ascii_value.casefold()).strip("-")
 
 
-def neighbourhood_rows(names_by_normalized: dict[str, str]) -> list[dict[str, str]]:
-    """Build unique slugs without merging distinct normalized neighbourhood names."""
+def neighbourhood_rows(
+    names_by_normalized: dict[str, str],
+    *,
+    reserved_slugs: Mapping[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """Build unique slugs without merging distinct normalized neighbourhood names.
 
+    ``reserved_slugs`` maps already-stored slug -> normalized_name so new names do not
+    collide with rows that already exist in Labs.
+    """
+
+    claimed = dict(reserved_slugs or {})
     base_slugs = {
         normalized_name: neighbourhood_slug(name)
         for normalized_name, name in names_by_normalized.items()
@@ -164,9 +173,20 @@ def neighbourhood_rows(names_by_normalized: dict[str, str]) -> list[dict[str, st
     for normalized_name, name in sorted(names_by_normalized.items()):
         base_slug = base_slugs[normalized_name] or "neighbourhood"
         slug = base_slug
-        if slug_counts[base_slugs[normalized_name]] > 1 or not base_slugs[normalized_name]:
+        needs_suffix = (
+            not base_slugs[normalized_name]
+            or slug_counts[base_slugs[normalized_name]] > 1
+            or (base_slug in claimed and claimed[base_slug] != normalized_name)
+        )
+        if needs_suffix:
             suffix = hashlib.sha256(normalized_name.encode()).hexdigest()[:8]
             slug = f"{base_slug}-{suffix}"
+            while slug in claimed and claimed[slug] != normalized_name:
+                suffix = hashlib.sha256(f"{normalized_name}:{suffix}".encode()).hexdigest()[
+                    :8
+                ]
+                slug = f"{base_slug}-{suffix}"
+        claimed[slug] = normalized_name
         rows.append(
             {
                 "name": name,
@@ -596,7 +616,15 @@ def _upsert_neighbourhoods(client: Any, artifacts: SampleArtifacts) -> dict[str,
         if item.get("neighbourhood"):
             name = str(item["neighbourhood"]).strip()
             names_by_normalized.setdefault(normalize_neighbourhood(name), name)
-    rows = neighbourhood_rows(names_by_normalized)
+    existing = (
+        client.table("neighbourhoods").select("slug,normalized_name").execute().data or []
+    )
+    reserved_slugs = {
+        str(row["slug"]): str(row["normalized_name"])
+        for row in existing
+        if row.get("slug") and row.get("normalized_name")
+    }
+    rows = neighbourhood_rows(names_by_normalized, reserved_slugs=reserved_slugs)
     for row_batch in batches(rows):
         client.table("neighbourhoods").upsert(
             row_batch, on_conflict="normalized_name"
