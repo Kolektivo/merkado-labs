@@ -50,6 +50,13 @@ def test_database_timestamp_formatting_does_not_trigger_updates() -> None:
     )
 
 
+def test_same_value_handles_none_against_numeric() -> None:
+    assert _same_value(None, None)
+    assert not _same_value(1.5, None)
+    assert not _same_value(None, 1.5)
+    assert _same_value(1.5, 1.5)
+
+
 def test_project_guard_requires_exact_labs_ref_and_host() -> None:
     settings = Settings(
         supabase_project_ref=LABS_PROJECT_REF,

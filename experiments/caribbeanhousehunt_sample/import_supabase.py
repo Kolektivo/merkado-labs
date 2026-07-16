@@ -423,6 +423,8 @@ def _existing_listings(
 def _same_value(left: Any, right: Any) -> bool:
     """Compare API numeric values without conflating text values."""
 
+    if left is None or right is None:
+        return left is right
     numeric_types = (int, float, Decimal)
     if isinstance(left, numeric_types) or isinstance(right, numeric_types):
         try:
@@ -431,7 +433,7 @@ def _same_value(left: Any, right: Any) -> bool:
                     float(left), float(right), rel_tol=1e-12, abs_tol=1e-12
                 )
             return Decimal(str(left)) == Decimal(str(right))
-        except (ValueError, ArithmeticError):
+        except (TypeError, ValueError, ArithmeticError):
             return False
     if isinstance(left, str) and isinstance(right, str):
         try:
