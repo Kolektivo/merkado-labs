@@ -3,6 +3,8 @@ import "server-only";
 import { cache } from "react";
 
 import type {
+  EnrichmentObservation,
+  ListingAmenity,
   MapListingMarker,
   PriceObservation,
   PropertyListing,
@@ -22,16 +24,31 @@ const LISTING_SELECT = [
   "external_id_status",
   "source_url",
   "original_realtor_url",
+  "original_realtor_name",
+  "original_realtor_domain",
+  "original_realtor_external_id",
+  "attribution_method",
+  "attribution_observed_at",
   "listing_type",
+  "source_listing_status",
   "property_type",
   "title",
   "current_price",
   "currency",
   "bedrooms",
   "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
   "latitude",
   "longitude",
+  "coordinates_source",
   "primary_image_url",
+  "description",
+  "street",
+  "house_number",
+  "resort",
+  "amenities",
+  "data_completeness_score",
   "status",
   "observation_count",
   "price_observation_count",
@@ -59,6 +76,7 @@ const MAP_MARKER_SELECT = [
   "primary_image_url",
   "source_url",
   "original_realtor_url",
+  "original_realtor_name",
   "neighbourhood_assignment_status",
   "source:property_sources(name)",
   "neighbourhood:neighbourhoods!property_listings_neighbourhood_id_fkey(name)",
@@ -117,7 +135,27 @@ function normalizeAssignmentStatus(value: unknown): NeighbourhoodAssignmentStatu
   return allowed.includes(status) ? status : "unprocessed";
 }
 
-function normalizeListing(row: RawListing): PropertyListing {
+function normalizeAmenities(value: unknown): ListingAmenity[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const code = Number(row.code);
+    if (!Number.isFinite(code)) return [];
+    return [
+      {
+        code,
+        label: row.label ? String(row.label) : null,
+        labelStatus: row.label_status ? String(row.label_status) : "unlabeled",
+      },
+    ];
+  });
+}
+
+function normalizeListing(
+  row: RawListing,
+  conflictCounts: Map<string, number> = new Map(),
+): PropertyListing {
   const source = oneRelation(row.source);
   const neighbourhood = normalizeNeighbourhood(row.neighbourhood);
   const inferredNeighbourhood = normalizeNeighbourhood(
@@ -143,18 +181,48 @@ function normalizeListing(row: RawListing): PropertyListing {
     originalRealtorUrl: row.original_realtor_url
       ? String(row.original_realtor_url)
       : null,
+    originalRealtorName: row.original_realtor_name
+      ? String(row.original_realtor_name)
+      : null,
+    originalRealtorDomain: row.original_realtor_domain
+      ? String(row.original_realtor_domain)
+      : null,
+    originalRealtorExternalId: row.original_realtor_external_id
+      ? String(row.original_realtor_external_id)
+      : null,
+    attributionMethod: row.attribution_method
+      ? String(row.attribution_method)
+      : null,
+    attributionObservedAt: row.attribution_observed_at
+      ? String(row.attribution_observed_at)
+      : null,
     listingType: row.listing_type ? String(row.listing_type) : null,
+    sourceListingStatus: row.source_listing_status
+      ? String(row.source_listing_status)
+      : null,
     propertyType: row.property_type ? String(row.property_type) : null,
     title: row.title ? String(row.title) : null,
     currentPrice: optionalNumber(row.current_price),
     currency: row.currency ? String(row.currency) : null,
     bedrooms: optionalNumber(row.bedrooms),
     floorAreaM2: optionalNumber(row.floor_area_m2),
+    lotAreaValue: optionalNumber(row.lot_area_value),
+    lotAreaUnit: row.lot_area_unit ? String(row.lot_area_unit) : null,
     latitude,
     longitude,
+    coordinatesSource: row.coordinates_source
+      ? String(row.coordinates_source)
+      : null,
     primaryImageUrl: row.primary_image_url
       ? String(row.primary_image_url)
       : null,
+    description: row.description ? String(row.description) : null,
+    street: row.street ? String(row.street) : null,
+    houseNumber: row.house_number ? String(row.house_number) : null,
+    resort: row.resort ? String(row.resort) : null,
+    amenities: normalizeAmenities(row.amenities),
+    dataCompletenessScore: optionalNumber(row.data_completeness_score),
+    unresolvedConflictCount: conflictCounts.get(String(row.id)) ?? 0,
     status: String(row.status) as PropertyListing["status"],
     observationCount: Number(row.observation_count),
     priceObservationCount: Number(row.price_observation_count),
@@ -210,6 +278,9 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
     originalRealtorUrl: row.original_realtor_url
       ? String(row.original_realtor_url)
       : null,
+    originalRealtorName: row.original_realtor_name
+      ? String(row.original_realtor_name)
+      : null,
     neighbourhoodName: neighbourhood?.name
       ? String(neighbourhood.name)
       : null,
@@ -221,10 +292,38 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
   };
 }
 
+async function loadUnresolvedConflictCounts(): Promise<Map<string, number>> {
+  const client = createReadOnlySupabaseClient();
+  const counts = new Map<string, number>();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from("listing_field_conflicts")
+      .select("property_listing_id")
+      .eq("resolution_status", "unresolved")
+      .range(from, from + pageSize - 1);
+    if (error) {
+      // Table may be empty or temporarily unavailable; listings still render.
+      if (/does not exist|permission denied|schema cache/i.test(error.message)) {
+        return counts;
+      }
+      throw publicReadError("Unable to load source conflicts", error.message);
+    }
+    const page = data ?? [];
+    for (const row of page) {
+      const listingId = String(row.property_listing_id);
+      counts.set(listingId, (counts.get(listingId) ?? 0) + 1);
+    }
+    if (page.length < pageSize) break;
+  }
+  return counts;
+}
+
 export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
   const client = createReadOnlySupabaseClient();
   const pageSize = 1000;
   const rows: RawListing[] = [];
+  const conflictCounts = await loadUnresolvedConflictCounts();
 
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await client
@@ -239,7 +338,7 @@ export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
     if (page.length < pageSize) break;
   }
 
-  return rows.map(normalizeListing);
+  return rows.map((row) => normalizeListing(row, conflictCounts));
 });
 
 export const getMapListingMarkers = cache(
@@ -398,3 +497,78 @@ async function loadListingStatsBySource() {
 
   return bySourceId;
 }
+
+export const getEnrichmentObservations = cache(
+  async (): Promise<EnrichmentObservation[]> => {
+    const client = createReadOnlySupabaseClient();
+    const { data, error } = await client
+      .from("listing_enrichment_observations")
+      .select(
+        [
+          "id",
+          "property_listing_id",
+          "adapter_name",
+          "adapter_version",
+          "source_domain",
+          "original_url",
+          "field_name",
+          "raw_value",
+          "normalized_value",
+          "extraction_method",
+          "evidence_selector",
+          "evidence_snippet",
+          "comparison_status",
+          "chh_value",
+          "observed_at",
+          "listing:property_listings(title,external_id)",
+        ].join(","),
+      )
+      .order("observed_at", { ascending: false })
+      .limit(500);
+
+    if (error) {
+      if (/does not exist|schema cache/i.test(error.message)) {
+        return [];
+      }
+      throw publicReadError(
+        "Unable to load enrichment observations",
+        error.message,
+      );
+    }
+
+    return (data ?? []).map((row) => {
+      const record = row as unknown as Record<string, unknown> & {
+        listing?: RawRelation;
+      };
+      const listing = oneRelation(record.listing ?? null);
+      return {
+        id: String(record.id),
+        propertyListingId: String(record.property_listing_id),
+        adapterName: String(record.adapter_name),
+        adapterVersion: String(record.adapter_version),
+        sourceDomain: String(record.source_domain),
+        originalUrl: String(record.original_url),
+        fieldName: String(record.field_name),
+        rawValue: record.raw_value ? String(record.raw_value) : null,
+        normalizedValue: record.normalized_value,
+        extractionMethod: String(record.extraction_method),
+        evidenceSelector: record.evidence_selector
+          ? String(record.evidence_selector)
+          : null,
+        evidenceSnippet: record.evidence_snippet
+          ? String(record.evidence_snippet)
+          : null,
+        comparisonStatus: String(
+          record.comparison_status,
+        ) as EnrichmentObservation["comparisonStatus"],
+        chhValue: record.chh_value,
+        observedAt: String(record.observed_at),
+        listingTitle: listing?.title ? String(listing.title) : null,
+        listingExternalId: listing?.external_id
+          ? String(listing.external_id)
+          : null,
+      };
+    });
+  },
+);
+

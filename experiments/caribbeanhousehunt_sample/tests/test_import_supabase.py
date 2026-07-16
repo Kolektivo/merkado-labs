@@ -8,6 +8,7 @@ from experiments.caribbeanhousehunt_sample.import_supabase import (
     LABS_PROJECT_REF,
     MIN_SNAPSHOT_SIZE,
     _same_value,
+    guard_chh_currency_mislabels,
     listing_payload,
     load_sample_artifacts,
     neighbourhood_rows,
@@ -69,6 +70,25 @@ def test_same_value_handles_none_against_numeric() -> None:
     assert _same_value(1.5, 1.5)
 
 
+def test_guard_rejects_chh_usd_amount_written_into_price_naf() -> None:
+    previous = {"current_price": "410400", "currency": "XCG"}
+    item = {"price": 228_000, "currency": "XCG", "normalization_notes": []}
+
+    guarded = guard_chh_currency_mislabels(item, previous)
+
+    assert guarded["price"] == 410_400
+    assert guarded["currency"] == "XCG"
+    assert guarded["price_guard"] == "chh_usd_mislabeled_as_naf"
+    assert any("keeping prior XCG" in note for note in guarded["normalization_notes"])
+
+
+def test_guard_allows_genuine_xcg_price_drop() -> None:
+    previous = {"current_price": 410_400, "currency": "XCG"}
+    item = {"price": 390_000, "currency": "XCG"}
+
+    assert guard_chh_currency_mislabels(item, previous) is item
+
+
 def test_project_guard_requires_exact_labs_ref_and_host() -> None:
     settings = Settings(
         supabase_project_ref=LABS_PROJECT_REF,
@@ -101,3 +121,62 @@ def test_listing_payload_keeps_asset_unlinked_and_id_provisional() -> None:
     assert payload["external_id"] == item["source_listing_id"]
     assert payload["external_id_status"] == "provisional"
     assert payload["first_seen_at"] == artifacts.observed_at
+    assert payload["original_realtor_name"]
+    assert payload["original_realtor_domain"]
+    assert payload["attribution_method"] == "chh_bulk_json"
+    assert isinstance(payload["amenities"], list)
+    assert payload["field_provenance"]
+    assert payload["data_completeness_score"] is not None
+
+
+def test_import_record_enriches_legacy_normalized_rows_from_raw() -> None:
+    from experiments.caribbeanhousehunt_sample.import_supabase import _as_import_record
+
+    raw = {
+        "urlid": 1,
+        "id": 9,
+        "url_page": "https://example-realtor.com/listing/1",
+        "realtor_name": "Example Realty",
+        "realtor_id": 7,
+        "realtor_filtername": "example",
+        "status": "for sale",
+        "property_type": "home",
+        "bedrooms": 3,
+        "floor_area": 120,
+        "lot_area": None,
+        "neighborhood": "Jan Thiel",
+        "lat": 12.0,
+        "lng": -68.8,
+        "image_url": "x.webp",
+        "description": "Legacy row",
+        "street": "",
+        "house_number": "",
+        "resort": "",
+        "coordinates_source": "html_page",
+        "amenity": [1],
+        "price_usd": 250000,
+        "price_naf": None,
+        "price_eur": None,
+        "property_title": "Legacy Home",
+    }
+    legacy_normalized = {
+        "urlid": "1",
+        "original_realtor_url": raw["url_page"],
+        "listing_type": "sale",
+        "property_type": "home",
+        "price": 250000,
+        "currency": "USD",
+        "bedrooms": 3,
+        "floor_area_m2": 120,
+        "neighbourhood": "Jan Thiel",
+        "latitude": 12.0,
+        "longitude": -68.8,
+        "primary_image_url": (
+            "https://caribbeanhousehunt.com/map-assets/property-images/x.webp"
+        ),
+    }
+    item = _as_import_record(legacy_normalized, raw)
+    assert item["original_realtor_name"] == "Example Realty"
+    assert item["original_realtor_domain"] == "example-realtor.com"
+    assert item["amenities"][0]["label"] == "Waterfront"
+    assert item["description"] == "Legacy row"

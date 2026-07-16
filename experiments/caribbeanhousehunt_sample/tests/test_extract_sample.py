@@ -89,6 +89,28 @@ def test_normalization_preserves_currency_and_missing_fields() -> None:
     assert set(listing) == EXPECTED_FIELDS
 
 
+def test_select_chh_price_prefers_local_xcg_over_usd() -> None:
+    from experiments.caribbeanhousehunt_sample.extract_sample import select_chh_price
+
+    price, currency = select_chh_price(
+        {"price_usd": 228_000, "price_naf": 410_400, "price_eur": 198_842}
+    )
+
+    assert price == 410_400
+    assert currency == "XCG"
+
+
+def test_looks_like_usd_mislabeled_as_xcg_detects_exact_1_8_swap() -> None:
+    from experiments.caribbeanhousehunt_sample.extract_sample import (
+        looks_like_usd_mislabeled_as_xcg,
+    )
+
+    assert looks_like_usd_mislabeled_as_xcg(410_400, 228_000)
+    assert looks_like_usd_mislabeled_as_xcg(585_000, 325_000)
+    assert not looks_like_usd_mislabeled_as_xcg(410_400, 390_000)
+    assert not looks_like_usd_mislabeled_as_xcg(228_000, 410_400)
+
+
 def test_source_lot_area_is_not_assumed_to_be_square_metres() -> None:
     listing = normalize_listing(
         {"urlid": 1, "lot_area": 0.27},

@@ -76,6 +76,11 @@ jobs:
       - name: Import snapshot into Labs Supabase
         run: python experiments/caribbeanhousehunt_sample/import_supabase.py
 
+      # Import already applies neighbourhood assignment; this step re-runs it for
+      # visibility in Actions logs and to catch any listings that slipped through.
+      - name: Assign neighbourhoods from map pins
+        run: python scripts/geo/assign_neighbourhoods.py --apply
+
       - name: Resolve latest snapshot id
         id: snapshot
         run: |

@@ -66,6 +66,13 @@ Functions (service role only):
 
 ## Operations
 
+Neighbourhood assignment runs **automatically** after every CHH import
+(`import_supabase.py`) and again as an explicit step in
+`.github/workflows/chh-daily-harvest.yml`. New harvests should not leave
+listings stuck on `unprocessed` / “Not checked yet”.
+
+Manual dry-run or re-apply is still available when needed:
+
 Install the optional geo extra from the repo root when needed:
 
 ```powershell

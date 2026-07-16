@@ -8,10 +8,12 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  GitCompareArrows,
   LayoutDashboard,
   MapPinned,
   Radio,
   ShieldAlert,
+  Users,
 } from "lucide-react";
 
 import {
@@ -22,7 +24,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -57,6 +58,7 @@ const navigationSections: NavSection[] = [
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/listings", label: "Listings", icon: Building2 },
+      { href: "/realtors", label: "Realtors", icon: Users },
       { href: "/map", label: "Map", icon: MapPinned },
       { href: "/neighbourhoods", label: "Neighbourhoods", icon: BarChart3 },
     ],
@@ -65,6 +67,7 @@ const navigationSections: NavSection[] = [
     label: "Operations",
     items: [
       { href: "/sources", label: "Sources", icon: Radio },
+      { href: "/enrichment", label: "Enrichment", icon: GitCompareArrows },
       { href: "/data-quality", label: "Data quality", icon: ShieldAlert },
     ],
   },
@@ -121,16 +124,14 @@ function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild tooltip="merkado-labs">
               <Link href="/">
-                <div className="relative aspect-square size-8 shrink-0 overflow-hidden rounded-sm bg-sidebar-primary">
-                  <Image
-                    src="/cw-logo.png"
-                    alt="Curaçao Wire"
-                    fill
-                    className="object-cover object-center"
-                    sizes="32px"
-                    priority
-                  />
-                </div>
+                <Image
+                  src="/cw-logo.png"
+                  alt="Curaçao Wire"
+                  width={32}
+                  height={32}
+                  className="size-8 shrink-0 rounded-md"
+                  priority
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">merkado-labs</span>
                   <span className="truncate text-xs text-sidebar-foreground/60">
@@ -190,21 +191,28 @@ function SiteHeader() {
   const crumbs = resolveCrumbs(pathname);
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-1 h-4" />
-      <Breadcrumb>
-        <BreadcrumbList>
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
+      <SidebarTrigger className="-ml-1 shrink-0" />
+      <Breadcrumb className="min-w-0 flex-1 overflow-hidden">
+        <BreadcrumbList className="flex-nowrap">
           {crumbs.map((crumb, index) => (
             <div key={`${crumb.label}-${index}`} className="contents">
-              {index > 0 ? <BreadcrumbSeparator className="hidden sm:block" /> : null}
-              <BreadcrumbItem className={index === 0 && crumbs.length > 1 ? "hidden sm:inline-flex" : undefined}>
+              {index > 0 ? (
+                <BreadcrumbSeparator className="hidden shrink-0 sm:block" />
+              ) : null}
+              <BreadcrumbItem
+                className={
+                  index === 0 && crumbs.length > 1
+                    ? "hidden sm:inline-flex"
+                    : "min-w-0"
+                }
+              >
                 {crumb.href ? (
                   <BreadcrumbLink asChild>
                     <Link href={crumb.href}>{crumb.label}</Link>
                   </BreadcrumbLink>
                 ) : (
-                  <BreadcrumbPage className="max-w-[220px] truncate md:max-w-md">
+                  <BreadcrumbPage className="truncate">
                     {crumb.label}
                   </BreadcrumbPage>
                 )}
@@ -213,9 +221,9 @@ function SiteHeader() {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      <div className="ml-auto hidden shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
         <span className="size-1.5 rounded-full bg-neutral-500" />
-        <span className="hidden sm:inline">Connected to merkado-labs</span>
+        <span>Connected to merkado-labs</span>
       </div>
     </header>
   );
@@ -225,10 +233,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <main className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-6 md:px-6 md:py-8 lg:px-8">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+          <main className="mx-auto w-full min-w-0 max-w-[1480px] flex-1 px-4 py-6 md:px-6 md:py-8 lg:px-8">
             {children}
           </main>
         </div>

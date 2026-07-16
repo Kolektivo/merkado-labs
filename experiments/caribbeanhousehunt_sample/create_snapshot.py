@@ -15,24 +15,26 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 try:
+    from .chh_amenities import normalize_amenity_codes
     from .extract_sample import (
         SOURCE_MAP_URL,
         clean_source_value,
         first_value,
         parse_area,
         parse_number,
-        parse_price,
+        select_chh_price,
         validate_public_url,
         write_json,
     )
 except ImportError:
+    from chh_amenities import normalize_amenity_codes
     from extract_sample import (
         SOURCE_MAP_URL,
         clean_source_value,
         first_value,
         parse_area,
         parse_number,
-        parse_price,
+        select_chh_price,
         validate_public_url,
         write_json,
     )
@@ -42,8 +44,9 @@ SNAPSHOTS_DIR = BASE_DIR / "snapshots"
 REQUEST_LOG_PATH = BASE_DIR / "request-log.json"
 CONFIG_URL = "https://caribbeanhousehunt.com/map-assets/js/config.js"
 USER_AGENT = "MerkadoLabs-SnapshotCheck/0.1"
-EXTRACTOR_VERSION = "0.2.0"
+EXTRACTOR_VERSION = "0.3.0"
 LANGUAGE = "en"
+ATTRIBUTION_METHOD = "chh_bulk_json"
 MAX_REQUESTS_PER_RUN = 3
 MAX_BULK_REQUESTS_PER_RUN = 1
 MAX_RESPONSE_BYTES = 25_000_000
@@ -225,13 +228,9 @@ def comparison_fingerprint(raw: dict[str, Any]) -> str:
 
 
 def normalized_price(raw: dict[str, Any]) -> tuple[int | float | None, str | None]:
-    """Use CHH's display currency priority without converting values."""
+    """Prefer local XCG (`price_naf`) without converting currencies."""
 
-    for key, currency in (("price_usd", "USD"), ("price_naf", "XCG"), ("price_eur", "EUR")):
-        value = parse_price(raw.get(key))
-        if value is not None:
-            return value, currency
-    return None, None
+    return select_chh_price(raw)
 
 
 def normalized_listing_type(value: Any) -> Any:
@@ -246,8 +245,54 @@ def normalized_listing_type(value: Any) -> Any:
     return cleaned
 
 
+def realtor_domain_from_url(value: Any) -> str | None:
+    """Extract the original realtor hostname from a listing URL."""
+
+    cleaned = clean_source_value(value)
+    if cleaned is None:
+        return None
+    hostname = urlparse(str(cleaned)).hostname
+    return hostname.lower() if hostname else None
+
+
+def provenance_entry(field: str, *, present: bool) -> dict[str, Any] | None:
+    """Describe how a field was observed from the CHH aggregator payload."""
+
+    if not present:
+        return None
+    return {
+        "field": field,
+        "aggregator_source": "CaribbeanHouseHunt",
+        "method": ATTRIBUTION_METHOD,
+        "original_source_role": "realtor_or_agency",
+    }
+
+
+def data_completeness_score(record: dict[str, Any]) -> int:
+    """Score dashboard completeness from evidenced normalized fields only."""
+
+    checks = (
+        bool(record.get("original_realtor_name")),
+        bool(record.get("original_realtor_url")),
+        bool(record.get("original_realtor_domain")),
+        bool(record.get("listing_type")),
+        bool(record.get("property_type")),
+        record.get("price") is not None,
+        record.get("bedrooms") is not None,
+        record.get("floor_area_m2") is not None,
+        bool(record.get("neighbourhood")),
+        record.get("latitude") is not None and record.get("longitude") is not None,
+        bool(record.get("primary_image_url")),
+        bool(record.get("description")),
+        bool(record.get("amenities")),
+        record.get("lot_area_value") is not None,
+        bool(record.get("resort") or record.get("street")),
+    )
+    return round(100 * sum(1 for ok in checks if ok) / len(checks))
+
+
 def build_index_record(raw: dict[str, Any]) -> dict[str, Any]:
-    """Create one lightweight snapshot comparison record."""
+    """Create one snapshot index record with realtor attribution and rich fields."""
 
     price, currency = normalized_price(raw)
     image_name = clean_source_value(raw.get("image_url"))
@@ -257,30 +302,95 @@ def build_index_record(raw: dict[str, Any]) -> dict[str, Any]:
         else None
     )
     urlid = clean_source_value(raw.get("urlid"))
-    return {
+    original_realtor_url = clean_source_value(raw.get("url_page"))
+    original_realtor_name = clean_source_value(raw.get("realtor_name"))
+    original_realtor_domain = realtor_domain_from_url(original_realtor_url)
+    realtor_id = clean_source_value(raw.get("realtor_id"))
+    amenities = normalize_amenity_codes(raw.get("amenity"))
+    lot_area_value = parse_number(raw.get("lot_area"))
+    # CHH does not publish a confirmed unit for lot_area; keep value without claiming m².
+    floor_area_m2 = parse_area(
+        first_value(
+            raw,
+            "floor_area_m2",
+            "floor_area",
+            "living_area",
+            "interior_size",
+            "surface_area",
+        )
+    )
+    description = clean_source_value(raw.get("description"))
+    street = clean_source_value(raw.get("street"))
+    house_number = clean_source_value(raw.get("house_number"))
+    resort = clean_source_value(raw.get("resort"))
+    neighbourhood = clean_source_value(raw.get("neighborhood"))
+    latitude = parse_number(raw.get("lat"))
+    longitude = parse_number(raw.get("lng"))
+    coordinates_source = clean_source_value(raw.get("coordinates_source"))
+    source_listing_status = clean_source_value(raw.get("status"))
+    chh_internal_id = clean_source_value(raw.get("id"))
+
+    record: dict[str, Any] = {
         "urlid": str(urlid) if urlid is not None else None,
-        "original_realtor_url": clean_source_value(raw.get("url_page")),
+        "chh_internal_id": str(chh_internal_id) if chh_internal_id is not None else None,
+        "original_realtor_url": original_realtor_url,
+        "original_realtor_name": original_realtor_name,
+        "original_realtor_domain": original_realtor_domain,
+        "original_realtor_external_id": str(realtor_id) if realtor_id is not None else None,
+        "original_realtor_filter_slug": clean_source_value(raw.get("realtor_filtername")),
+        "attribution_method": ATTRIBUTION_METHOD,
         "listing_type": normalized_listing_type(raw.get("status")),
+        "source_listing_status": source_listing_status,
         "property_type": clean_source_value(raw.get("property_type")),
         "price": price,
         "currency": currency,
         "bedrooms": parse_number(raw.get("bedrooms")),
-        "floor_area_m2": parse_area(
-            first_value(
-                raw,
-                "floor_area_m2",
-                "floor_area",
-                "living_area",
-                "interior_size",
-                "surface_area",
-            )
-        ),
-        "neighbourhood": clean_source_value(raw.get("neighborhood")),
-        "latitude": parse_number(raw.get("lat")),
-        "longitude": parse_number(raw.get("lng")),
+        "floor_area_m2": floor_area_m2,
+        "lot_area_value": lot_area_value,
+        "lot_area_unit": None,
+        "neighbourhood": neighbourhood,
+        "latitude": latitude,
+        "longitude": longitude,
+        "coordinates_source": coordinates_source,
         "primary_image_url": image_url,
+        "description": description,
+        "street": street,
+        "house_number": house_number,
+        "resort": resort,
+        "amenities": amenities,
         "comparison_fingerprint": comparison_fingerprint(raw),
+        "extractor_version": EXTRACTOR_VERSION,
     }
+    field_provenance: dict[str, Any] = {}
+    for field, present in (
+        ("original_realtor_name", original_realtor_name is not None),
+        ("original_realtor_url", original_realtor_url is not None),
+        ("original_realtor_domain", original_realtor_domain is not None),
+        ("original_realtor_external_id", realtor_id is not None),
+        ("source_listing_status", source_listing_status is not None),
+        ("property_type", record["property_type"] is not None),
+        ("price", price is not None),
+        ("bedrooms", record["bedrooms"] is not None),
+        ("floor_area_m2", floor_area_m2 is not None),
+        ("lot_area_value", lot_area_value is not None),
+        ("neighbourhood", neighbourhood is not None),
+        ("coordinates", latitude is not None and longitude is not None),
+        ("coordinates_source", coordinates_source is not None),
+        ("description", description is not None),
+        ("street", street is not None),
+        ("house_number", house_number is not None),
+        ("resort", resort is not None),
+        ("amenities", bool(amenities)),
+        ("primary_image_url", image_url is not None),
+    ):
+        entry = provenance_entry(field, present=present)
+        if entry is not None:
+            field_provenance[field] = entry
+    if lot_area_value is not None:
+        field_provenance["lot_area_value"]["unit_status"] = "unknown_not_claimed"
+    record["field_provenance"] = field_provenance
+    record["data_completeness_score"] = data_completeness_score(record)
+    return record
 
 
 def validate_source_payload(value: Any) -> list[dict[str, Any]]:

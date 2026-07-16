@@ -89,7 +89,7 @@ def test_snapshot_metadata_contract_and_checksum() -> None:
     assert metadata["source_sha256"] == hashlib.sha256(body).hexdigest()
     assert metadata["record_count"] == 1
     assert metadata["language"] == "en"
-    assert metadata["extractor_version"] == "0.2.0"
+    assert metadata["extractor_version"] == "0.3.0"
 
 
 def test_fingerprint_is_deterministic_and_excludes_price() -> None:

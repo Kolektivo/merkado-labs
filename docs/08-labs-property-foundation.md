@@ -43,6 +43,7 @@ Related Labs tables (separate migrations):
 | `20260715145900_create_rental_contract_assessments.sql` | Contracts + assessments |
 | `20260715194000_create_property_geospatial.sql` | PostGIS + inferred assignment columns |
 | `20260715194500_create_neighbourhood_assignment_functions.sql` | Preview/summarize/apply RPCs |
+| `20260716120000_enrich_chh_listing_attribution.sql` | Realtor attribution, amenities, provenance, field conflicts |
 
 The foundation migration creates seven core tables, foreign-key indexes, immutable-observation
 triggers, counter triggers, constraints, grants, and RLS policies. RLS is enabled on every
@@ -55,6 +56,7 @@ Anonymous access is SELECT-only and limited to:
 - `property_assets`
 - `property_listings`
 - `price_observations`
+- `listing_field_conflicts` (conflict summaries only)
 
 There are no anonymous insert, update, or delete policies. `listing_observations` and
 `ingestion_quarantine` have no anonymous grants or policies. Dashboard and Streamlit clients

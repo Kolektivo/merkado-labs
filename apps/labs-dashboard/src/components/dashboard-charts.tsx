@@ -28,13 +28,17 @@ export function NeighbourhoodChart({
 }) {
   return (
     <div
-      className="relative min-h-[280px] w-full flex-1"
+      className="relative min-h-[240px] w-full min-w-0 flex-1 overflow-hidden sm:min-h-[280px]"
       role="img"
       aria-label="Bar chart of listings by neighbourhood"
     >
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 4, right: 12 }}>
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ left: 0, right: 8 }}
+          >
             <CartesianGrid horizontal={false} stroke="var(--border)" />
             <XAxis
               type="number"
@@ -46,7 +50,7 @@ export function NeighbourhoodChart({
             <YAxis
               type="category"
               dataKey="name"
-              width={110}
+              width={88}
               tick={tick}
               tickLine={false}
               axisLine={false}
@@ -72,15 +76,15 @@ export function PriceDistributionChart({
 }) {
   return (
     <div
-      className="relative min-h-[280px] w-full flex-1"
+      className="relative min-h-[240px] w-full min-w-0 flex-1 overflow-hidden sm:min-h-[280px]"
       role="img"
       aria-label={ariaLabel}
     >
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ left: -12, right: 8, top: 4, bottom: 4 }}
+            margin={{ left: -8, right: 4, top: 4, bottom: 4 }}
           >
             <CartesianGrid vertical={false} stroke="var(--border)" />
             <XAxis
@@ -88,13 +92,15 @@ export function PriceDistributionChart({
               tick={tick}
               tickLine={false}
               axisLine={false}
-              interval={0}
+              interval="preserveStartEnd"
+              minTickGap={12}
             />
             <YAxis
               allowDecimals={false}
               tick={tick}
               tickLine={false}
               axisLine={false}
+              width={36}
             />
             <Tooltip
               contentStyle={tooltipStyle}

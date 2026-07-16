@@ -105,7 +105,7 @@ export function PropertyMap({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <div className="min-w-0 overflow-hidden rounded-xl ring-1 ring-foreground/10">
         <PropertyMapCanvas
           markers={markers}
           styleUrl={styleUrl}

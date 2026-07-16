@@ -7,6 +7,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -264,6 +265,48 @@ def parse_price(value: Any) -> int | float | None:
     return number if number is not None and number >= 0 else None
 
 
+# XCG (ex-ANG) is pegged near 1.79 USD; CHH has also emitted exact 1.8 swaps.
+XCG_USD_FX_RATIOS = (1.8, 1.79)
+XCG_USD_FX_REL_TOLERANCE = 0.02
+
+
+def select_chh_price(raw: dict[str, Any]) -> tuple[int | float | None, str | None]:
+    """Pick one CHH price field without converting currencies.
+
+    Prefer local guilder (`price_naf` → XCG) for Curaçao market work, then USD, then EUR.
+    """
+
+    for key, code in (("price_naf", "XCG"), ("price_usd", "USD"), ("price_eur", "EUR")):
+        candidate = parse_price(raw.get(key))
+        if candidate is not None:
+            return candidate, code
+    return None, None
+
+
+def looks_like_usd_mislabeled_as_xcg(
+    previous_xcg: int | float | Decimal,
+    candidate_xcg: int | float | Decimal,
+) -> bool:
+    """Detect CHH putting a USD display amount into `price_naf`.
+
+    Observed pattern: prior correct XCG ÷ new amount ≈ 1.8 (or 1.79), with USD null.
+    """
+
+    try:
+        previous = Decimal(str(previous_xcg))
+        candidate = Decimal(str(candidate_xcg))
+    except (ArithmeticError, ValueError):
+        return False
+    if previous <= 0 or candidate <= 0 or candidate >= previous:
+        return False
+    ratio = previous / candidate
+    for fx in XCG_USD_FX_RATIOS:
+        expected = Decimal(str(fx))
+        if abs(ratio - expected) / expected <= Decimal(str(XCG_USD_FX_REL_TOLERANCE)):
+            return True
+    return False
+
+
 def parse_area(value: Any) -> int | float | None:
     """Parse a positive square-metre area."""
 
@@ -291,14 +334,7 @@ def normalize_listing(raw: dict[str, Any], observed_at: str) -> dict[str, Any]:
     if source_listing_id is None:
         notes.append("CHH urlid is missing; internal id remains available only in raw evidence")
 
-    price = None
-    currency = None
-    for key, code in (("price_usd", "USD"), ("price_naf", "XCG"), ("price_eur", "EUR")):
-        candidate = parse_price(raw.get(key))
-        if candidate is not None:
-            price = candidate
-            currency = code
-            break
+    price, currency = select_chh_price(raw)
 
     status = str(clean_source_value(raw.get("status")) or "").lower()
     if status == "for rent":

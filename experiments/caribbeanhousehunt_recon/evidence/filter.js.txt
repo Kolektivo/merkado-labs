@@ -1,0 +1,1258 @@
+/**
+ * @fileoverview Filter Module - Manages the filter panel UI (sliders, checkboxes, buttons),
+ *               maintains the current filter state, and triggers filtering actions
+ *               in other modules (MapModule, ListViewModule) via DataManager.
+ * @module FilterModule
+ */
+const FilterModule = (function() {
+
+  //======== URL STATE FLAG ========
+
+  /**
+   * Flag to prevent URL update loops when applying filters from URL state.
+   * SECURITY: Part of URL state management - prevents infinite update cycles.
+   * @type {boolean}
+   * @private
+   */
+  let updatingFromUrl = false;
+
+  /**
+   * Holds the current state of all filters applied by the user.
+   * This object is passed to DataManager.selectItems for filtering.
+   * @type {object}
+   * @property {object} status - Selected listing statuses ('for rent', , 'under contract').
+   * @property {object} propertyType - Selected property types ('home', 'apartment', 'lot', 'commercial').
+   * @property {object} rentPrice - Rent price range filter details.
+   * @property {object} salePrice - Sale price range filter details.
+   * @property {number} bedrooms - Minimum number of bedrooms (0 for 'Any').
+   * @property {string} realtor - Selected realtor name (empty string for 'Any').
+   * @private
+   */
+  const filterState = {
+    status: {
+      'for rent': false,
+      'for sale': true,
+      'under contract': true
+      // 'for sale and for rent' status has been removed
+    },
+    propertyType: {
+      'home': true,
+      'apartment': true,
+      'lot': true,
+      'commercial': true
+      // 'other': true // Removed 'other' property type
+    },
+    rentPrice: {
+      min: AppConfig.prices.rent.min,
+      max: AppConfig.prices.rent.max,
+      includeNoPrice: true,
+      includeLower: true,
+      includeHigher: true
+    },
+    salePrice: {
+      min: AppConfig.prices.sale.min,
+      max: AppConfig.prices.sale.max,
+      includeNoPrice: true,
+      includeLower: true,
+      includeHigher: true
+    },
+    bedrooms: 0, // 0 = Any, 1 = 1+, 2 = 2+, etc.
+    realtor: '', // Empty string means 'Any Realtor'
+    amenities: [], // Array to hold selected amenities
+    keywords: {
+      matchingUrlIds: [] // Empty = no keyword filtering, with URL IDs = apply filtering
+    },
+    usergeoboundsforlist:null, // null or google.maps.LatLngBounds object
+  };
+
+  /**
+   * Tracks whether max price was at default on last slider change.
+   * Used to detect transitions: no max → has max, or has max → no max.
+   * null = at default (no max price set), false = has max price value
+   * @type {Object}
+   * @private
+   */
+  let previousMaxPriceWasDefault = {
+    rent: true,
+    sale: true
+  };
+
+  //======== URL STATE FUNCTIONS ========
+  //
+  // SECURITY: These functions handle user-controlled URL input.
+  // All values are validated using UrlState helper functions which:
+  // - Validate types and ranges
+  // - Use whitelists for enum values
+  // - Limit string/array lengths
+  // - Return safe defaults for invalid input
+  //
+  // NEVER insert URL values directly into DOM without validation.
+  //
+
+  /**
+   * Valid property types for URL whitelist validation.
+   * @type {string[]}
+   * @private
+   */
+  const VALID_PROPERTY_TYPES = ['home', 'apartment', 'lot', 'commercial'];
+
+  /**
+   * Reads filter state from URL parameters and applies to filterState.
+   * SECURITY: All URL values are validated before use.
+   *
+   * CONTEXT: Called on page load and on browser back/forward navigation.
+   * UPSTREAM: Called by init() and UrlState.onChange() handler.
+   * DOWNSTREAM: Updates filterState, then applyFilterStateToUI() syncs the UI.
+   *
+   * @private
+   */
+  function readFilterStateFromUrl() {
+    // Status: "buy" (default) or "rent"
+    const status = UrlState.getEnum('status', ['buy', 'rent'], 'buy');
+    if (status === 'rent') {
+      filterState.status['for rent'] = true;
+      filterState.status['for sale'] = false;
+      filterState.status['under contract'] = false;
+    } else {
+      filterState.status['for rent'] = false;
+      filterState.status['for sale'] = true;
+      filterState.status['under contract'] = true;
+    }
+
+    // Property types: comma-separated list (default: all enabled)
+    const types = UrlState.getArray('type', null, VALID_PROPERTY_TYPES, 4);
+    if (types !== null) {
+      // If URL specifies types, disable all first then enable specified ones
+      filterState.propertyType = {
+        'home': types.includes('home'),
+        'apartment': types.includes('apartment'),
+        'lot': types.includes('lot'),
+        'commercial': types.includes('commercial')
+      };
+    }
+    // If no type param, keep defaults (all enabled)
+
+    // Bedrooms: 0-4 (default: 0 = any)
+    filterState.bedrooms = UrlState.getNumber('bedrooms', 0, 0, 4);
+
+    // Price ranges depend on status
+    if (status === 'rent') {
+      filterState.rentPrice.min = UrlState.getNumber(
+        'minPrice',
+        AppConfig.prices.rent.min,
+        AppConfig.prices.rent.min,
+        AppConfig.prices.rent.max
+      );
+      filterState.rentPrice.max = UrlState.getNumber(
+        'maxPrice',
+        AppConfig.prices.rent.max,
+        AppConfig.prices.rent.min,
+        AppConfig.prices.rent.max
+      );
+
+      // Price on request: only relevant when max price is set (not default)
+      const hasMaxPrice = filterState.rentPrice.max !== AppConfig.prices.rent.max;
+      if (hasMaxPrice) {
+        // If priceonrequest=1 in URL, include price on request; otherwise exclude
+        const priceOnRequest = UrlState.getEnum('priceonrequest', ['1'], null);
+        filterState.rentPrice.includeNoPrice = (priceOnRequest === '1');
+      } else {
+        // No max price = include price on request by default
+        filterState.rentPrice.includeNoPrice = true;
+      }
+      // Update tracking state for slider auto-toggle
+      previousMaxPriceWasDefault.rent = !hasMaxPrice;
+    } else {
+      filterState.salePrice.min = UrlState.getNumber(
+        'minPrice',
+        AppConfig.prices.sale.min,
+        AppConfig.prices.sale.min,
+        AppConfig.prices.sale.max
+      );
+      filterState.salePrice.max = UrlState.getNumber(
+        'maxPrice',
+        AppConfig.prices.sale.max,
+        AppConfig.prices.sale.min,
+        AppConfig.prices.sale.max
+      );
+
+      // Price on request: only relevant when max price is set (not default)
+      const hasMaxPrice = filterState.salePrice.max !== AppConfig.prices.sale.max;
+      if (hasMaxPrice) {
+        // If priceonrequest=1 in URL, include price on request; otherwise exclude
+        const priceOnRequest = UrlState.getEnum('priceonrequest', ['1'], null);
+        filterState.salePrice.includeNoPrice = (priceOnRequest === '1');
+      } else {
+        // No max price = include price on request by default
+        filterState.salePrice.includeNoPrice = true;
+      }
+      // Update tracking state for slider auto-toggle
+      previousMaxPriceWasDefault.sale = !hasMaxPrice;
+    }
+
+    // Realtor: filtername string (max 50 chars for safety)
+    filterState.realtor = UrlState.getString('realtor', '', 50);
+
+    // Amenities: comma-separated IDs (max 50 amenities, IDs 0-100)
+    filterState.amenities = UrlState.getNumberArray('amenities', [], 0, 100, 50);
+
+    // Keywords: search term (max 100 chars)
+    // Note: This stores the search term, actual matching happens via API
+    const keywords = UrlState.getString('keywords', '', 100);
+    // Keywords require API call, handled separately in applyFilterStateToUI
+
+    // Geo bounds: sw_lat,sw_lng,ne_lat,ne_lng
+    const bounds = UrlState.getBounds('bounds');
+    if (bounds !== null && typeof google !== 'undefined' && google.maps) {
+      filterState.usergeoboundsforlist = new google.maps.LatLngBounds(
+        new google.maps.LatLng(bounds.sw.lat, bounds.sw.lng),
+        new google.maps.LatLng(bounds.ne.lat, bounds.ne.lng)
+      );
+    } else {
+      filterState.usergeoboundsforlist = null;
+    }
+
+    return keywords; // Return keywords for separate API handling
+  }
+
+  /**
+   * Writes current filter state to URL parameters.
+   * Only writes non-default values to keep URLs clean.
+   *
+   * CONTEXT: Called after filter changes to sync URL with state.
+   * UPSTREAM: Called by applyFilters() when not updating from URL.
+   * DOWNSTREAM: Updates browser URL via UrlState.set().
+   *
+   * @param {Object} [options={}] - Options
+   * @param {boolean} [options.replace=false] - Use replaceState instead of pushState
+   * @private
+   */
+  function writeFilterStateToUrl(options = {}) {
+    const params = {};
+
+    // Status: only write if rent (buy is default)
+    if (filterState.status['for rent']) {
+      params.status = 'rent';
+    } else {
+      params.status = null; // Remove param if default
+    }
+
+    // Property types: only write if not all enabled
+    const allTypesEnabled = Object.values(filterState.propertyType).every(v => v);
+    if (!allTypesEnabled) {
+      const enabledTypes = Object.entries(filterState.propertyType)
+        .filter(([_, enabled]) => enabled)
+        .map(([type, _]) => type);
+      params.type = enabledTypes.length > 0 ? enabledTypes.join(',') : null;
+    } else {
+      params.type = null; // Remove param if default
+    }
+
+    // Bedrooms: only write if not "any" (0)
+    if (filterState.bedrooms > 0) {
+      params.bedrooms = filterState.bedrooms;
+    } else {
+      params.bedrooms = null;
+    }
+
+    // Price: write based on current status
+    if (filterState.status['for rent']) {
+      // Rent prices
+      if (filterState.rentPrice.min !== AppConfig.prices.rent.min) {
+        params.minPrice = filterState.rentPrice.min;
+      } else {
+        params.minPrice = null;
+      }
+      if (filterState.rentPrice.max !== AppConfig.prices.rent.max) {
+        params.maxPrice = filterState.rentPrice.max;
+        // Price on request: only write if max is set AND includeNoPrice is true
+        // (when max is set and includeNoPrice is false, that's the default - no need to store)
+        if (filterState.rentPrice.includeNoPrice) {
+          params.priceonrequest = '1';
+        } else {
+          params.priceonrequest = null;
+        }
+      } else {
+        params.maxPrice = null;
+        params.priceonrequest = null; // No max price = priceonrequest irrelevant
+      }
+    } else {
+      // Sale prices
+      if (filterState.salePrice.min !== AppConfig.prices.sale.min) {
+        params.minPrice = filterState.salePrice.min;
+      } else {
+        params.minPrice = null;
+      }
+      if (filterState.salePrice.max !== AppConfig.prices.sale.max) {
+        params.maxPrice = filterState.salePrice.max;
+        // Price on request: only write if max is set AND includeNoPrice is true
+        // (when max is set and includeNoPrice is false, that's the default - no need to store)
+        if (filterState.salePrice.includeNoPrice) {
+          params.priceonrequest = '1';
+        } else {
+          params.priceonrequest = null;
+        }
+      } else {
+        params.maxPrice = null;
+        params.priceonrequest = null; // No max price = priceonrequest irrelevant
+      }
+    }
+
+    // Realtor: only write if set (convert realtor_name to filtername for URL)
+    if (filterState.realtor && filterState.realtor !== '') {
+      // Look up filtername from realtor_name
+      const allData = DataManager.getAllPropertyData();
+      let filtername = '';
+      for (const id in allData) {
+        if (allData[id].realtor_name === filterState.realtor && allData[id].realtor_filtername) {
+          filtername = allData[id].realtor_filtername;
+          break;
+        }
+      }
+      params.realtor = filtername || filterState.realtor; // Fallback to name if no filtername
+    } else {
+      params.realtor = null;
+    }
+
+    // Amenities: only write if any selected
+    if (filterState.amenities.length > 0) {
+      params.amenities = filterState.amenities.join(',');
+    } else {
+      params.amenities = null;
+    }
+
+    // Keywords: write current search term
+    const keywordsInput = $('#keywords-input').val();
+    if (keywordsInput && keywordsInput.trim() !== '') {
+      params.keywords = keywordsInput.trim();
+    } else {
+      params.keywords = null;
+    }
+
+    // Geo bounds: write if set
+    if (filterState.usergeoboundsforlist) {
+      const sw = filterState.usergeoboundsforlist.getSouthWest();
+      const ne = filterState.usergeoboundsforlist.getNorthEast();
+      params.bounds = `${sw.lat().toFixed(4)},${sw.lng().toFixed(4)},${ne.lat().toFixed(4)},${ne.lng().toFixed(4)}`;
+    } else {
+      params.bounds = null;
+    }
+
+    UrlState.set(params, options);
+  }
+
+  /**
+   * Applies current filterState to UI elements (checkboxes, sliders, etc.).
+   * Called after reading filter state from URL to sync the UI.
+   *
+   * CONTEXT: Syncs UI with filterState after URL-based state changes.
+   * UPSTREAM: Called after readFilterStateFromUrl().
+   * DOWNSTREAM: Updates DOM elements, may trigger keyword search.
+   *
+   * @param {string} [keywords=''] - Keywords to search (triggers API call)
+   * @private
+   */
+  function applyFilterStateToUI(keywords = '') {
+    // Status radio buttons
+    if (filterState.status['for rent']) {
+      $('#statusRent').prop('checked', true);
+      $('#statusBuy').prop('checked', false);
+    } else {
+      $('#statusBuy').prop('checked', true);
+      $('#statusRent').prop('checked', false);
+    }
+
+    // Property type checkboxes
+    $('#home').prop('checked', filterState.propertyType['home']);
+    $('#apartment').prop('checked', filterState.propertyType['apartment']);
+    $('#lot').prop('checked', filterState.propertyType['lot']);
+    $('#commercial').prop('checked', filterState.propertyType['commercial']);
+
+    // Bedroom radio buttons
+    const bedroomMap = { 0: 'any', 1: 'one-plus', 2: 'two-plus', 3: 'three-plus', 4: 'four-plus' };
+    const bedroomId = bedroomMap[filterState.bedrooms] || 'any';
+    $(`#${bedroomId}`).prop('checked', true);
+
+    // Price sliders - convert prices back to slider positions
+    if (filterState.status['for rent']) {
+      const minPos = AppUtils.valueToSlider(
+        filterState.rentPrice.min,
+        AppConfig.prices.rent.min,
+        AppConfig.prices.rent.max,
+        AppConfig.sliders.rent.exponent
+      );
+      const maxPos = AppUtils.valueToSlider(
+        filterState.rentPrice.max,
+        AppConfig.prices.rent.min,
+        AppConfig.prices.rent.max,
+        AppConfig.sliders.rent.exponent
+      );
+      $('#rent-price-slider').slider('values', [minPos, maxPos]);
+      updateSliderLabels('rent', sliderToRentPrice, [minPos, maxPos], false);
+    } else {
+      const minPos = AppUtils.valueToSlider(
+        filterState.salePrice.min,
+        AppConfig.prices.sale.min,
+        AppConfig.prices.sale.max,
+        AppConfig.sliders.sale.exponent
+      );
+      const maxPos = AppUtils.valueToSlider(
+        filterState.salePrice.max,
+        AppConfig.prices.sale.min,
+        AppConfig.prices.sale.max,
+        AppConfig.sliders.sale.exponent
+      );
+      $('#sale-price-slider').slider('values', [minPos, maxPos]);
+      updateSliderLabels('sale', sliderToSalePrice, [minPos, maxPos], true);
+    }
+
+    // Realtor dropdown - need to match by filtername
+    // The dropdown value is realtor_name, but URL uses filtername
+    // We need to find the matching option
+    const realtorSelect = $('#realtor-select');
+    if (filterState.realtor) {
+      // Try to find option that matches the filtername
+      // Since we store filtername in filterState.realtor from URL,
+      // we need to look up the realtor_name that corresponds to this filtername
+      const allData = DataManager.getAllPropertyData();
+      let matchingRealtorName = '';
+      for (const id in allData) {
+        if (allData[id].realtor_filtername === filterState.realtor) {
+          matchingRealtorName = allData[id].realtor_name;
+          break;
+        }
+      }
+      if (matchingRealtorName) {
+        realtorSelect.val(matchingRealtorName);
+        // Update filterState to use realtor_name for actual filtering
+        filterState.realtor = matchingRealtorName;
+      } else {
+        realtorSelect.val('');
+        filterState.realtor = '';
+      }
+    } else {
+      realtorSelect.val('');
+    }
+
+    // Amenities checkboxes
+    $('input[name="amenities"]').prop('checked', false);
+    filterState.amenities.forEach(amenityId => {
+      $(`input[name="amenities"][value="${amenityId}"]`).prop('checked', true);
+    });
+
+    // Keywords input
+    if (keywords) {
+      $('#keywords-input').val(keywords);
+      // Trigger keywords search API
+      performKeywordsSearch(keywords);
+    } else {
+      $('#keywords-input').val('');
+      filterState.keywords.matchingUrlIds = [];
+    }
+
+    // Price on request checkboxes - sync with filterState
+    $('#includeRentNoPrice').prop('checked', filterState.rentPrice.includeNoPrice);
+    $('#includeSaleNoPrice').prop('checked', filterState.salePrice.includeNoPrice);
+
+    // Update UI visibility
+    updatePriceSectionsVisibility();
+    updatePriceOnRequestVisibility();
+
+    // Sync minimap
+    syncMiniMapSearchArea();
+  }
+
+
+  //======== PRICE CONVERSION FUNCTIONS ========
+
+  /**
+   * Converts a slider position (0-100) to the corresponding rent price
+   * using the configured non-linear scale and rounding.
+   * @param {number} position - Slider position (0-100).
+   * @returns {number} The calculated rent price in USD.
+   * @private
+   */
+  function sliderToRentPrice(position) {
+    return AppUtils.sliderToValue(
+      position,
+      AppConfig.prices.rent.min, 
+      AppConfig.prices.rent.max, 
+      AppConfig.sliders.rent.exponent, 
+      AppConfig.prices.rent.roundTo
+    );
+  }
+
+  /**
+   * Converts a slider position (0-100) to the corresponding sale price
+   * using the configured non-linear scale and rounding.
+   * @param {number} position - Slider position (0-100).
+   * @returns {number} The calculated sale price in USD.
+   * @private
+   */
+  function sliderToSalePrice(position) {
+    return AppUtils.sliderToValue(
+      position,
+      AppConfig.prices.sale.min, 
+      AppConfig.prices.sale.max, 
+      AppConfig.sliders.sale.exponent, 
+      AppConfig.prices.sale.roundTo
+    );
+  }
+
+  /**
+   * Initializes both the rent and sale price range sliders (noUiSlider).
+   * @private
+   */
+  function initSliders() {
+    initPriceSlider('rent', sliderToRentPrice, false); // Rent prices don't usually need commas
+    initPriceSlider('sale', sliderToSalePrice, true); // Sale prices often benefit from commas
+    updatePriceOnRequestVisibility();
+  }
+
+  /**
+   * Initializes a specific price range slider (rent or sale).
+   * Sets up the slider behavior, labels, and connects it to the filter state.
+   * Uses jQuery UI slider.
+   * @param {string} type - The type of slider ('rent' or 'sale').
+   * @param {Function} converter - The function to convert slider position (0-100) to price.
+   * @param {boolean} useCommas - Whether to format the displayed price labels with commas.
+   * @private
+   */
+  function initPriceSlider(type, converter, useCommas) {
+    $(`#${type}-price-slider`).slider({
+      range: true, // Use a range slider with two handles
+      min: 0,
+      max: 100,
+      values: [0, 100],
+      create: function() {
+        const handles = $(this).find('.ui-slider-handle');
+        handles.addClass('touch-friendly');
+        
+        const minPrice = converter(0);
+        const maxPrice = converter(100);
+        
+        const formattedMin = useCommas ? AppUtils.numberWithCommas(minPrice) : minPrice;
+        const formattedMax = useCommas ? AppUtils.numberWithCommas(maxPrice) : maxPrice;
+        
+        $(`#${type}-price-min`).text('$' + formattedMin);
+        $(`#${type}-price-max`).text('$' + formattedMax + '+');
+        
+        filterState[`${type}Price`].min = minPrice;
+        filterState[`${type}Price`].max = maxPrice;
+      },
+      slide: function(event, ui) {
+        updateSliderLabels(type, converter, ui.values, useCommas);
+
+        // Check if max price transitioned to/from default (slider position 100)
+        const isMaxDefault = (ui.values[1] === 100);
+        autoTogglePriceOnRequest(type, previousMaxPriceWasDefault[type], isMaxDefault);
+        previousMaxPriceWasDefault[type] = isMaxDefault;
+
+        filterState[`${type}Price`].min = converter(ui.values[0]);
+        filterState[`${type}Price`].max = converter(ui.values[1]);
+        filterState[`${type}Price`].includeLower = (ui.values[0] === 0);
+        filterState[`${type}Price`].includeHigher = (ui.values[1] === 100);
+
+        updatePriceOnRequestVisibility();
+      },
+      stop: function(event, ui) {
+        updateSliderLabels(type, converter, ui.values, useCommas);
+        updatePriceOnRequestVisibility();
+        applyFilters();
+      }
+    });
+  }
+
+  /**
+   * Updates the minimum and maximum price labels displayed next to a slider.
+   * Formats the price according to the `useCommas` flag and adds a '+' if the max handle is at 100%.
+   * @param {string} type - The type of slider ('rent' or 'sale').
+   * @param {Function} converter - The function to convert slider position to price.
+   * @param {Array<number>} values - The current slider handle positions [minPosition, maxPosition].
+   * @param {boolean} useCommas - Whether to format the displayed price with commas.
+   * @private
+   */
+  function updateSliderLabels(type, converter, values, useCommas) {
+    const minPrice = converter(values[0]);
+    const maxPrice = converter(values[1]);
+    
+    const formattedMin = useCommas ? AppUtils.numberWithCommas(minPrice) : minPrice;
+    const formattedMax = useCommas ? AppUtils.numberWithCommas(maxPrice) : maxPrice;
+    
+    $(`#${type}-price-min`).text('$' + formattedMin);
+    $(`#${type}-price-max`).text(values[1] === 100 ? 
+      '$' + formattedMax + '+' : 
+      '$' + formattedMax);
+  }
+
+  /**
+   * Updates the visibility of both "Include Price on Request" checkboxes
+   * based on the current slider positions and selected status.
+   * @private
+   */
+  function updatePriceOnRequestVisibility() {
+    updateCheckboxVisibility('rent', sliderToRentPrice);
+    updateCheckboxVisibility('sale', sliderToSalePrice);
+  }
+
+  /**
+   * Shows or hides the "Include Price on Request" checkbox for a specific price type ('rent' or 'sale').
+   * The checkbox is shown only if the corresponding status is selected (e.g., 'For Rent')
+   * AND the price slider range is not set to its default full range (min=0, max=100).
+   * @param {string} type - The price type ('rent' or 'sale').
+   * @param {Function} converter - The function to convert slider position to price.
+   * @private
+   */
+  function updateCheckboxVisibility(type, converter) {
+    const minPrice = converter(0); // Get the absolute min price for this type
+    const maxPrice = converter(100); // Get the absolute max price for this type
+
+    const isPriceDefault =
+      filterState[`${type}Price`].min === minPrice &&
+      filterState[`${type}Price`].max === maxPrice;
+
+    if (!isPriceDefault && filterState.status[`for ${type}`]) {
+      $(`#${type}NoPriceCheckbox`).show();
+    } else {
+      $(`#${type}NoPriceCheckbox`).hide();
+    }
+  }
+
+  /**
+   * Auto-toggles the "price on request" checkbox based on max price state transitions.
+   * - No max → has max: turn OFF (user probably wants to filter by price)
+   * - Has max → no max: turn ON (back to default, show all)
+   * - Max value changed: do nothing (preserve user's choice)
+   *
+   * CONTEXT: Called during slider movement to auto-manage price on request filtering
+   * UPSTREAM: Called by initPriceSlider() slide handler
+   * DOWNSTREAM: Updates filterState.includeNoPrice and checkbox UI
+   *
+   * @param {string} type - Price type ('rent' or 'sale')
+   * @param {boolean} wasDefault - Whether max price was at default before this change
+   * @param {boolean} isDefault - Whether max price is now at default
+   * @private
+   */
+  function autoTogglePriceOnRequest(type, wasDefault, isDefault) {
+    // Capitalize first letter for checkbox ID (e.g., 'rent' -> 'Rent')
+    const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
+
+    if (wasDefault && !isDefault) {
+      // Transition: no max → has max → turn OFF
+      filterState[`${type}Price`].includeNoPrice = false;
+      $(`#include${capitalizedType}NoPrice`).prop('checked', false);
+    } else if (!wasDefault && isDefault) {
+      // Transition: has max → no max → turn ON
+      filterState[`${type}Price`].includeNoPrice = true;
+      $(`#include${capitalizedType}NoPrice`).prop('checked', true);
+    }
+    // else: value→value transition, do nothing (preserve user's manual choice)
+  }
+
+
+  /**
+   * Populates the realtor select dropdown with unique realtor names from the property data.
+   * @private
+   */
+  function populateRealtorDropdown() {
+    
+    // Get all property data
+    const properties = DataManager.getAllPropertyData();
+    
+    // Count properties per realtor
+    const realtorCounts = {};
+    properties.forEach(property => {
+      if (property.realtor_name && property.realtor_name.trim() !== '') {
+        const realtorName = property.realtor_name;
+        realtorCounts[realtorName] = (realtorCounts[realtorName] || 0) + 1;
+      }
+    });
+    
+    // Sort realtor names alphabetically
+    const sortedRealtors = Object.keys(realtorCounts).sort();
+    
+    // Get the select element
+    const realtorSelect = $('#realtor-select');
+    
+    // Clear existing options (except the first 'Any Realtor' option)
+    realtorSelect.find('option:not(:first)').remove();
+    
+    // Add realtor options with property counts
+    sortedRealtors.forEach(realtor => {
+      const count = realtorCounts[realtor];
+      realtorSelect.append(`<option value="${realtor}">${realtor} (${count})</option>`);
+    });
+    
+  }
+
+  /**
+   * Resets all filters to their default state
+   * @private
+   */
+  function resetFilters() {
+
+    // Reset status to "Buy"
+    $('#statusBuy').prop('checked', true);
+    $('#statusRent').prop('checked', false);
+    filterState.status['for sale'] = true;
+    filterState.status['under contract'] = false;
+    filterState.status['for rent'] = false;
+
+    // Reset property types - all checked
+    $('#home, #apartment, #lot, #commercial').prop('checked', true);
+    filterState.propertyType = {
+      'home': true,
+      'apartment': true,
+      'lot': true,
+      'commercial': true
+    };
+
+    // Reset bedrooms to "Any"
+    $('#any').prop('checked', true);
+    filterState.bedrooms = 0;
+
+    // Reset realtor to "Any Realtor"
+    $('#realtor-select').val('');
+    filterState.realtor = '';
+
+    // Reset amenities - uncheck all
+    $('input[name="amenities"]').prop('checked', false);
+    filterState.amenities = [];
+
+    //reset geobounds
+    filterState.usergeoboundsforlist=null
+
+    // Reset price sliders to full range
+    $('#rent-price-slider').slider('values', [0, 100]);
+    $('#sale-price-slider').slider('values', [0, 100]);
+
+    // Reset price filters
+    filterState.rentPrice = {
+      min: AppConfig.prices.rent.min,
+      max: AppConfig.prices.rent.max,
+      includeNoPrice: true,
+      includeLower: true,
+      includeHigher: true
+    };
+    filterState.salePrice = {
+      min: AppConfig.prices.sale.min,
+      max: AppConfig.prices.sale.max,
+      includeNoPrice: true,
+      includeLower: true,
+      includeHigher: true
+    };
+
+    // Reset "show price on request" checkboxes
+    $('#includeRentNoPrice, #includeSaleNoPrice').prop('checked', true);
+
+    // Reset max price tracking state (both back to default)
+    previousMaxPriceWasDefault.rent = true;
+    previousMaxPriceWasDefault.sale = true;
+
+    // Clear keywords
+    $('#keywords-input').val('');
+    filterState.keywords.matchingUrlIds = [];
+
+    //clear user set geobounds
+    filterState.usergeoboundsforlist = null;
+    syncMiniMapSearchArea();
+
+    // Update UI elements
+    updateSliderLabels('rent', sliderToRentPrice, [0, 100], false);
+    updateSliderLabels('sale', sliderToSalePrice, [0, 100], true);
+    updatePriceSectionsVisibility();
+    updatePriceOnRequestVisibility();
+
+    // Apply the reset filters
+    applyFilters();
+  }
+
+  /**
+   * Sets up all necessary event listeners for the filter panel controls
+   * (buttons, checkboxes, radio buttons, sliders via initPriceSlider).
+   * Also sets up interactions like double-click/touch to reset panel position.
+   * @private
+   */
+  function setupEventListeners() {
+    // Apply button - now used to toggle the sidebar
+    $('#apply-filters-btn').on('click', function() {
+      // Toggle the sidebar
+      if (typeof App !== 'undefined' && typeof App.toggleSidebar === 'function') {
+        // Get the sidebar element
+        const sidebar = document.getElementById('filter-sidebar');
+        if (sidebar) {
+          // Always collapse the sidebar when the apply button is clicked
+          App.toggleSidebar(true);
+        }
+      }
+    });
+    
+    // Collapse toggle button
+    $('#collapse-toggle').on('click', function() {
+      // Use App's centralized sidebar management
+      if (typeof App !== 'undefined' && typeof App.toggleSidebar === 'function') {
+        // Get the sidebar element
+        const sidebar = document.getElementById('filter-sidebar');
+        if (sidebar) {
+          // Check if sidebar is collapsed
+          const isCollapsed = sidebar.classList.contains('collapsed');
+          // Toggle sidebar - expand if collapsed, collapse if expanded
+          App.toggleSidebar(!isCollapsed);
+          
+          // Update the button title based on new state
+          if (sidebar.classList.contains('collapsed')) {
+            $(this).attr('title', t('sidebar.expand'));
+          } else {
+            $(this).attr('title', t('sidebar.collapse'));
+          }
+        }
+      }
+    });
+    
+    // These handlers are no longer needed as we're using the sidebar
+    // and not the draggable filter panel
+    
+    // Property status radio buttons
+    $('input[name="propertyStatus"]').on('change', function() {
+      const id = $(this).attr('id');
+      
+      // Set statuses based on the selected option
+      if (id === 'statusRent') {
+        filterState.status['for rent'] = true;
+        filterState.status['for sale'] = false;
+        filterState.status['under contract'] = false;
+      } else { // statusBuy
+        filterState.status['for rent'] = false;
+        filterState.status['for sale'] = true;
+        filterState.status['under contract'] = true;
+      }
+      
+      updatePriceSectionsVisibility();
+      updatePriceOnRequestVisibility();
+      applyFilters();
+    });
+    
+    // Property type checkboxes
+    $('#home, #apartment, #lot, #commercial').on('change', function() { // Removed #other selector
+      const type = $(this).attr('id');
+      filterState.propertyType[type] = $(this).prop('checked');
+      applyFilters();
+    });
+    
+    $('input[name="amenities"]').on('change', function() {
+      const amenity = parseInt($(this).val()); // Convert to integer
+      if ($(this).prop('checked')) {
+        // Add the amenity if checked
+        if (!filterState.amenities.includes(amenity)) {
+          filterState.amenities.push(amenity);
+        }
+      } else {
+        // Remove the amenity if unchecked
+        filterState.amenities = filterState.amenities.filter(a => a !== amenity);
+      }
+      applyFilters();
+    });
+
+
+    // Bedroom radio buttons
+    $('input[name="bedrooms"]').on('change', function() {
+      const id = $(this).attr('id');
+      switch(id) {
+        case 'any':
+          filterState.bedrooms = 0;
+          break;
+        case 'one-plus':
+          filterState.bedrooms = 1;
+          break;
+        case 'two-plus':
+          filterState.bedrooms = 2;
+          break;
+        case 'three-plus':
+          filterState.bedrooms = 3;
+          break;
+        case 'four-plus':
+          filterState.bedrooms = 4;
+          break;
+      }
+      applyFilters();
+    });
+    
+    // Price on request checkboxes
+    $('#includeRentNoPrice').on('change', function() {
+      filterState.rentPrice.includeNoPrice = $(this).prop('checked');
+      applyFilters();
+    });
+    
+    $('#includeSaleNoPrice').on('change', function() {
+      filterState.salePrice.includeNoPrice = $(this).prop('checked');
+      applyFilters();
+    });
+    
+    // Realtor select dropdown
+    $('#realtor-select').on('change', function() {
+      filterState.realtor = $(this).val();
+      applyFilters();
+    });
+    
+    // Show more amenities toggle
+    $(document).on('click', '#show-more-amenities', function(e) {
+      e.preventDefault();
+      const hiddenAmenities = $('#hidden-amenities');
+      const link = $(this);
+      const icon = link.find('i');
+      
+      if (hiddenAmenities.is(':visible')) {
+        // Hide additional amenities and uncheck all hidden checkboxes
+        const hiddenCheckboxes = hiddenAmenities.find('input[name="amenities"]:checked');
+        hiddenCheckboxes.each(function() {
+          const amenityId = parseInt($(this).val());
+          $(this).prop('checked', false);
+          // Remove from filter state
+          filterState.amenities = filterState.amenities.filter(a => a !== amenityId);
+        });
+        
+        hiddenAmenities.slideUp(200);
+        icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        link.html('<i class="bi bi-chevron-down"></i> Show more');
+        
+        // Apply filters to reflect the unchecked amenities
+        if (hiddenCheckboxes.length > 0) {
+          applyFilters();
+        }
+      } else {
+        // Show additional amenities
+        hiddenAmenities.slideDown(200);
+        icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+        link.html('<i class="bi bi-chevron-up"></i> Show less');
+      }
+    });
+
+    // Keywords search functionality
+    $('#keywords-search-btn').on('click', function() {
+      const keywords = $('#keywords-input').val().trim();
+      if (keywords) {
+        performKeywordsSearch(keywords);
+      }
+    });
+    
+    // Also trigger search on Enter key press
+    $('#keywords-input').on('keypress', function(e) {
+      if (e.which === 13) { // Enter key
+        const keywords = $(this).val().trim();
+        if (keywords) {
+          performKeywordsSearch(keywords);
+        }
+      }
+    });
+
+    $('#keywords-input').on('blur paste', function(e) {
+      const keywords = $(this).val().trim();
+      if (keywords) {
+        performKeywordsSearch(keywords);
+      }
+    });
+
+    // Clear keywords filter when input is cleared
+    $('#keywords-input').on('input', function() {
+      const keywords = $(this).val().trim();
+      if (keywords === '') {
+        // Clear keywords filter and reapply other filters
+        filterState.keywords.matchingUrlIds = [];
+        applyFilters();
+      }
+    });
+
+    // Reset filters button
+    $('#reset-filters-btn').on('click', function() {
+      resetFilters();
+    });
+
+    // Search area minimap click - opens geobounds selector modal
+    $('#minimap').on('click', GeoboundsSelectorModule.openModal);
+  }
+
+  /**
+   * Shows or hides the rent and sale price sections in the filter panel
+   * based on the currently selected property status ('for rent' or 'for sale').
+   * @private
+   */
+  function updatePriceSectionsVisibility() {
+    $('#price-rent-section').toggle(filterState.status['for rent']);
+    $('#price-sale-section').toggle(filterState.status['for sale']);//this also toggles the under contract status 
+  }
+
+/**
+     * Syncs #searchareaminimap with the current user-set geobounds in filterState.
+     * If no geobounds are set, it syncs to the bounds of the google maps in the map view 
+     * This is called when:
+     * - the filter panel is initialized 
+     * - when the user resets filters
+     * - when the user sets the geobounds manually
+     * - when the view state switches from map to list view
+     * @public
+     */
+    function syncMiniMapSearchArea() {
+      const minimapSelectedElement = document.getElementById("searchareaminimap");
+      const searchAreaClickHere = document.getElementById("searchareaclickhere");
+
+      if(filterState.usergeoboundsforlist==null) {
+        minimapSelectedElement.style.display = "none";
+        searchAreaClickHere.style.display = "block";
+        return;
+      }
+      else {
+        const geoboundsUser = filterState.usergeoboundsforlist
+        minimapSelectedElement.style.display = "block";
+        searchAreaClickHere.style.display = "none";
+      
+        const topRight = geoboundsUser.getNorthEast();;
+        const bottomLeft = geoboundsUser.getSouthWest();
+        const topGeoboundsUser = topRight.lat();
+        const rightGeoboundsUser = topRight.lng();
+        const bottomGeoboundsUser = bottomLeft.lat();
+        const leftGeoboundsUser = bottomLeft.lng();
+
+        //calculate left,top,width and height in percentages
+
+        let width = parseInt((Math.abs(rightGeoboundsUser - leftGeoboundsUser)/Math.abs(AppConfig.miniMapInFilter.boundsMap.lng.hi - AppConfig.miniMapInFilter.boundsMap.lng.lo))*100,10);
+        let height = parseInt((Math.abs(topGeoboundsUser - bottomGeoboundsUser)/Math.abs(AppConfig.miniMapInFilter.boundsMap.lat.hi - AppConfig.miniMapInFilter.boundsMap.lat.lo))*100,10);
+        let left = parseInt(Math.abs(AppConfig.miniMapInFilter.boundsMap.lng.lo - leftGeoboundsUser)/Math.abs(AppConfig.miniMapInFilter.boundsMap.lng.hi - AppConfig.miniMapInFilter.boundsMap.lng.lo)*100 ,10);
+        let top = parseInt(Math.abs(AppConfig.miniMapInFilter.boundsMap.lat.hi - topGeoboundsUser)/Math.abs(AppConfig.miniMapInFilter.boundsMap.lat.hi - AppConfig.miniMapInFilter.boundsMap.lat.lo)*100 ,10);
+
+        //makes sure the indicator is always at least a certain size
+        if(width<AppConfig.miniMapInFilter.minWidthIndicator){
+          left = left - (AppConfig.miniMapInFilter.minWidthIndicator-width)/2;
+          width = AppConfig.miniMapInFilter.minWidthIndicator;
+        }
+
+        if(height<AppConfig.miniMapInFilter.minHeightIndicator){
+          top = top - (AppConfig.miniMapInFilter.minHeightIndicator-height)/2;
+          height = AppConfig.miniMapInFilter.minHeightIndicator;
+        }
+
+        // Clamp values to ensure the minimap area stays within bounds
+        left = Math.max(0, Math.min(left, 100 - width));
+        top = Math.max(0, Math.min(top, 100 - height));
+
+        minimapSelectedElement.style.left = Math.max(0,left) + "%";
+        minimapSelectedElement.style.top = Math.max(0,top) + "%";
+        minimapSelectedElement.style.width = Math.min(100,width) + "%";
+        minimapSelectedElement.style.height = Math.min(100,height) + "%";
+      }
+    }  
+
+  /**
+   * CONTEXT: Keywords search functionality that sends user input to external API
+   * UPSTREAM: Called from keywords search button click or Enter key press events
+   * DOWNSTREAM: Sends HTTP request to https://api-caribbeanhousehunt.com/ and logs response to console
+   * FAILURE: Logs errors to console if API call fails
+   * @param {string} keywords - The keywords/description text to search for
+   * @private
+   */
+  async function performKeywordsSearch(keywords) {
+    
+    try {
+      const response = await fetch('https://api-caribbeanhousehunt.com/find', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyword: keywords, language: document.documentElement.lang || 'en' })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Keywords search response:', data);
+
+      // Clear any previous error message
+      $('#keywords-error').hide();
+
+      // Update filterState with matching URL IDs
+      if (data && Array.isArray(data.urlids)) {
+        filterState.keywords.matchingUrlIds = data.urlids;
+
+        // Show/hide no results message
+        if (data.urlids.length === 0) {
+          $('#keywords-no-results').show();
+        } else {
+          $('#keywords-no-results').hide();
+        }
+      } else {
+        // No matching properties or unexpected response format
+        filterState.keywords.matchingUrlIds = [];
+        $('#keywords-no-results').show();
+      }
+
+      // Apply filters to update map and list with keyword results
+      applyFilters();
+
+    } catch (error) {
+      console.error('Keywords search failed:', error);
+
+      // Show error message to user and reset keywords filter
+      $('#keywords-no-results').hide();
+      $('#keywords-error').show();
+      filterState.keywords.matchingUrlIds = [];
+    }
+  }
+
+  /**
+   * Updates the text in the filter panel header to show the current count
+   * of visible/filtered properties.
+   * @param {number} count - The number of properties currently matching the filters.
+   * @private
+   */
+  function updateFilterPanelHeader(count) {
+    $('#filter-title').text(`Filter (${count})`);
+  }
+
+
+  /**
+   * Core function to apply the current `filterState` to the application.
+   * It retrieves matching property IDs from DataManager, updates the map markers
+   * via MapModule, updates the list view via ListViewModule, and updates the
+   * filter panel header count.
+   * @private
+   */
+  function applyFilters() {
+
+    switch(App.getCurrentView()){
+      case "map":
+        // Get filtered property IDs from DataManager (no sorting or pagination needed for map)
+        const filteredIds = DataManager.selectItems(filterState);
+        MapModule.showMarkersByIds(filteredIds);
+        updateFilterPanelHeader(filteredIds.length);
+      break;
+      case "list":
+        const numOfProperties = ListViewModule.updateFilteredList(filterState);
+        updateFilterPanelHeader(numOfProperties);
+      break;
+      default:
+        console.log("no valid value for App.getCurrentView()")
+    }
+
+    // Update URL to reflect current filter state
+    // - Skip if we're updating FROM the URL (to avoid loops)
+    // - Skip if data hasn't loaded yet (to avoid overwriting URL with defaults)
+    if (!updatingFromUrl && DataManager.isDataLoaded()) {
+      writeFilterStateToUrl();
+    }
+  }
+
+  // Public interface of the FilterModule
+  return {
+    /**
+     * Initializes the FilterModule. Sets up sliders, event listeners,
+     * subscribes to data loading events, and configures panel draggability.
+     * @param {google.maps.Map} map - The Google Map instance.
+     * @public
+     */
+    init: function() {
+
+      // Subscribe to 'dataloaded' event from DataManager
+      DataManager.subscribe('dataloaded', () => {
+        // Setup event listeners
+        setupEventListeners();
+
+        // Initialize visibility of price sections
+        updatePriceSectionsVisibility();
+
+        // Initialize sliders
+        initSliders();
+
+        // Populate realtor dropdown
+        populateRealtorDropdown();
+
+        // Read initial filter state from URL (URL is source of truth)
+        // SECURITY: All URL values are validated by UrlState helper functions
+        updatingFromUrl = true;
+        const keywords = readFilterStateFromUrl();
+        applyFilterStateToUI(keywords);
+        updatingFromUrl = false;
+
+        // Apply filters to show results based on URL state
+        applyFilters();
+
+        syncMiniMapSearchArea();
+
+        this.showFilterPanel();
+      });
+
+      // Subscribe to URL changes for browser back/forward navigation
+      // SECURITY: URL values are re-validated on each navigation event
+      UrlState.onChange(function(_state) {
+        // _state param unused - we read fresh from URL via readFilterStateFromUrl()
+        // (view changes are handled by App module)
+        updatingFromUrl = true;
+        const keywords = readFilterStateFromUrl();
+        applyFilterStateToUI(keywords);
+        applyFilters();
+        updatingFromUrl = false;
+      });
+      
+      // No need for draggable functionality as we're using the sidebar in both views
+   
+    },
+
+    /**
+     * Shows the filter panel using the App module's centralized method.
+     * This is typically called after data has loaded.
+     * @public
+     */
+    showFilterPanel: function() {
+      // Use App's centralized panel management
+      if (typeof App !== 'undefined' && typeof App.showFilterPanel === 'function') {
+        App.showFilterPanel();
+      }
+    },
+    /**
+     * Syncs #searchareaminimap with the current user-set geobounds in filterState.
+     * If no geobounds are set, it syncs to the bounds of the google maps in the map view 
+     * @public
+     */
+    syncMiniMapSearchArea: syncMiniMapSearchArea,
+    /**
+     * Public method to trigger the application of the current filters.
+     * Calls the internal `applyFilters` function.
+     * @public
+     */
+    applyFilters: function() {
+      applyFilters();
+    },
+
+    /**
+     * Gets the current state of all filters.
+     * @returns {object} The current `filterState` object.
+     * @public
+     */
+    getFilterState: function() {
+      return filterState;
+    },
+
+    /**
+     * Gets a deep copy of the default initial filter state.
+     * Useful for resetting filters.
+     * @returns {object} A deep copy of the initial filter state configuration.
+     * @public
+     */
+    getInitialFilterState: function() {
+      // Return a deep copy to prevent accidental modification
+      return JSON.parse(JSON.stringify({
+        status: { 'for rent': false, 'for sale': true, 'under contract': true },
+        propertyType: { 'home': true, 'apartment': true, 'lot': true, 'commercial': true }, // Removed 'other'
+        rentPrice: { min: AppConfig.prices.rent.min, max: AppConfig.prices.rent.max, includeNoPrice: true, includeLower: true, includeHigher: true },
+        salePrice: { min: AppConfig.prices.sale.min, max: AppConfig.prices.sale.max, includeNoPrice: true, includeLower: true, includeHigher: true },
+        bedrooms: 0,
+        realtor: '',
+        amenities: [],
+        keywords: {
+          matchingUrlIds: []
+        },
+        usergeoboundsforlist: null
+      }));
+    }
+  };
+})();

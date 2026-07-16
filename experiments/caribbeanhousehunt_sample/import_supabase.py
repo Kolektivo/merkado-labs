@@ -19,6 +19,13 @@ from urllib.parse import urlparse
 
 from merkado_labs.config import Settings
 
+try:
+    from .create_snapshot import build_index_record
+    from .extract_sample import looks_like_usd_mislabeled_as_xcg
+except ImportError:
+    from create_snapshot import build_index_record
+    from extract_sample import looks_like_usd_mislabeled_as_xcg
+
 LABS_PROJECT_REF = "csaefdkpwukshtouyixg"
 # Full-catalog size fluctuates; reject empty/truncated fetches, not day-to-day churn.
 MIN_SNAPSHOT_SIZE = 500
@@ -36,17 +43,35 @@ LISTING_COMPARE_FIELDS = (
     "external_id_status",
     "source_url",
     "original_realtor_url",
+    "original_realtor_name",
+    "original_realtor_domain",
+    "original_realtor_external_id",
+    "original_realtor_filter_slug",
+    "attribution_method",
+    "attribution_observed_at",
     "listing_type",
+    "source_listing_status",
     "property_type",
     "title",
     "current_price",
     "currency",
     "bedrooms",
     "floor_area_m2",
+    "lot_area_value",
+    "lot_area_unit",
     "neighbourhood_id",
     "latitude",
     "longitude",
+    "coordinates_source",
     "primary_image_url",
+    "description",
+    "street",
+    "house_number",
+    "resort",
+    "amenities",
+    "chh_internal_id",
+    "field_provenance",
+    "data_completeness_score",
     "status",
     "first_seen_at",
     "last_seen_at",
@@ -219,25 +244,60 @@ def latest_snapshot_path() -> Path:
 
 
 def _as_import_record(normalized: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-    """Map a normalized snapshot row to the established listing vocabulary."""
+    """Map a normalized snapshot row to the established listing vocabulary.
 
-    external_id = str(normalized.get("urlid") or "").strip()
+    Older 0.2.x normalized indexes are enriched from raw evidence so re-imports
+    of existing snapshots remain valid after the 0.3 field expansion.
+    """
+
+    rich = build_index_record(raw)
+    # Prefer checksum-aligned raw rebuild for identity/attribution fields, but
+    # keep any explicitly normalized price/currency already validated by the
+    # snapshot contract when present.
+    external_id = str(normalized.get("urlid") or rich.get("urlid") or "").strip()
     return {
         "source": SOURCE_NAME,
         "source_listing_id": external_id,
         "source_url": SOURCE_LISTING_URL,
-        "original_realtor_url": normalized.get("original_realtor_url"),
-        "listing_type": normalized.get("listing_type"),
-        "property_type": normalized.get("property_type"),
+        "original_realtor_url": rich.get("original_realtor_url")
+        or normalized.get("original_realtor_url"),
+        "original_realtor_name": rich.get("original_realtor_name"),
+        "original_realtor_domain": rich.get("original_realtor_domain"),
+        "original_realtor_external_id": rich.get("original_realtor_external_id"),
+        "original_realtor_filter_slug": rich.get("original_realtor_filter_slug"),
+        "attribution_method": rich.get("attribution_method"),
+        "listing_type": rich.get("listing_type") or normalized.get("listing_type"),
+        "source_listing_status": rich.get("source_listing_status"),
+        "property_type": rich.get("property_type") or normalized.get("property_type"),
         "title": raw.get("property_title"),
-        "price": normalized.get("price"),
-        "currency": normalized.get("currency"),
-        "bedrooms": normalized.get("bedrooms"),
-        "floor_area_m2": normalized.get("floor_area_m2"),
-        "neighbourhood": normalized.get("neighbourhood"),
-        "latitude": normalized.get("latitude"),
-        "longitude": normalized.get("longitude"),
-        "primary_image_url": normalized.get("primary_image_url"),
+        "price": normalized.get("price", rich.get("price")),
+        "currency": normalized.get("currency", rich.get("currency")),
+        "bedrooms": rich.get("bedrooms")
+        if rich.get("bedrooms") is not None
+        else normalized.get("bedrooms"),
+        "floor_area_m2": rich.get("floor_area_m2")
+        if rich.get("floor_area_m2") is not None
+        else normalized.get("floor_area_m2"),
+        "lot_area_value": rich.get("lot_area_value"),
+        "lot_area_unit": rich.get("lot_area_unit"),
+        "neighbourhood": rich.get("neighbourhood") or normalized.get("neighbourhood"),
+        "latitude": rich.get("latitude")
+        if rich.get("latitude") is not None
+        else normalized.get("latitude"),
+        "longitude": rich.get("longitude")
+        if rich.get("longitude") is not None
+        else normalized.get("longitude"),
+        "coordinates_source": rich.get("coordinates_source"),
+        "primary_image_url": rich.get("primary_image_url")
+        or normalized.get("primary_image_url"),
+        "description": rich.get("description"),
+        "street": rich.get("street"),
+        "house_number": rich.get("house_number"),
+        "resort": rich.get("resort"),
+        "amenities": rich.get("amenities") or [],
+        "chh_internal_id": rich.get("chh_internal_id"),
+        "field_provenance": rich.get("field_provenance") or {},
+        "data_completeness_score": rich.get("data_completeness_score"),
     }
 
 
@@ -359,6 +419,22 @@ def validate_listing(item: dict[str, Any], raw: dict[str, Any]) -> list[str]:
         parsed_image = urlparse(str(image_url))
         if parsed_image.scheme != "https" or not parsed_image.hostname:
             reasons.append("invalid primary_image_url")
+    lot_area = item.get("lot_area_value")
+    if lot_area is not None and (not isinstance(lot_area, int | float) or lot_area < 0):
+        reasons.append("invalid lot_area_value")
+    amenities = item.get("amenities")
+    if amenities is not None and not isinstance(amenities, list):
+        reasons.append("invalid amenities")
+    score = item.get("data_completeness_score")
+    if score is not None and (
+        not isinstance(score, int | float) or not 0 <= float(score) <= 100
+    ):
+        reasons.append("invalid data_completeness_score")
+    realtor_url = item.get("original_realtor_url")
+    if realtor_url is not None:
+        parsed_realtor = urlparse(str(realtor_url))
+        if parsed_realtor.scheme not in {"http", "https"} or not parsed_realtor.hostname:
+            reasons.append("invalid original_realtor_url")
     return reasons
 
 
@@ -378,17 +454,35 @@ def listing_payload(
         "external_id_status": "provisional",
         "source_url": item["source_url"],
         "original_realtor_url": item.get("original_realtor_url"),
+        "original_realtor_name": item.get("original_realtor_name"),
+        "original_realtor_domain": item.get("original_realtor_domain"),
+        "original_realtor_external_id": item.get("original_realtor_external_id"),
+        "original_realtor_filter_slug": item.get("original_realtor_filter_slug"),
+        "attribution_method": item.get("attribution_method"),
+        "attribution_observed_at": observed_at if item.get("original_realtor_name") else None,
         "listing_type": item.get("listing_type"),
+        "source_listing_status": item.get("source_listing_status"),
         "property_type": item.get("property_type"),
         "title": item.get("title"),
         "current_price": item.get("price"),
         "currency": item.get("currency"),
         "bedrooms": item.get("bedrooms"),
         "floor_area_m2": item.get("floor_area_m2"),
+        "lot_area_value": item.get("lot_area_value"),
+        "lot_area_unit": item.get("lot_area_unit"),
         "neighbourhood_id": neighbourhood_id,
         "latitude": item.get("latitude"),
         "longitude": item.get("longitude"),
+        "coordinates_source": item.get("coordinates_source"),
         "primary_image_url": item.get("primary_image_url"),
+        "description": item.get("description"),
+        "street": item.get("street"),
+        "house_number": item.get("house_number"),
+        "resort": item.get("resort"),
+        "amenities": item.get("amenities") or [],
+        "chh_internal_id": item.get("chh_internal_id"),
+        "field_provenance": item.get("field_provenance") or {},
+        "data_completeness_score": item.get("data_completeness_score"),
         "status": "active",
         "first_seen_at": first_seen_at or observed_at,
         "last_seen_at": observed_at,
@@ -441,10 +535,17 @@ def _existing_listings(
 
 
 def _same_value(left: Any, right: Any) -> bool:
-    """Compare API numeric values without conflating text values."""
+    """Compare API numeric/json values without conflating text values."""
 
     if left is None or right is None:
         return left is right
+    if isinstance(left, (dict, list)) or isinstance(right, (dict, list)):
+        try:
+            return json.dumps(left, sort_keys=True, default=str) == json.dumps(
+                right, sort_keys=True, default=str
+            )
+        except (TypeError, ValueError):
+            return left == right
     numeric_types = (int, float, Decimal)
     if isinstance(left, numeric_types) or isinstance(right, numeric_types):
         try:
@@ -491,7 +592,93 @@ def _identity_conflict(previous: dict[str, Any], item: dict[str, Any]) -> bool:
     return (
         previous.get("original_realtor_url") != item.get("original_realtor_url")
         or previous.get("property_type") != item.get("property_type")
+        or (
+            previous.get("original_realtor_name")
+            and item.get("original_realtor_name")
+            and previous.get("original_realtor_name") != item.get("original_realtor_name")
+        )
     )
+
+
+def preserve_attribution_timestamp(
+    previous: dict[str, Any] | None, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Keep attribution_observed_at stable unless realtor attribution fields change."""
+
+    if previous is None:
+        return payload
+    attribution_fields = (
+        "original_realtor_name",
+        "original_realtor_url",
+        "original_realtor_domain",
+        "original_realtor_external_id",
+        "original_realtor_filter_slug",
+        "attribution_method",
+    )
+    attribution_changed = any(
+        not _same_value(previous.get(field), payload.get(field))
+        for field in attribution_fields
+    )
+    if not attribution_changed and previous.get("attribution_observed_at"):
+        return {
+            **payload,
+            "attribution_observed_at": previous.get("attribution_observed_at"),
+        }
+    return payload
+
+
+def guard_chh_currency_mislabels(
+    item: dict[str, Any], previous: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Keep prior XCG when CHH rewrites `price_naf` to a USD display amount.
+
+    CaribbeanHouseHunt has emitted exact ÷1.8 drops into `price_naf` while the
+    original realtor still lists the higher guilder price. Raw snapshot payloads
+    stay untouched; only normalized import fields are corrected.
+    """
+
+    if previous is None:
+        return item
+    prev_price = previous.get("current_price")
+    prev_currency = previous.get("currency")
+    new_price = item.get("price")
+    new_currency = item.get("currency")
+    if (
+        prev_price is None
+        or prev_currency != "XCG"
+        or new_price is None
+        or new_currency != "XCG"
+        or not looks_like_usd_mislabeled_as_xcg(prev_price, new_price)
+    ):
+        return item
+
+    notes = list(item.get("normalization_notes") or [])
+    notes.append(
+        "rejected CHH price_naf change that matches prior XCG÷USD FX "
+        f"({prev_price} → {new_price}); keeping prior XCG amount"
+    )
+    restored = prev_price
+    if isinstance(prev_price, Decimal):
+        restored = int(prev_price) if prev_price == prev_price.to_integral_value() else float(prev_price)
+    elif isinstance(prev_price, str):
+        restored = parse_price_number(prev_price)
+
+    return {
+        **item,
+        "price": restored,
+        "currency": "XCG",
+        "normalization_notes": notes,
+        "price_guard": "chh_usd_mislabeled_as_naf",
+    }
+
+
+def parse_price_number(value: str) -> int | float:
+    """Coerce a stored numeric string back to int/float for payload writes."""
+
+    number = Decimal(value)
+    if number == number.to_integral_value():
+        return int(number)
+    return float(number)
 
 
 def build_import_plan(
@@ -526,6 +713,7 @@ def build_import_plan(
             reasons_by_index[index] = tuple(sorted(set(reasons)))
             continue
 
+        item = guard_chh_currency_mislabels(item, previous)
         valid += 1
         if previous is None:
             inserted += 1
@@ -547,6 +735,7 @@ def build_import_plan(
             artifacts.observed_at,
             previous.get("first_seen_at"),
         )
+        payload = preserve_attribution_timestamp(previous, payload)
         changed = listing_change_fields(previous, payload)
         if not changed:
             skipped += 1
@@ -771,6 +960,8 @@ def import_sample(
             if neighbourhood
             else None
         )
+        item = guard_chh_currency_mislabels(item, previous)
+        artifacts.normalized[index] = item
         payload = listing_payload(
             item,
             source_id,
@@ -778,6 +969,7 @@ def import_sample(
             artifacts.observed_at,
             previous.get("first_seen_at") if previous else None,
         )
+        payload = preserve_attribution_timestamp(previous, payload)
         if previous is None:
             inserted += 1
             upsert_rows.append(payload)
@@ -800,6 +992,12 @@ def import_sample(
     listing_observations, price_observations = _insert_missing_observations(
         client, artifacts, stored_listings, valid_indexes
     )
+    # Keep map-vs-website neighbourhood checks current after every import.
+    from merkado_labs.geo import apply_listing_neighbourhood_assignments
+
+    neighbourhood_assignment_statuses = apply_listing_neighbourhood_assignments(
+        client
+    )
     return {
         "input": len(artifacts.normalized),
         "inserted": inserted,
@@ -810,6 +1008,7 @@ def import_sample(
         "listing_observations_inserted": listing_observations,
         "price_observations_inserted": price_observations,
         "neighbourhoods_seen": len(neighbourhood_ids),
+        "neighbourhood_assignment_statuses": neighbourhood_assignment_statuses,
     }
 
 

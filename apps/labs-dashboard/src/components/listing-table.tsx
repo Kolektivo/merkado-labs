@@ -40,14 +40,16 @@ export function ListingTable({
   listings: PropertyListing[];
 }) {
   return (
-    <div className="overflow-x-auto">
-      <Table className="[&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+    <div className="min-w-0 overflow-x-auto">
+      <Table className="min-w-[720px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="min-w-[300px]">Listing</TableHead>
+            <TableHead className="min-w-[220px] sm:min-w-[280px]">Listing</TableHead>
+            <TableHead>Original realtor</TableHead>
             <TableHead>Neighbourhood</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Price</TableHead>
+            <TableHead>Completeness</TableHead>
             <TableHead>Evidence</TableHead>
             <TableHead>Observed</TableHead>
             <TableHead className="w-12">
@@ -95,6 +97,21 @@ export function ListingTable({
                     </div>
                   </div>
                 </TableCell>
+                <TableCell className="min-w-[160px]">
+                  <div className="space-y-1">
+                    <p className="text-sm">
+                      {listing.originalRealtorName ?? "Missing attribution"}
+                    </p>
+                    {listing.originalRealtorDomain ? (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {listing.originalRealtorDomain}
+                      </p>
+                    ) : null}
+                    {listing.unresolvedConflictCount > 0 ? (
+                      <Badge variant="outline">Conflict</Badge>
+                    ) : null}
+                  </div>
+                </TableCell>
                 <TableCell className="min-w-[180px]">
                   <div className="space-y-1">
                     <p className="whitespace-nowrap text-sm">
@@ -114,6 +131,13 @@ export function ListingTable({
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-right font-mono font-medium">
                   {formatCurrency(listing.currentPrice, listing.currency)}
+                </TableCell>
+                <TableCell>
+                  <span className="font-mono text-sm tabular-nums">
+                    {listing.dataCompletenessScore !== null
+                      ? `${listing.dataCompletenessScore}%`
+                      : "—"}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3 whitespace-nowrap text-xs text-muted-foreground">

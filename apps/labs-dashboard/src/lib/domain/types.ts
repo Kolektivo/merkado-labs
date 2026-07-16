@@ -39,6 +39,12 @@ export type Neighbourhood = {
   slug: string;
 };
 
+export type ListingAmenity = {
+  code: number;
+  label: string | null;
+  labelStatus: "mapped" | "unlabeled" | string;
+};
+
 export type PropertyListing = {
   id: string;
   propertyAssetId: string | null;
@@ -46,16 +52,32 @@ export type PropertyListing = {
   externalIdStatus: "provisional" | "verified" | "rejected";
   sourceUrl: string;
   originalRealtorUrl: string | null;
+  originalRealtorName: string | null;
+  originalRealtorDomain: string | null;
+  originalRealtorExternalId: string | null;
+  attributionMethod: string | null;
+  attributionObservedAt: string | null;
   listingType: string | null;
+  sourceListingStatus: string | null;
   propertyType: string | null;
   title: string | null;
   currentPrice: number | null;
   currency: string | null;
   bedrooms: number | null;
   floorAreaM2: number | null;
+  lotAreaValue: number | null;
+  lotAreaUnit: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinatesSource: string | null;
   primaryImageUrl: string | null;
+  description: string | null;
+  street: string | null;
+  houseNumber: string | null;
+  resort: string | null;
+  amenities: ListingAmenity[];
+  dataCompletenessScore: number | null;
+  unresolvedConflictCount: number;
   status: "active" | "inactive" | "removed" | "unknown";
   observationCount: number;
   priceObservationCount: number;
@@ -69,6 +91,44 @@ export type PropertyListing = {
   neighbourhoodAssignedAt: string | null;
   neighbourhoodAssignmentConfidence: number | null;
   coordinateQuality: CoordinateQuality;
+};
+
+export type EnrichmentComparisonStatus =
+  | "match"
+  | "enrichment"
+  | "conflict"
+  | "realtor_only"
+  | "skipped";
+
+export type EnrichmentObservation = {
+  id: string;
+  propertyListingId: string;
+  adapterName: string;
+  adapterVersion: string;
+  sourceDomain: string;
+  originalUrl: string;
+  fieldName: string;
+  rawValue: string | null;
+  normalizedValue: unknown;
+  extractionMethod: string;
+  evidenceSelector: string | null;
+  evidenceSnippet: string | null;
+  comparisonStatus: EnrichmentComparisonStatus;
+  chhValue: unknown;
+  observedAt: string;
+  listingTitle: string | null;
+  listingExternalId: string | null;
+};
+
+export type RealtorSummary = {
+  name: string;
+  domain: string | null;
+  externalId: string | null;
+  listingCount: number;
+  activeCount: number;
+  withOriginalUrl: number;
+  averageCompleteness: number | null;
+  missingAttributionCount: number;
 };
 
 export type MapListingMarker = {
@@ -85,6 +145,7 @@ export type MapListingMarker = {
   sourceName: string;
   sourceUrl: string;
   originalRealtorUrl: string | null;
+  originalRealtorName: string | null;
   neighbourhoodName: string | null;
   inferredNeighbourhoodName: string | null;
   neighbourhoodAssignmentStatus: NeighbourhoodAssignmentStatus;
@@ -104,6 +165,9 @@ export type ListingFilters = {
   neighbourhood: string;
   listingType: string;
   currency: string;
+  realtor: string;
+  amenity: string;
+  attribution: string;
   minPrice: number | null;
   maxPrice: number | null;
   coordinateQuality: string;

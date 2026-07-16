@@ -49,6 +49,9 @@ export function parseListingFilters(
     neighbourhood: value("neighbourhood"),
     listingType: value("type"),
     currency: value("currency"),
+    realtor: value("realtor"),
+    amenity: value("amenity"),
+    attribution: value("attribution"),
     minPrice: number("minPrice"),
     maxPrice: number("maxPrice"),
     coordinateQuality: value("coordQuality"),
@@ -70,6 +73,10 @@ function matchesSharedFilters(
     currentPrice: number | null;
     coordinateQuality: string;
     neighbourhoodAssignmentStatus: string;
+    originalRealtorName?: string | null;
+    amenities?: { label: string | null }[];
+    attributionMethod?: string | null;
+    unresolvedConflictCount?: number;
   },
   filters: ListingFilters,
 ) {
@@ -77,12 +84,14 @@ function matchesSharedFilters(
   const neighbourhoodName =
     listing.neighbourhood?.name ?? listing.neighbourhoodName ?? "";
   const inferredName = listing.inferredNeighbourhoodName ?? "";
+  const realtorName = listing.originalRealtorName ?? "";
   const matchesQuery =
     !query ||
     listing.title?.toLocaleLowerCase().includes(query) ||
     listing.externalId?.toLocaleLowerCase().includes(query) ||
     neighbourhoodName.toLocaleLowerCase().includes(query) ||
-    inferredName.toLocaleLowerCase().includes(query);
+    inferredName.toLocaleLowerCase().includes(query) ||
+    realtorName.toLocaleLowerCase().includes(query);
   const matchesNeighbourhood =
     !filters.neighbourhood ||
     listing.neighbourhood?.id === filters.neighbourhood;
@@ -90,6 +99,20 @@ function matchesSharedFilters(
     !filters.listingType || listing.listingType === filters.listingType;
   const matchesCurrency =
     !filters.currency || listing.currency === filters.currency;
+  const matchesRealtor =
+    !filters.realtor || listing.originalRealtorName === filters.realtor;
+  const matchesAmenity =
+    !filters.amenity ||
+    (listing.amenities ?? []).some(
+      (amenity) => amenity.label === filters.amenity,
+    );
+  const matchesAttribution =
+    !filters.attribution ||
+    (filters.attribution === "attributed" &&
+      Boolean(listing.originalRealtorName)) ||
+    (filters.attribution === "missing" && !listing.originalRealtorName) ||
+    (filters.attribution === "conflicts" &&
+      (listing.unresolvedConflictCount ?? 0) > 0);
   const canApplyPrice =
     filters.minPrice === null && filters.maxPrice === null
       ? true
@@ -114,6 +137,9 @@ function matchesSharedFilters(
     matchesNeighbourhood &&
     matchesType &&
     matchesCurrency &&
+    matchesRealtor &&
+    matchesAmenity &&
+    matchesAttribution &&
     canApplyPrice &&
     matchesMin &&
     matchesMax &&
@@ -200,6 +226,22 @@ export function listingFilterOptions(listings: PropertyListing[]) {
     currencies: Array.from(
       new Set(listings.flatMap((item) => item.currency ?? [])),
     ).sort(),
+    realtors: Array.from(
+      new Set(
+        listings
+          .map((item) => item.originalRealtorName)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ).sort((a, b) => a.localeCompare(b)),
+    amenities: Array.from(
+      new Set(
+        listings.flatMap((item) =>
+          item.amenities
+            .map((amenity) => amenity.label)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ),
+    ).sort((a, b) => a.localeCompare(b)),
     coordinateQualities: Array.from(
       new Set(listings.map((item) => item.coordinateQuality)),
     )
@@ -217,6 +259,69 @@ export function listingFilterOptions(listings: PropertyListing[]) {
           ] as const,
       ),
   };
+}
+
+export function summarizeRealtors(listings: PropertyListing[]) {
+  const byName = new Map<
+    string,
+    {
+      name: string;
+      domain: string | null;
+      externalId: string | null;
+      listingCount: number;
+      activeCount: number;
+      withOriginalUrl: number;
+      completenessTotal: number;
+      completenessSamples: number;
+      missingAttributionCount: number;
+    }
+  >();
+
+  for (const listing of listings) {
+    const name = listing.originalRealtorName?.trim() || "Missing attribution";
+    const current = byName.get(name) ?? {
+      name,
+      domain: listing.originalRealtorDomain,
+      externalId: listing.originalRealtorExternalId,
+      listingCount: 0,
+      activeCount: 0,
+      withOriginalUrl: 0,
+      completenessTotal: 0,
+      completenessSamples: 0,
+      missingAttributionCount: 0,
+    };
+    current.listingCount += 1;
+    if (listing.status === "active") current.activeCount += 1;
+    if (listing.originalRealtorUrl) current.withOriginalUrl += 1;
+    if (!listing.originalRealtorName) current.missingAttributionCount += 1;
+    if (listing.dataCompletenessScore !== null) {
+      current.completenessTotal += listing.dataCompletenessScore;
+      current.completenessSamples += 1;
+    }
+    if (!current.domain && listing.originalRealtorDomain) {
+      current.domain = listing.originalRealtorDomain;
+    }
+    if (!current.externalId && listing.originalRealtorExternalId) {
+      current.externalId = listing.originalRealtorExternalId;
+    }
+    byName.set(name, current);
+  }
+
+  return Array.from(byName.values())
+    .map((row) => ({
+      name: row.name,
+      domain: row.domain,
+      externalId: row.externalId,
+      listingCount: row.listingCount,
+      activeCount: row.activeCount,
+      withOriginalUrl: row.withOriginalUrl,
+      averageCompleteness:
+        row.completenessSamples > 0
+          ? Math.round(row.completenessTotal / row.completenessSamples)
+          : null,
+      missingAttributionCount: row.missingAttributionCount,
+    }))
+    .sort((a, b) => b.listingCount - a.listingCount || a.name.localeCompare(b.name));
 }
 
 export function mapFilterOptions(markers: MapListingMarker[]) {

@@ -26,7 +26,7 @@ export function PriceDistributionPanel({
   rent: Distribution;
 }) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full min-w-0 flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Price ranges (XCG)
@@ -39,8 +39,8 @@ export function PriceDistributionPanel({
           How sale and rent prices are spread. Switch tabs above the chart.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col">
-        <Tabs defaultValue="sale" className="flex min-h-0 flex-1 flex-col">
+      <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <Tabs defaultValue="sale" className="flex min-h-0 min-w-0 flex-1 flex-col">
           <TabsList className="w-full shrink-0">
             <TabsTrigger value="sale" className="gap-2">
               For sale
@@ -53,7 +53,7 @@ export function PriceDistributionPanel({
           </TabsList>
           <TabsContent
             value="sale"
-            className="mt-4 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+            className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col data-[state=inactive]:hidden"
           >
             <PriceDistributionChart
               data={sale.buckets}
@@ -62,7 +62,7 @@ export function PriceDistributionPanel({
           </TabsContent>
           <TabsContent
             value="rent"
-            className="mt-4 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+            className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col data-[state=inactive]:hidden"
           >
             <PriceDistributionChart
               data={rent.buckets}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
 
@@ -25,6 +25,8 @@ type Options = {
   neighbourhoods: [string, string][];
   listingTypes: string[];
   currencies: string[];
+  realtors?: string[];
+  amenities?: string[];
   coordinateQualities?: readonly (readonly [string, string])[];
   assignmentStatuses?: readonly (readonly [string, string])[];
 };
@@ -34,6 +36,9 @@ type DraftFilters = {
   neighbourhood: string;
   type: string;
   currency: string;
+  realtor: string;
+  amenity: string;
+  attribution: string;
   minPrice: string;
   maxPrice: string;
   coordQuality: string;
@@ -46,6 +51,9 @@ const DRAFT_KEYS = [
   "neighbourhood",
   "type",
   "currency",
+  "realtor",
+  "amenity",
+  "attribution",
   "minPrice",
   "maxPrice",
   "coordQuality",
@@ -94,12 +102,13 @@ export function ListingFilters({
   const [draft, setDraft] = useState<DraftFilters>(() =>
     draftFromParams(searchParams),
   );
+  const [syncedQuery, setSyncedQuery] = useState(appliedQuery);
 
-  // Keep the staged values in sync when the URL changes from outside this
-  // form (back/forward navigation, the Clear button, links).
-  useEffect(() => {
+  // Resync staged filters when the URL changes outside this form.
+  if (appliedQuery !== syncedQuery) {
+    setSyncedQuery(appliedQuery);
     setDraft(draftFromParams(searchParams));
-  }, [searchParams]);
+  }
 
   const isDirty = draftToQueryString(draft) !== appliedQuery;
   const hasActiveFilters = appliedQuery.length > 0;
@@ -127,7 +136,7 @@ export function ListingFilters({
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-3">
         <CardTitle>Find listings</CardTitle>
         <CardDescription>
@@ -137,7 +146,7 @@ export function ListingFilters({
       </CardHeader>
       <CardContent>
         <form onSubmit={apply} className="space-y-4">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -200,6 +209,61 @@ export function ListingFilters({
                     {item}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Select
+              value={draft.realtor || "__all"}
+              onValueChange={(value) =>
+                update({ realtor: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Original realtor">
+                <SelectValue placeholder="All realtors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All realtors</SelectItem>
+                {(options.realtors ?? []).map((realtor) => (
+                  <SelectItem key={realtor} value={realtor}>
+                    {realtor}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={draft.amenity || "__all"}
+              onValueChange={(value) =>
+                update({ amenity: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Amenity">
+                <SelectValue placeholder="All amenities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All amenities</SelectItem>
+                {(options.amenities ?? []).map((amenity) => (
+                  <SelectItem key={amenity} value={amenity}>
+                    {amenity}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={draft.attribution || "__all"}
+              onValueChange={(value) =>
+                update({ attribution: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Attribution status">
+                <SelectValue placeholder="Attribution status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All attribution statuses</SelectItem>
+                <SelectItem value="attributed">Has original realtor</SelectItem>
+                <SelectItem value="missing">Missing attribution</SelectItem>
+                <SelectItem value="conflicts">Has source conflicts</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -81,10 +81,10 @@ export default async function NeighbourhoodsPage() {
         </Card>
       </div>
 
-      <Card className="py-0">
-        <CardContent className="px-0">
-          <div className="overflow-x-auto">
-            <Table className="[&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+      <Card className="min-w-0 overflow-hidden py-0">
+        <CardContent className="min-w-0 px-0">
+          <div className="min-w-0 overflow-x-auto">
+            <Table className="min-w-[640px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="min-w-[190px]">Neighbourhood</TableHead>

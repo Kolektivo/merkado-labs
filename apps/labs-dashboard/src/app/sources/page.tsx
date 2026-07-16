@@ -94,7 +94,7 @@ export default async function SourcesPage() {
         icon={Radio}
       />
 
-      <section className="grid gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Websites"
           value={formatNumber(sources.length)}

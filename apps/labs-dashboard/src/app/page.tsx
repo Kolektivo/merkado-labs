@@ -70,40 +70,40 @@ export default async function Home() {
       />
       <SampleNotice listingCount={listings.length} />
 
-      <section className="grid gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Properties"
           value={formatNumber(listings.length)}
-          hint="Ads we have collected so far"
+          hint="Ads collected so far"
           icon={Building2}
           tip="Each row is one property advertisement cleaned into a shared format so we can compare sources fairly."
         />
         <MetricCard
           label="Neighbourhoods"
           value={formatNumber(representedNeighbourhoods)}
-          hint="Areas that appear in the data"
+          hint="Areas present in the data"
           icon={MapPinned}
           tip="Count of distinct neighbourhood names attached to at least one listing."
         />
         <MetricCard
           label="Price checks"
           value={formatNumber(priceObservationCount)}
-          hint="Times we recorded a price"
+          hint="Times a price was recorded"
           icon={Clock3}
           tipLabel="price checks"
           tip="Every time a harvest sees a listing, we can store its price. Repeating this over days builds a price history without changing the original ad."
         />
         <MetricCard
-          label="Seen more than once"
+          label="Seen again"
           value={formatNumber(multiObservationListings)}
-          hint="Listings found on more than one harvest"
+          hint="Found on more than one harvest"
           icon={Eye}
           tip="Useful for spotting listings that stay on the market. One harvest = one pass over the website."
         />
       </section>
 
-      <section className="grid items-stretch gap-4 xl:grid-cols-2">
-        <Card className="flex h-full flex-col">
+      <section className="grid min-w-0 items-stretch gap-4 xl:grid-cols-2">
+        <Card className="flex h-full min-w-0 flex-col">
           <CardHeader>
             <CardTitle>Where listings are</CardTitle>
             <CardDescription>
@@ -111,17 +111,19 @@ export default async function Home() {
               “Other”.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col">
+          <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col">
             <NeighbourhoodChart data={neighbourhoodData} />
           </CardContent>
         </Card>
-        <PriceDistributionPanel
-          sale={distribution.sale}
-          rent={distribution.rent}
-        />
+        <div className="min-w-0">
+          <PriceDistributionPanel
+            sale={distribution.sale}
+            rent={distribution.rent}
+          />
+        </div>
       </section>
 
-      <Card className="gap-0 pb-0">
+      <Card className="min-w-0 gap-0 overflow-hidden pb-0">
         <CardHeader className="border-b">
           <CardTitle>Recently seen</CardTitle>
           <CardDescription>

@@ -22,20 +22,21 @@ export function MetricCard({
   value: string;
   hint: string;
   icon: LucideIcon;
-  /** Extra explanation shown on the help icon next to the label */
   tip?: React.ReactNode;
   tipLabel?: string;
 }) {
   return (
-    <Card className="@container/card">
-      <CardHeader>
-        <CardDescription className="flex items-center gap-1.5">
-          {label}
+    <Card className="@container/card flex h-full min-w-0 flex-col gap-0 py-0">
+      <CardHeader className="flex-1 pb-4 pt-(--card-spacing)">
+        <CardDescription className="flex min-w-0 items-center gap-1.5 pr-1">
+          <span className="truncate">{label}</span>
           {tip ? (
-            <HelpTip label={tipLabel ?? label}>{tip}</HelpTip>
+            <HelpTip label={tipLabel ?? label} className="shrink-0">
+              {tip}
+            </HelpTip>
           ) : null}
         </CardDescription>
-        <CardTitle className="font-mono text-2xl font-semibold tabular-nums tracking-tight @[250px]/card:text-3xl">
+        <CardTitle className="font-mono text-2xl font-semibold tabular-nums tracking-tight @[220px]/card:text-3xl">
           {value}
         </CardTitle>
         <CardAction>
@@ -44,7 +45,9 @@ export function MetricCard({
           </div>
         </CardAction>
       </CardHeader>
-      <CardFooter className="text-xs text-muted-foreground">{hint}</CardFooter>
+      <CardFooter className="mt-auto min-h-11 items-start text-xs leading-snug text-muted-foreground">
+        <span className="line-clamp-2">{hint}</span>
+      </CardFooter>
     </Card>
   );
 }

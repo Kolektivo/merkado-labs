@@ -21,20 +21,22 @@ export function PriceHistoryChart({
   const currency = data[0].currency;
   return (
     <div
-      className="h-[260px] w-full"
+      className="h-[220px] w-full min-w-0 overflow-hidden sm:h-[260px]"
       role="img"
       aria-label={`Price history in ${currency}`}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ left: 8, right: 12, top: 8 }}>
+        <LineChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
           <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
+            minTickGap={24}
           />
           <YAxis
+            width={40}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}

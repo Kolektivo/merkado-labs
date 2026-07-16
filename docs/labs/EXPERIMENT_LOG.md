@@ -4,6 +4,75 @@ Living log of Labs experiments. Newest first.
 
 ---
 
+## 2026-07-16 — RE/MAX BonBini controlled enrichment adapter `[LABS]`
+
+### Goal
+
+Prove whether visiting an original realtor listing can safely add useful fields
+that CaribbeanHouseHunt does not provide.
+
+### Method
+
+- Selected `www.realestate-curacao.com` after robots + labelled-HTML probe.
+- Built deterministic `remax_bonbini` adapter (max 5 listings, cache, rate limit).
+- Added `listing_enrichment_observations` migration; reuse `listing_field_conflicts`.
+- Dashboard comparison at `/enrichment`.
+
+### Result
+
+5/5 fetches succeeded. Bathrooms, gated resort, furnished, listing references,
+and lot/living areas with units were extracted. 17 enrichments, 12 matches,
+4 conflicts (mainly CHH lot_area unit-unknown vs realtor sq ft). No CHH listing
+values overwritten.
+
+### Decision
+
+**Continue only for this domain** — expand the RE/MAX sample carefully before
+adding a second adapter. Lot-area conflicts confirm CHH units must stay unverified.
+
+### Next step
+
+Grow the RE/MAX sample (still capped) and review conflict UX; only then consider
+At Home or Moret as a second adapter.
+
+---
+
+## 2026-07-16 — CHH richer harvest + realtor attribution `[LABS]`
+
+### Goal
+
+Capture original realtor attribution and richer CHH fields, prepare a safe
+per-domain enrichment PoC, and surface source-chain quality in the Labs dashboard.
+
+### Method
+
+- Audited bulk payload vs normalized index (`docs/labs/CHH_RICHER_HARVEST_AUDIT.md`).
+- Snapshot extractor bumped to `0.3.0` with provenance-aware normalized fields.
+- Forward-only migration `20260716120000_enrich_chh_listing_attribution.sql`.
+- Importer backfills from raw evidence so older 0.2 snapshots remain importable.
+- Robots-only realtor enrichment PoC (`experiments/.../realtor_enrichment/`).
+- Dashboard realtor filter/column, `/realtors`, source chain, amenities, completeness.
+
+### Result
+
+Realtor name/domain/URL attribution is available for 100% of the current CHH
+snapshot (1,449/1,449). Original listing-page HTML enrichment is intentionally
+not implemented yet; robots audit marks several domains eligible for a future
+reviewed adapter.
+
+### Decision
+
+Keep CaribbeanHouseHunt as aggregator source only. Do not auto-merge multi-realtor
+listings into assets. Do not invent labels for unlabeled amenity codes. Do not
+claim `lot_area` units.
+
+### Next step
+
+Implement one reviewed domain adapter for a robots-allowed realtor and compare
+fields against CHH via `listing_field_conflicts` before wider enrichment.
+
+---
+
 ## 2026-07 — CaribbeanHouseHunt full snapshot harvest `[LABS]`
 
 ### Goal
