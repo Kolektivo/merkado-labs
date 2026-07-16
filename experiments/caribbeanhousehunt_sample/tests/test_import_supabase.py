@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from experiments.caribbeanhousehunt_sample.import_supabase import (
-    EXPECTED_SAMPLE_SIZE,
     LABS_PROJECT_REF,
+    MIN_SNAPSHOT_SIZE,
     _same_value,
     listing_payload,
     load_sample_artifacts,
@@ -18,11 +18,12 @@ from experiments.caribbeanhousehunt_sample.import_supabase import (
 from merkado_labs.config import Settings
 
 
-def test_latest_snapshot_is_exactly_bounded_and_matched() -> None:
+def test_latest_snapshot_is_consistent_full_catalog() -> None:
     artifacts = load_sample_artifacts()
 
-    assert len(artifacts.normalized) == EXPECTED_SAMPLE_SIZE
-    assert len(artifacts.raw_by_external_id) == EXPECTED_SAMPLE_SIZE
+    assert len(artifacts.normalized) >= MIN_SNAPSHOT_SIZE
+    assert len(artifacts.raw_records) == len(artifacts.normalized)
+    assert len(artifacts.raw_by_external_id) == len(artifacts.normalized)
     assert artifacts.snapshot_id == artifacts.snapshot_path.name
     assert artifacts.duplicate_input_ids == ()
     assert len(artifacts.source_sha256) == 64

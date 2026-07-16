@@ -45,6 +45,6 @@ Detailed notes: `docs/08-labs-property-foundation.md`, `docs/09-labs-geospatial-
 - Type: standalone project, separate from production
 - Current state: property foundation, geospatial columns/functions, market signals, and
   pilot contract assessment tables are present; CHH listings are imported from full
-  snapshots (1,449 records per snapshot contract)
+  catalog snapshots (size may vary between harvests)
 
 Production Supabase must never be accessed from this workspace.

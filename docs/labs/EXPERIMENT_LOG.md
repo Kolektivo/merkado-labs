@@ -16,19 +16,21 @@ imported into Labs Supabase and refreshed on a schedule.
 - Reconnaissance of the public CHH map surface (`experiments/caribbeanhousehunt_recon/`).
 - Immutable snapshot writer (`create_snapshot.py`) producing dated snapshot folders.
 - Snapshot comparison (`compare_snapshots.py`) for identity/stability checks.
-- Labs importer (`import_supabase.py`) gated to project `csaefdkpwukshtouyixg` and expecting
-  **1,449** records per snapshot.
+- Labs importer (`import_supabase.py`) gated to project `csaefdkpwukshtouyixg` and accepting
+  full-catalog snapshots whose size may change day to day (minimum floor enforced).
 - Daily GitHub Action `.github/workflows/chh-daily-harvest.yml` (Labs secrets only).
 
 ### Result
 
 Full-snapshot harvest and Labs import path are in place. Source identifiers remain
-`provisional` until longer-run reuse evidence is reviewed.
+`provisional` until longer-run reuse evidence is reviewed. Catalog size has already
+moved (e.g. 1,449 → 1,419), so the importer no longer pins an exact count.
 
 ### Decision
 
-Treat the 1,449-record snapshot as the current import contract. Keep the early 12-listing
-sample as historical evidence only; do not use it for the importer.
+Treat each complete full-catalog snapshot as the import contract, with internal
+consistency checks and a minimum size floor. Keep the early 12-listing sample as
+historical evidence only; do not use it for the importer.
 
 ### Next step
 

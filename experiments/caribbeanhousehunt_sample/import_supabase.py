@@ -1,4 +1,4 @@
-"""Import the latest stored 1,449-record CHH snapshot into Labs Supabase."""
+"""Import the latest stored full CHH snapshot into Labs Supabase."""
 
 from __future__ import annotations
 
@@ -20,9 +20,10 @@ from urllib.parse import urlparse
 from merkado_labs.config import Settings
 
 LABS_PROJECT_REF = "csaefdkpwukshtouyixg"
-EXPECTED_SNAPSHOT_SIZE = 1_449
-# Kept as a compatibility name for the existing focused tests.
-EXPECTED_SAMPLE_SIZE = EXPECTED_SNAPSHOT_SIZE
+# Full-catalog size fluctuates; reject empty/truncated fetches, not day-to-day churn.
+MIN_SNAPSHOT_SIZE = 500
+# Compatibility alias for older tests/docs that referred to a fixed sample size.
+EXPECTED_SAMPLE_SIZE = MIN_SNAPSHOT_SIZE
 SOURCE_NAME = "CaribbeanHouseHunt.com"
 SOURCE_BASE_URL = "https://caribbeanhousehunt.com"
 SOURCE_LISTING_URL = "https://caribbeanhousehunt.com/curacao/map/"
@@ -221,7 +222,7 @@ def _as_import_record(normalized: dict[str, Any], raw: dict[str, Any]) -> dict[s
 
 
 def load_sample_artifacts() -> SampleArtifacts:
-    """Load and validate the latest complete local 1,449-record snapshot."""
+    """Load and validate the latest complete local full-catalog snapshot."""
 
     snapshot_path = latest_snapshot_path()
     normalized_path = snapshot_path / "normalized-index.json"
@@ -234,13 +235,21 @@ def load_sample_artifacts() -> SampleArtifacts:
         raise SampleValidationError("Snapshot source and normalized files must be arrays.")
     if not isinstance(metadata, dict):
         raise SampleValidationError("Snapshot metadata must be an object.")
-    if (
-        len(normalized_value) != EXPECTED_SNAPSHOT_SIZE
-        or len(raw_value) != EXPECTED_SNAPSHOT_SIZE
-        or metadata.get("record_count") != EXPECTED_SNAPSHOT_SIZE
-    ):
+    record_count = len(normalized_value)
+    if len(raw_value) != record_count:
         raise SampleValidationError(
-            f"Refusing import: expected exactly {EXPECTED_SNAPSHOT_SIZE} input records."
+            "Refusing import: raw and normalized snapshot lengths differ "
+            f"({len(raw_value)} vs {record_count})."
+        )
+    if metadata.get("record_count") != record_count:
+        raise SampleValidationError(
+            "Refusing import: metadata record_count does not match snapshot arrays "
+            f"({metadata.get('record_count')!r} vs {record_count})."
+        )
+    if record_count < MIN_SNAPSHOT_SIZE:
+        raise SampleValidationError(
+            f"Refusing import: snapshot has {record_count} records; "
+            f"expected at least {MIN_SNAPSHOT_SIZE} for a full-catalog harvest."
         )
     if not all(isinstance(item, dict) for item in normalized_value + raw_value):
         raise SampleValidationError("Every snapshot record must be an object.")
