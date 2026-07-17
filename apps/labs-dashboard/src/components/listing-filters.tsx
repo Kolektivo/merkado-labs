@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 
+import { FieldLabel } from "@/components/field-label";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { titleCase } from "@/lib/format";
+import { TIPS } from "@/lib/ui-labels";
 
 type Options = {
   sources?: [string, string][];
@@ -72,6 +77,18 @@ const DRAFT_KEYS = [
   "sort",
 ] as const;
 
+/** Filters hidden behind the "More filters" toggle. */
+const ADVANCED_KEYS = [
+  "realtor",
+  "amenity",
+  "attribution",
+  "enrichment",
+  "lifecycle",
+  "coordQuality",
+  "assignment",
+  "publicEligible",
+] as const;
+
 function draftFromParams(params: URLSearchParams): DraftFilters {
   const draft = {} as Record<(typeof DRAFT_KEYS)[number], string>;
   for (const key of DRAFT_KEYS) {
@@ -90,6 +107,52 @@ function draftToQueryString(draft: DraftFilters): string {
     next.set(key, value);
   }
   return next.toString();
+}
+
+function countAdvanced(draft: DraftFilters) {
+  return ADVANCED_KEYS.filter((key) => draft[key].trim()).length;
+}
+
+function SelectFilter({
+  label,
+  tip,
+  tipLabel,
+  value,
+  onChange,
+  allLabel,
+  options,
+}: {
+  label: string;
+  tip?: string;
+  tipLabel?: string;
+  value: string;
+  onChange: (value: string) => void;
+  allLabel: string;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="min-w-0">
+      <FieldLabel tip={tip} tipLabel={tipLabel}>
+        {label}
+      </FieldLabel>
+      <Select
+        value={value || "__all"}
+        onValueChange={(next) => onChange(next === "__all" ? "" : next)}
+      >
+        <SelectTrigger className="w-full" aria-label={label}>
+          <SelectValue placeholder={allLabel} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all">{allLabel}</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 export function ListingFilters({
@@ -113,9 +176,13 @@ export function ListingFilters({
   const [draft, setDraft] = useState<DraftFilters>(() =>
     draftFromParams(searchParams),
   );
+  const [showAdvanced, setShowAdvanced] = useState(
+    () => countAdvanced(draftFromParams(searchParams)) > 0,
+  );
 
   const isDirty = draftToQueryString(draft) !== appliedQuery;
   const hasActiveFilters = appliedQuery.length > 0;
+  const advancedCount = countAdvanced(draft);
 
   function update(patch: Partial<DraftFilters>) {
     setDraft((current) => {
@@ -144,301 +211,261 @@ export function ListingFilters({
       <CardHeader className="pb-3">
         <CardTitle>Find listings</CardTitle>
         <CardDescription>
-          Choose your filters, then press Apply to update the results. Pick one
-          currency before using a price range.
+          Choose filters, then press Apply. Hover the ? icons for plain-language
+          explanations.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={apply} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label="Search listings"
-                value={draft.q}
-                onChange={(event) => update({ q: event.target.value })}
-                placeholder="Title, ID, or neighbourhood"
-                className="pl-9"
-              />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+              <FieldLabel>Search</FieldLabel>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label="Search listings"
+                  value={draft.q}
+                  onChange={(event) => update({ q: event.target.value })}
+                  placeholder="Title, ID, or neighbourhood"
+                  className="pl-9"
+                />
+              </div>
             </div>
-            <Select
-              value={draft.source || "__all"}
-              onValueChange={(value) =>
-                update({ source: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Source">
-                <SelectValue placeholder="All sources" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All sources</SelectItem>
-                {(options.sources ?? []).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.neighbourhood || "__all"}
-              onValueChange={(value) =>
-                update({ neighbourhood: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Neighbourhood">
-                <SelectValue placeholder="All neighbourhoods" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All neighbourhoods</SelectItem>
-                {options.neighbourhoods.map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.type || "__all"}
-              onValueChange={(value) =>
-                update({ type: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Listing type">
-                <SelectValue placeholder="All listing types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All listing types</SelectItem>
-                {options.listingTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.currency || "__all"}
-              onValueChange={(value) =>
-                update({ currency: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Currency">
-                <SelectValue placeholder="All currencies" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All currencies</SelectItem>
-                {options.currencies.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.publicEligible || "__all"}
-              onValueChange={(value) =>
-                update({ publicEligible: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Public eligibility">
-                <SelectValue placeholder="Public eligibility" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All eligibility states</SelectItem>
-                <SelectItem value="eligible">Public eligible</SelectItem>
-                <SelectItem value="excluded">Public excluded</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Select
-              value={draft.realtor || "__all"}
-              onValueChange={(value) =>
-                update({ realtor: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Original realtor">
-                <SelectValue placeholder="All realtors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All realtors</SelectItem>
-                {(options.realtors ?? []).map((realtor) => (
-                  <SelectItem key={realtor} value={realtor}>
-                    {realtor}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.amenity || "__all"}
-              onValueChange={(value) =>
-                update({ amenity: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Amenity">
-                <SelectValue placeholder="All amenities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All amenities</SelectItem>
-                {(options.amenities ?? []).map((amenity) => (
-                  <SelectItem key={amenity} value={amenity}>
-                    {amenity}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.attribution || "__all"}
-              onValueChange={(value) =>
-                update({ attribution: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Attribution status">
-                <SelectValue placeholder="Attribution status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All attribution statuses</SelectItem>
-                <SelectItem value="attributed">Has original realtor</SelectItem>
-                <SelectItem value="missing">Missing attribution</SelectItem>
-                <SelectItem value="conflicts">Has source conflicts</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.enrichment || "__all"}
-              onValueChange={(value) =>
-                update({ enrichment: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Enrichment status">
-                <SelectValue placeholder="Enrichment status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All enrichment statuses</SelectItem>
-                <SelectItem value="not_run">Not run</SelectItem>
-                <SelectItem value="queued">Queued</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-                <SelectItem value="succeeded">Succeeded</SelectItem>
-                <SelectItem value="skipped_unchanged">Skipped unchanged</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="needs_review">Needs review</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={draft.lifecycle || "__all"}
-              onValueChange={(value) =>
-                update({ lifecycle: value === "__all" ? "" : value })
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Lifecycle">
-                <SelectValue placeholder="Lifecycle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">All canonical statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="sold">Sold (source-marked sold)</SelectItem>
-                <SelectItem value="inactive">Inactive (includes source rented)</SelectItem>
-                <SelectItem value="missing">Missing (absent from complete run)</SelectItem>
-                <SelectItem value="removed">Removed (confirmed absence)</SelectItem>
-                <SelectItem value="unknown">Unknown</SelectItem>
-              </SelectContent>
-            </Select>
+            <SelectFilter
+              label="Website"
+              value={draft.source}
+              onChange={(value) => update({ source: value })}
+              allLabel="All websites"
+              options={(options.sources ?? []).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
+            <SelectFilter
+              label="Neighbourhood"
+              value={draft.neighbourhood}
+              onChange={(value) => update({ neighbourhood: value })}
+              allLabel="All neighbourhoods"
+              options={options.neighbourhoods.map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
+            <SelectFilter
+              label="Listing type"
+              value={draft.type}
+              onChange={(value) => update({ type: value })}
+              allLabel="All listing types"
+              options={options.listingTypes.map((type) => ({
+                value: type,
+                label: titleCase(type),
+              }))}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Input
-              aria-label="Minimum price"
-              type="number"
-              min="0"
-              value={draft.minPrice}
-              onChange={(event) => update({ minPrice: event.target.value })}
-              placeholder={
-                draft.currency
-                  ? `Min ${draft.currency}`
-                  : "Select currency first"
-              }
-              disabled={!draft.currency}
+            <SelectFilter
+              label="Currency"
+              value={draft.currency}
+              onChange={(value) => update({ currency: value })}
+              allLabel="All currencies"
+              options={options.currencies.map((item) => ({
+                value: item,
+                label: item,
+              }))}
             />
-            <Input
-              aria-label="Maximum price"
-              type="number"
-              min="0"
-              value={draft.maxPrice}
-              onChange={(event) => update({ maxPrice: event.target.value })}
-              placeholder={
-                draft.currency
-                  ? `Max ${draft.currency}`
-                  : "Select currency first"
-              }
-              disabled={!draft.currency}
-            />
-            {showGeoFilters ? (
-              <>
-                <Select
-                  value={draft.coordQuality || "__all"}
-                  onValueChange={(value) =>
-                    update({ coordQuality: value === "__all" ? "" : value })
-                  }
-                >
-                  <SelectTrigger className="w-full" aria-label="Coordinate quality">
-                    <SelectValue placeholder="Coordinate quality" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all">All coordinate quality</SelectItem>
-                    {(options.coordinateQualities ?? []).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={draft.assignment || "__all"}
-                  onValueChange={(value) =>
-                    update({ assignment: value === "__all" ? "" : value })
-                  }
-                >
-                  <SelectTrigger
-                    className="w-full"
-                    aria-label="Neighbourhood assignment"
-                  >
-                    <SelectValue placeholder="Assignment status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all">All assignment statuses</SelectItem>
-                    {(options.assignmentStatuses ?? []).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
+            <div className="min-w-0">
+              <FieldLabel>Min price</FieldLabel>
+              <Input
+                aria-label="Minimum price"
+                type="number"
+                min="0"
+                value={draft.minPrice}
+                onChange={(event) => update({ minPrice: event.target.value })}
+                placeholder={
+                  draft.currency
+                    ? `Min ${draft.currency}`
+                    : "Pick a currency first"
+                }
+                disabled={!draft.currency}
+              />
+            </div>
+            <div className="min-w-0">
+              <FieldLabel>Max price</FieldLabel>
+              <Input
+                aria-label="Maximum price"
+                type="number"
+                min="0"
+                value={draft.maxPrice}
+                onChange={(event) => update({ maxPrice: event.target.value })}
+                placeholder={
+                  draft.currency
+                    ? `Max ${draft.currency}`
+                    : "Pick a currency first"
+                }
+                disabled={!draft.currency}
+              />
+            </div>
+            {showSort ? (
+              <SelectFilter
+                label="Sort by"
+                value={draft.sort || "recent"}
+                onChange={(value) =>
+                  update({ sort: value === "recent" ? "" : value })
+                }
+                allLabel="Most recently seen"
+                options={[
+                  { value: "oldest", label: "Oldest first" },
+                  { value: "price-asc", label: "Price: low to high" },
+                  { value: "price-desc", label: "Price: high to low" },
+                  { value: "title", label: "Title A–Z" },
+                ]}
+              />
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {showSort ? (
-              <Select
-                value={draft.sort || "recent"}
-                onValueChange={(value) =>
-                  update({ sort: value === "recent" ? "" : value })
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[220px]" aria-label="Sort listings">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recent">Most recent</SelectItem>
-                  <SelectItem value="oldest">Oldest observed</SelectItem>
-                  <SelectItem value="price-asc">Price: low to high</SelectItem>
-                  <SelectItem value="price-desc">Price: high to low</SelectItem>
-                  <SelectItem value="title">Title A–Z</SelectItem>
-                </SelectContent>
-              </Select>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((current) => !current)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              aria-expanded={showAdvanced}
+            >
+              <ChevronDown
+                className={cn(
+                  "size-4 transition-transform",
+                  showAdvanced && "rotate-180",
+                )}
+              />
+              More filters
+              <span className="text-xs font-normal">
+                (realtor, data quality, AI status)
+              </span>
+              {advancedCount > 0 ? (
+                <Badge variant="secondary">{advancedCount} active</Badge>
+              ) : null}
+            </button>
+
+            {showAdvanced ? (
+              <div className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4">
+                <SelectFilter
+                  label="Original realtor"
+                  value={draft.realtor}
+                  onChange={(value) => update({ realtor: value })}
+                  allLabel="All realtors"
+                  options={(options.realtors ?? []).map((realtor) => ({
+                    value: realtor,
+                    label: realtor,
+                  }))}
+                />
+                <SelectFilter
+                  label="Amenity"
+                  value={draft.amenity}
+                  onChange={(value) => update({ amenity: value })}
+                  allLabel="All amenities"
+                  options={(options.amenities ?? []).map((amenity) => ({
+                    value: amenity,
+                    label: amenity,
+                  }))}
+                />
+                <SelectFilter
+                  label="Market status"
+                  tip={TIPS.lifecycle.tip}
+                  tipLabel={TIPS.lifecycle.label}
+                  value={draft.lifecycle}
+                  onChange={(value) => update({ lifecycle: value })}
+                  allLabel="Any market status"
+                  options={[
+                    { value: "active", label: "Active (still listed)" },
+                    { value: "sold", label: "Sold" },
+                    { value: "inactive", label: "Inactive (incl. rented)" },
+                    {
+                      value: "missing",
+                      label: "Missing from latest full check",
+                    },
+                    { value: "removed", label: "Removed from website" },
+                    { value: "unknown", label: "Unknown" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Show publicly?"
+                  tip={TIPS.publicEligibility.tip}
+                  tipLabel={TIPS.publicEligibility.label}
+                  value={draft.publicEligible}
+                  onChange={(value) => update({ publicEligible: value })}
+                  allLabel="Any visibility"
+                  options={[
+                    { value: "eligible", label: "OK to show publicly" },
+                    { value: "excluded", label: "Hidden from public" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Realtor info"
+                  tip={TIPS.attribution.tip}
+                  tipLabel={TIPS.attribution.label}
+                  value={draft.attribution}
+                  onChange={(value) => update({ attribution: value })}
+                  allLabel="Any realtor info"
+                  options={[
+                    { value: "attributed", label: "Has original realtor" },
+                    { value: "missing", label: "Missing realtor name" },
+                    { value: "conflicts", label: "Conflicting realtor info" },
+                  ]}
+                />
+                <SelectFilter
+                  label="AI enrichment"
+                  tip={TIPS.enrichmentStatus.tip}
+                  tipLabel={TIPS.enrichmentStatus.label}
+                  value={draft.enrichment}
+                  onChange={(value) => update({ enrichment: value })}
+                  allLabel="Any AI status"
+                  options={[
+                    { value: "not_run", label: "Not run yet" },
+                    { value: "queued", label: "Queued" },
+                    { value: "running", label: "Running" },
+                    { value: "succeeded", label: "Succeeded" },
+                    {
+                      value: "skipped_unchanged",
+                      label: "Skipped (nothing changed)",
+                    },
+                    { value: "failed", label: "Failed" },
+                    { value: "needs_review", label: "Needs review" },
+                  ]}
+                />
+                {showGeoFilters ? (
+                  <>
+                    <SelectFilter
+                      label="Map pin quality"
+                      tip={TIPS.coordinateQuality.tip}
+                      tipLabel={TIPS.coordinateQuality.label}
+                      value={draft.coordQuality}
+                      onChange={(value) => update({ coordQuality: value })}
+                      allLabel="Any pin quality"
+                      options={(options.coordinateQualities ?? []).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                    <SelectFilter
+                      label="Neighbourhood match"
+                      tip={TIPS.assignmentStatus.tip}
+                      tipLabel={TIPS.assignmentStatus.label}
+                      value={draft.assignment}
+                      onChange={(value) => update({ assignment: value })}
+                      allLabel="Any neighbourhood match"
+                      options={(options.assignmentStatuses ?? []).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                  </>
+                ) : null}
+              </div>
             ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
             <Button type="submit">
               <SlidersHorizontal className="size-4" />
-              Apply
+              Apply filters
             </Button>
             <Button
               type="button"
@@ -446,7 +473,7 @@ export function ListingFilters({
               onClick={clearAll}
               disabled={!hasActiveFilters && !isDirty}
             >
-              Clear
+              Clear all
             </Button>
             {isDirty ? (
               <p className="text-xs text-muted-foreground">

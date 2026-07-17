@@ -35,7 +35,7 @@ export function HelpTip({
           <CircleHelp className="size-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-[260px] text-left leading-relaxed">
+      <TooltipContent side={side} className="max-w-[300px] text-left text-xs leading-relaxed">
         {children}
       </TooltipContent>
     </Tooltip>

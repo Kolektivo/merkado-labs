@@ -5,7 +5,7 @@ import { AlertTriangle, Building2, Eye, Radio, Sparkles } from "lucide-react";
 import { DataError } from "@/components/data-error";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import {
   Card,
   CardContent,
@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/card";
 import { getOverviewData } from "@/lib/data/overview";
 import { formatDateTime, formatNumber } from "@/lib/format";
+import {
+  adapterStatusLabel,
+  adapterStatusTone,
+  runOutcomeLabel,
+  runOutcomeTone,
+  TIPS,
+} from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +36,7 @@ export default async function Home() {
       <div className="space-y-6">
         <PageHeader
           title="Overview"
-          description="See whether property data is healthy and what needs attention."
+          description="A simple snapshot of how healthy the property data looks right now."
           icon={Radio}
         />
         <DataError
@@ -43,42 +50,55 @@ export default async function Home() {
     <div className="space-y-6">
       <PageHeader
         title="Overview"
-        description="Current Labs inventory, source health, and work waiting for review."
+        description="How many properties we have, which websites feed them, and what still needs a human look."
         icon={Radio}
       />
 
       <section className="grid min-w-0 grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Total inventory"
+          label="All properties"
           value={formatNumber(overview.totalInventory)}
-          hint={`${formatNumber(overview.activeInventory)} active`}
+          hint={`${formatNumber(overview.activeInventory)} still listed as active`}
           icon={Building2}
+          tip={TIPS.totalInventory.tip}
+          tipLabel={TIPS.totalInventory.label}
+          href="/listings"
         />
         <MetricCard
-          label="Publicly visible"
+          label="OK to show publicly"
           value={formatNumber(overview.publicEligibleInventory)}
-          hint="Active, priced, attributable"
+          hint="Active, priced, and realtor named"
           icon={Eye}
+          tip={TIPS.publiclyVisible.tip}
+          tipLabel={TIPS.publiclyVisible.label}
+          href="/listings?publicEligible=eligible"
         />
         <MetricCard
-          label="Sources"
+          label="Realtor websites"
           value={formatNumber(overview.sourceSummaries.length)}
-          hint="All schedules disabled"
+          hint="Automatic updates are currently off"
           icon={Radio}
+          tip={TIPS.sources.tip}
+          tipLabel={TIPS.sources.label}
+          href="/sources"
         />
         <MetricCard
-          label="AI needs review"
+          label="AI waiting for review"
           value={formatNumber(overview.proposalsNeedingReview)}
-          hint="Suggestions, not source facts"
+          hint="Suggestions only — not source facts"
           icon={Sparkles}
+          tip={TIPS.aiNeedsReview.tip}
+          tipLabel={TIPS.aiNeedsReview.label}
+          href="/enrichment"
         />
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Source health</CardTitle>
+          <CardTitle>Website health</CardTitle>
           <CardDescription>
-            Inventory and latest recorded manual run for each approved source.
+            Listing counts and the latest import for each approved realtor
+            website.
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y px-0">
@@ -86,25 +106,36 @@ export default async function Home() {
             <Link
               key={source.id}
               href={`/sources/${source.sourceKey}`}
-              className="grid gap-2 px-6 py-4 hover:bg-muted/30 sm:grid-cols-[1fr_auto_auto]"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-4 hover:bg-muted/30"
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium">
                   {source.displayName ?? source.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {formatNumber(source.listingCount)} listings ·{" "}
-                  {formatNumber(source.publicEligibleCount)} publicly visible
+                  {formatNumber(source.publicEligibleCount)} OK to show publicly
                 </p>
               </div>
-              <Badge variant="outline">
-                {source.adapterStatus ?? "unknown"}
-              </Badge>
-              <p className="text-xs text-muted-foreground">
-                {source.latestRun
-                  ? `${source.latestRun.outcome} · ${formatDateTime(source.latestRun.startedAt)}`
-                  : "No recorded run"}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge tone={adapterStatusTone(source.adapterStatus)}>
+                  {adapterStatusLabel(source.adapterStatus)}
+                </StatusBadge>
+                {source.latestRun ? (
+                  <>
+                    <StatusBadge tone={runOutcomeTone(source.latestRun.outcome)}>
+                      {runOutcomeLabel(source.latestRun.outcome)}
+                    </StatusBadge>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(source.latestRun.startedAt)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    No import recorded yet
+                  </span>
+                )}
+              </div>
             </Link>
           ))}
         </CardContent>
@@ -117,7 +148,8 @@ export default async function Home() {
             Needs attention
           </CardTitle>
           <CardDescription>
-            Current operational limits, not generic technical metrics.
+            Things a person should look at before trusting the data in public
+            browse.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -129,7 +161,7 @@ export default async function Home() {
             ))
           ) : (
             <p className="text-sm text-muted-foreground">
-              No active source warnings.
+              No active website warnings.
             </p>
           )}
           {overview.proposalsNeedingReview > 0 ? (
@@ -137,7 +169,8 @@ export default async function Home() {
               href="/enrichment"
               className="block text-sm font-medium underline underline-offset-2"
             >
-              Review {formatNumber(overview.proposalsNeedingReview)} AI proposals
+              Review {formatNumber(overview.proposalsNeedingReview)} AI
+              suggestions
             </Link>
           ) : null}
         </CardContent>

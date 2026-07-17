@@ -129,7 +129,8 @@ export function PropertyMap({
                 : `${selectedMarkers.length} listings`}
             </SheetTitle>
             <SheetDescription>
-              Source neighbourhood and geographic assignment stay separate.
+              The neighbourhood named on the website and the area guessed from
+              the map pin are kept separate so you can compare them.
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4 px-4 pb-6">
@@ -173,10 +174,10 @@ function MarkerDetails({ marker }: { marker: MapListingMarker }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline">
-          Source: {marker.neighbourhoodName ?? "Unspecified"}
+          Website: {marker.neighbourhoodName ?? "Not given"}
         </Badge>
         <Badge variant="secondary">
-          Geo: {marker.inferredNeighbourhoodName ?? "None"}
+          Map: {marker.inferredNeighbourhoodName ?? "None"}
         </Badge>
         <AssignmentBadge status={marker.neighbourhoodAssignmentStatus} />
       </div>
@@ -190,7 +191,7 @@ function MarkerDetails({ marker }: { marker: MapListingMarker }) {
           <dd>{marker.floorAreaM2 ? `${marker.floorAreaM2} m²` : "—"}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-muted-foreground">Source</dt>
+          <dt className="text-muted-foreground">Collected from</dt>
           <dd>{marker.sourceName}</dd>
         </div>
       </dl>

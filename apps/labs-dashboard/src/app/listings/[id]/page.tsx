@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
+import { HelpTip } from "@/components/help-tip";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { ProposalReviewControl } from "@/components/proposal-review-control";
@@ -58,6 +59,15 @@ import {
   ASSIGNMENT_STATUS_LABELS,
   COORDINATE_QUALITY_LABELS,
 } from "@/lib/geo/coordinates";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  enrichmentStatusLabel,
+  enrichmentStatusTone,
+  lifecycleLabel,
+  lifecycleTone,
+  publicVisibilityLabel,
+  TIPS,
+} from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -79,14 +89,19 @@ export async function generateMetadata({
 function DetailItem({
   label,
   value,
+  tip,
+  tipLabel,
 }: {
   label: string;
   value: React.ReactNode;
+  tip?: string;
+  tipLabel?: string;
 }) {
   return (
     <div className="min-w-0 rounded-lg border bg-muted/20 p-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+      <dt className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span>{label}</span>
+        {tip ? <HelpTip label={tipLabel ?? label}>{tip}</HelpTip> : null}
       </dt>
       <dd className="mt-1.5 break-words text-sm font-medium">{value}</dd>
     </div>
@@ -104,16 +119,35 @@ function ProvenanceLabel({
     | "system";
 }) {
   const labels = {
-    source: "Source",
-    code: "Code extracted",
-    ai_inferred: "AI inferred",
-    ai_summarized: "AI summarized",
-    system: "System calculated",
+    source: {
+      text: "From website",
+      tip: "Copied from the original realtor ad.",
+    },
+    code: {
+      text: "Extracted automatically",
+      tip: "Pulled out of the ad by Labs code (not AI).",
+    },
+    ai_inferred: {
+      text: "AI guess",
+      tip: "Suggested by AI. Treat as a proposal until a person reviews it.",
+    },
+    ai_summarized: {
+      text: "AI suggestion",
+      tip: "AI wrote a suggestion. It does not replace the original ad facts.",
+    },
+    system: {
+      text: "Calculated by Labs",
+      tip: "Derived by Labs from other known fields (for example map checks).",
+    },
   } as const;
+  const entry = labels[kind];
   return (
-    <Badge variant="outline" className="font-normal">
-      {labels[kind]}
-    </Badge>
+    <span className="inline-flex items-center gap-1">
+      <Badge variant="outline" className="font-normal">
+        {entry.text}
+      </Badge>
+      <HelpTip label={entry.text}>{entry.tip}</HelpTip>
+    </span>
   );
 }
 
@@ -238,13 +272,14 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                 <Badge variant="outline">
                   {titleCase(listing.propertyType)}
                 </Badge>
-                <Badge variant="secondary">{titleCase(listing.status)}</Badge>
-                <Badge variant="outline">
-                  Enrichment:{" "}
-                  {titleCase(
-                    (listing.enrichmentStatus ?? "not_run").replaceAll("_", " "),
-                  )}
-                </Badge>
+                <StatusBadge tone={lifecycleTone(listing.status)}>
+                  {lifecycleLabel(listing.status)}
+                </StatusBadge>
+                <StatusBadge
+                  tone={enrichmentStatusTone(listing.enrichmentStatus ?? "not_run")}
+                >
+                  AI: {enrichmentStatusLabel(listing.enrichmentStatus ?? "not_run")}
+                </StatusBadge>
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -286,47 +321,63 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                   </p>
                 ) : null}
                 {listing.benchmarkPriceXcg !== null ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    XCG benchmark{" "}
-                    <span className="font-mono tabular-nums">
-                      {formatCurrency(listing.benchmarkPriceXcg, "XCG")}
-                    </span>
-                    {" · "}
-                    {describeConversionLabel({
-                      conversionMethod: listing.conversionMethod,
-                      conversionProvider: listing.conversionProvider,
-                      conversionRate: listing.conversionRate,
-                      conversionRateAt: listing.conversionRateAt,
-                    })}
-                    {listing.conversionRateAt
-                      ? isCurrentProductionBenchmark(listing.conversionProvider)
-                        ? ` · ECB observation date ${formatDate(listing.conversionRateAt)}`
-                        : ` · historical calc ${formatDate(listing.conversionRateAt)}`
-                      : ""}
-                    . Indicative equivalent based on known information. Not a bank
-                    conversion quote, transaction rate, appraisal, or contractual amount.
-                    Original currency remains source truth.
-                    {!isCurrentProductionBenchmark(listing.conversionProvider) ? (
-                      <> Current listing still shows a non-production test/manual rate until an approved ECB recalculation import.</>
-                    ) : null}
-                  </p>
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p className="inline-flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1">
+                        Approx. in XCG
+                        <HelpTip label={TIPS.xcgBenchmark.label}>
+                          {TIPS.xcgBenchmark.tip}
+                        </HelpTip>
+                      </span>
+                      <span className="font-mono tabular-nums text-foreground">
+                        {formatCurrency(listing.benchmarkPriceXcg, "XCG")}
+                      </span>
+                    </p>
+                    <p className="text-xs">
+                      Conversion method:{" "}
+                      {describeConversionLabel({
+                        conversionMethod: listing.conversionMethod,
+                        conversionProvider: listing.conversionProvider,
+                        conversionRate: listing.conversionRate,
+                        conversionRateAt: listing.conversionRateAt,
+                      })}
+                      {listing.conversionRateAt
+                        ? isCurrentProductionBenchmark(listing.conversionProvider)
+                          ? ` · rate date ${formatDate(listing.conversionRateAt)}`
+                          : ` · older test/manual rate from ${formatDate(listing.conversionRateAt)}`
+                        : ""}
+                      . The original currency on the ad remains the source of
+                      truth.
+                      {!isCurrentProductionBenchmark(listing.conversionProvider) ? (
+                        <>
+                          {" "}
+                          This comparison still uses a test/manual rate until an
+                          approved official recalculation is imported.
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    XCG benchmark pending conversion provenance.
+                    Approximate XCG comparison price is not available yet.
                   </p>
                 )}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Status: {listing.status}
-                  {listing.publicEligible
-                    ? " · public-eligible"
-                    : listing.publicExclusionReason
-                      ? ` · excluded: ${listing.publicExclusionReason}`
-                      : " · not public-eligible"}
-                  {listing.sourceListedAt
-                    ? ` · source listed ${formatDate(listing.sourceListedAt)}`
-                    : ""}
-                  {` · first seen ${formatDate(listing.firstSeenAt)}`}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <StatusBadge
+                    tone={listing.publicEligible ? "success" : "warning"}
+                  >
+                    {publicVisibilityLabel({
+                      publicEligible: listing.publicEligible,
+                      publicExclusionReason: listing.publicExclusionReason,
+                    })}
+                  </StatusBadge>
+                  <span>
+                    {listing.sourceListedAt
+                      ? `Posted on website ${formatDate(listing.sourceListedAt)} · `
+                      : ""}
+                    First seen by Labs {formatDate(listing.firstSeenAt)}
+                  </span>
+                </div>
               </div>
               <Separator />
               <dl className="grid grid-cols-2 gap-3">
@@ -426,7 +477,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                       }
                     />
                     <DetailItem
-                      label="Lot area (raw)"
+                      label="Lot area"
+                      tip="Value taken as written on the website. The unit may be missing or inconsistent across sites."
+                      tipLabel="lot area"
                       value={
                         listing.lotAreaValue !== null
                           ? `${listing.lotAreaValue.toLocaleString()}${
@@ -507,12 +560,18 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                       }
                     />
                     <DetailItem
-                      label="Pin quality"
+                      label="Map pin quality"
+                      tip={TIPS.coordinateQuality.tip}
+                      tipLabel={TIPS.coordinateQuality.label}
                       value={COORDINATE_QUALITY_LABELS[listing.coordinateQuality]}
                     />
                     <DetailItem
-                      label="Coordinates source"
-                      value={listing.coordinatesSource ?? "Not available"}
+                      label="Where the pin came from"
+                      value={
+                        listing.coordinatesSource
+                          ? titleCase(listing.coordinatesSource)
+                          : "Not available"
+                      }
                     />
                   </dl>
                 </CardContent>
@@ -549,7 +608,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                     <ProvenanceLabel kind="system" />
                   </div>
                   <CardDescription>
-                    Distinct asking amounts only. Identical re-imports are folded.
+                    Only distinct asking amounts. Repeat visits with the same
+                    price are folded into one row.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -566,7 +626,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                             <span className="text-muted-foreground">
                               {formatDate(item.observedAt)}
                               {(item.suppressedDuplicateCount ?? 0) > 0
-                                ? ` · +${item.suppressedDuplicateCount} identical re-obs`
+                                ? ` · +${item.suppressedDuplicateCount} same-price rechecks`
                                 : ""}
                             </span>
                             <span className="font-mono font-medium">
@@ -617,7 +677,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                       }
                     />
                     <DetailItem
-                      label="ID confidence"
+                      label="Listing ID confidence"
+                      tip="How sure we are that the website’s listing ID is stable and correctly matched over time."
+                      tipLabel="listing ID confidence"
                       value={
                         <span className="inline-flex items-center gap-2">
                           <ShieldCheck className="size-4 text-muted-foreground" />
@@ -651,17 +713,24 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                   <p className="text-sm leading-relaxed">
-                    Found via {listing.source.name}
+                    Collected from {listing.source.name}
                     {listing.originalRealtorName
                       ? `, originally listed by ${listing.originalRealtorName}`
-                      : ", original realtor not attributed yet"}
+                      : ", original realtor name not found yet"}
                     .
                   </p>
                   <dl className="grid gap-3">
-                    <DetailItem label="Aggregator" value={listing.source.name} />
+                    <DetailItem
+                      label="Collected from"
+                      tip="The approved realtor website this listing was imported from."
+                      tipLabel="collected from"
+                      value={listing.source.name}
+                    />
                     <DetailItem
                       label="Original realtor"
-                      value={listing.originalRealtorName ?? "Missing attribution"}
+                      tip={TIPS.attribution.tip}
+                      tipLabel={TIPS.attribution.label}
+                      value={listing.originalRealtorName ?? "Realtor not listed"}
                     />
                   </dl>
                 </CardContent>
@@ -778,14 +847,14 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                     <ProvenanceLabel kind="ai_summarized" />
                   </div>
                   <CardDescription>
-                    Proposals never overwrite source price, currency, status,
-                    dates, coordinates, or address.
+                    AI suggestions never change the website’s price, currency,
+                    status, dates, coordinates, or address.
                   </CardDescription>
                 </div>
                 <Button variant="outline" asChild>
                   <Link href="/enrichment">
                     <Sparkles data-icon="inline-start" />
-                    Open proposal queue
+                    Open suggestion queue
                   </Link>
                 </Button>
               </div>
@@ -793,13 +862,15 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             <CardContent className="space-y-4">
               <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailItem
-                  label="Enrichment status"
-                  value={titleCase(
-                    (listing.enrichmentStatus ?? "not_run").replaceAll("_", " "),
+                  label="AI status"
+                  tip={TIPS.enrichmentStatus.tip}
+                  tipLabel={TIPS.enrichmentStatus.label}
+                  value={enrichmentStatusLabel(
+                    listing.enrichmentStatus ?? "not_run",
                   )}
                 />
                 <DetailItem
-                  label="Last run"
+                  label="Last AI run"
                   value={
                     listing.enrichmentLastRunAt
                       ? formatDateTime(listing.enrichmentLastRunAt)
@@ -807,7 +878,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                   }
                 />
                 <DetailItem
-                  label="Input checksum"
+                  label="Input fingerprint"
+                  tip="Technical fingerprint of the text AI was given. Used to avoid re-running when nothing changed."
+                  tipLabel="input fingerprint"
                   value={
                     <span className="break-all font-mono text-xs">
                       {listing.enrichmentLastInputChecksum ?? "—"}
@@ -818,7 +891,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
 
               {!proposal ? (
                 <p className="text-sm text-muted-foreground">
-                  No AI proposal yet for this listing.
+                  No AI suggestion yet for this listing.
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -829,7 +902,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                     <Badge variant="outline">{proposal.model}</Badge>
                     <Badge variant="secondary">{proposal.promptVersion}</Badge>
                     <Badge variant="outline">
-                      Review: {titleCase(proposal.reviewStatus.replaceAll("_", " "))}
+                      Review:{" "}
+                      {titleCase(proposal.reviewStatus.replaceAll("_", " "))}
                     </Badge>
                     {proposal.confidence !== null ? (
                       <Badge variant="outline">
@@ -937,8 +1011,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                           const assessment = asRecord(raw);
                           return (
                             <Badge key={key} variant="secondary">
-                              {key.replaceAll("_", " ")}:{" "}
-                              {String(assessment.value ?? "unknown")}
+                              {titleCase(key)}:{" "}
+                              {titleCase(String(assessment.value ?? "unknown"))}
                             </Badge>
                           );
                         })}
@@ -955,23 +1029,25 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           <Card>
             <CardHeader className="border-b">
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>Evidence metadata</CardTitle>
+                <CardTitle>Proof from the original ad</CardTitle>
                 <ProvenanceLabel kind="source" />
               </div>
               <CardDescription>
-                Raw HTML / storage paths are admin-only. Public view shows
-                source text and checksums only.
+                We keep a private fingerprint of what the website said. Raw HTML
+                files stay admin-only and are never shown here.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
-                {evidence.length} private source observation
-                {evidence.length === 1 ? "" : "s"} are recorded. Raw files are
-                not rendered or exposed by the dashboard.
+                {evidence.length} private snapshot
+                {evidence.length === 1 ? "" : "s"} of the original ad are
+                recorded. Raw files are not opened in this dashboard.
               </p>
               <dl className="grid gap-3 sm:grid-cols-2">
                 <DetailItem
-                  label="Source description checksum"
+                  label="Ad text fingerprint"
+                  tip={TIPS.evidenceChecksum.tip}
+                  tipLabel={TIPS.evidenceChecksum.label}
                   value={
                     <span className="break-all font-mono text-xs">
                       {listing.sourceDescriptionChecksum ?? "Not stored"}
@@ -979,7 +1055,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                   }
                 />
                 <DetailItem
-                  label="Enrichment input checksum"
+                  label="AI input fingerprint"
+                  tip="Technical fingerprint of the text last sent to AI for this listing."
+                  tipLabel="AI input fingerprint"
                   value={
                     <span className="break-all font-mono text-xs">
                       {listing.enrichmentLastInputChecksum ?? "Not stored"}
@@ -990,7 +1068,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
               {listing.description ? (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">
-                    Source description (listing row)
+                    Description stored from the website
                   </h3>
                   <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                     {listing.description}
@@ -1000,14 +1078,18 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
               {evidence.length ? (
                 <details className="rounded-lg border p-3">
                   <summary className="cursor-pointer text-sm font-medium">
-                    Technical evidence metadata
+                    Technical details (for engineers)
                   </summary>
                   <div className="mt-3 space-y-3">
                     {evidence.map((item) => (
                       <div key={item.id} className="text-xs text-muted-foreground">
-                        <p>{formatDateTime(item.observedAt)} · HTTP {item.httpStatus ?? "—"} · adapter {item.adapterVersion ?? "—"}</p>
+                        <p>
+                          {formatDateTime(item.observedAt)} · HTTP{" "}
+                          {item.httpStatus ?? "—"} · importer{" "}
+                          {item.adapterVersion ?? "—"}
+                        </p>
                         <p className="break-all font-mono">
-                          SHA-256 {item.sourceSha256}
+                          Fingerprint {item.sourceSha256}
                         </p>
                         <p>
                           Private evidence: {item.evidenceStorageBucket && item.evidenceStoragePath ? "stored" : "not stored"}
@@ -1032,7 +1114,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                 <ProvenanceLabel kind="system" />
               </div>
               <CardDescription>
-                Immutable timeline events for this source listing.
+                History of notable changes Labs recorded for this listing.
               </CardDescription>
             </CardHeader>
             <CardContent>

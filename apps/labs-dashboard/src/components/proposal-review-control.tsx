@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,10 @@ export function ProposalReviewControl({
 }) {
   const [status, setStatus] = useState<AiProposalReviewStatus>(initialStatus);
   const [notes, setNotes] = useState(initialNotes ?? "");
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -40,9 +44,15 @@ export function ProposalReviewControl({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? "Review update failed.");
-      setMessage("Review saved. Source listing facts were not changed.");
+      setMessage({
+        kind: "success",
+        text: "Review saved. The original listing facts were not changed.",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Review update failed.");
+      setMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Review update failed.",
+      });
     } finally {
       setBusy(false);
     }
@@ -50,32 +60,57 @@ export function ProposalReviewControl({
 
   return (
     <div className="rounded-lg border bg-muted/20 p-4">
+      <p className="mb-3 text-sm font-medium">Your review decision</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Review status</Label>
-          <Select value={status} onValueChange={(value) => setStatus(value as AiProposalReviewStatus)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Label htmlFor="review-status">Decision</Label>
+          <Select
+            value={status}
+            onValueChange={(value) => setStatus(value as AiProposalReviewStatus)}
+          >
+            <SelectTrigger id="review-status" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="unreviewed">Unreviewed</SelectItem>
-              <SelectItem value="approved_for_research">Approved for research</SelectItem>
+              <SelectItem value="unreviewed">Not decided yet</SelectItem>
+              <SelectItem value="approved_for_research">
+                Approve (research use only)
+              </SelectItem>
               <SelectItem value="needs_changes">Needs changes</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="rejected">Reject</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Review notes</Label>
-          <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional notes" />
+          <Label htmlFor="review-notes">Notes</Label>
+          <Input
+            id="review-notes"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Optional — why you decided this"
+          />
         </div>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Requires an active Labs admin session cookie (unlock from Enrichment or Settings).
-      </p>
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button type="button" size="sm" onClick={() => void submit()} disabled={busy}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Saving…" : "Save review"}
         </Button>
-        {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+        {message ? (
+          <p
+            className={
+              message.kind === "success"
+                ? "inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
+                : "text-xs text-destructive"
+            }
+            role="status"
+          >
+            {message.kind === "success" ? (
+              <CheckCircle2 className="size-3.5" />
+            ) : null}
+            {message.text}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -18,15 +18,21 @@ export default function NotFound() {
         <EmptyMedia variant="icon">
           <FileQuestion />
         </EmptyMedia>
-        <EmptyTitle>Listing not found</EmptyTitle>
+        <EmptyTitle>Page not found</EmptyTitle>
         <EmptyDescription>
-          This public listing does not exist or is no longer available.
+          This page does not exist or is no longer available. It may have been
+          moved during a dashboard cleanup.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button asChild>
-          <Link href="/listings">Return to listings</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/">Go to Overview</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/listings">Browse listings</Link>
+          </Button>
+        </div>
       </EmptyContent>
     </Empty>
   );

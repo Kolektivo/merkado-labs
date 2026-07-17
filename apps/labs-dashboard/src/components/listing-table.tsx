@@ -9,6 +9,7 @@ import {
   Rows3,
 } from "lucide-react";
 
+import { HelpTip } from "@/components/help-tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,28 @@ import {
   formatDate,
   titleCase,
 } from "@/lib/format";
+import { TIPS } from "@/lib/ui-labels";
+
+function HeadWithTip({
+  children,
+  tip,
+  tipLabel,
+  className,
+}: {
+  children: React.ReactNode;
+  tip: string;
+  tipLabel: string;
+  className?: string;
+}) {
+  return (
+    <TableHead className={className}>
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <HelpTip label={tipLabel}>{tip}</HelpTip>
+      </span>
+    </TableHead>
+  );
+}
 
 export function ListingTable({
   listings,
@@ -44,16 +67,27 @@ export function ListingTable({
       <Table className="min-w-[720px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="min-w-[220px] sm:min-w-[280px]">Listing</TableHead>
+            <TableHead className="min-w-[220px] sm:min-w-[280px]">
+              Listing
+            </TableHead>
             <TableHead>Original realtor</TableHead>
             <TableHead>Neighbourhood</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Price</TableHead>
-            <TableHead>Completeness</TableHead>
-            <TableHead>Evidence</TableHead>
-            <TableHead>Observed</TableHead>
+            <HeadWithTip
+              tip={TIPS.completeness.tip}
+              tipLabel={TIPS.completeness.label}
+            >
+              Completeness
+            </HeadWithTip>
+            <HeadWithTip tip={TIPS.timesSeen.tip} tipLabel={TIPS.timesSeen.label}>
+              Activity
+            </HeadWithTip>
+            <HeadWithTip tip={TIPS.observed.tip} tipLabel={TIPS.observed.label}>
+              Last seen
+            </HeadWithTip>
             <TableHead className="w-12">
-              <span className="sr-only">Source</span>
+              <span className="sr-only">Actions</span>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -102,7 +136,7 @@ export function ListingTable({
                 <TableCell className="min-w-[160px]">
                   <div className="space-y-1">
                     <p className="text-sm">
-                      {listing.originalRealtorName ?? "Missing attribution"}
+                      {listing.originalRealtorName ?? "Realtor not listed"}
                     </p>
                     {listing.originalRealtorDomain ? (
                       <p className="truncate text-xs text-muted-foreground">
@@ -110,18 +144,18 @@ export function ListingTable({
                       </p>
                     ) : null}
                     {listing.unresolvedConflictCount > 0 ? (
-                      <Badge variant="outline">Conflict</Badge>
+                      <Badge variant="outline">Needs review</Badge>
                     ) : null}
                   </div>
                 </TableCell>
                 <TableCell className="min-w-[180px]">
                   <div className="space-y-1">
                     <p className="whitespace-nowrap text-sm">
-                      {listing.neighbourhood?.name ?? "Unspecified"}
+                      {listing.neighbourhood?.name ?? "Not specified"}
                     </p>
                     {listing.inferredNeighbourhood ? (
                       <p className="text-xs text-muted-foreground">
-                        Geo: {listing.inferredNeighbourhood.name}
+                        From map: {listing.inferredNeighbourhood.name}
                       </p>
                     ) : null}
                   </div>
@@ -135,21 +169,43 @@ export function ListingTable({
                   {formatCurrency(listing.currentPrice, listing.currency)}
                 </TableCell>
                 <TableCell>
-                  <span className="font-mono text-sm tabular-nums">
-                    {listing.dataCompletenessScore !== null
-                      ? `${listing.dataCompletenessScore}%`
-                      : "—"}
-                  </span>
+                  {listing.dataCompletenessScore !== null ? (
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-1.5 w-14 overflow-hidden rounded-full bg-muted"
+                        role="presentation"
+                      >
+                        <div
+                          className={
+                            listing.dataCompletenessScore >= 70
+                              ? "h-full rounded-full bg-emerald-500"
+                              : listing.dataCompletenessScore >= 40
+                                ? "h-full rounded-full bg-amber-500"
+                                : "h-full rounded-full bg-red-500"
+                          }
+                          style={{
+                            width: `${Math.min(100, Math.max(0, listing.dataCompletenessScore))}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {listing.dataCompletenessScore}%
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3 whitespace-nowrap text-xs text-muted-foreground">
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <Eye className="size-3.5" />
-                      {listing.observationCount}
+                      <Eye className="size-3.5" aria-hidden />
+                      Seen {listing.observationCount}×
                     </span>
-                    <span className="inline-flex items-center gap-1">
-                      <History className="size-3.5" />
-                      {listing.priceObservationCount}
+                    <span className="flex items-center gap-1">
+                      <History className="size-3.5" aria-hidden />
+                      {listing.priceObservationCount} price
+                      {listing.priceObservationCount === 1 ? "" : "s"}
                     </span>
                   </div>
                 </TableCell>
@@ -183,7 +239,7 @@ export function ListingTable({
                           rel="noreferrer"
                         >
                           <ArrowUpRight className="size-4" />
-                          Open original source
+                          Open original ad
                         </a>
                       </DropdownMenuItem>
                       {listing.originalRealtorUrl ? (
@@ -194,7 +250,7 @@ export function ListingTable({
                             rel="noreferrer"
                           >
                             <ArrowUpRight className="size-4" />
-                            Open aggregator record
+                            Open other listing page
                           </a>
                         </DropdownMenuItem>
                       ) : null}

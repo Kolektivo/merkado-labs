@@ -52,19 +52,24 @@ type NavSection = {
 
 const navigationSections: NavSection[] = [
   {
-    label: "Property Labs",
+    label: "Monitor",
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
-      { href: "/listings", label: "Listings", icon: Building2 },
-      { href: "/sources", label: "Sources", icon: Radio },
-      { href: "/enrichment", label: "Enrichment", icon: GitCompareArrows },
-      { href: "/quality", label: "Quality", icon: ShieldAlert },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/quality", label: "Data quality", icon: ShieldAlert },
     ],
   },
   {
-    label: "Experimental",
+    label: "Property data",
     items: [
+      { href: "/listings", label: "Listings", icon: Building2 },
+      { href: "/sources", label: "Sources", icon: Radio },
+      { href: "/enrichment", label: "AI enrichment", icon: GitCompareArrows },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/settings", label: "Settings", icon: Settings },
       { href: "/prototypes", label: "Prototypes", icon: FlaskConical },
     ],
   },

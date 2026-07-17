@@ -18,25 +18,25 @@ const prototypes = [
     href: "/browse",
     title: "Public browse and Passport",
     description:
-      "Public-safe preview of eligible listings and a limited off-chain activity summary.",
+      "Simple preview of listings clean enough to show publicly, plus a limited activity summary.",
   },
   {
     href: "/search-requests",
     title: "Property Search Request",
     description:
-      "Internal draft request records. No customer accounts or delivery.",
+      "Internal draft buyer requests for matching tests. No customer accounts or delivery.",
   },
   {
     href: "/what-fits-me",
     title: "What Fits Me?",
     description:
-      "Structured draft intake only. Not mortgage or affordability advice.",
+      "A structured draft questionnaire only. Not mortgage or affordability advice.",
   },
   {
     href: "/agent",
     title: "Merkado Agent",
     description:
-      "Test entitlement preview. No billing, subscriptions, or email.",
+      "Test access for request-based matching. No billing, subscriptions, or email.",
   },
 ] as const;
 

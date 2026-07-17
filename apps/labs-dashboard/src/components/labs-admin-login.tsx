@@ -64,8 +64,11 @@ export function LabsAdminLogin({
 
   if (ok) {
     return (
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span>Labs admin session active (httpOnly cookie).</span>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+          You are signed in as Labs admin. The session ends after 12 hours.
+        </span>
         <Button variant="outline" size="sm" onClick={logout} disabled={busy}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Sign out
@@ -79,8 +82,8 @@ export function LabsAdminLogin({
       <div>
         <p className="font-medium">Labs admin unlock</p>
         <p className="text-sm text-muted-foreground">
-          Internal Labs gate only — not production auth. Secret stays server-side
-          after login (signed httpOnly cookie).
+          Enter the shared Labs admin secret to open the internal dashboard.
+          This is separate from production Merkado logins.
         </p>
       </div>
       <div className="space-y-2">
@@ -89,10 +92,11 @@ export function LabsAdminLogin({
           id="labs-admin-secret"
           type="password"
           autoComplete="off"
+          placeholder="Paste the Labs admin secret"
           value={secret}
           onChange={(event) => setSecret(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") void login();
+            if (event.key === "Enter" && secret.trim() && !busy) void login();
           }}
         />
       </div>

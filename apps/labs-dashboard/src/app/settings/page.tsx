@@ -24,12 +24,12 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Labs settings"
-        description="Configuration health, admin session, disabled schedules, and Labs safety boundaries."
+        description="Admin access, connection health, and the safety rules for this Labs workspace."
         icon={Settings}
       />
       <Card>
         <CardHeader>
-          <CardTitle>Labs admin session</CardTitle>
+          <CardTitle>Admin access</CardTitle>
         </CardHeader>
         <CardContent>
           <LabsAdminLogin hasSession={hasSession} />
@@ -37,7 +37,7 @@ export default async function SettingsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Configuration health</CardTitle>
+          <CardTitle>Connection health</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 sm:grid-cols-2">
           {checks.map(([label, ok]) => (
@@ -58,23 +58,23 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            Internal pages use server-only Labs credentials after the admin
-            session check. Public browse uses only the safe public listing view.
+            Internal dashboard pages only load after an admin unlock. Public
+            browse shows only the cleaned, public-safe listing view.
           </p>
           <p>
-            Raw evidence, source-run details, AI proposals, and prototype request
-            data remain private.
+            Private ad snapshots, import details, AI suggestions, and prototype
+            request data stay internal.
           </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Operational limits</CardTitle>
+          <CardTitle>Current limits</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>All source schedules are disabled. Adapters are manual only.</p>
-          <p>AI execution is disabled during this cleanup; existing proposals are review-only.</p>
-          <p>Property pages are experimental Labs prototypes, not live on merkado.cw.</p>
+          <p>Automatic website updates are off. Imports run only when started by hand.</p>
+          <p>Starting new AI jobs is off during cleanup; existing suggestions are review-only.</p>
+          <p>Prototype property pages are Labs experiments, not live on merkado.cw.</p>
           <p>The allowed database project is <code>csaefdkpwukshtouyixg</code>. Production is forbidden.</p>
         </CardContent>
       </Card>

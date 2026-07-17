@@ -56,8 +56,8 @@ export default async function ListingsPage({
       <div className="space-y-6">
         <PageHeader
           title="Listings"
-        description="Browse properties from approved direct sources. Retired aggregator inventory is excluded."
-        icon={Building2}
+          description="Browse properties collected from approved realtor websites."
+          icon={Building2}
         />
         <DataError
           message={error instanceof Error ? error.message : "Unknown data error"}
@@ -79,27 +79,13 @@ export default async function ListingsPage({
     <div className="space-y-6">
       <PageHeader
         title="Listings"
-        description="Search and inspect all imported listings, including lifecycle, eligibility, enrichment, and location quality."
+        description="Search properties collected from approved realtor websites. Use the ? icons on filters for plain-language explanations."
         icon={Building2}
       />
-      <div className="flex gap-2">
-        <Button variant={view === "list" ? "default" : "outline"} asChild>
-          <Link href="/listings">
-            <List className="size-4" />
-            List
-          </Link>
-        </Button>
-        <Button variant={view === "map" ? "default" : "outline"} asChild>
-          <Link href="/listings?view=map">
-            <MapPinned className="size-4" />
-            Map
-          </Link>
-        </Button>
-      </div>
       <Suspense>
         <ListingFilters key={JSON.stringify(params)} options={options} />
       </Suspense>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Showing{" "}
           <span className="font-medium text-foreground">
@@ -107,6 +93,31 @@ export default async function ListingsPage({
           </span>{" "}
           of {formatNumber(listings.length)} listings
         </p>
+        <div className="inline-flex rounded-lg border p-0.5">
+          <Button
+            variant={view === "list" ? "secondary" : "ghost"}
+            size="sm"
+            asChild
+          >
+            <Link href="/listings" aria-current={view === "list" ? "page" : undefined}>
+              <List className="size-4" />
+              List
+            </Link>
+          </Button>
+          <Button
+            variant={view === "map" ? "secondary" : "ghost"}
+            size="sm"
+            asChild
+          >
+            <Link
+              href="/listings?view=map"
+              aria-current={view === "map" ? "page" : undefined}
+            >
+              <MapPinned className="size-4" />
+              Map
+            </Link>
+          </Button>
+        </div>
       </div>
       {view === "map" ? (
         filteredMarkers.length ? (
@@ -140,12 +151,12 @@ export default async function ListingsPage({
                 </EmptyMedia>
                 <EmptyTitle>
                   {listings.length === 0
-                    ? "No approved-source listings yet"
+                    ? "No listings imported yet"
                     : "No listings match"}
                 </EmptyTitle>
                 <EmptyDescription>
                   {listings.length === 0
-                    ? "Direct-source ingestion is being rebuilt. Approved sources are registered; inventory will appear after the first successful adapter import."
+                    ? "Approved realtor websites are registered. Listings will appear here after the first successful import."
                     : "Try clearing filters or widening the search."}
                 </EmptyDescription>
               </EmptyHeader>

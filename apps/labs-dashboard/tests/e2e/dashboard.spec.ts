@@ -112,10 +112,10 @@ test("navigation is consolidated and old routes redirect", async ({ page }) => {
   await expect(navigation).toBeVisible();
   const expected = {
     Overview: "/",
+    "Data quality": "/quality",
     Listings: "/listings",
     Sources: "/sources",
-    Enrichment: "/enrichment",
-    Quality: "/quality",
+    "AI enrichment": "/enrichment",
     Settings: "/settings",
     Prototypes: "/prototypes",
   };
