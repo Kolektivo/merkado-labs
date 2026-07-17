@@ -52,10 +52,13 @@ export function parseListingFilters(
     realtor: value("realtor"),
     amenity: value("amenity"),
     attribution: value("attribution"),
+    enrichmentStatus: value("enrichment"),
+    lifecycle: value("lifecycle"),
     minPrice: number("minPrice"),
     maxPrice: number("maxPrice"),
     coordinateQuality: value("coordQuality"),
     assignmentStatus: value("assignment"),
+    publicEligible: value("publicEligible"),
     sort: allowedSorts.includes(requestedSort) ? requestedSort : "recent",
     page: Math.max(1, Math.floor(number("page") ?? 1)),
   };
@@ -77,6 +80,12 @@ function matchesSharedFilters(
     amenities?: { label: string | null }[];
     attributionMethod?: string | null;
     unresolvedConflictCount?: number;
+    enrichmentStatus?: string | null;
+    status?: string | null;
+    firstObservedSoldAt?: string | null;
+    firstObservedRentedAt?: string | null;
+    firstObservedUnderContractAt?: string | null;
+    publicEligible?: boolean;
   },
   filters: ListingFilters,
 ) {
@@ -113,6 +122,17 @@ function matchesSharedFilters(
     (filters.attribution === "missing" && !listing.originalRealtorName) ||
     (filters.attribution === "conflicts" &&
       (listing.unresolvedConflictCount ?? 0) > 0);
+  const enrichment = listing.enrichmentStatus ?? "not_run";
+  const matchesEnrichment =
+    !filters.enrichmentStatus || enrichment === filters.enrichmentStatus;
+  const matchesLifecycle =
+    !filters.lifecycle ||
+    (filters.lifecycle === "sold" &&
+      (listing.status === "sold" || Boolean(listing.firstObservedSoldAt))) ||
+    (filters.lifecycle === "rented" && Boolean(listing.firstObservedRentedAt)) ||
+    (filters.lifecycle === "under_contract" &&
+      Boolean(listing.firstObservedUnderContractAt)) ||
+    (filters.lifecycle === "active" && listing.status === "active");
   const canApplyPrice =
     filters.minPrice === null && filters.maxPrice === null
       ? true
@@ -131,6 +151,10 @@ function matchesSharedFilters(
   const matchesAssignment =
     !filters.assignmentStatus ||
     listing.neighbourhoodAssignmentStatus === filters.assignmentStatus;
+  const matchesPublicEligible =
+    !filters.publicEligible ||
+    (filters.publicEligible === "eligible" && listing.publicEligible === true) ||
+    (filters.publicEligible === "excluded" && listing.publicEligible === false);
 
   return (
     matchesQuery &&
@@ -140,11 +164,14 @@ function matchesSharedFilters(
     matchesRealtor &&
     matchesAmenity &&
     matchesAttribution &&
+    matchesEnrichment &&
+    matchesLifecycle &&
     canApplyPrice &&
     matchesMin &&
     matchesMax &&
     matchesCoordQuality &&
     matchesAssignment
+    && matchesPublicEligible
   );
 }
 

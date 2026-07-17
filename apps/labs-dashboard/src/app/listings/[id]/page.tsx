@@ -14,11 +14,17 @@ import {
   MapPin,
   Maximize2,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceHistoryChart } from "@/components/price-history-chart";
+import { ProposalReviewControl } from "@/components/proposal-review-control";
+import {
+  describeConversionLabel,
+  isCurrentProductionBenchmark,
+} from "@/lib/data/price-observations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,12 +36,21 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  getLatestAiEnrichmentProposal,
+  getListingActivityEvents,
   getListingById,
   getPriceObservations,
 } from "@/lib/data/queries";
 import {
   formatCurrency,
   formatDate,
+  formatDateTime,
   titleCase,
 } from "@/lib/format";
 import {
@@ -77,6 +92,41 @@ function DetailItem({
   );
 }
 
+function ProvenanceLabel({
+  kind,
+}: {
+  kind:
+    | "source"
+    | "code"
+    | "ai_inferred"
+    | "ai_summarized"
+    | "system";
+}) {
+  const labels = {
+    source: "Source",
+    code: "Code extracted",
+    ai_inferred: "AI inferred",
+    ai_summarized: "AI summarized",
+    system: "System calculated",
+  } as const;
+  return (
+    <Badge variant="outline" className="font-normal">
+      {labels[kind]}
+    </Badge>
+  );
+}
+
+function asStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { id } = await params;
   let listing;
@@ -100,8 +150,14 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
   if (!listing) notFound();
 
   let history;
+  let activity;
+  let proposal;
   try {
-    history = await getPriceObservations(id);
+    [history, activity, proposal] = await Promise.all([
+      getPriceObservations(id),
+      getListingActivityEvents(id),
+      getLatestAiEnrichmentProposal(id),
+    ]);
   } catch (error) {
     return (
       <div className="space-y-6">
@@ -124,6 +180,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
     price: item.price,
     currency: item.currency,
   }));
+  const proposalBody = asRecord(proposal?.proposal);
+  const features = asRecord(proposalBody.features);
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,12 +192,20 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             Back to listings
           </Link>
         </Button>
-        <Button asChild>
-          <a href={sourceLink} target="_blank" rel="noreferrer">
-            Open original ad
-            <ArrowUpRight data-icon="inline-end" />
-          </a>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/enrichment?listingId=${listing.id}`}>
+              <Sparkles data-icon="inline-start" />
+              Run AI enrichment
+            </Link>
+          </Button>
+          <Button asChild>
+            <a href={sourceLink} target="_blank" rel="noreferrer">
+              Open original ad
+              <ArrowUpRight data-icon="inline-end" />
+            </a>
+          </Button>
+        </div>
       </div>
 
       <Card className="gap-0 py-0">
@@ -169,6 +235,12 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                   {titleCase(listing.propertyType)}
                 </Badge>
                 <Badge variant="secondary">{titleCase(listing.status)}</Badge>
+                <Badge variant="outline">
+                  Enrichment:{" "}
+                  {titleCase(
+                    (listing.enrichmentStatus ?? "not_run").replaceAll("_", " "),
+                  )}
+                </Badge>
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -190,10 +262,66 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             <div className="flex flex-col gap-5">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Asking price
+                  {listing.listingType === "rent"
+                    ? "Original asking rent"
+                    : "Original asking price"}
                 </p>
                 <p className="mt-1 font-mono text-3xl font-semibold tabular-nums">
-                  {formatCurrency(listing.currentPrice, listing.currency)}
+                  {formatCurrency(
+                    listing.originalPrice ?? listing.currentPrice,
+                    listing.originalCurrency ?? listing.currency,
+                  )}
+                </p>
+                {listing.listingType === "rent" ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Rental amount from the source ad
+                    {listing.pricePeriod
+                      ? ` · period: ${listing.pricePeriod}`
+                      : " · rental period not stated clearly on the source page"}
+                    . Not a sale price.
+                  </p>
+                ) : null}
+                {listing.benchmarkPriceXcg !== null ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    XCG benchmark{" "}
+                    <span className="font-mono tabular-nums">
+                      {formatCurrency(listing.benchmarkPriceXcg, "XCG")}
+                    </span>
+                    {" · "}
+                    {describeConversionLabel({
+                      conversionMethod: listing.conversionMethod,
+                      conversionProvider: listing.conversionProvider,
+                      conversionRate: listing.conversionRate,
+                      conversionRateAt: listing.conversionRateAt,
+                    })}
+                    {listing.conversionRateAt
+                      ? isCurrentProductionBenchmark(listing.conversionProvider)
+                        ? ` · ECB observation date ${formatDate(listing.conversionRateAt)}`
+                        : ` · historical calc ${formatDate(listing.conversionRateAt)}`
+                      : ""}
+                    . Indicative equivalent based on known information. Not a bank
+                    conversion quote, transaction rate, appraisal, or contractual amount.
+                    Original currency remains source truth.
+                    {!isCurrentProductionBenchmark(listing.conversionProvider) ? (
+                      <> Current listing still shows a non-production test/manual rate until an approved ECB recalculation import.</>
+                    ) : null}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    XCG benchmark pending conversion provenance.
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Status: {listing.status}
+                  {listing.publicEligible
+                    ? " · public-eligible"
+                    : listing.publicExclusionReason
+                      ? ` · excluded: ${listing.publicExclusionReason}`
+                      : " · not public-eligible"}
+                  {listing.sourceListedAt
+                    ? ` · source listed ${formatDate(listing.sourceListedAt)}`
+                    : ""}
+                  {` · first seen ${formatDate(listing.firstSeenAt)}`}
                 </p>
               </div>
               <Separator />
@@ -243,372 +371,678 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         </div>
       </Card>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
+      <Tabs defaultValue="overview" className="gap-4">
+        <TabsList variant="line" className="w-full flex-wrap justify-start">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="source">Source data</TabsTrigger>
+          <TabsTrigger value="ai">AI enrichment</TabsTrigger>
+          <TabsTrigger value="evidence">Evidence</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
+            <div className="flex min-w-0 flex-col gap-4">
+              <Card>
+                <CardHeader className="border-b">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Property information</CardTitle>
+                    <ProvenanceLabel kind="source" />
+                  </div>
+                  <CardDescription>
+                    Physical and listing details captured from the public ad.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <DetailItem
+                      label="Property type"
+                      value={titleCase(listing.propertyType)}
+                    />
+                    <DetailItem
+                      label="Bedrooms"
+                      value={listing.bedrooms ?? "Not available"}
+                    />
+                    <DetailItem
+                      label="Bathrooms"
+                      value={listing.bathrooms ?? "Not available"}
+                    />
+                    {listing.listingType === "rent" ? (
+                      <DetailItem
+                        label="Rental period"
+                        value={listing.pricePeriod ?? "Not stated / unclear"}
+                      />
+                    ) : null}
+                    <DetailItem
+                      label="Floor area"
+                      value={
+                        listing.floorAreaM2
+                          ? `${listing.floorAreaM2.toLocaleString()} m²`
+                          : "Not available"
+                      }
+                    />
+                    <DetailItem
+                      label="Lot area (raw)"
+                      value={
+                        listing.lotAreaValue !== null
+                          ? `${listing.lotAreaValue.toLocaleString()}${
+                              listing.lotAreaUnit
+                                ? ` ${listing.lotAreaUnit}`
+                                : " (unit unknown)"
+                            }`
+                          : "Not available"
+                      }
+                    />
+                    <DetailItem
+                      label="Resort / complex"
+                      value={listing.resort ?? "Not available"}
+                    />
+                    <DetailItem
+                      label="Street"
+                      value={
+                        [listing.street, listing.houseNumber]
+                          .filter(Boolean)
+                          .join(" ") || "Not available"
+                      }
+                    />
+                    <DetailItem
+                      label="Listing status"
+                      value={titleCase(listing.status)}
+                    />
+                    <DetailItem
+                      label="Source status"
+                      value={
+                        listing.sourceListingStatus
+                          ? titleCase(listing.sourceListingStatus)
+                          : "Not available"
+                      }
+                    />
+                  </dl>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="border-b">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="size-4" />
+                      Location & map verification
+                    </CardTitle>
+                    <ProvenanceLabel kind="system" />
+                  </div>
+                  <CardDescription>
+                    Website location compared with the map pin and inferred area.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <DetailItem
+                      label="Area on website"
+                      value={listing.neighbourhood?.name ?? "Not available"}
+                    />
+                    <DetailItem
+                      label="Area from map"
+                      value={
+                        listing.inferredNeighbourhood?.name ?? "Not available"
+                      }
+                    />
+                    <DetailItem
+                      label="Location match"
+                      value={
+                        ASSIGNMENT_STATUS_LABELS[
+                          listing.neighbourhoodAssignmentStatus
+                        ]
+                      }
+                    />
+                    <DetailItem
+                      label="Map coordinates"
+                      value={
+                        listing.latitude !== null && listing.longitude !== null
+                          ? `${listing.latitude.toFixed(5)}, ${listing.longitude.toFixed(5)}`
+                          : "Not available"
+                      }
+                    />
+                    <DetailItem
+                      label="Pin quality"
+                      value={COORDINATE_QUALITY_LABELS[listing.coordinateQuality]}
+                    />
+                    <DetailItem
+                      label="Coordinates source"
+                      value={listing.coordinatesSource ?? "Not available"}
+                    />
+                  </dl>
+                </CardContent>
+              </Card>
+
+              {listing.amenities.length ? (
+                <Card>
+                  <CardHeader className="border-b">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle>Amenities</CardTitle>
+                      <ProvenanceLabel kind="code" />
+                    </div>
+                    <CardDescription>
+                      Labels come from source amenity codes when available.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    {listing.amenities.map((amenity) => (
+                      <Badge
+                        key={`${amenity.code}-${amenity.label ?? "unlabeled"}`}
+                        variant={amenity.label ? "secondary" : "outline"}
+                      >
+                        {amenity.label ?? `Code ${amenity.code}`}
+                      </Badge>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              <Card>
+                <CardHeader className="border-b">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Price over time</CardTitle>
+                    <ProvenanceLabel kind="system" />
+                  </div>
+                  <CardDescription>
+                    Distinct asking amounts only. Identical re-imports are folded.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {history.length ? (
+                    <div className="flex flex-col gap-4">
+                      <PriceHistoryChart data={chartHistory} />
+                      <Separator />
+                      <div className="flex flex-col gap-3">
+                        {history.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-3 text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              {formatDate(item.observedAt)}
+                              {(item.suppressedDuplicateCount ?? 0) > 0
+                                ? ` · +${item.suppressedDuplicateCount} identical re-obs`
+                                : ""}
+                            </span>
+                            <span className="font-mono font-medium">
+                              {formatCurrency(item.price, item.currency)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No price history yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <aside className="flex flex-col gap-4 xl:sticky xl:top-6">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Tracking summary</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border bg-muted/40 p-3">
+                      <Eye className="size-4 text-muted-foreground" />
+                      <p className="mt-2 font-mono text-xl font-semibold">
+                        {listing.observationCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Times seen</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/40 p-3">
+                      <History className="size-4 text-muted-foreground" />
+                      <p className="mt-2 font-mono text-xl font-semibold">
+                        {listing.priceObservationCount}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Price records
+                      </p>
+                    </div>
+                  </div>
+                  <dl className="grid gap-3">
+                    <DetailItem
+                      label="Website listing ID"
+                      value={
+                        <span className="font-mono">#{listing.externalId}</span>
+                      }
+                    />
+                    <DetailItem
+                      label="ID confidence"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          <ShieldCheck className="size-4 text-muted-foreground" />
+                          {titleCase(listing.externalIdStatus)}
+                        </span>
+                      }
+                    />
+                    <DetailItem
+                      label="First seen"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          <CalendarDays className="size-4 text-muted-foreground" />
+                          {formatDate(listing.firstSeenAt)}
+                        </span>
+                      }
+                    />
+                    <DetailItem
+                      label="Last seen"
+                      value={formatDate(listing.lastSeenAt)}
+                    />
+                  </dl>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="size-4" />
+                    Source & attribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <p className="text-sm leading-relaxed">
+                    Found via {listing.source.name}
+                    {listing.originalRealtorName
+                      ? `, originally listed by ${listing.originalRealtorName}`
+                      : ", original realtor not attributed yet"}
+                    .
+                  </p>
+                  <dl className="grid gap-3">
+                    <DetailItem label="Aggregator" value={listing.source.name} />
+                    <DetailItem
+                      label="Original realtor"
+                      value={listing.originalRealtorName ?? "Missing attribution"}
+                    />
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="source" className="space-y-4">
           <Card>
             <CardHeader className="border-b">
-              <CardTitle>Property information</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Source description</CardTitle>
+                <ProvenanceLabel kind="source" />
+              </div>
               <CardDescription>
-                The physical and listing details captured from the public ad.
+                Plain text from the source listing. Never rendered as HTML.
               </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {listing.description ? (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                  {listing.description}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No source description stored.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Source facts</CardTitle>
+                <ProvenanceLabel kind="source" />
+              </div>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailItem
-                  label="Property type"
-                  value={titleCase(listing.propertyType)}
+                  label="Original price"
+                  value={formatCurrency(
+                    listing.originalPrice ?? listing.currentPrice,
+                    listing.originalCurrency ?? listing.currency,
+                  )}
                 />
                 <DetailItem
-                  label="Bedrooms"
-                  value={listing.bedrooms ?? "Not available"}
-                />
-                <DetailItem
-                  label="Floor area"
-                  value={
-                    listing.floorAreaM2
-                      ? `${listing.floorAreaM2.toLocaleString()} m²`
-                      : "Not available"
-                  }
-                />
-                <DetailItem
-                  label="Lot area (raw)"
-                  value={
-                    listing.lotAreaValue !== null
-                      ? `${listing.lotAreaValue.toLocaleString()}${
-                          listing.lotAreaUnit
-                            ? ` ${listing.lotAreaUnit}`
-                            : " (unit unknown)"
-                        }`
-                      : "Not available"
-                  }
-                />
-                <DetailItem
-                  label="Resort / complex"
-                  value={listing.resort ?? "Not available"}
-                />
-                <DetailItem
-                  label="Street"
-                  value={
-                    [listing.street, listing.houseNumber]
-                      .filter(Boolean)
-                      .join(" ") || "Not available"
-                  }
-                />
-                <DetailItem
-                  label="Listing status"
-                  value={titleCase(listing.status)}
-                />
-                <DetailItem
-                  label="Source status"
+                  label="Source listing status"
                   value={
                     listing.sourceListingStatus
                       ? titleCase(listing.sourceListingStatus)
                       : "Not available"
                   }
                 />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="size-4" />
-                Location & map verification
-              </CardTitle>
-              <CardDescription>
-                Website location compared with the map pin and inferred area.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <DetailItem
-                  label="Area on website"
-                  value={listing.neighbourhood?.name ?? "Not available"}
-                />
-                <DetailItem
-                  label="Area from map"
+                  label="First observed sold"
                   value={
-                    listing.inferredNeighbourhood?.name ?? "Not available"
+                    listing.firstObservedSoldAt
+                      ? formatDateTime(listing.firstObservedSoldAt)
+                      : "—"
                   }
                 />
                 <DetailItem
-                  label="Location match"
+                  label="First observed rented"
                   value={
-                    ASSIGNMENT_STATUS_LABELS[
-                      listing.neighbourhoodAssignmentStatus
-                    ]
+                    listing.firstObservedRentedAt
+                      ? formatDateTime(listing.firstObservedRentedAt)
+                      : "—"
                   }
                 />
                 <DetailItem
-                  label="Map coordinates"
+                  label="First observed under contract"
                   value={
-                    listing.latitude !== null && listing.longitude !== null
-                      ? `${listing.latitude.toFixed(5)}, ${listing.longitude.toFixed(5)}`
-                      : "Not available"
+                    listing.firstObservedUnderContractAt
+                      ? formatDateTime(listing.firstObservedUnderContractAt)
+                      : "—"
                   }
                 />
                 <DetailItem
-                  label="Pin quality"
-                  value={COORDINATE_QUALITY_LABELS[listing.coordinateQuality]}
-                />
-                <DetailItem
-                  label="Coordinates source"
-                  value={listing.coordinatesSource ?? "Not available"}
-                />
-              </dl>
-            </CardContent>
-          </Card>
-
-          {listing.amenities.length ? (
-            <Card>
-              <CardHeader className="border-b">
-                <CardTitle>Amenities</CardTitle>
-                <CardDescription>
-                  Labels come from CaribbeanHouseHunt map filters. Unlabeled
-                  codes are shown by number only.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {listing.amenities.map((amenity) => (
-                  <Badge
-                    key={`${amenity.code}-${amenity.label ?? "unlabeled"}`}
-                    variant={amenity.label ? "secondary" : "outline"}
-                  >
-                    {amenity.label ?? `Code ${amenity.code}`}
-                  </Badge>
-                ))}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {listing.description ? (
-            <Card>
-              <CardHeader className="border-b">
-                <CardTitle>Description</CardTitle>
-                <CardDescription>
-                  Text captured from the CaribbeanHouseHunt bulk payload.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {listing.description}
-                </p>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>Price over time</CardTitle>
-              <CardDescription>
-                Prices recorded each time this listing appeared in a harvest.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {history.length ? (
-                <div className="flex flex-col gap-4">
-                  <PriceHistoryChart data={chartHistory} />
-                  <Separator />
-                  <div className="flex flex-col gap-3">
-                    {history.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-muted-foreground">
-                          {formatDate(item.observedAt)}
-                        </span>
-                        <span className="font-mono font-medium">
-                          {formatCurrency(item.price, item.currency)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No price history yet — we have only seen this listing once, or
-                  without a price.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-6">
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>Tracking summary</CardTitle>
-              <CardDescription>
-                How often this ad has appeared in our harvests.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <Eye className="size-4 text-muted-foreground" />
-                  <p className="mt-2 font-mono text-xl font-semibold">
-                    {listing.observationCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Times seen</p>
-                </div>
-                <div className="rounded-lg border bg-muted/40 p-3">
-                  <History className="size-4 text-muted-foreground" />
-                  <p className="mt-2 font-mono text-xl font-semibold">
-                    {listing.priceObservationCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Price records</p>
-                </div>
-              </div>
-              <dl className="grid gap-3">
-                <DetailItem
-                  label="Website listing ID"
+                  label="Source status date"
                   value={
-                    <span className="font-mono">#{listing.externalId}</span>
+                    listing.sourceStatusDate
+                      ? formatDate(listing.sourceStatusDate)
+                      : "—"
                   }
                 />
                 <DetailItem
-                  label="ID confidence"
+                  label="Source URL"
                   value={
-                    <span className="inline-flex items-center gap-2">
-                      <ShieldCheck className="size-4 text-muted-foreground" />
-                      {titleCase(listing.externalIdStatus)}
-                    </span>
-                  }
-                />
-                <DetailItem
-                  label="First seen"
-                  value={
-                    <span className="inline-flex items-center gap-2">
-                      <CalendarDays className="size-4 text-muted-foreground" />
-                      {formatDate(listing.firstSeenAt)}
-                    </span>
-                  }
-                />
-                <DetailItem
-                  label="Last seen"
-                  value={formatDate(listing.lastSeenAt)}
-                />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>Data quality</CardTitle>
-              <CardDescription>
-                Review and completeness signals for this record.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-3">
-                <DetailItem
-                  label="Reviewed property link"
-                  value={
-                    listing.propertyAssetId
-                      ? "Yes — linked after review"
-                      : "Not linked yet"
-                  }
-                />
-                <DetailItem
-                  label="Data completeness"
-                  value={
-                    listing.dataCompletenessScore !== null
-                      ? `${listing.dataCompletenessScore}%`
-                      : "Not available"
-                  }
-                />
-                <DetailItem
-                  label="Source conflicts"
-                  value={
-                    listing.unresolvedConflictCount > 0
-                      ? `${listing.unresolvedConflictCount} unresolved`
-                      : "None recorded"
-                  }
-                />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="size-4" />
-                Source & attribution
-              </CardTitle>
-              <CardDescription>
-                Where the listing came from and who originally published it.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <p className="text-sm leading-relaxed">
-                Found via {listing.source.name}
-                {listing.originalRealtorName
-                  ? `, originally listed by ${listing.originalRealtorName}`
-                  : ", original realtor not attributed yet"}
-                .
-              </p>
-              <dl className="grid gap-3">
-                <DetailItem label="Aggregator" value={listing.source.name} />
-                <DetailItem
-                  label="Original realtor"
-                  value={listing.originalRealtorName ?? "Missing attribution"}
-                />
-                <DetailItem
-                  label="Realtor domain"
-                  value={listing.originalRealtorDomain ?? "Not available"}
-                />
-                <DetailItem
-                  label="Attribution method"
-                  value={listing.attributionMethod ?? "Not available"}
-                />
-                <DetailItem
-                  label="Attribution observed"
-                  value={
-                    listing.attributionObservedAt
-                      ? formatDate(listing.attributionObservedAt)
-                      : "Not available"
-                  }
-                />
-              </dl>
-              <Separator />
-              <div className="flex flex-col items-start gap-1">
-                <Button variant="link" className="h-auto px-0" asChild>
-                  <a
-                    href={listing.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open CaribbeanHouseHunt map
-                    <ArrowUpRight data-icon="inline-end" />
-                  </a>
-                </Button>
-                {listing.originalRealtorUrl ? (
-                  <Button
-                    variant="link"
-                    className="h-auto max-w-full justify-start px-0"
-                    asChild
-                  >
                     <a
-                      href={listing.originalRealtorUrl}
+                      href={listing.sourceUrl}
+                      className="break-all underline underline-offset-2"
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Open original realtor listing
-                      <ArrowUpRight data-icon="inline-end" />
+                      {listing.sourceUrl}
                     </a>
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No original realtor URL stored.
-                  </p>
-                )}
-              </div>
+                  }
+                />
+              </dl>
             </CardContent>
           </Card>
-        </aside>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-4">
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>AI enrichment proposal</CardTitle>
+                    <ProvenanceLabel kind="ai_summarized" />
+                  </div>
+                  <CardDescription>
+                    Proposals never overwrite source price, currency, status,
+                    dates, coordinates, or address.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link href={`/enrichment?listingId=${listing.id}`}>
+                    <Sparkles data-icon="inline-start" />
+                    Enrich this listing
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <DetailItem
+                  label="Enrichment status"
+                  value={titleCase(
+                    (listing.enrichmentStatus ?? "not_run").replaceAll("_", " "),
+                  )}
+                />
+                <DetailItem
+                  label="Last run"
+                  value={
+                    listing.enrichmentLastRunAt
+                      ? formatDateTime(listing.enrichmentLastRunAt)
+                      : "Never"
+                  }
+                />
+                <DetailItem
+                  label="Input checksum"
+                  value={
+                    <span className="break-all font-mono text-xs">
+                      {listing.enrichmentLastInputChecksum ?? "—"}
+                    </span>
+                  }
+                />
+              </dl>
+
+              {!proposal ? (
+                <p className="text-sm text-muted-foreground">
+                  No AI proposal yet for this listing.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge>
+                      {titleCase(proposal.status.replaceAll("_", " "))}
+                    </Badge>
+                    <Badge variant="outline">{proposal.model}</Badge>
+                    <Badge variant="secondary">{proposal.promptVersion}</Badge>
+                    <Badge variant="outline">
+                      Review: {titleCase(proposal.reviewStatus.replaceAll("_", " "))}
+                    </Badge>
+                    {proposal.confidence !== null ? (
+                      <Badge variant="outline">
+                        Confidence {(proposal.confidence * 100).toFixed(0)}%
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {proposal.errorMessage ? (
+                    <p className="text-sm text-destructive">
+                      {proposal.errorMessage}
+                    </p>
+                  ) : null}
+                  <ProposalReviewControl
+                    proposalId={proposal.id}
+                    initialStatus={proposal.reviewStatus}
+                    initialNotes={proposal.reviewNotes}
+                  />
+
+                  {proposalBody.concise_summary ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium">Concise summary</h3>
+                        <ProvenanceLabel kind="ai_summarized" />
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                        {String(proposalBody.concise_summary)}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {proposalBody.ai_description ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium">AI description</h3>
+                        <ProvenanceLabel kind="ai_summarized" />
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                        {String(proposalBody.ai_description)}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    <DetailItem
+                      label="Neighbourhood candidate"
+                      value={
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {proposalBody.neighbourhood_candidate
+                            ? String(proposalBody.neighbourhood_candidate)
+                            : "—"}
+                          <ProvenanceLabel kind="ai_inferred" />
+                        </span>
+                      }
+                    />
+                    <DetailItem
+                      label="Property type candidate"
+                      value={
+                        proposalBody.normalized_property_type_candidate
+                          ? String(
+                              proposalBody.normalized_property_type_candidate,
+                            )
+                          : "—"
+                      }
+                    />
+                    <DetailItem
+                      label="Key strengths"
+                      value={
+                        asStringList(proposalBody.key_strengths).join(" · ") ||
+                        "—"
+                      }
+                    />
+                    <DetailItem
+                      label="Trade-offs"
+                      value={
+                        asStringList(proposalBody.trade_offs).join(" · ") || "—"
+                      }
+                    />
+                    <DetailItem
+                      label="Missing important fields"
+                      value={
+                        asStringList(
+                          proposalBody.missing_important_fields,
+                        ).join(" · ") || "—"
+                      }
+                    />
+                    <DetailItem
+                      label="Fields needing review"
+                      value={
+                        asStringList(
+                          proposalBody.fields_requiring_human_review,
+                        ).join(" · ") || "—"
+                      }
+                    />
+                  </dl>
+
+                  {Object.keys(features).length ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium">Feature assessments</h3>
+                        <ProvenanceLabel kind="ai_inferred" />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(features).map(([key, raw]) => {
+                          const assessment = asRecord(raw);
+                          return (
+                            <Badge key={key} variant="secondary">
+                              {key.replaceAll("_", " ")}:{" "}
+                              {String(assessment.value ?? "unknown")}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="evidence" className="space-y-4">
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>Evidence metadata</CardTitle>
+                <ProvenanceLabel kind="source" />
+              </div>
+              <CardDescription>
+                Raw HTML / storage paths are admin-only. Public view shows
+                source text and checksums only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
+                Observation row metadata and private Storage evidence require the
+                Labs admin path. Use the AI enrichment control panel with an
+                admin secret for privileged operations.
+              </p>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <DetailItem
+                  label="Source description checksum"
+                  value={
+                    <span className="break-all font-mono text-xs">
+                      {listing.sourceDescriptionChecksum ?? "Not stored"}
+                    </span>
+                  }
+                />
+                <DetailItem
+                  label="Enrichment input checksum"
+                  value={
+                    <span className="break-all font-mono text-xs">
+                      {listing.enrichmentLastInputChecksum ?? "Not stored"}
+                    </span>
+                  }
+                />
+              </dl>
+              {listing.description ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">
+                    Source description (listing row)
+                  </h3>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {listing.description}
+                  </p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="timeline" className="space-y-4">
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <History className="size-4" />
+                  Listing activity
+                </CardTitle>
+                <ProvenanceLabel kind="system" />
+              </div>
+              <CardDescription>
+                Immutable timeline events for this source listing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No activity events yet for this listing.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {activity.map((event) => (
+                    <li
+                      key={event.id}
+                      className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium">
+                          {titleCase(event.eventType.replaceAll("_", " "))}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(event.eventAt)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {titleCase(event.derivationType.replaceAll("_", " "))}
+                        {event.notes ? ` · ${event.notes}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

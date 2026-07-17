@@ -1,103 +1,95 @@
-# 01 — Merkado Live Product State
+# 01 - Merkado Live Product State
 
-**Purpose:** ground truth about what exists on merkado.cw today. Anything not marked `[LIVE]` here is not built. Do not describe the product as more than this in any deck, application, or demo.
+**Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
+**Last updated:** July 17, 2026
 
-**Tag legend:** `[LIVE]` built today · `[PLANNED]` future idea in v1 docs, not built · `[RISK]` concern.
+## 1. Production today `[LIVE]`
 
----
+Merkado is a Curaçao vehicle marketplace aggregator. Users browse cars and contact sellers through WhatsApp.
 
-## 1. What Merkado is today
+Live production does **not** currently include:
 
-A vehicle marketplace aggregator for Curaçao. It solves that there is no single place to search used cars on the island (they are scattered across dealer sites, classifieds, and dozens of Facebook groups with no filters).
+- real-estate listings;
+- property search or property detail pages;
+- Property Passports;
+- property checkout, escrow, title transfer, or Kadaster verification;
+- on-chain property records;
+- property market reports, agents, or alerts.
 
-**Current user flow `[LIVE]`:** browse/search listings on merkado.cw, then contact the seller directly on WhatsApp. The deal happens offline.
+## 2. Property work in Labs `[LABS]`
 
-**No on-platform transactions `[LIVE reality]`:** no payments, no checkout, no escrow, no title transfer, no logistics service. This matters because the application implies otherwise.
+The isolated Labs project currently has:
 
-**Listing types `[LIVE]`:**
-- Scraped listings (auto-imported from external car sites)
-- Manual listings (users posting their own car)
+- property, source, listing, observation, price, neighbourhood, signal, and pilot-contract tables;
+- immutable observation patterns + listing activity events;
+- private raw HTML evidence (`listing-raw-evidence`) for RE/MAX catalog;
+- AI enrichment jobs/proposals with Labs human review fields (service-role only);
+- Property Search Request / Agent entitlement / Match Report preview tables;
+- geospatial neighbourhood boundaries and assignment;
+- Labs dashboard with ops pages, public browse preview, Search Request / What Fits Me / Agent previews;
+- RE/MAX Curaçao as the first end-to-end direct-source adapter (220 listings;
+  evidence refresh 2026-07-17; still unscheduled);
+- Keller Williams adapter v0.1 with **40 Labs listings** imported 2026-07-17
+  (Crawl-Delay 20, sequential, unscheduled);
+- Moret Real Estate adapter v0.1 with **5 Labs listings** (bounded WPEstate import);
+- AI enrichment: 25 RE/MAX listings enriched 2026-07-17 (gpt-4.1-mini; proposals only);
+- Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`).
 
-## 2. Market context (Curaçao vehicles)
+The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
+active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
+after a verified rollback export. RE/MAX remains manual and unscheduled.
 
-- Car-dependent island, ~156,000 people (2023 Census).
-- Used cars dominate (new cars carry ~36% effective import tax).
-- Popular brands: Toyota (Hilux, RAV4, Corolla), Hyundai, Kia, Chevrolet, Suzuki, Honda, US pickups, Jeeps.
-- Currency: Caribbean Guilder (XCG, "Cg"), replaced ANG/NAf in 2025. Pegged 1 USD = 1.79 XCG. Display Cg primary, USD in parentheses.
-- Facebook is the main private-sale channel (~107,000 island users), scattered across unsearchable groups. That fragmentation is the gap Merkado fills.
-- Proven comparable: CaribbeanHouseHunt.com runs this exact aggregator model for real estate on Curaçao (45+ realtor sites, one map, 1,500+ listings). Validates the playbook and is the closest PropTech competitor.
+## 3. Current property MVP direction `[WIP]`
 
-## 3. Tech stack (actual, in production)
+Approved direct sources:
 
-| Layer | Technology | Notes |
-|---|---|---|
-| Frontend + SSR | Next.js (App Router) on Vercel | Server-rendered for SEO |
-| Database | Supabase (Postgres) | Auth, storage, RLS |
-| Scraping + automation | n8n (cloud) | One workflow per source |
-| AI enrichment | GPT-5-mini via OpenAI node in n8n | Single pass, batches of 5 |
-| Image storage | Supabase Storage | Manual uploads only; scraped images kept as external URLs |
-| Search | Postgres full-text search | Fine for current volume |
-| Analytics | Plausible | Privacy-friendly |
+1. Keller Williams Curaçao
+2. Sotheby's International Realty
+3. RE/MAX
+4. Moret Real Estate
+5. Monumentenzorg Curaçao
 
-**Frontend status `[LIVE]`:** built and audited (8.5/10 production readiness, security hardening applied: rate limiting, CSRF, ownership checks, input validation).
+Core MVP rules:
 
-**NOT in the live stack:** LangGraph, CrewAI, Python ingestion pipeline, vector database (pgvector/Pinecone), any blockchain. These appear in Luuk's application but are not part of v1.
+- Build one direct source adapter per website.
+- Run adapters manually and in bounded mode during validation.
+- Show only active listings with a known positive price.
+- Preserve the original amount and original currency.
+- Display a benchmark price in XCG with disclaimer: indicative equivalent based on known information.
+- Convert USD at `1 USD = 1.79 XCG`.
+- Convert EUR using ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`).
+- Show `Indicative equivalent based on known information.` for converted values.
+- Preserve source listing dates separately from Merkado detection dates.
+- Append lifecycle events instead of only overwriting current values.
+- Keep `sold` separate from `removed`.
+- Treat the Property Passport as an off-chain activity log.
 
-**Payments `[PLANNED]`:** none integrated. Viable Curaçao options for later: Sentoo (local bank A2A, ~1% capped) and CX Pay (cards). Stripe does not operate in Curaçao.
+## 4. Not built yet
 
-## 4. Data pipeline (actual n8n setup)
+- Production-ready adapters for all five sources (KW/Moret/Monumentenzorg/Sotheby's incomplete)
+- Direct-source scheduled ingestion
+- Public property browse/detail UI on `merkado.cw` (Labs `/browse` preview exists)
+- Reliable multi-source property entity resolution
+- Confirmed sale prices
+- Automated valuation or sold-probability models
+- Weekly intelligence reports
+- Production What Fits Me / Merkado Agent (Labs preview only)
+- Matching-listing email notifications / real billing
 
-| Job | Schedule | Status |
-|---|---|---|
-| Scrape CuraCars, SeriDomi, AutosOpCuracao, Autobedrijf Willemstad | Daily 1:00 AM UTC | `[LIVE]` |
-| Scrape Economic Auto Center | Hourly (rate-limited, 4s delay) | `[LIVE]` |
-| AI Enrichment (normalize + fill fields + validate) | Daily 2:00 AM UTC, GPT-5-mini | `[LIVE]` |
-| Freshness Check (expire stale listings) | Daily 2:30 AM UTC | Built, inactive |
-| Tier 2 sources (BookingCarsCuracao, CAOCARS) | TBD | Not built |
+## 5. Required accuracy language
 
-**Dedup today `[LIVE reality]`:** each scraper does same-source dedup. A `fingerprint` hash (make + model + year + key fields) and image perceptual hashes (`phash`) are generated and stored, but cross-source dedup is NOT actively queried. So the same car on two sites can appear twice. Known limitation.
+Use:
 
-**Live inventory:** ~150-200 aggregated listings across 5 sources, plus 20-30 manually seeded.
+- `Experimental Merkado Labs dataset, separate from merkado.cw.`
+- `Direct-source property ingestion is being built.`
+- `The Passport is an off-chain listing activity log.`
+- `Converted prices are indicative, not contractual.`
+- `Last known listing price. The actual sale price may differ.`
 
-**Reframe worth remembering:** this pipeline (n8n scrape → GPT-5-mini structure + validate → Supabase, with fingerprint/phash) is effectively a simplified "Passport" already running for cars. Strongest honest proof point for the v2 pitch.
+Never claim:
 
-## 5. Confirmed data sources (cars)
-
-Tier 1 (built, running): CuraCars (~49-60), SeriDomi (~15-25), Autobedrijf Willemstad (36), AutosOpCuracao (26), Economic.cw (large).
-Tier 2 (not built): BookingCarsCuracao (~13), CAOCARS (JS-heavy, needs check).
-Facebook groups: very active but DO NOT scrape; manual seed only.
-Confirmed scam (excluded): CuracaoCars.com / CarroCarros network.
-
-## 6. Database schema (Supabase, actual `[LIVE]`)
-
-Core rule: manual listings belong to users, scraped listings belong to sources.
-
-- `listings` — one row per car. listing_origin ('manual'/'scraped'), seller_id, source_id, make, model, year, price, currency, mileage, transmission, fuel_type, body_type, condition, slug (unique), status ('active'/'sold'/'expired'/'removed'), fingerprint, last_seen_at, source_url. Only status='active' is public.
-- `listing_images` — many per listing. storage_path (manual) or external_url (scraped), is_primary, phash. At least one URL required. Unique (listing_id, external_url).
-- `listing_details` — 1:1 specs (trim, drive_type, colors, engine_size, seats, validated_at). validated_at marks AI-processed rows.
-- `listing_features` — feature tags by category.
-- `listing_favorites` — favorites with count triggers.
-- `listing_reports` — moderation reports.
-- `sources`, `listing_sources` — source tracking + many-to-many.
-- `users` — WhatsApp number, seller type, auth provider.
-- `saved_searches` — alert criteria.
-- `contact_events` — WhatsApp/phone/source-link click analytics.
-
-Enforced value formats: body_type (Hatchback, Sedan, SUV & Crossover, Pickup & Truck, Van & MPV, Convertible); fuel_type (gasoline/diesel/hybrid/electric); transmission (automatic/manual); condition (like_new/good/okay/needs_repair); drive_type (FWD/RWD/AWD/4WD).
-
-## 7. Monetization (actual v1 model)
-
-Listing-based, not transaction-based. Perk tiers (Boost, Premium) with ~23 perks: featured placement, extended expiry, verified badge, etc. `[PLANNED/partial]`
-
-**Note:** the "verified / structural check" perk is "needs build" in the monetization doc. Inspections, escrow, and title transfer are NOT delivered services today.
-
-## 8. What is explicitly NOT built (v1)
-
-- On-platform payments / checkout / escrow (any asset)
-- Inspection / structural check as a delivered service
-- Title transfer or logistics service
-- Rentals (cars or property)
-- Any real estate functionality
-- Any blockchain / tokenization / wallet
-- Vector DB / entity resolution beyond hash matching
-- Cross-source dedup (generated but not queried)
+- verified ownership;
+- confirmed sale price;
+- automated property identity resolution;
+- on-chain Property Passports;
+- a CHH partnership or active CHH dependency.

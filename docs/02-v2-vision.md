@@ -1,77 +1,139 @@
-# 02 — Merkado V2 Vision
+# 02 - Merkado V2 Vision
 
-**Purpose:** the direction the business is designed around, from Luuk's application, deck, and workflow diagram. Live product ground truth remains `01-live-product-state.md`. Experimental Labs progress (harvest, schema, dashboard) is documented in `07`–`09` and must not be described as live on merkado.cw.
+**Purpose:** Long-term product direction, separate from current live-product claims.
 
-**Tag legend:** `[WIP]` being scoped · `[LABS]` built in Merkado Labs only · `[RISK]` concern.
+## 1. Core direction
 
----
+Merkado grows from a Curaçao vehicle marketplace into a trusted hard-asset discovery platform. The near-term PropTech advantage is accurate, source-traceable property data with structured search, transparent price provenance, and durable activity history.
 
-## 1. Core idea
+The property MVP is not blockchain-first. It is data-quality first.
 
-Merkado becomes a premium hybrid ecosystem for hard assets, with a two-tier structure and an AI-verified trust layer (the "Passport") underneath both tiers.
+The longer-term product should help a user move from an unclear housing need to a structured Property Search Request, then continuously match that request against new and changed listings through a paid Merkado Agent.
 
-## 2. Two-tier architecture
+## 2. Product layers
 
-**Tier 1 — public marketplace (open to all) `[WIP]`.** High-volume, top-of-funnel. AutoTech (live, cars) expanding to PropTech (property). Every listing meant to carry a Passport. Intended revenue: listing, lead, escrow fees.
+### Public marketplace
 
-**Tier 2 — gated WealthTech (accredited investors only) `[WIP]`.** Fractional ownership via SPV + permissioned tokens, stablecoin payouts, behind a KYC/AML/accreditation wall. Intended revenue: origination, AUM, carry.
+Cars are live. Property is next.
 
-**The flywheel:** affluent buyers reveal themselves by buying on Tier 1, then get funneled into Tier 2 verification. Claimed edge: near-zero investor acquisition cost.
+The property marketplace will aggregate selected direct realtor sources, normalize searchable fields, show transparent price information, and direct users to the original realtor or approved contact flow.
 
-### The intelligence layer between both tiers
+### Guided discovery
 
-The intelligence layer is not a secondary analytics feature. It is the core data system that makes the marketplace more useful over time and makes the Passport and future asset products possible. Its two continuous jobs are:
+Users who already know what they want can create a Property Search Request directly.
 
-- [x] **Harvest data:** `[LABS]` collect public listing and market data, preserve source history, normalize it, and turn fragmented records into structured asset data.
-- [~] **Create a knowledge graph:** `[LABS]` partial — connect listings, neighbourhoods, sources, prices, contracts, and market signals in Supabase; canonical asset linking and production Passport UI remain open.
+Users who are not yet sure can use **What Fits Me?**, a short guided quiz or conversational intake. It helps translate their situation into a practical search profile.
 
-For the 21-day buildathon, this should be implemented as a lightweight relational knowledge graph in Supabase, not a separate graph database. Dedicated graph infrastructure is only justified later if source count, ownership chains, or relationship queries become materially more complex. See `07-intelligence-layer.md`.
+Possible optional inputs include:
 
-## 3. The asset-class arc
+- available funds or approximate down-payment range;
+- approximate income or comfortable monthly housing budget;
+- household and family needs;
+- preferred locations and property types;
+- bedrooms, outdoor space, accessibility, parking, and other needs;
+- purchase timeline;
+- willingness and capacity to renovate or perform maintenance;
+- must-haves, preferences, and dealbreakers.
 
-`AutoTech (live)` → `PropTech (this sprint)` → `WealthTech (gated future)`.
+The output is a recommended search range and property profile, not mortgage approval, financial advice, or a guarantee of affordability.
 
-Monetization sub-arc:
-1. car purchase [live today]
-2. car purchase + rent (fractional vehicles, rental income)
-3. real-estate purchase + rent (fractional property + tokenized rent streams)
+### Merkado Agent
 
-Rationale: cars are movable personal property (simple, high-velocity, good to prove marketplace trust). Real estate is immovable real property (larger, more trust-sensitive, the natural home for the Passport and fractionalization). No foreign-ownership limits on Curaçao property.
+After creating a Property Search Request, the user can activate a paid monthly **Merkado Agent** subscription.
 
-## 4. The Property Passport (Pasaporte di Kas)
+The first version sends relevant matches by email. Each match includes:
 
-The central innovation. A standardized, AI-generated, verifiable digital record per property:
-- verified ownership / title status and encumbrances (via Kadaster)
-- consolidated price and rent history (ends "same house, three prices")
-- independent AI valuation + rent/ROI estimate
-- legal / zoning / structural flags
-- a transparency confidence score
+- the matching listing;
+- why it matches the user's request;
+- important trade-offs for that specific user;
+- a dedicated Match Report with evidence-backed context;
+- actions to view the original listing or request professional help through an approved referral.
 
-Intended pipeline (Luuk's diagram, 5 agents): Crawler → Entity Resolution (vector DB) → Reconcile (vs Kadaster title/sales) → Valuation (AVM: price, rent, ROI) → Risk & Compliance (legal/zoning flags, KYC/AML). Human review on exceptions.
+The Agent does not purchase, negotiate, contact realtors, or make decisions on the user's behalf.
 
-The Passport is the user-facing record produced by the intelligence layer. The knowledge graph is the underlying system that connects evidence and relationships; the Passport is the clear, confidence-scored view presented to a user. The same record that improves PropTech trust can later support a Tier 2 asset product.
+### Intelligence layer
 
-**Reality note `[RISK]`:** only the crawl + a simplified enrichment step exist today, for cars. Entity resolution (vector DB), Kadaster reconciliation, AVM, and the risk agent are all new builds. See `04-reality-check.md`.
+The system preserves enough history to explain:
 
-## 5. Claimed market opportunity (planning estimates, verify before binding use)
+- when a listing appeared;
+- when the source says it was originally listed;
+- how the asking price changed;
+- which currency was original;
+- which conversion rate was used;
+- when the source marked it sold;
+- when it disappeared or was removed;
+- which source and observation support each fact.
 
-- No MLS, no published sales data, listings across 40+ sites, same house at different prices.
-- Median Curaçao home ~USD 650k, roughly 40x median local annual income.
-- ~9,000-person social-housing (FKP) waitlist.
-- Curaçao ~USD 1.18B annual property transactions (Kadaster, 2024).
-- Working estimate: assets trade ~15-25% from fair value; goal is to compress toward ~5-8% (mature-market AVM error range). `[RISK: defend methodology]`
-- ~26-30% of LAC adults unbanked; regional MSME finance gap ~USD 1T.
+This history can later support personalized Match Reports, such as whether an asking price appears high or low relative to comparable evidence, whether similar listings tend to move quickly, and which renovation or age-related trade-offs may matter for the user's profile.
 
-## 6. Tokenization pilot (WealthTech proof)
+Intelligence products begin only after sufficient reliable history exists.
 
-One small, legible asset. Two options:
-- one full rental car (fractionalize ownership + rental income), OR
-- 6-12 months of pre-paid rent on one property (tokenize a defined rent stream).
+### Future asset products
 
-Stack named: Celo (via Kolektivo), ERC-3643 / ERC-1400 permissioned tokens, stablecoin (cUSD/USDC) payouts, SPV with human-in-the-loop (notary, fund manager, compliance officer).
+Tokenized contracts, investment products, stablecoin payouts, or other WealthTech experiments remain separate from the Property Passport. They may reference Passport evidence later, but they do not define the Passport.
 
-**Recommendation:** the pre-paid-rent property pilot fits Track 09 (real estate) better than the car pilot.
+## 3. Property Passport vision
 
-## 7. Five-year vision (from application)
+The Passport is an off-chain, source-backed record of listing and property activity.
 
-Merkado as the Caribbean's hard-asset and private-investment operating system: discover, verify, buy, sell, finance, and fractionally invest in the region's biggest assets. The intelligence layer is the moat: every harvested listing, resolved asset, price change, market signal, and later closed transaction deepens the knowledge graph and comparable-sales record. Public marketplace across cars and property, multiple islands; gated WealthTech tier for fractional real estate and regional development; the Passport on its way to a regional standard banks, notaries, and governments build on, with EcoLabs onchain rails underneath.
+MVP content:
+
+- current listing facts;
+- source and realtor attribution;
+- original and benchmark currency information;
+- source listing date when available;
+- first/last detected dates;
+- price and status history;
+- sold, missing, removed, and relisted events;
+- conversion provenance and disclaimers.
+
+Later evidence layers may include reviewed cross-source matches, inspections, title records, transaction evidence, legal records, or market signals. These must never be implied before they exist.
+
+The Passport provides evidence for future Match Reports, but the personalized report and the Passport are separate products:
+
+- the Passport explains the listing's evidence and history;
+- the Match Report explains how that listing may fit one user's Property Search Request.
+
+## 4. Future user journey
+
+```text
+Visit Merkado
+  -> already knows what they want?
+      -> Yes: create Property Search Request
+      -> No: complete What Fits Me? guided intake
+  -> review and confirm Property Search Request
+  -> activate monthly Merkado Agent
+  -> receive matching listings by email
+  -> open personalized Match Report
+  -> view original listing OR request professional help
+  -> refine, pause, or cancel the Agent at any time
+```
+
+## 5. Data-source strategy
+
+MVP sources:
+
+- Keller Williams Curaçao
+- Sotheby's International Realty
+- RE/MAX
+- Moret Real Estate
+- Monumentenzorg Curaçao
+
+Each source remains independently attributable. The system must not silently merge source listings into a single property identity.
+
+## 6. Long-term moat
+
+Merkado's durable advantage is a trustworthy longitudinal dataset combined with structured user intent:
+
+- direct source observations;
+- listing lifecycle history;
+- price and currency provenance;
+- source-run quality;
+- geospatial normalization;
+- reviewed relationships between listings and real-world properties;
+- explainable market signals linked back to evidence;
+- structured Property Search Requests;
+- explainable personalized matching;
+- user feedback on which matches were useful.
+
+The moat is not a generic chatbot. It is trusted Curaçao property data plus a transparent matching and advisory layer.

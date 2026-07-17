@@ -39,10 +39,13 @@ type DraftFilters = {
   realtor: string;
   amenity: string;
   attribution: string;
+  enrichment: string;
+  lifecycle: string;
   minPrice: string;
   maxPrice: string;
   coordQuality: string;
   assignment: string;
+  publicEligible: string;
   sort: string;
 };
 
@@ -54,10 +57,13 @@ const DRAFT_KEYS = [
   "realtor",
   "amenity",
   "attribution",
+  "enrichment",
+  "lifecycle",
   "minPrice",
   "maxPrice",
   "coordQuality",
   "assignment",
+  "publicEligible",
   "sort",
 ] as const;
 
@@ -211,6 +217,21 @@ export function ListingFilters({
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={draft.publicEligible || "__all"}
+              onValueChange={(value) =>
+                update({ publicEligible: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Public eligibility">
+                <SelectValue placeholder="Public eligibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All eligibility states</SelectItem>
+                <SelectItem value="eligible">Public eligible</SelectItem>
+                <SelectItem value="excluded">Public excluded</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -264,6 +285,43 @@ export function ListingFilters({
                 <SelectItem value="attributed">Has original realtor</SelectItem>
                 <SelectItem value="missing">Missing attribution</SelectItem>
                 <SelectItem value="conflicts">Has source conflicts</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={draft.enrichment || "__all"}
+              onValueChange={(value) =>
+                update({ enrichment: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Enrichment status">
+                <SelectValue placeholder="Enrichment status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All enrichment statuses</SelectItem>
+                <SelectItem value="not_run">Not run</SelectItem>
+                <SelectItem value="queued">Queued</SelectItem>
+                <SelectItem value="running">Running</SelectItem>
+                <SelectItem value="succeeded">Succeeded</SelectItem>
+                <SelectItem value="skipped_unchanged">Skipped unchanged</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="needs_review">Needs review</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={draft.lifecycle || "__all"}
+              onValueChange={(value) =>
+                update({ lifecycle: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Lifecycle">
+                <SelectValue placeholder="Lifecycle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All lifecycle states</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="sold">Sold</SelectItem>
+                <SelectItem value="rented">Rented</SelectItem>
+                <SelectItem value="under_contract">Under contract</SelectItem>
               </SelectContent>
             </Select>
           </div>

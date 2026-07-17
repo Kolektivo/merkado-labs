@@ -35,6 +35,14 @@ class Settings(BaseSettings):
         description="Server-only secret key; never expose this value to browser code",
     )
     openai_api_key: SecretStr | None = None
+    openai_enrichment_model: str = Field(
+        default="gpt-4.1-mini",
+        description="OpenAI model for Labs listing enrichment (server-only)",
+    )
+    labs_admin_secret: SecretStr | None = Field(
+        default=None,
+        description="Optional Labs dashboard admin gate for enrichment actions",
+    )
 
 
 @lru_cache

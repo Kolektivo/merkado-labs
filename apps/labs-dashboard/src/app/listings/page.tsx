@@ -47,8 +47,8 @@ export default async function ListingsPage({
       <div className="space-y-6">
         <PageHeader
           title="Listings"
-          description="Browse every property we have collected."
-          icon={Building2}
+        description="Browse properties from approved direct sources. Retired aggregator inventory is excluded."
+        icon={Building2}
         />
         <DataError
           message={error instanceof Error ? error.message : "Unknown data error"}
@@ -99,9 +99,15 @@ export default async function ListingsPage({
                 <EmptyMedia variant="icon">
                   <SearchX />
                 </EmptyMedia>
-                <EmptyTitle>No listings match</EmptyTitle>
+                <EmptyTitle>
+                  {listings.length === 0
+                    ? "No approved-source listings yet"
+                    : "No listings match"}
+                </EmptyTitle>
                 <EmptyDescription>
-                  Try clearing filters or widening the search.
+                  {listings.length === 0
+                    ? "Direct-source ingestion is being rebuilt. Approved sources are registered; inventory will appear after the first successful adapter import."
+                    : "Try clearing filters or widening the search."}
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>

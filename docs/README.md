@@ -1,37 +1,45 @@
 # Merkado Docs — Index
 
-This folder holds the full working context for Merkado, split into focused files so each can be used in the workspace where it matters (Cursor, planning chats, the deck).
+This folder holds the working context for Merkado Labs property work.
 
-**Last updated:** July 2026  
-**Build context:** solo build for the 21-day Future Caribbean Buildathon (Track 09), unless other engineering support is confirmed.
+**Last updated:** July 17, 2026  
+**Active set:** `01`–`09` below. Older numbered docs were replaced by this set.
 
 ## Labs build status (this repository)
 
 | Area | Status |
 |---|---|
-| CHH harvest → Labs snapshots → importer | Built; daily GitHub Action available |
-| Labs property schema + RLS | Built in `csaefdkpwukshtouyixg` |
-| Market signals + pilot contract assessment | Built in Labs (scripts + tables) |
-| Geospatial boundaries + neighbourhood assignment | Built in Labs |
-| Read-only Labs dashboard (`apps/labs-dashboard`) | Built; deployable as a separate Vercel project |
-| Real estate UI on live merkado.cw | Not in this repo — still production scope |
+| Direct-source foundation (adapters, currency, lifecycle, eligibility) | [LABS] Built; RE/MAX refreshed 2026-07-17 with rich evidence |
+| Raw evidence + AI enrichment foundation | [LABS] Private Storage; proposals/jobs service-role only; review UX |
+| Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
+| CHH harvest / importer / workflow | Removed from active repo |
+| CHH Labs rows | Deleted 2026-07-16; verified local export retained |
+| Labs property schema + RLS | [LABS] Built; AI tables locked from anon 2026-07-17 |
+| Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX has 0 coords) |
+| Labs dashboard | [LABS][WIP] Ops + browse + Search Request / Agent previews |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only |
+| Keller Williams adapter | [LABS] v0.1; 40 listings imported (manual) |
+| Moret adapter | [LABS][WIP] v0.1; 5 bounded listings |
+| Monumentenzorg / Sotheby's | [RISK] Access blocked (SSL/DNS / WAF 202) |
+| AI enrichment (25 RE/MAX) | [LABS] Completed 2026-07-17; review pending |
+| Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 
 ## The files
 
 | File | What it covers | Use it when |
 |---|---|---|
-| `01-live-product-state.md` | What is actually built and running on merkado.cw today. The authoritative current state. | You need ground truth about the live product. Never over-promise past this file. |
-| `02-v2-vision.md` | Luuk's direction: two-tier marketplace, the Passport, the asset arc, tokenization. | You need the "where this is going" picture. |
-| `03-buildathon-scope-and-discovery.md` | The scoping/discovery phase: deliverables, priority, reuse vs new build, MVP thinking, plus Labs progress. | Day-to-day sprint planning and scope decisions. |
-| `04-reality-check.md` | Claim vs actual. Where the deck/application say more than is true. | Before submitting or presenting anything. |
-| `05-open-questions-luuk.md` | Questions blocking architecture decisions, with status. | Tracking what we still need answered. |
-| `06-technical-decisions.md` | The key forks that shape the architecture, with a recommended lean on each. | Making or revisiting a big technical call. |
-| `07-intelligence-layer.md` | Canonical definition of data harvesting, the lightweight knowledge graph, market signals, and MVP boundaries. | Building or explaining the intelligence layer and its data model. |
-| `08-labs-property-foundation.md` | Labs-only Supabase schema, CHH snapshot import, RLS, inspectors, operations, and rollback notes. | Working with the isolated property data foundation. |
-| `09-labs-geospatial-layer.md` | PostGIS boundaries, assignment model, geo scripts, and map notes for Labs. | Working on coordinates, neighbourhood inference, or the dashboard map. |
-| `labs/PROJECT_CONTEXT.md` | What Merkado Labs is, allowed domains, and current Labs project state. | Orienting a new session or collaborator in this repo. |
-| `labs/SAFETY_RULES.md` | Hard rules: Labs-only Supabase, no production access, secrets, deploy discipline. | Before any write, deploy, or credential use. |
-| `labs/EXPERIMENT_LOG.md` | Dated experiment notes for harvest and data-quality work. | Recording or reviewing what was tried. |
+| `01-live-product-state.md` | What is live on merkado.cw vs Labs-only. | Ground truth; never over-promise past this file. |
+| `02-v2-vision.md` | Partner direction: Passport, asset arc, marketplace. | “Where this is going.” |
+| `03-mvp-scope-and-decisions.md` | P0 priorities, approved sources, explicit deferrals. | Day-to-day scope decisions. |
+| `04-data-sources-and-scraping.md` | Direct-source rules, CHH removal, adapter expectations. | Building or reviewing scrapers. |
+| `05-data-model-and-listing-lifecycle.md` | Schema, lifecycle, currency, eligibility, cleanup. | Schema or listing-state work. |
+| `06-currency-and-pricing-rules.md` | Original currency + XCG benchmark rules. | Price display or conversion. |
+| `07-passport-and-product-boundaries.md` | Off-chain Passport and product boundaries. | Product framing. |
+| `08-execution-plan-and-cursor-prompt.md` | Phased execution plan and agent prompt. | Starting a build pass. |
+| `09-project-safety-and-history.md` | Safety rules, decision history, CHH lessons. | Before writes, cleanup, or deploy talk. |
+| `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |
+| `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
+| `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |
 
 Production reference copies (not Labs build docs):
 
@@ -40,30 +48,20 @@ Production reference copies (not Labs build docs):
 | `supabase-architecture.md` | Production v1 car-marketplace Supabase reference |
 | `merkado_n8n_complete_guide_v3.md` | Production v1 n8n scraping/enrichment guide |
 
-## Tag legend (used across all files)
+## Tag legend
 
-- `[LIVE]` = built and running in production today
-- `[PLANNED]` = in v1 docs as a future idea, not built
-- `[WIP]` = being scoped or partially built for the buildathon
-- `[LABS]` = built in Merkado Labs only (not live on merkado.cw)
-- `[OPEN]` = unresolved question, waiting on Luuk
-- `[RISK]` = flagged concern
+- `[LIVE]` built and running in production today
+- `[PLANNED]` agreed future work, not built
+- `[WIP]` actively being built or scoped
+- `[LABS]` built in Merkado Labs only (not live on merkado.cw)
+- `[DEFERRED]` intentionally postponed
+- `[OPEN]` unresolved question
+- `[RISK]` flagged concern
 
 ## Reading order for someone new
 
-1. `01-live-product-state.md` (what exists on merkado.cw)
-2. `02-v2-vision.md` (where it's going)
-3. `03-buildathon-scope-and-discovery.md` (what we build in 21 days + Labs progress)
-4. `07-intelligence-layer.md` (how harvested data becomes connected market intelligence)
-5. `08-labs-property-foundation.md` and `09-labs-geospatial-layer.md` (what Labs already has)
-6. Then `04`, `05`, `06`, and `labs/` as reference.
-
-## Source documents
-
-Live v1 (project docs): merkado-strategy-v3_3, supabase-architecture, supabase-rules, development_execution_plan_v2, merkado-monetization-v1, merkado_n8n_complete_guide_v3, cursor-rules-v3_4, vehicle-makes-models.json
-
-Buildathon v2 (Luuk): Merkado_Application_v3.docx, Merkado_Loom_Deck.pptx, Merkado_Workflow_Diagram_v2.png
-
-## Docs still to create (once decisions land)
-
-`merkado-v2-vision-spec`, `property-passport-spec`, `proptech-data-sources`, `wealthtech-compliance-notes`. The intelligence-layer foundation is documented in `07`; Labs implementation notes are in `08`–`09`. See `06-technical-decisions.md` for what unblocks the remaining specs.
+1. `01-live-product-state.md`
+2. `03-mvp-scope-and-decisions.md`
+3. `04-data-sources-and-scraping.md` and `05-data-model-and-listing-lifecycle.md`
+4. `09-project-safety-and-history.md`
+5. `labs/PROJECT_CONTEXT.md` and `labs/SAFETY_RULES.md`

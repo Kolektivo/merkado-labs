@@ -31,7 +31,7 @@ export default async function RealtorsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Original realtors"
-          description="Agencies behind CaribbeanHouseHunt aggregated listings."
+          description="Agencies and direct sources behind Labs property listings."
           icon={Users}
         />
         <DataError
@@ -48,9 +48,18 @@ export default async function RealtorsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Original realtors"
-        description="CaribbeanHouseHunt is the aggregator. These names are the original agencies attributed on each listing."
+        description="Attributed realtor or agency names from source listings. Direct-source adapters keep each website separately attributable."
         icon={Users}
       />
+      {listings.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-sm text-muted-foreground">
+            No realtor attribution yet. Direct-source inventory is empty until the
+            first approved adapter import succeeds.
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
         <Badge variant="secondary">
           {formatNumber(realtors.length)} realtor groups
@@ -118,6 +127,8 @@ export default async function RealtorsPage() {
           </Table>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }

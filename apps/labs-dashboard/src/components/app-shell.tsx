@@ -8,11 +8,16 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  ClipboardList,
+  FileSearch,
   GitCompareArrows,
   LayoutDashboard,
   MapPinned,
   Radio,
+  Route,
+  Settings,
   ShieldAlert,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 
@@ -58,6 +63,7 @@ const navigationSections: NavSection[] = [
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/listings", label: "Listings", icon: Building2 },
+      { href: "/browse", label: "Public browse", icon: FileSearch },
       { href: "/realtors", label: "Realtors", icon: Users },
       { href: "/map", label: "Map", icon: MapPinned },
       { href: "/neighbourhoods", label: "Neighbourhoods", icon: BarChart3 },
@@ -67,8 +73,15 @@ const navigationSections: NavSection[] = [
     label: "Operations",
     items: [
       { href: "/sources", label: "Sources", icon: Radio },
-      { href: "/enrichment", label: "Enrichment", icon: GitCompareArrows },
+      { href: "/enrichment", label: "AI enrichment", icon: GitCompareArrows },
+      { href: "/source-runs", label: "Source runs", icon: Route },
+      { href: "/eligibility", label: "Eligibility", icon: SlidersHorizontal },
+      { href: "/lifecycle", label: "Lifecycle", icon: ClipboardList },
+      { href: "/search-requests", label: "Search requests", icon: FileSearch },
+      { href: "/what-fits-me", label: "What fits me", icon: Building2 },
+      { href: "/agent", label: "Merkado Agent", icon: Settings },
       { href: "/data-quality", label: "Data quality", icon: ShieldAlert },
+      { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
   {

@@ -5,8 +5,18 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "caribbeanhousehunt.com",
-        pathname: "/map-assets/property-images/**",
+        hostname: "cdn.remax-abc.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.realestate-curacao.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "realestate-curacao.com",
+        pathname: "/**",
       },
     ],
   },

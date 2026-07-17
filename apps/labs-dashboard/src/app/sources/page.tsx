@@ -31,7 +31,7 @@ import {
   HARVEST_JOBS,
   harvestJobsForSource,
 } from "@/lib/data/harvest-catalog";
-import { getPropertySources } from "@/lib/data/queries";
+import { getPropertySources, getSourceRuns } from "@/lib/data/queries";
 import type { HarvestJobStatus } from "@/lib/domain/types";
 import {
   formatDateTime,
@@ -58,8 +58,12 @@ function statusLabel(status: HarvestJobStatus) {
 
 export default async function SourcesPage() {
   let sources;
+  let sourceRuns;
   try {
-    sources = await getPropertySources();
+    [sources, sourceRuns] = await Promise.all([
+      getPropertySources(),
+      getSourceRuns(),
+    ]);
   } catch (error) {
     return (
       <div className="space-y-6">
@@ -80,6 +84,8 @@ export default async function SourcesPage() {
     0,
   );
   const activeJobs = HARVEST_JOBS.filter((job) => job.status === "active");
+  const manualJobs = HARVEST_JOBS.filter((job) => job.status === "manual");
+  const plannedJobs = HARVEST_JOBS.filter((job) => job.status === "planned");
   const freshest = sources
     .map((source) => source.lastSeenAt)
     .filter((value): value is string => Boolean(value))
@@ -90,39 +96,43 @@ export default async function SourcesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Sources"
-        description="The listing websites merkado-labs reads from, plus the automatic jobs that keep data fresh."
+        description="Approved direct realtor sources and adapter run health. Retired sources are excluded."
         icon={Radio}
       />
 
       <section className="grid min-w-0 grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Websites"
+          label="Approved sources"
           value={formatNumber(sources.length)}
-          hint="Listing sites we currently import"
+          hint="Enabled direct sources only"
           icon={Radio}
-          tip="Each source is one website (for example CaribbeanHouseHunt). New sources appear here after the first successful import."
+          tip="Each source is one approved realtor website. Disabled or retired sources are hidden."
         />
         <MetricCard
-          label="Listings from them"
+          label="Current listings"
           value={formatNumber(totalListings)}
-          hint="Total properties across all sources"
+          hint="Imported from approved sources"
           icon={Workflow}
         />
         <MetricCard
-          label="Auto-updates"
-          value={formatNumber(activeJobs.length)}
-          hint="Jobs that run on a timer"
+          label="Adapter jobs"
+          value={formatNumber(manualJobs.length + plannedJobs.length)}
+          hint={`${formatNumber(manualJobs.length)} manual · ${formatNumber(plannedJobs.length)} planned · ${formatNumber(activeJobs.length)} scheduled`}
           icon={CalendarClock}
-          tipLabel="auto-updates"
-          tip="These jobs run on GitHub every day (or on another schedule). You can also start them by hand from the Actions tab."
+          tipLabel="adapter jobs"
+          tip="Scheduling stays disabled until each adapter passes QA. RE/MAX is manual-only today."
         />
         <MetricCard
-          label="Last fresh data"
-          value={freshest ? formatRelativeTime(freshest) : "—"}
-          hint={freshest ? formatDateTime(freshest) : "Nothing imported yet"}
+          label="Source runs"
+          value={formatNumber(sourceRuns.length)}
+          hint={
+            freshest
+              ? `Last listing activity ${formatRelativeTime(freshest)}`
+              : "No successful imports yet"
+          }
           icon={TimerReset}
-          tipLabel="last fresh data"
-          tip="Based on the most recent “last seen” time across listings — a quick signal that a harvest recently succeeded."
+          tipLabel="source runs"
+          tip="Health records for manual adapter runs. Empty until the first direct-source run is recorded."
         />
       </section>
 
@@ -146,20 +156,26 @@ export default async function SourcesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Website</TableHead>
+                <TableHead>Key</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Listings</TableHead>
                 <TableHead>Still active</TableHead>
                 <TableHead>Last seen</TableHead>
-                <TableHead>Update schedule</TableHead>
+                <TableHead>Adapter</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sources.map((source) => {
-                const jobs = harvestJobsForSource(source.name);
+                const jobs = harvestJobsForSource(
+                  source.displayName ?? source.name,
+                );
                 return (
                   <TableRow key={source.id}>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium">{source.name}</div>
+                        <div className="font-medium">
+                          {source.displayName ?? source.name}
+                        </div>
                         <a
                           href={source.baseUrl}
                           target="_blank"
@@ -170,6 +186,14 @@ export default async function SourcesPage() {
                           <ExternalLink className="size-3" />
                         </a>
                       </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {source.sourceKey ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {source.adapterStatus ?? "unknown"}
+                      </Badge>
                     </TableCell>
                     <TableCell className="font-mono tabular-nums">
                       {formatNumber(source.listingCount)}
@@ -199,13 +223,13 @@ export default async function SourcesPage() {
                               key={job.id}
                               variant={statusBadgeVariant(job.status)}
                             >
-                              {job.schedule}
+                              {statusLabel(job.status)}
                             </Badge>
                           ))}
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">
-                          No automatic job yet
+                          Planned
                         </span>
                       )}
                     </TableCell>
@@ -220,23 +244,25 @@ export default async function SourcesPage() {
       <Card className="gap-0 py-0">
         <CardHeader className="border-b py-6">
           <CardTitle className="flex items-center gap-2">
-            Automatic update jobs
-            <HelpTip label="automatic update jobs">
-              Also called harvests or cron jobs. GitHub Actions wakes up on a
-              schedule, downloads fresh listings, saves a snapshot, then loads
-              them into the merkado-labs database.
+            Adapter catalog
+            <HelpTip label="adapter catalog">
+              Planned and manual direct-source adapters. Scheduling stays off
+              until each source passes fixture and failed-run QA.
             </HelpTip>
           </CardTitle>
           <CardDescription>
-            When each job runs and what it does. Open GitHub Actions to see past
-            runs or failures.
+            Status of each approved source adapter. No retired aggregator jobs remain.
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y px-0">
           {HARVEST_JOBS.map((job) => {
-            const linkedSource = sources.find(
-              (source) => source.name === job.sourceName,
-            );
+            const linkedSource = sources.find((source) => {
+              const label = (source.displayName ?? source.name).toLowerCase();
+              return (
+                label === job.sourceName.toLowerCase() ||
+                label.includes(job.sourceName.toLowerCase())
+              );
+            });
             return (
               <div
                 key={job.id}
@@ -256,13 +282,7 @@ export default async function SourcesPage() {
                       <dd className="font-medium">{job.sourceName}</dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
-                        Runs on
-                        <HelpTip label="GitHub Actions">
-                          GitHub&apos;s free automation for this repo. It runs
-                          the Python harvest scripts in the cloud on a schedule.
-                        </HelpTip>
-                      </dt>
+                      <dt className="text-xs text-muted-foreground">Runner</dt>
                       <dd className="font-medium">{job.runner}</dd>
                     </div>
                     <div>
@@ -270,17 +290,8 @@ export default async function SourcesPage() {
                       <dd className="font-medium">{job.schedule}</dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
-                        Cron expression
-                        <HelpTip label="cron">
-                          A short code that means “when to run”.{" "}
-                          <span className="font-mono">0 3 * * *</span> means
-                          every day at 03:00 UTC.
-                        </HelpTip>
-                      </dt>
-                      <dd className="font-mono text-xs">
-                        {job.cron ?? "—"}
-                      </dd>
+                      <dt className="text-xs text-muted-foreground">Cron</dt>
+                      <dd className="font-mono text-xs">{job.cron ?? "—"}</dd>
                     </div>
                   </dl>
                 </div>
@@ -293,16 +304,11 @@ export default async function SourcesPage() {
                       ))}
                     </ol>
                   </div>
-                  {job.workflowPath ? (
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {job.workflowPath}
-                    </p>
-                  ) : null}
-                  {linkedSource?.lastSeenAt ? (
+                  {linkedSource ? (
                     <p className="text-xs text-muted-foreground">
-                      Newest listing seen:{" "}
+                      Registry listings:{" "}
                       <span className="text-foreground">
-                        {formatRelativeTime(linkedSource.lastSeenAt)}
+                        {formatNumber(linkedSource.listingCount)}
                       </span>
                     </p>
                   ) : null}
@@ -310,6 +316,77 @@ export default async function SourcesPage() {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card className="gap-0 py-0">
+        <CardHeader className="border-b py-6">
+          <CardTitle>Source-run health</CardTitle>
+          <CardDescription>
+            Recent adapter runs. Complete successful runs become the lifecycle
+            baseline; partial/bounded runs never drive removals.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-0">
+          {sourceRuns.length === 0 ? (
+            <p className="px-6 py-8 text-sm text-muted-foreground">
+              No source runs yet. After a RE/MAX complete import succeeds, outcomes
+              and exclusion counts will appear here.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Adapter</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead>Discovered</TableHead>
+                  <TableHead>Parsed</TableHead>
+                  <TableHead>Imported</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>No-price</TableHead>
+                  <TableHead>Warn/Err</TableHead>
+                  <TableHead>Started</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sourceRuns.map((run) => (
+                  <TableRow key={run.id}>
+                    <TableCell className="font-mono text-xs">
+                      {run.sourceKey}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {run.adapterName}@{run.adapterVersion}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{run.outcome}</Badge>
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.discoveredCount)}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.parsedCount)}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.importedCount)}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.updatedCount)}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.excludedNoPriceCount)}
+                    </TableCell>
+                    <TableCell className="font-mono tabular-nums">
+                      {formatNumber(run.warningCount)}/{formatNumber(run.errorCount)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDateTime(run.startedAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

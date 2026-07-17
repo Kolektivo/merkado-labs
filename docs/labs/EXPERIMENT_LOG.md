@@ -2,6 +2,11 @@
 
 Living log of Labs experiments. Newest first.
 
+> **Note (2026-07-16):** CaribbeanHouseHunt is retired. Experiment trees,
+> harvest workflow, and active importer code were removed from the repository.
+> Entries below that reference CHH paths are historical only. Current work is
+> the direct-source foundation (see `docs/01`–`09` and `scripts/cleanup/`).
+
 ---
 
 ## 2026-07-16 — RE/MAX BonBini controlled enrichment adapter `[LABS]`

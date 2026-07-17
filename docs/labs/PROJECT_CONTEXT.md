@@ -1,41 +1,36 @@
 # Merkado Labs Project Context
 
-Merkado production is a live Curaçao vehicle marketplace. It aggregates car listings from
-multiple sources, lets users browse and search, and directs buyer contact to sellers through
-WhatsApp. Its current production pipeline uses n8n, AI-assisted enrichment, and Supabase.
-
-Merkado Labs is a completely separate experimental workspace. It exists to test ideas safely
-without assuming that production architecture, data, or credentials should be reused.
+Merkado production is a live Curaçao vehicle marketplace. Merkado Labs is a
+completely separate experimental workspace.
 
 ## Current Labs focus
 
-Active work is on **property / PropTech** experiments for Curaçao:
+Active work is **direct-source property ingestion** for Curaçao:
 
-- CaribbeanHouseHunt (CHH) public listing harvest into immutable snapshots;
-- Labs Supabase property foundation (listings, observations, signals, contracts);
+- approved sources: Keller Williams, Sotheby's, RE/MAX, Moret, Monumentenzorg;
+- source-neutral adapters under `src/merkado_labs/scrapers/`;
+- Labs Supabase property foundation, source-run health, and activity events;
 - geospatial neighbourhood boundaries and assignment;
-- a read-only Next.js Labs dashboard for partner and internal review.
+- a read-only Next.js Labs dashboard for inspection.
 
-Other domains (cars, short-term rentals, land) remain in scope later. Raw source data must be
-preserved before normalization so extraction results remain auditable and transformations can
-be reproduced. Samples must not contain private production data.
-
-Experiments must never modify production automatically. Any Supabase, Vercel, or other
-external integration must target a clearly identified experimental resource and be approved
-before writing, deploying, or promoting changes.
+The CaribbeanHouseHunt aggregator workflow is retired and removed from the active
+repository. CHH-derived Labs rows were deleted on 2026-07-16. The verified local
+rollback export remains under `data/processed/chh_cleanup_export/`. RE/MAX Curaçao
+is the first direct-source adapter; the first complete manual Labs catalog import
+completed on 2026-07-16 and remains unscheduled.
 
 ## What is built in this repository `[LABS]`
 
 | Piece | Location |
 |---|---|
 | Property schema + RLS migrations | `supabase/migrations/` |
-| CHH snapshot + import scripts | `experiments/caribbeanhousehunt_sample/` |
-| Daily CHH harvest workflow | `.github/workflows/chh-daily-harvest.yml` |
+| Direct-source adapters | `src/merkado_labs/scrapers/` |
+| Currency + eligibility helpers | `src/merkado_labs/normalization/` |
+| Cleanup verification tooling (historical) | `scripts/cleanup/` |
 | Geospatial import/assignment scripts | `scripts/geo/` |
 | Read-only Labs dashboard | `apps/labs-dashboard/` |
-| Local Streamlit inspector | `experiments/caribbeanhousehunt_sample/app.py` |
 
-Detailed notes: `docs/08-labs-property-foundation.md`, `docs/09-labs-geospatial-layer.md`.
+Canonical docs: `docs/01`–`09`.
 
 ## Labs Supabase project
 
@@ -43,8 +38,5 @@ Detailed notes: `docs/08-labs-property-foundation.md`, `docs/09-labs-geospatial-
 - Project reference: `csaefdkpwukshtouyixg`
 - Region: `eu-west-3`
 - Type: standalone project, separate from production
-- Current state: property foundation, geospatial columns/functions, market signals, and
-  pilot contract assessment tables are present; CHH listings are imported from full
-  catalog snapshots (size may vary between harvests)
 
 Production Supabase must never be accessed from this workspace.

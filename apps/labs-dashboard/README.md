@@ -4,9 +4,9 @@ A standalone, read-only Next.js application for exploring normalized property
 listing data in the isolated Merkado Labs Supabase project. It is an internal
 analytics surface, not the live Merkado product.
 
-The live Labs dataset currently contains 1,449 normalized listings. The first
-reviewed import was a controlled 12-listing sample; the importer later moved to
-1,449-record snapshots. CHH source identifiers remain provisional.
+Direct-source adapters (RE/MAX first) are the active ingestion path.
+Retired aggregator rows are excluded from default dashboard views until the
+reviewed Labs cleanup runs.
 
 ## Requirements
 
@@ -66,8 +66,13 @@ REVERSE_GEOCODE_API_KEY
 REVERSE_GEOCODE_MIN_INTERVAL_MS
 ```
 
-Never add `SUPABASE_SECRET_KEY`, a service-role credential, or production
-credentials to this application. Do not commit `.env.local`.
+Never expose `SUPABASE_SECRET_KEY`, a service-role credential, or production
+credentials to the browser (`NEXT_PUBLIC_*`). Do not commit `.env.local`.
+
+Admin AI enrichment routes (`/api/enrichment/*`) require server-only
+`LABS_ADMIN_SECRET` plus Labs `SUPABASE_SECRET_KEY` (project
+`csaefdkpwukshtouyixg` only). OpenAI stays in Python via
+`scripts/run_ai_enrichment.py`.
 
 ## Routes
 
@@ -75,13 +80,13 @@ credentials to this application. Do not commit `.env.local`.
   and recently observed listings
 - `/listings` — searchable, sortable, paginated listings with currency-safe
   price filters plus coordinate and assignment filters
-- `/listings/[id]` — normalized property fields, neighbourhood provenance,
-  source information, public evidence counters, and price history
+- `/enrichment` — admin-gated AI enrichment control panel (preview + jobs)
+- `/listings/[id]` — overview / source / AI enrichment / evidence / timeline tabs
 - `/map` — MapLibre map of listings with valid Curaçao coordinates, clustering,
   filters, and marker detail sheet
 - `/neighbourhoods` — listing coverage and currency-separated price summaries
   with data-quality warnings
-- `/sources` — source registry and harvest-job catalog (CHH daily Action metadata)
+- `/sources` — source registry and direct-source adapter catalog (manual/planned)
 - `/data-quality` — geographic coordinate and neighbourhood assignment overview
 - `/how-it-works` — static guide of harvest → snapshot → Labs DB → dashboard flow
 

@@ -85,9 +85,10 @@ export default async function MapPage({
             <EmptyMedia variant="icon">
               <MapPinned />
             </EmptyMedia>
-            <EmptyTitle>Nothing to show on the map</EmptyTitle>
+            <EmptyTitle>No direct-source map pins yet</EmptyTitle>
             <EmptyDescription>
-              No listings with valid coordinates match your filters.
+              Approved sources are registered. The map will populate after the
+              first successful complete import from an enabled direct source.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

@@ -31,29 +31,29 @@ export const metadata: Metadata = { title: "How it works" };
 const FLOW_STEPS = [
   {
     step: "01",
-    title: "Listing website",
-    detail: "CaribbeanHouseHunt.com publishes public map data with property ads.",
+    title: "Direct realtor website",
+    detail: "Approved Curaçao sources (RE/MAX first) publish listing pages we may fetch in manual complete runs.",
     icon: Globe2,
-    nextAction: "Download",
+    nextAction: "Parse",
   },
   {
     step: "02",
-    title: "Harvest",
-    detail: "Python scripts pull a frozen snapshot, then clean it for merkado-labs.",
+    title: "Source adapter",
+    detail: "A source-specific adapter extracts price, currency, status, and evidence into a frozen snapshot.",
     icon: Terminal,
     nextAction: "Import",
   },
   {
     step: "03",
     title: "merkado-labs database",
-    detail: "Cleaned listings are stored in Supabase — the merkado-labs project only.",
+    detail: "Listings, source-run health, currency provenance, and activity events live in Labs Supabase only.",
     icon: Database,
     nextAction: "Browse",
   },
   {
     step: "04",
     title: "This dashboard",
-    detail: "Explore listings, maps, and quality. View only — nothing is edited here.",
+    detail: "Inspect coverage, eligibility, lifecycle, and geography. View only — nothing is edited here.",
     icon: Server,
     nextAction: null,
   },
@@ -61,12 +61,8 @@ const FLOW_STEPS = [
 
 const FOLDERS = [
   {
-    path: "experiments/caribbeanhousehunt_sample/",
-    plain: "Download & import scripts for CaribbeanHouseHunt",
-  },
-  {
-    path: ".github/workflows/",
-    plain: "Daily automatic harvest (runs at 03:00 UTC)",
+    path: "src/merkado_labs/scrapers/",
+    plain: "Source-neutral contracts and direct-source adapters",
   },
   {
     path: "supabase/migrations/",
@@ -78,7 +74,11 @@ const FOLDERS = [
   },
   {
     path: "scripts/geo/",
-    plain: "Neighbourhood boundary helpers",
+    plain: "Neighbourhood assignment tooling",
+  },
+  {
+    path: "scripts/cleanup/",
+    plain: "Reviewed Labs data cleanup dry-run for retired sources (not destructive by default)",
   },
   {
     path: "docs/",
@@ -314,15 +314,14 @@ export default function HowItWorksPage() {
             <div className="space-y-1">
               <p className="flex items-center gap-2 font-medium">
                 <Terminal className="size-3.5 text-muted-foreground" />
-                Harvest by hand
+                Run an adapter by hand
               </p>
               <p className="text-muted-foreground">
-                Run{" "}
-                <span className="font-mono text-xs">create_snapshot.py</span>{" "}
-                then{" "}
-                <span className="font-mono text-xs">import_supabase.py</span>{" "}
-                under the CaribbeanHouseHunt experiment folder — or trigger the
-                GitHub Action.
+                Use the RE/MAX adapter under{" "}
+                <span className="font-mono text-xs">
+                  src/merkado_labs/scrapers/adapters/remax_curacao.py
+                </span>{" "}
+                in manual complete mode after a dry-run review. Scheduling stays off until QA passes.
               </p>
             </div>
             <div className="space-y-1">
@@ -331,7 +330,7 @@ export default function HowItWorksPage() {
                 Something looks wrong
               </p>
               <p className="text-muted-foreground">
-                Check GitHub Actions for a failed harvest, then{" "}
+                Check{" "}
                 <Link href="/data-quality" className="underline-offset-2 hover:underline">
                   Data quality
                 </Link>{" "}
@@ -339,7 +338,7 @@ export default function HowItWorksPage() {
                 <Link href="/sources" className="underline-offset-2 hover:underline">
                   Sources
                 </Link>{" "}
-                for last-seen times.
+                for run health and last-seen times.
               </p>
             </div>
             <div className="space-y-1">

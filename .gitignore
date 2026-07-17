@@ -22,9 +22,15 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/chh_cleanup_export/
+# CHH cleanup payload exports (complete row dumps) must never be committed
+data/processed/chh_cleanup_export/**
+!data/processed/chh_cleanup_export/README.md
 data/geo/cache/
 *.html
 *.htm
+!tests/fixtures/**/*.html
+!tests/fixtures/**/*.htm
 *.warc
 *.warc.gz
 data/**/*.[jJ][pP][gG]

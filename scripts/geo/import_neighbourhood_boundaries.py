@@ -17,7 +17,7 @@ import json
 import sqlite3
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.request import urlretrieve
@@ -259,7 +259,7 @@ def apply_import(client: Any, plan: ImportPlan) -> dict[str, int]:
     for row in plan.existing_by_external_id.values():
         used_slugs.add(row["slug"])
 
-    imported_at = datetime.now(timezone.utc).isoformat()
+    imported_at = datetime.now(UTC).isoformat()
     inserted = 0
     updated = 0
     skipped = 0

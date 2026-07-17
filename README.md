@@ -7,19 +7,14 @@ automatically.
 ## What exists today
 
 - **Property foundation** in Labs Supabase (`csaefdkpwukshtouyixg`): listings,
-  sources, neighbourhoods, observations, quarantine, market signals, and pilot
-  contract assessment tables.
-- **CaribbeanHouseHunt harvest path**: immutable snapshots, Labs importer, and a
-  daily GitHub Action (Labs credentials only).
-- **Geospatial layer**: PostGIS neighbourhood boundaries, coordinate quality,
-  and inferred neighbourhood assignment (source neighbourhood never overwritten).
-- **Read-only Labs dashboard** (`apps/labs-dashboard`): Next.js analytics UI for
-  overview, listings, map, neighbourhoods, sources, and data quality.
-- **Local Streamlit inspector** for the same Labs dataset (publishable key only).
+  sources, neighbourhoods, observations, quarantine, market signals, source-run
+  health, and listing activity events.
+- **Direct-source adapters** under `src/merkado_labs/scrapers/` — RE/MAX is the
+  first manual/bounded adapter. The former aggregator workflow is retired.
+- **Geospatial layer**: PostGIS neighbourhood boundaries and assignment.
+- **Read-only Labs dashboard** (`apps/labs-dashboard`) for inspection.
 
-Production Merkado docs under `docs/01`–`06` remain planning/context for the
-buildathon and live product. Labs-specific build notes live in `docs/07`–`09`
-and `docs/labs/`.
+Property MVP docs `docs/01`–`09` are the current source of truth.
 
 ## Local setup (Python)
 
@@ -72,5 +67,4 @@ npm run build
 
 ## Docs
 
-Start at `docs/README.md`. Labs safety and experiment notes live under
-`docs/labs/`.
+Start at `docs/README.md`. Labs safety notes live under `docs/labs/`.
