@@ -47,6 +47,7 @@ import {
   getListingById,
   getPriceObservations,
 } from "@/lib/data/queries";
+import { getListingEvidence } from "@/lib/data/listing-detail";
 import {
   formatCurrency,
   formatDate,
@@ -152,11 +153,13 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
   let history;
   let activity;
   let proposal;
+  let evidence;
   try {
-    [history, activity, proposal] = await Promise.all([
+    [history, activity, proposal, evidence] = await Promise.all([
       getPriceObservations(id),
       getListingActivityEvents(id),
       getLatestAiEnrichmentProposal(id),
+      getListingEvidence(id),
     ]);
   } catch (error) {
     return (
@@ -194,9 +197,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         </Button>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
-            <Link href={`/enrichment?listingId=${listing.id}`}>
+            <Link href="/enrichment">
               <Sparkles data-icon="inline-start" />
-              Run AI enrichment
+              Review AI proposals
             </Link>
           </Button>
           <Button asChild>
@@ -219,6 +222,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                 className="object-cover"
                 sizes="(max-width: 1280px) 100vw, 55vw"
                 priority
+                unoptimized
               />
             ) : (
               <div className="flex h-full min-h-64 items-center justify-center text-muted-foreground">
@@ -375,9 +379,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         <TabsList variant="line" className="w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="source">Source data</TabsTrigger>
-          <TabsTrigger value="ai">AI enrichment</TabsTrigger>
-          <TabsTrigger value="evidence">Evidence</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          {proposal ? <TabsTrigger value="ai">AI review</TabsTrigger> : null}
+          {evidence.length ? <TabsTrigger value="evidence">Evidence</TabsTrigger> : null}
+          {activity.length ? <TabsTrigger value="timeline">Timeline</TabsTrigger> : null}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -779,9 +783,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                   </CardDescription>
                 </div>
                 <Button variant="outline" asChild>
-                  <Link href={`/enrichment?listingId=${listing.id}`}>
+                  <Link href="/enrichment">
                     <Sparkles data-icon="inline-start" />
-                    Enrich this listing
+                    Open proposal queue
                   </Link>
                 </Button>
               </div>
@@ -961,9 +965,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
-                Observation row metadata and private Storage evidence require the
-                Labs admin path. Use the AI enrichment control panel with an
-                admin secret for privileged operations.
+                {evidence.length} private source observation
+                {evidence.length === 1 ? "" : "s"} are recorded. Raw files are
+                not rendered or exposed by the dashboard.
               </p>
               <dl className="grid gap-3 sm:grid-cols-2">
                 <DetailItem
@@ -992,6 +996,26 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
                     {listing.description}
                   </p>
                 </div>
+              ) : null}
+              {evidence.length ? (
+                <details className="rounded-lg border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Technical evidence metadata
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {evidence.map((item) => (
+                      <div key={item.id} className="text-xs text-muted-foreground">
+                        <p>{formatDateTime(item.observedAt)} · HTTP {item.httpStatus ?? "—"} · adapter {item.adapterVersion ?? "—"}</p>
+                        <p className="break-all font-mono">
+                          SHA-256 {item.sourceSha256}
+                        </p>
+                        <p>
+                          Private evidence: {item.evidenceStorageBucket && item.evidenceStoragePath ? "stored" : "not stored"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
             </CardContent>
           </Card>

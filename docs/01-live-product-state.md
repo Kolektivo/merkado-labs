@@ -27,6 +27,10 @@ The isolated Labs project currently has:
 - Property Search Request / Agent entitlement / Match Report preview tables;
 - geospatial neighbourhood boundaries and assignment;
 - Labs dashboard with ops pages, public browse preview, Search Request / What Fits Me / Agent previews;
+- cleaned internal dashboard navigation: Overview, Listings, Sources,
+  Enrichment, Quality, Settings, and one clearly separated Prototypes area;
+- internal routes protected by the signed Labs admin cookie; public
+  Browse/Passport reads only `public_property_listings`;
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (220 listings;
   evidence refresh 2026-07-17; still unscheduled);
 - Keller Williams adapter v0.1 with **40 Labs listings** (39 active + 1 unknown;

@@ -46,6 +46,7 @@ export function parseListingFilters(
 
   return {
     query: value("q").trim(),
+    source: value("source"),
     neighbourhood: value("neighbourhood"),
     listingType: value("type"),
     currency: value("currency"),
@@ -86,6 +87,7 @@ function matchesSharedFilters(
     firstObservedRentedAt?: string | null;
     firstObservedUnderContractAt?: string | null;
     publicEligible?: boolean;
+    sourceKey?: string | null;
   },
   filters: ListingFilters,
 ) {
@@ -106,6 +108,8 @@ function matchesSharedFilters(
     listing.neighbourhood?.id === filters.neighbourhood;
   const matchesType =
     !filters.listingType || listing.listingType === filters.listingType;
+  const matchesSource =
+    !filters.source || listing.sourceKey === filters.source;
   const matchesCurrency =
     !filters.currency || listing.currency === filters.currency;
   const matchesRealtor =
@@ -160,6 +164,7 @@ function matchesSharedFilters(
     matchesQuery &&
     matchesNeighbourhood &&
     matchesType &&
+    matchesSource &&
     matchesCurrency &&
     matchesRealtor &&
     matchesAmenity &&
@@ -180,7 +185,10 @@ export function filterAndSortListings(
   filters: ListingFilters,
 ) {
   const filtered = listings.filter((listing) =>
-    matchesSharedFilters(listing, filters),
+    matchesSharedFilters(
+      { ...listing, sourceKey: listing.source.sourceKey },
+      filters,
+    ),
   );
 
   return filtered.sort((a, b) => {
@@ -222,6 +230,7 @@ export function filterMapMarkers(
           currentPrice: marker.currentPrice,
           coordinateQuality: marker.coordinateQuality,
           neighbourhoodAssignmentStatus: marker.neighbourhoodAssignmentStatus,
+          sourceKey: marker.sourceKey,
         },
         {
           ...filters,
@@ -240,6 +249,16 @@ export function filterMapMarkers(
 
 export function listingFilterOptions(listings: PropertyListing[]) {
   return {
+    sources: Array.from(
+      new Map(
+        listings
+          .filter((item) => item.source.sourceKey)
+          .map((item) => [
+            item.source.sourceKey as string,
+            item.source.displayName ?? item.source.name,
+          ]),
+      ),
+    ).sort((a, b) => a[1].localeCompare(b[1])),
     neighbourhoods: Array.from(
       new Map(
         listings

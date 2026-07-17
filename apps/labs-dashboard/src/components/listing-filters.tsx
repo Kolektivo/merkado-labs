@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 
 type Options = {
+  sources?: [string, string][];
   neighbourhoods: [string, string][];
   listingTypes: string[];
   currencies: string[];
@@ -32,7 +33,9 @@ type Options = {
 };
 
 type DraftFilters = {
+  view: string;
   q: string;
+  source: string;
   neighbourhood: string;
   type: string;
   currency: string;
@@ -50,7 +53,9 @@ type DraftFilters = {
 };
 
 const DRAFT_KEYS = [
+  "view",
   "q",
+  "source",
   "neighbourhood",
   "type",
   "currency",
@@ -108,13 +113,6 @@ export function ListingFilters({
   const [draft, setDraft] = useState<DraftFilters>(() =>
     draftFromParams(searchParams),
   );
-  const [syncedQuery, setSyncedQuery] = useState(appliedQuery);
-
-  // Resync staged filters when the URL changes outside this form.
-  if (appliedQuery !== syncedQuery) {
-    setSyncedQuery(appliedQuery);
-    setDraft(draftFromParams(searchParams));
-  }
 
   const isDirty = draftToQueryString(draft) !== appliedQuery;
   const hasActiveFilters = appliedQuery.length > 0;
@@ -163,6 +161,24 @@ export function ListingFilters({
                 className="pl-9"
               />
             </div>
+            <Select
+              value={draft.source || "__all"}
+              onValueChange={(value) =>
+                update({ source: value === "__all" ? "" : value })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Source">
+                <SelectValue placeholder="All sources" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">All sources</SelectItem>
+                {(options.sources ?? []).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select
               value={draft.neighbourhood || "__all"}
               onValueChange={(value) =>

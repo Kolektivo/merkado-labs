@@ -12,7 +12,13 @@ import { Label } from "@/components/ui/label";
  * One-time Labs admin unlock. Secret is POSTed to the server and never stored
  * in React state beyond this form submit, sessionStorage, or localStorage.
  */
-export function LabsAdminLogin({ hasSession }: { hasSession: boolean }) {
+export function LabsAdminLogin({
+  hasSession,
+  returnTo,
+}: {
+  hasSession: boolean;
+  returnTo?: string;
+}) {
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +44,9 @@ export function LabsAdminLogin({ hasSession }: { hasSession: boolean }) {
       }
       setSecret("");
       setOk(true);
-      window.location.reload();
+      window.location.assign(
+        returnTo && returnTo.startsWith("/") ? returnTo : window.location.href,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

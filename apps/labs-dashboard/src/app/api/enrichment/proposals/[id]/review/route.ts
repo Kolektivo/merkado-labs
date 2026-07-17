@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   AdminAuthError,
-  assertLabsAdmin,
-  readAdminSecretFromBody,
+  assertLabsAdminSession,
 } from "@/lib/admin/auth";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { DashboardConfigurationError } from "@/lib/supabase/config";
@@ -26,7 +25,7 @@ export async function POST(
 ) {
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    assertLabsAdmin(request, readAdminSecretFromBody(body));
+    assertLabsAdminSession(request);
     const reviewStatus = String(body.reviewStatus ?? "");
     if (!REVIEW_STATUSES.includes(reviewStatus as (typeof REVIEW_STATUSES)[number])) {
       return NextResponse.json({ error: "Invalid review status." }, { status: 400 });

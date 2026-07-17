@@ -16,7 +16,10 @@ DETAIL_XCG_ACTIVE = """
 <body>
 <article data-postid="12345">
 <h1>Salinja Villa Demo</h1>
-<span class="price_area"><span class="price_label price_label_before"></span> XCG 750.000 <span class="price_label"></span></span>
+<span class="price_area">
+<span class="price_label price_label_before"></span>
+XCG 750.000 <span class="price_label"></span>
+</span>
 <div class="listing_details">
 <strong>Slaapkamers:</strong> 3
 <strong>Badkamers:</strong> 2
@@ -40,7 +43,9 @@ DETAIL_NO_PRICE = """
 DETAIL_VANAF_PRICE = """
 <html><body data-postid="75799">
 <h1>Sint Jorisbaai – Exclusief Wonen</h1>
-<span class="price_area"><span class="price_label price_label_before">vanaf</span> XCG 635.000</span>
+<span class="price_area">
+<span class="price_label price_label_before">vanaf</span> XCG 635.000
+</span>
 <strong>Slaapkamers:</strong> 2
 <strong>Badkamers:</strong> 1
 </body></html>

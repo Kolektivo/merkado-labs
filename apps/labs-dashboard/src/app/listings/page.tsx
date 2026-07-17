@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Building2, SearchX } from "lucide-react";
+import { Building2, List, MapPinned, SearchX } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { ListingFilters } from "@/components/listing-filters";
 import { ListingTable } from "@/components/listing-table";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { PropertyMap } from "@/components/property-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -20,11 +21,13 @@ import {
 } from "@/components/ui/empty";
 import {
   filterAndSortListings,
+  filterMapMarkers,
   listingFilterOptions,
   parseListingFilters,
 } from "@/lib/data/analytics";
-import { getAllListings } from "@/lib/data/queries";
+import { getAllListings, getMapListingMarkers } from "@/lib/data/queries";
 import { formatNumber } from "@/lib/format";
+import { getMapBasemapConfig } from "@/lib/geo/basemap";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Listings" };
@@ -39,9 +42,15 @@ export default async function ListingsPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const requestedView = Array.isArray(params.view) ? params.view[0] : params.view;
+  const view = requestedView === "map" ? "map" : "list";
   let listings;
+  let markers;
   try {
-    listings = await getAllListings();
+    [listings, markers] = await Promise.all([
+      getAllListings(),
+      view === "map" ? getMapListingMarkers() : Promise.resolve([]),
+    ]);
   } catch (error) {
     return (
       <div className="space-y-6">
@@ -59,6 +68,7 @@ export default async function ListingsPage({
 
   const filters = parseListingFilters(params);
   const filtered = filterAndSortListings(listings, filters);
+  const filteredMarkers = filterMapMarkers(markers, filters);
   const pageSize = 25;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Math.min(filters.page, totalPages);
@@ -69,11 +79,25 @@ export default async function ListingsPage({
     <div className="space-y-6">
       <PageHeader
         title="Listings"
-        description="Search and filter properties. Price filters only work when one currency is selected, so numbers stay comparable."
+        description="Search and inspect all imported listings, including lifecycle, eligibility, enrichment, and location quality."
         icon={Building2}
       />
+      <div className="flex gap-2">
+        <Button variant={view === "list" ? "default" : "outline"} asChild>
+          <Link href="/listings">
+            <List className="size-4" />
+            List
+          </Link>
+        </Button>
+        <Button variant={view === "map" ? "default" : "outline"} asChild>
+          <Link href="/listings?view=map">
+            <MapPinned className="size-4" />
+            Map
+          </Link>
+        </Button>
+      </div>
       <Suspense>
-        <ListingFilters options={options} />
+        <ListingFilters key={JSON.stringify(params)} options={options} />
       </Suspense>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
@@ -84,6 +108,21 @@ export default async function ListingsPage({
           of {formatNumber(listings.length)} listings
         </p>
       </div>
+      {view === "map" ? (
+        filteredMarkers.length ? (
+          <PropertyMap
+            markers={filteredMarkers}
+            styleUrl={getMapBasemapConfig().styleUrl}
+            attribution={getMapBasemapConfig().attribution}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-sm text-muted-foreground">
+              No listings with usable Curaçao coordinates match these filters.
+            </CardContent>
+          </Card>
+        )
+      ) : (
       <Card className="gap-0 py-0">
         {pageRows.length ? (
           <>
@@ -119,6 +158,7 @@ export default async function ListingsPage({
           </CardContent>
         )}
       </Card>
+      )}
     </div>
   );
 }

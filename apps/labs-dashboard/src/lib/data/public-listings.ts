@@ -1,0 +1,132 @@
+import "server-only";
+
+import { cache } from "react";
+
+import type { PublicPropertyListing } from "@/lib/domain/types";
+import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
+
+const PUBLIC_SELECT = [
+  "id",
+  "external_id",
+  "source_url",
+  "original_realtor_url",
+  "listing_type",
+  "source_listing_status",
+  "property_type",
+  "title",
+  "original_price",
+  "original_currency",
+  "benchmark_price_xcg",
+  "conversion_method",
+  "conversion_provider",
+  "conversion_rate_at",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
+  "primary_image_url",
+  "description",
+  "first_seen_at",
+  "last_seen_at",
+  "source_listed_at",
+  "source_key",
+  "source_display_name",
+].join(",");
+
+function numberOrNull(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function publicQueryError(message: string) {
+  if (/invalid api key|invalid jwt|jwt expired|unauthorized/i.test(message)) {
+    return new Error(
+      "Authentication failed: the public Labs key was rejected. Check the dashboard configuration.",
+    );
+  }
+  if (/fetch failed|network|timeout|econn/i.test(message)) {
+    return new Error(
+      "Network error: the public Labs database could not be reached. Check the connection and retry.",
+    );
+  }
+  return new Error(`Public listing query failed: ${message}`);
+}
+
+function normalize(row: Record<string, unknown>): PublicPropertyListing {
+  return {
+    id: String(row.id),
+    externalId: String(row.external_id),
+    sourceUrl: String(row.source_url),
+    originalRealtorUrl: row.original_realtor_url
+      ? String(row.original_realtor_url)
+      : null,
+    listingType: row.listing_type ? String(row.listing_type) : null,
+    sourceListingStatus: row.source_listing_status
+      ? String(row.source_listing_status)
+      : null,
+    propertyType: row.property_type ? String(row.property_type) : null,
+    title: row.title ? String(row.title) : null,
+    originalPrice: numberOrNull(row.original_price),
+    originalCurrency: row.original_currency
+      ? String(row.original_currency)
+      : null,
+    benchmarkPriceXcg: numberOrNull(row.benchmark_price_xcg),
+    conversionMethod: row.conversion_method
+      ? (String(
+          row.conversion_method,
+        ) as PublicPropertyListing["conversionMethod"])
+      : null,
+    conversionProvider: row.conversion_provider
+      ? String(row.conversion_provider)
+      : null,
+    conversionRateAt: row.conversion_rate_at
+      ? String(row.conversion_rate_at)
+      : null,
+    bedrooms: numberOrNull(row.bedrooms),
+    bathrooms: numberOrNull(row.bathrooms),
+    floorAreaM2: numberOrNull(row.floor_area_m2),
+    lotAreaValue: numberOrNull(row.lot_area_value),
+    lotAreaUnit: row.lot_area_unit ? String(row.lot_area_unit) : null,
+    primaryImageUrl: row.primary_image_url
+      ? String(row.primary_image_url)
+      : null,
+    description: row.description ? String(row.description) : null,
+    firstSeenAt: String(row.first_seen_at),
+    lastSeenAt: String(row.last_seen_at),
+    sourceListedAt: row.source_listed_at
+      ? String(row.source_listed_at)
+      : null,
+    sourceKey: String(row.source_key),
+    sourceDisplayName: String(row.source_display_name),
+  };
+}
+
+export const getPublicListings = cache(
+  async (): Promise<PublicPropertyListing[]> => {
+    const client = createReadOnlySupabaseClient();
+    const rows: Record<string, unknown>[] = [];
+    const pageSize = 1000;
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await client
+        .from("public_property_listings")
+        .select(PUBLIC_SELECT)
+        .order("last_seen_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw publicQueryError(error.message);
+      const page = (data ?? []) as unknown as Record<string, unknown>[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+
+    return rows.map(normalize);
+  },
+);
+
+export const getPublicListingById = cache(async (id: string) => {
+  const listings = await getPublicListings();
+  return listings.find((listing) => listing.id === id) ?? null;
+});

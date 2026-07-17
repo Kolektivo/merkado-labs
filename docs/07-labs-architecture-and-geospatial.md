@@ -81,6 +81,12 @@ Each source runs independently. Scheduling remains off until explicitly approved
 - Labs dashboard internal queries use server-side service-role client.
 - Public view uses `security_invoker=false` so the projection is readable without
   granting underlying table SELECT.
+- Internal pages redirect to `/login` unless the signed, httpOnly Labs admin
+  session cookie is valid. Admin APIs accept the cookie only after login; the
+  shared secret is not accepted repeatedly by normal API calls.
+- Dashboard config loads ignored values from
+  `apps/labs-dashboard/.env.local`. The client refuses any Supabase URL except
+  `csaefdkpwukshtouyixg`.
 
 ### Labs product previews (2026-07-17)
 
@@ -132,7 +138,25 @@ Continue to support:
 
 ## 6. Dashboard requirements
 
-Add or retain views for:
+The cleaned dashboard has six operational areas plus one prototype group:
+
+- Overview
+- Listings (including map view and listing detail)
+- Sources (including source runs and source detail)
+- Enrichment (review-only; execution disabled)
+- Quality (eligibility, lifecycle, missing fields, evidence, geography)
+- Settings
+- Prototypes
+
+Legacy top-level routes redirect into these areas:
+
+- `/source-runs` → `/sources`
+- `/eligibility`, `/lifecycle`, `/data-quality`, `/neighbourhoods` → `/quality`
+- `/map` → `/listings?view=map`
+- `/realtors` → `/listings`
+- `/how-it-works` → `/settings`
+
+The dashboard retains views for:
 
 - source coverage and source-run health;
 - original vs XCG benchmark price;

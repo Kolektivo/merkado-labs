@@ -34,12 +34,20 @@ function signPayload(payload: string): string {
     .digest("base64url");
 }
 
+function secretsEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 function encodeSession(expiresAt: number): string {
   const payload = `v1.${expiresAt}`;
   return `${payload}.${signPayload(payload)}`;
 }
 
-function verifySessionToken(token: string | undefined | null): boolean {
+export function verifyLabsAdminSessionToken(
+  token: string | undefined | null,
+): boolean {
   if (!token) return false;
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0] !== "v1") return false;
@@ -76,7 +84,7 @@ export function buildLabsAdminSessionCookieValue(): {
 
 export async function hasLabsAdminSession(): Promise<boolean> {
   const jar = await cookies();
-  return verifySessionToken(jar.get(COOKIE_NAME)?.value);
+  return verifyLabsAdminSessionToken(jar.get(COOKIE_NAME)?.value);
 }
 
 /**
@@ -91,7 +99,7 @@ export function assertLabsAdmin(
   const match = cookieHeader.match(
     new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`),
   );
-  if (match && verifySessionToken(decodeURIComponent(match[1]))) {
+  if (match && verifyLabsAdminSessionToken(decodeURIComponent(match[1]))) {
     return;
   }
 
@@ -99,7 +107,20 @@ export function assertLabsAdmin(
   const header = request.headers.get("x-labs-admin-secret")?.trim() ?? "";
   const form = formField?.trim() ?? "";
   const provided = header || form;
-  if (!provided || provided !== expected) {
+  if (!provided || !secretsEqual(provided, expected)) {
+    throw new AdminAuthError("Labs admin session required.", 401);
+  }
+}
+
+export function assertLabsAdminSession(request: Request): void {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(
+    new RegExp(`(?:^|;\\s*)${COOKIE_NAME}=([^;]+)`),
+  );
+  if (
+    !match ||
+    !verifyLabsAdminSessionToken(decodeURIComponent(match[1]))
+  ) {
     throw new AdminAuthError("Labs admin session required.", 401);
   }
 }

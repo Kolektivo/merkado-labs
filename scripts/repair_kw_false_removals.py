@@ -277,7 +277,15 @@ def main() -> int:
         report["listings"] = applied
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
-    print(json.dumps({"mode": report["mode"], "candidate_count": len(preview), "report": str(args.report)}))
+    print(
+        json.dumps(
+            {
+                "mode": report["mode"],
+                "candidate_count": len(preview),
+                "report": str(args.report),
+            }
+        )
+    )
     return 0
 
 

@@ -416,6 +416,7 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
       : source?.name
         ? String(source.name)
         : "Unknown",
+    sourceKey: source?.source_key ? String(source.source_key) : null,
     sourceUrl: String(row.source_url),
     originalRealtorUrl: row.original_realtor_url
       ? String(row.original_realtor_url)
@@ -696,9 +697,6 @@ export const getSourceRuns = cache(async (): Promise<SourceRunSummary[]> => {
     .limit(50);
 
   if (error) {
-    if (/does not exist|schema cache/i.test(error.message)) {
-      return [];
-    }
     throw publicReadError("Unable to load source runs", error.message);
   }
 
@@ -739,9 +737,6 @@ export const getListingActivityEvents = cache(
       .limit(100);
 
     if (error) {
-      if (/does not exist|schema cache/i.test(error.message)) {
-        return [];
-      }
       throw publicReadError("Unable to load activity events", error.message);
     }
 
@@ -810,12 +805,7 @@ export const getEnrichmentObservations = cache(
 
 export const getLatestAiEnrichmentProposal = cache(
   async (listingId: string): Promise<AiEnrichmentProposal | null> => {
-    let client;
-    try {
-      client = createLabsAdminClient();
-    } catch {
-      return null;
-    }
+    const client = createLabsAdminClient();
     const { data, error } = await client
       .from("ai_enrichment_proposals")
       .select(
@@ -848,9 +838,6 @@ export const getLatestAiEnrichmentProposal = cache(
       .maybeSingle();
 
     if (error) {
-      if (/does not exist|schema cache|permission denied/i.test(error.message)) {
-        return null;
-      }
       throw publicReadError("Unable to load AI enrichment proposal", error.message);
     }
     if (!data) return null;
@@ -891,12 +878,7 @@ export const getLatestAiEnrichmentProposal = cache(
 
 export const getRecentAiEnrichmentJobs = cache(
   async (limit = 10): Promise<AiEnrichmentJob[]> => {
-    let client;
-    try {
-      client = createLabsAdminClient();
-    } catch {
-      return [];
-    }
+    const client = createLabsAdminClient();
     const { data, error } = await client
       .from("ai_enrichment_jobs")
       .select(
@@ -929,9 +911,6 @@ export const getRecentAiEnrichmentJobs = cache(
       .limit(limit);
 
     if (error) {
-      if (/does not exist|schema cache|permission denied/i.test(error.message)) {
-        return [];
-      }
       throw publicReadError("Unable to load enrichment jobs", error.message);
     }
 
@@ -974,19 +953,13 @@ export const getRecentAiEnrichmentJobs = cache(
 
 export const getPropertySearchRequests = cache(
   async (): Promise<PropertySearchRequest[]> => {
-    let client;
-    try {
-      client = createLabsAdminClient();
-    } catch {
-      return [];
-    }
+    const client = createLabsAdminClient();
     const { data, error } = await client
       .from("property_search_requests")
       .select("id,title,status,transaction_type,min_price,max_price,price_currency,min_bedrooms,preferred_neighbourhoods,renovation_willingness,notes,intake_source,created_at,updated_at,confirmed_at")
       .order("updated_at", { ascending: false })
       .limit(100);
     if (error) {
-      if (/does not exist|schema cache|permission denied/i.test(error.message)) return [];
       throw new Error(`Unable to load search requests: ${error.message}`);
     }
     return (data ?? []).map((row) => ({
@@ -1011,12 +984,7 @@ export const getPropertySearchRequests = cache(
 
 export const getMatchReportsForRequest = cache(
   async (requestId: string): Promise<MatchReport[]> => {
-    let client;
-    try {
-      client = createLabsAdminClient();
-    } catch {
-      return [];
-    }
+    const client = createLabsAdminClient();
     const { data, error } = await client
       .from("listing_match_reports")
       .select("id,property_search_request_id,property_listing_id,match_score,hard_pass,match_reasons,trade_offs,scoring_version,generated_at,listing:property_listings(title)")
@@ -1024,7 +992,6 @@ export const getMatchReportsForRequest = cache(
       .order("match_score", { ascending: false })
       .limit(100);
     if (error) {
-      if (/does not exist|schema cache|permission denied/i.test(error.message)) return [];
       throw new Error(`Unable to load match reports: ${error.message}`);
     }
     return (data ?? []).map((row) => {
@@ -1047,18 +1014,12 @@ export const getMatchReportsForRequest = cache(
 
 export const getAgentEntitlements = cache(
   async (): Promise<MerkadoAgentEntitlement[]> => {
-    let client;
-    try {
-      client = createLabsAdminClient();
-    } catch {
-      return [];
-    }
+    const client = createLabsAdminClient();
     const { data, error } = await client
       .from("merkado_agent_entitlements")
       .select("id,property_search_request_id,status,delivery_channel,created_at")
       .order("created_at", { ascending: false });
     if (error) {
-      if (/does not exist|schema cache|permission denied/i.test(error.message)) return [];
       throw new Error(`Unable to load agent entitlements: ${error.message}`);
     }
     return (data ?? []).map((row) => ({

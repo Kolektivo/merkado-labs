@@ -72,6 +72,22 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
+### July 17, 2026 - Property Labs dashboard cleanup
+
+- Fixed local data loading: Next.js app-local env loading did not include the
+  repository-root server credentials. Required Labs values now live in the
+  dashboard's ignored `.env.local`, which is Next.js's supported app boundary.
+- Verified real Labs state: 265 listings (RE/MAX 220, Keller Williams 40,
+  Moret 5), 162 public-safe rows, and 29 AI proposals.
+- Protected all internal pages with one signed-cookie login; public
+  Browse/Passport now queries only `public_property_listings`.
+- Consolidated navigation to Overview, Listings, Sources, Enrichment, Quality,
+  Settings, and Prototypes. Legacy duplicate routes redirect to their owner area.
+- Removed the AI execution UI and disabled the job-start endpoint unless a
+  separate server-only execution flag is explicitly enabled.
+- Added desktop/mobile Edge route tests covering auth, real data, public
+  privacy, redirects, prototype labels, and browser errors.
+
 ### July 17, 2026 - Property V2 stabilization and recovery
 
 - Backup branch `backup/property-v2-multitask-before-stabilization` (`bb8bf08`).

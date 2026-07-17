@@ -155,6 +155,35 @@ export type PropertyListing = {
   coordinateQuality: CoordinateQuality;
 };
 
+export type PublicPropertyListing = {
+  id: string;
+  externalId: string;
+  sourceUrl: string;
+  originalRealtorUrl: string | null;
+  listingType: string | null;
+  sourceListingStatus: string | null;
+  propertyType: string | null;
+  title: string | null;
+  originalPrice: number | null;
+  originalCurrency: string | null;
+  benchmarkPriceXcg: number | null;
+  conversionMethod: ConversionMethod | null;
+  conversionProvider: string | null;
+  conversionRateAt: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  floorAreaM2: number | null;
+  lotAreaValue: number | null;
+  lotAreaUnit: string | null;
+  primaryImageUrl: string | null;
+  description: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  sourceListedAt: string | null;
+  sourceKey: string;
+  sourceDisplayName: string;
+};
+
 export type EnrichmentComparisonStatus =
   | "match"
   | "enrichment"
@@ -274,6 +303,7 @@ export type MapListingMarker = {
   floorAreaM2: number | null;
   primaryImageUrl: string | null;
   sourceName: string;
+  sourceKey: string | null;
   sourceUrl: string;
   originalRealtorUrl: string | null;
   originalRealtorName: string | null;
@@ -330,6 +360,7 @@ export type ListingActivityEvent = {
 
 export type ListingFilters = {
   query: string;
+  source: string;
   neighbourhood: string;
   listingType: string;
   currency: string;

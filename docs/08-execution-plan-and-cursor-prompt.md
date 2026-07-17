@@ -15,6 +15,12 @@ Do not create a second app, second repository, or permanent parallel architectur
 
 ## 2. Execution phases
 
+Current dashboard cleanup state (July 17, 2026): the existing Labs app has been
+stabilized in place. Its operational navigation is Overview, Listings, Sources,
+Enrichment, Quality, and Settings, with experimental buyer concepts grouped
+under Prototypes. Duplicate legacy routes redirect to those owner areas. See
+`LABS_DASHBOARD_GUIDE.md` for local operation and troubleshooting.
+
 ### Phase 1 - Inspect and remove CHH
 
 1. Read all `01–09` project docs.

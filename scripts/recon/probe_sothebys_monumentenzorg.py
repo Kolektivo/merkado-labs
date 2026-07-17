@@ -51,7 +51,11 @@ def main() -> None:
     results = {key: probe(url) for key, url in TARGETS.items()}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(json.dumps({k: {"status": v.get("status"), "error": v.get("error")} for k, v in results.items()}, indent=2))
+    summary = {
+        key: {"status": value.get("status"), "error": value.get("error")}
+        for key, value in results.items()
+    }
+    print(json.dumps(summary, indent=2))
     print("wrote", OUT)
 
 

@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
         hostname: "realestate-curacao.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "kw-curacao.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "moretrealestate.com",
+        pathname: "/**",
+      },
     ],
   },
 };

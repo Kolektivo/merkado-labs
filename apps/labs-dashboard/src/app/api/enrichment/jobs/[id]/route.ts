@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { AdminAuthError, assertLabsAdmin } from "@/lib/admin/auth";
+import { AdminAuthError, assertLabsAdminSession } from "@/lib/admin/auth";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { DashboardConfigurationError } from "@/lib/supabase/config";
 
@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   try {
-    assertLabsAdmin(request);
+    assertLabsAdminSession(request);
     const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: "Missing job id." }, { status: 400 });

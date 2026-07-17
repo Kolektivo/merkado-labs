@@ -58,7 +58,7 @@ export function ListingTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {listings.map((listing) => {
+          {listings.map((listing, index) => {
             const title = listing.title ?? `Listing ${listing.externalId}`;
 
             return (
@@ -77,6 +77,8 @@ export function ListingTable({
                           fill
                           className="object-cover"
                           sizes="80px"
+                          priority={index === 0}
+                          unoptimized
                         />
                       ) : (
                         <span className="flex size-full items-center justify-center text-muted-foreground">

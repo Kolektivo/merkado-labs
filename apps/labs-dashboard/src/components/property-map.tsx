@@ -156,6 +156,7 @@ function MarkerDetails({ marker }: { marker: MapListingMarker }) {
             fill
             className="object-cover"
             sizes="(max-width: 480px) 90vw, 360px"
+            unoptimized
           />
         ) : (
           <span className="flex size-full items-center justify-center text-muted-foreground">

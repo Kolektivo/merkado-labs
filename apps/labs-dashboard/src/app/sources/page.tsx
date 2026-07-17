@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   CalendarClock,
   ExternalLink,
@@ -173,9 +174,12 @@ export default async function SourcesPage() {
                   <TableRow key={source.id}>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium">
+                        <Link
+                          href={`/sources/${source.sourceKey}`}
+                          className="font-medium underline-offset-2 hover:underline"
+                        >
                           {source.displayName ?? source.name}
-                        </div>
+                        </Link>
                         <a
                           href={source.baseUrl}
                           target="_blank"

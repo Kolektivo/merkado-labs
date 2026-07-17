@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   AdminAuthError,
-  assertLabsAdmin,
-  readAdminSecretFromBody,
+  assertLabsAdminSession,
 } from "@/lib/admin/auth";
 import {
   previewEnrichmentScope,
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
       string,
       unknown
     >;
-    assertLabsAdmin(request, readAdminSecretFromBody(body));
+    assertLabsAdminSession(request);
 
     const jobRequest = parseBody(body);
     const admin = createLabsAdminClient();

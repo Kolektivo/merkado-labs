@@ -56,7 +56,12 @@ def main() -> int:
     for row in listings:
         source = sources.get(row["property_source_id"], {})
         source_key = source.get("source_key", "unknown")
-        before[(source_key, row.get("public_exclusion_reason") or "eligible" if row.get("public_eligible") else row.get("public_exclusion_reason") or "unknown")] += 1
+        before_reason = (
+            row.get("public_exclusion_reason") or "eligible"
+            if row.get("public_eligible")
+            else row.get("public_exclusion_reason") or "unknown"
+        )
+        before[(source_key, before_reason)] += 1
         eligible, reason = evaluate_public_eligibility(
             status=row["status"],
             original_price=(
@@ -108,7 +113,15 @@ def main() -> int:
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps({"mode": report["mode"], "total": report["total"], "changes": report["changes"]}))
+    print(
+        json.dumps(
+            {
+                "mode": report["mode"],
+                "total": report["total"],
+                "changes": report["changes"],
+            }
+        )
+    )
     return 0
 
 

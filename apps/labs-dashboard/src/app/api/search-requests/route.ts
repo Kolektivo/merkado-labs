@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { AdminAuthError, assertLabsAdmin, readAdminSecretFromBody } from "@/lib/admin/auth";
+import { AdminAuthError, assertLabsAdminSession } from "@/lib/admin/auth";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    assertLabsAdmin(request, readAdminSecretFromBody(body));
+    assertLabsAdminSession(request);
     const preferredNeighbourhoods = Array.isArray(body.preferredNeighbourhoods)
       ? body.preferredNeighbourhoods.map(String).filter(Boolean)
       : [];

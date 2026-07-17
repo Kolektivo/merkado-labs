@@ -89,7 +89,12 @@ def main() -> int:
     result = audit(load_listings(client))
     host = urlparse(url).hostname
     if args.json:
-        print(json.dumps({"project_host": host, "project_ref": LABS_PROJECT_REF, **result}, indent=2))
+        print(
+            json.dumps(
+                {"project_host": host, "project_ref": LABS_PROJECT_REF, **result},
+                indent=2,
+            )
+        )
     else:
         print(f"Coordinate audit for {LABS_PROJECT_REF} ({host})")
         for key_name, value in result.items():

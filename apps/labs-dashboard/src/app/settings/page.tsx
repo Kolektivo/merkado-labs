@@ -1,21 +1,30 @@
 import type { Metadata } from "next";
-import { Settings } from "lucide-react";
+import { CheckCircle2, CircleX, Settings } from "lucide-react";
 
 import { LabsAdminLogin } from "@/components/labs-admin-login";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasLabsAdminSession } from "@/lib/admin/auth";
+import { getConfigurationHealth } from "@/lib/system/health";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const hasSession = await hasLabsAdminSession();
+  const health = getConfigurationHealth();
+  const checks = [
+    ["Supabase configured", health.supabaseConfigured],
+    ["Correct Labs project", health.correctLabsProject],
+    ["Service credentials configured", health.serviceCredentialsConfigured],
+    ["OpenAI configured", health.openAiConfigured],
+    ["Admin authentication configured", health.adminAuthConfigured],
+  ] as const;
   return (
     <div className="space-y-6">
       <PageHeader
         title="Labs settings"
-        description="Internal Labs configuration. Secret values are never displayed. Not production auth."
+        description="Configuration health, admin session, disabled schedules, and Labs safety boundaries."
         icon={Settings}
       />
       <Card>
@@ -28,38 +37,45 @@ export default async function SettingsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Required server configuration</CardTitle>
+          <CardTitle>Configuration health</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
+          {checks.map(([label, ok]) => (
+            <div key={label} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+              {ok ? (
+                <CheckCircle2 className="size-4 text-emerald-600" />
+              ) : (
+                <CircleX className="size-4 text-destructive" />
+              )}
+              <span>{label}: {ok ? "Yes" : "No"}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>How data access works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            <code>LABS_ADMIN_SECRET</code> is server-only. Login issues a signed
-            httpOnly sameSite cookie — the secret must not live in client state,
-            localStorage, or rendered HTML.
+            Internal pages use server-only Labs credentials after the admin
+            session check. Public browse uses only the safe public listing view.
           </p>
           <p>
-            <code>SUPABASE_SECRET_KEY</code> (or <code>SUPABASE_SERVICE_ROLE_KEY</code>)
-            is server-only and must target Labs project{" "}
-            <code>csaefdkpwukshtouyixg</code>.
-          </p>
-          <p>
-            Anon/publishable keys may only read <code>public_property_listings</code>,
-            not full internal tables.
+            Raw evidence, source-run details, AI proposals, and prototype request
+            data remain private.
           </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>AI enrichment</CardTitle>
+          <CardTitle>Operational limits</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            <code>OPENAI_API_KEY</code>, <code>OPENAI_ENRICHMENT_MODEL</code>,{" "}
-            <code>OPENAI_ENRICHMENT_REASONING_EFFORT</code>,{" "}
-            <code>OPENAI_ENRICHMENT_MAX_OUTPUT_TOKENS</code>, and{" "}
-            <code>OPENAI_ENRICHMENT_BATCH_SIZE</code> are consumed by the Python
-            worker only. No silent model fallback.
-          </p>
-          <p>AI proposals require review and never overwrite source listing facts.</p>
+          <p>All source schedules are disabled. Adapters are manual only.</p>
+          <p>AI execution is disabled during this cleanup; existing proposals are review-only.</p>
+          <p>Property pages are experimental Labs prototypes, not live on merkado.cw.</p>
+          <p>The allowed database project is <code>csaefdkpwukshtouyixg</code>. Production is forbidden.</p>
         </CardContent>
       </Card>
     </div>

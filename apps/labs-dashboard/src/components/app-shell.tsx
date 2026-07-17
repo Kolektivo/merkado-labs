@@ -5,20 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
-  BookOpen,
   Building2,
-  ClipboardList,
-  FileSearch,
+  FlaskConical,
   GitCompareArrows,
   LayoutDashboard,
-  MapPinned,
   Radio,
-  Route,
   Settings,
   ShieldAlert,
-  SlidersHorizontal,
-  Users,
 } from "lucide-react";
 
 import {
@@ -59,35 +52,20 @@ type NavSection = {
 
 const navigationSections: NavSection[] = [
   {
-    label: "Explore",
+    label: "Property Labs",
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/listings", label: "Listings", icon: Building2 },
-      { href: "/browse", label: "Public browse", icon: FileSearch },
-      { href: "/realtors", label: "Realtors", icon: Users },
-      { href: "/map", label: "Map", icon: MapPinned },
-      { href: "/neighbourhoods", label: "Neighbourhoods", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
       { href: "/sources", label: "Sources", icon: Radio },
-      { href: "/enrichment", label: "AI enrichment", icon: GitCompareArrows },
-      { href: "/source-runs", label: "Source runs", icon: Route },
-      { href: "/eligibility", label: "Eligibility", icon: SlidersHorizontal },
-      { href: "/lifecycle", label: "Lifecycle", icon: ClipboardList },
-      { href: "/search-requests", label: "Search requests", icon: FileSearch },
-      { href: "/what-fits-me", label: "What fits me", icon: Building2 },
-      { href: "/agent", label: "Merkado Agent", icon: Settings },
-      { href: "/data-quality", label: "Data quality", icon: ShieldAlert },
+      { href: "/enrichment", label: "Enrichment", icon: GitCompareArrows },
+      { href: "/quality", label: "Quality", icon: ShieldAlert },
       { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
   {
-    label: "Guide",
+    label: "Experimental",
     items: [
-      { href: "/how-it-works", label: "How it works", icon: BookOpen },
+      { href: "/prototypes", label: "Prototypes", icon: FlaskConical },
     ],
   },
 ];
@@ -236,13 +214,37 @@ function SiteHeader() {
       </Breadcrumb>
       <div className="ml-auto hidden shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
         <span className="size-1.5 rounded-full bg-neutral-500" />
-        <span>Connected to merkado-labs</span>
+        <span>Internal Labs dashboard</span>
       </div>
     </header>
   );
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return <main className="min-h-screen px-4 py-8">{children}</main>;
+  }
+
+  if (pathname === "/browse" || pathname.startsWith("/browse/")) {
+    return (
+      <div className="min-h-screen">
+        <header className="border-b bg-background">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+            <Link href="/browse" className="font-semibold">
+              Merkado Property Labs
+            </Link>
+            <span className="text-xs text-muted-foreground">
+              Experimental prototype
+            </span>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-6xl px-4 py-6">{children}</main>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
