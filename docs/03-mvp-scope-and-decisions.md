@@ -6,7 +6,12 @@
 
 Replace the retired CHH pipeline with direct, source-specific property ingestion for five approved Curaçao sources. Prioritize data accuracy, price provenance, listing lifecycle history, and a simple off-chain Passport.
 
-The future What Fits Me? and Merkado Agent journey is an approved product direction, but it is not part of the current direct-source MVP implementation.
+The future What Fits Me? and Merkado Agent journey is an approved product direction.
+Labs dashboard demos of Search Request / What Fits Me / Agent / Match Reports are
+prototypes only — not live on merkado.cw and not activation-complete.
+
+Remaining activation gates: full KW/Moret/Sotheby's/Monumentenzorg catalog proof,
+scheduled runs off until QA, AI proposals manually reviewed, public RLS verified.
 
 ## 2. MVP deliverables
 

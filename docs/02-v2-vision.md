@@ -14,7 +14,8 @@ The longer-term product should help a user move from an unclear housing need to 
 
 ### Public marketplace
 
-Cars are live. Property is next.
+Cars are live on `merkado.cw`. Property browse / Search Request / What Fits Me /
+Agent / Match Reports in Labs are **prototypes**, not production-live.
 
 The property marketplace will aggregate selected direct realtor sources, normalize searchable fields, show transparent price information, and direct users to the original realtor or approved contact flow.
 

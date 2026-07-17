@@ -6,9 +6,10 @@
 
 Refactor the existing repository and Labs app in place.
 
-A branch is recommended only as rollback protection:
+Rollback / stabilization branches used:
 
-`feat/direct-property-sources`
+- `backup/property-v2-multitask-before-stabilization` (WIP checkpoint)
+- `feat/property-v2-stabilization` (bounded-run repair + RLS + admin hardening)
 
 Do not create a second app, second repository, or permanent parallel architecture.
 

@@ -4,7 +4,7 @@
 
 ## 1. Passport definition
 
-A Property Passport is an off-chain, source-traceable activity log for one source listing and, later, a reviewed canonical property.
+A Property Passport is an off-chain, source-traceable activity log for one source listing and, later, a reviewed canonical property. Labs Passport-style detail pages are prototypes, not production merkado.cw surfaces.
 
 It is not:
 
