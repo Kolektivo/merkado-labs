@@ -87,6 +87,7 @@ def test_skip_unchanged_without_api_call() -> None:
     checksum = compute_input_checksum(enrichment_input)
     result = enrich_listing(
         enrichment_input,
+        model="gpt-4.1-mini",
         api_key="sk-test",
         existing_checksum=checksum,
         existing_success=True,
@@ -108,7 +109,8 @@ def test_api_failure_does_not_raise() -> None:
         client = MagicMock()
         openai_cls.return_value = client
         client.responses.create.side_effect = RuntimeError("boom")
-        result = enrich_listing(enrichment_input, api_key="sk-test")
+        result = enrich_listing(enrichment_input, model="gpt-4.1-mini",
+        api_key="sk-test")
     assert result.status == "failed"
     assert result.error_message == "RuntimeError"
     assert result.proposal is None
@@ -124,7 +126,8 @@ def test_invalid_output_handled() -> None:
         response.id = "req_1"
         response.usage = None
         client.responses.create.return_value = response
-        result = enrich_listing(enrichment_input, api_key="sk-test")
+        result = enrich_listing(enrichment_input, model="gpt-4.1-mini",
+        api_key="sk-test")
     assert result.status == "invalid_output"
 
 
@@ -158,7 +161,8 @@ def test_successful_parse_fills_unknown_features() -> None:
         usage.total_tokens = 30
         response.usage = usage
         client.responses.create.return_value = response
-        result = enrich_listing(enrichment_input, api_key="sk-test")
+        result = enrich_listing(enrichment_input, model="gpt-4.1-mini",
+        api_key="sk-test")
     assert result.status == "succeeded"
     assert result.proposal is not None
     assert "pool" in result.proposal.features
@@ -182,7 +186,8 @@ def test_force_rerun_calls_api_even_if_checksum_matches() -> None:
         client.responses.create.return_value = response
         result = enrich_listing(
             enrichment_input,
-            api_key="sk-test",
+            model="gpt-4.1-mini",
+        api_key="sk-test",
             existing_checksum=checksum,
             existing_success=True,
             force=True,

@@ -29,11 +29,17 @@ The isolated Labs project currently has:
 - Labs dashboard with ops pages, public browse preview, Search Request / What Fits Me / Agent previews;
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (220 listings;
   evidence refresh 2026-07-17; still unscheduled);
-- Keller Williams adapter v0.1 with **40 Labs listings** imported 2026-07-17
-  (Crawl-Delay 20, sequential, unscheduled);
+- Keller Williams adapter v0.1 with **40 Labs listings** (39 active + 1 unknown;
+  Crawl-Delay 20, sequential, unscheduled). All KW runs remain **partial**
+  (bounded `max_items` / incomplete pagination). On 2026-07-17 a bounded-run
+  classification bug falsely marked 35 KW listings `removed`; they were restored
+  from last valid pre-absence status without deleting immutable events.
 - Moret Real Estate adapter v0.1 with **5 Labs listings** (bounded WPEstate import);
-- AI enrichment: 25 RE/MAX listings enriched 2026-07-17 (gpt-4.1-mini; proposals only);
-- Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`).
+- AI enrichment: 29 proposal rows (24 needs_review, 4 skipped_unchanged, 1 succeeded;
+  model `gpt-4.1-mini` because the prior batch script hardcoded that model). Proposals
+  only; no auto-approve. Model now required via `OPENAI_ENRICHMENT_MODEL` (no silent default).
+- Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
+  **Labs prototypes**, not live on merkado.cw.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16

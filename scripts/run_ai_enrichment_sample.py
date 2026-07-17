@@ -26,7 +26,11 @@ DEFAULT_IDS = ("hs3080", "hs3059", "hs2540", "hr2155", "hr1394")
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--external-ids", nargs="*", default=list(DEFAULT_IDS))
-    parser.add_argument("--model", default="gpt-4.1-mini")
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Defaults to OPENAI_ENRICHMENT_MODEL (required; no silent fallback)",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--batch-size", type=int, default=2)
     args = parser.parse_args()

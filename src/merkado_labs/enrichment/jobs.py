@@ -8,7 +8,6 @@ from typing import Any
 
 from merkado_labs.config import get_settings
 from merkado_labs.enrichment import (
-    DEFAULT_MODEL,
     PROMPT_VERSION,
     SCHEMA_VERSION,
     EnrichmentInput,
@@ -151,7 +150,7 @@ def process_enrichment_job(
     job_id: str,
     *,
     listing_ids: Sequence[str],
-    batch_size: int = 5,
+    batch_size: int | None = None,
     force: bool = False,
     model: str | None = None,
     client: Any | None = None,
@@ -163,7 +162,12 @@ def process_enrichment_job(
     if settings.openai_api_key is None:
         raise RuntimeError("OPENAI_API_KEY is required for enrichment")
     api_key = settings.openai_api_key.get_secret_value()
-    model_name = model or settings.openai_enrichment_model or DEFAULT_MODEL
+    model_name = (model or settings.openai_enrichment_model or "").strip()
+    if not model_name:
+        raise RuntimeError(
+            "OPENAI_ENRICHMENT_MODEL is required; no silent model default is allowed"
+        )
+    batch_size = batch_size or settings.openai_enrichment_batch_size
     owns_client = client is None
     client = client or create_labs_client()
 
@@ -172,6 +176,12 @@ def process_enrichment_job(
             "status": "running",
             "started_at": datetime.now(UTC).isoformat(),
             "model": model_name,
+            "summary": {
+                "model_requested": model_name,
+                "reasoning_effort": settings.openai_enrichment_reasoning_effort,
+                "max_output_tokens": settings.openai_enrichment_max_output_tokens,
+                "batch_size": batch_size,
+            },
         }
     ).eq("id", job_id).execute()
 

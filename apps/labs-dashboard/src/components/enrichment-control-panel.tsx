@@ -23,10 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LabsAdminLogin } from "@/components/labs-admin-login";
 import type { AiEnrichmentJob } from "@/lib/domain/types";
 import { formatDateTime, titleCase } from "@/lib/format";
-
-const ADMIN_SECRET_KEY = "labs-admin-secret";
 
 type ScopeOption =
   | "listing"
@@ -45,32 +44,15 @@ type PreviewResult = {
   force: boolean;
 };
 
-function readStoredSecret(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return sessionStorage.getItem(ADMIN_SECRET_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeStoredSecret(value: string) {
-  try {
-    if (value) sessionStorage.setItem(ADMIN_SECRET_KEY, value);
-    else sessionStorage.removeItem(ADMIN_SECRET_KEY);
-  } catch {
-    // ignore storage failures
-  }
-}
-
 export function EnrichmentControlPanel({
   initialListingId,
   initialJobs,
+  hasAdminSession = false,
 }: {
   initialListingId?: string | null;
   initialJobs: AiEnrichmentJob[];
+  hasAdminSession?: boolean;
 }) {
-  const [adminSecret, setAdminSecret] = useState("");
   const [scope, setScope] = useState<ScopeOption>(
     initialListingId ? "listing" : "new_or_changed",
   );
@@ -111,20 +93,11 @@ export function EnrichmentControlPanel({
   }, [force, maxCount, parsedListingIds, scope, sourceKey]);
 
   async function adminFetch(path: string, init?: RequestInit) {
-    let secret = adminSecret.trim();
-    if (!secret) {
-      secret = readStoredSecret().trim();
-      if (secret) setAdminSecret(secret);
-    }
-    if (!secret) {
-      throw new Error("Enter the Labs admin secret first.");
-    }
-    writeStoredSecret(secret);
     const response = await fetch(path, {
       ...init,
+      credentials: "same-origin",
       headers: {
         "content-type": "application/json",
-        "x-labs-admin-secret": secret,
         ...(init?.headers ?? {}),
       },
     });
@@ -248,25 +221,13 @@ export function EnrichmentControlPanel({
         <CardHeader>
           <CardTitle>Admin gate</CardTitle>
           <CardDescription>
-            Admin secret is sent only as a request header and kept in
-            sessionStorage for this browser tab. It is never committed.
+            Unlock once with the server-side Labs admin secret. The secret is
+            never kept in sessionStorage/localStorage; the browser only receives
+            a signed httpOnly session cookie.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="admin-secret">Labs admin secret</Label>
-            <Input
-              id="admin-secret"
-              type="password"
-              autoComplete="off"
-              value={adminSecret}
-              onChange={(event) => {
-                setAdminSecret(event.target.value);
-                writeStoredSecret(event.target.value);
-              }}
-              placeholder="LABS_ADMIN_SECRET"
-            />
-          </div>
+        <CardContent>
+          <LabsAdminLogin hasSession={hasAdminSession} />
         </CardContent>
       </Card>
 

@@ -27,12 +27,17 @@ export type EnrichmentPreview = {
   force: boolean;
 };
 
-const DEFAULT_MODEL = "gpt-4.1-mini";
 const PROMPT_VERSION = "listing_enrichment_v1";
 const SCHEMA_VERSION = "listing_enrichment_schema_v1";
 
 export function enrichmentModel(): string {
-  return process.env.OPENAI_ENRICHMENT_MODEL?.trim() || DEFAULT_MODEL;
+  const model = process.env.OPENAI_ENRICHMENT_MODEL?.trim();
+  if (!model) {
+    throw new Error(
+      "OPENAI_ENRICHMENT_MODEL is required; no silent model default is allowed.",
+    );
+  }
+  return model;
 }
 
 export function enrichmentMeta() {

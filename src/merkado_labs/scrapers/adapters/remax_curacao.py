@@ -20,6 +20,7 @@ from merkado_labs.scrapers.contracts import (
     ListingLifecycleStatus,
     SourceRunOutcome,
     SourceRunRecord,
+    classify_run_outcome,
 )
 from merkado_labs.scrapers.evidence import (
     decode_html_entities,
@@ -1094,29 +1095,30 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
 
         completed = datetime.now(UTC)
 
-        # Empty no-op run (no URLs, no discovery) is success.
-        if not urls and not discover and not errors:
-            outcome = SourceRunOutcome.SUCCESS
-            bounded = False
-        else:
-            # Bounded/partial unless discovery completed the full catalog without caps.
-            catalog_complete = bool(discovery_meta.get("complete_catalog")) and not bool(
-                discovery_meta.get("truncated")
-            )
-            bounded = bool(
-                dry_run
-                or max_pages is not None
-                or max_items is not None
-                or discovery_meta.get("truncated")
-                or errors
-                or (discover and not catalog_complete)
-            )
-            if errors and not snapshots:
-                outcome = SourceRunOutcome.FAILURE
-            elif bounded:
-                outcome = SourceRunOutcome.PARTIAL if snapshots else SourceRunOutcome.FAILURE
-            else:
-                outcome = SourceRunOutcome.SUCCESS
+        catalog_complete = bool(discovery_meta.get("complete_catalog")) and not bool(
+            discovery_meta.get("truncated")
+        )
+        # Caps, dry-run, truncated discovery, or incomplete catalog → never success.
+        bounded = bool(
+            dry_run
+            or max_pages is not None
+            or max_items is not None
+            or discovery_meta.get("truncated")
+            or (discover and not catalog_complete)
+            or (not discover and not catalog_complete)
+        )
+        outcome = classify_run_outcome(
+            parsed_count=len(snapshots),
+            target_count=len(urls),
+            error_count=errors,
+            complete_catalog=catalog_complete and not bounded,
+            bounded=bounded,
+            truncated=bool(discovery_meta.get("truncated")),
+            max_items=max_items,
+            max_pages=max_pages,
+            failed_fetches=errors,
+        )
+        complete_catalog = outcome == SourceRunOutcome.SUCCESS and catalog_complete and not bounded
 
         checksum = hashlib.sha256(
             "|".join(sorted(s.external_id for s in snapshots)).encode("utf-8")
@@ -1136,15 +1138,16 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
             snapshot_checksum=checksum,
             notes=(
                 "Bounded manual run; scheduling disabled"
-                if outcome == SourceRunOutcome.PARTIAL
-                else "Manual run; scheduling disabled"
+                if outcome != SourceRunOutcome.SUCCESS
+                else "Complete catalog manual run; scheduling disabled"
             ),
             metadata={
                 "dry_run": dry_run,
                 "max_items": max_items,
                 "max_pages": max_pages,
                 "discover": discover,
-                "bounded": outcome == SourceRunOutcome.PARTIAL,
+                "bounded": bounded or outcome == SourceRunOutcome.PARTIAL,
+                "complete_catalog": complete_catalog,
                 "discovery": discovery_meta,
             },
         )

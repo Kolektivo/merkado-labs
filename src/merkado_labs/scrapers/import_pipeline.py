@@ -828,7 +828,10 @@ def import_snapshots(
                 continue
             listing_rows = (
                 client.table("property_listings")
-                .select("id,status,consecutive_successful_absences")
+                .select(
+                    "id,status,consecutive_successful_absences,original_price,"
+                    "source_url,original_realtor_name"
+                )
                 .eq("property_source_id", source_id)
                 .eq("external_id", transition.external_id)
                 .limit(1)
@@ -852,6 +855,21 @@ def import_snapshots(
                 update["missing_since"] = None
                 update["removed_at"] = None
                 update["consecutive_successful_absences"] = 0
+            if transition.new_status is not None:
+                price = listing_rows[0].get("original_price")
+                eligible, reason = evaluate_public_eligibility(
+                    status=transition.new_status.value,
+                    original_price=Decimal(str(price)) if price is not None else None,
+                    source_enabled=enabled,
+                    source_url=listing_rows[0].get("source_url"),
+                    source_adapter_status=adapter_status,
+                    has_source_attribution=bool(
+                        listing_rows[0].get("original_realtor_name")
+                        or listing_rows[0].get("source_url")
+                    ),
+                )
+                update["public_eligible"] = eligible
+                update["public_exclusion_reason"] = None if eligible else reason
             if update:
                 client.table("property_listings").update(update).eq("id", listing_id).execute()
             client.table("listing_activity_events").insert(

@@ -56,24 +56,39 @@ Each source runs independently. Scheduling remains off until explicitly approved
 
 ### OpenAI enrichment (Labs only)
 
-- Env: `OPENAI_API_KEY`, `OPENAI_ENRICHMENT_MODEL` (server-only; never `NEXT_PUBLIC_`)
-- Admin gate: `LABS_ADMIN_SECRET`
-- Manual dashboard flow: `/enrichment` → preview → run job → poll progress → review
+- Env (all server-only; never `NEXT_PUBLIC_`): `OPENAI_API_KEY`,
+  `OPENAI_ENRICHMENT_MODEL` (**required**, no silent default),
+  `OPENAI_ENRICHMENT_REASONING_EFFORT`, `OPENAI_ENRICHMENT_MAX_OUTPUT_TOKENS`,
+  `OPENAI_ENRICHMENT_BATCH_SIZE`
+- Unknown model pricing displays **unavailable** (does not borrow another model's rates)
+- Admin gate: `LABS_ADMIN_SECRET` → signed httpOnly Labs admin session cookie
+  (secret never in sessionStorage/localStorage/client state after unlock)
+- Manual dashboard flow: `/enrichment` → unlock → preview → run job → poll → review
 - Shared runner: `scripts/run_ai_enrichment.py` / `merkado_labs.enrichment.jobs`
 - Pricing estimates: `merkado_labs.enrichment.pricing` (prefer estimates over spend)
-- AI tables: **service-role only** after 2026-07-17 RLS lockdown
+- AI tables: **service-role only**
 - Review statuses: `unreviewed` / `approved_for_research` / `rejected` / `needs_changes`
 - Approval never overwrites source facts
+- Why prior batch used `gpt-4.1-mini`: hardcoded in `run_ai_enrichment_batch25.py` +
+  former `DEFAULT_MODEL` / config default before env-only hardening
 - Future hook after complete successful scrape: enqueue new/changed only — **not scheduled yet**
-- AI must not invent price, currency, status dates, coordinates, address, or ownership
-- 25-listing paid test: **gated** — show estimate first; do not auto-run without confirmation
+
+### Security model (Labs read access)
+
+- Anon/authenticated: **SELECT only** on `public_property_listings` (and neighbourhoods).
+- No anon SELECT on `property_listings`, observations, activity events, source runs,
+  AI tables, search/agent/match tables, or raw evidence.
+- Labs dashboard internal queries use server-side service-role client.
+- Public view uses `security_invoker=false` so the projection is readable without
+  granting underlying table SELECT.
 
 ### Labs product previews (2026-07-17)
 
-- `/browse` + Passport-style detail (eligible active only)
-- `/search-requests`, `/what-fits-me`, `/agent`, `/match-reports/[requestId]`
+- `/browse` + Passport-style detail (eligible active only) — Labs prototype
+- `/search-requests`, `/what-fits-me`, `/agent`, `/match-reports/[requestId]` — Labs prototypes
 - Matcher: `merkado_labs.matching` (`rules_v1`) + `scripts/run_match_preview.py`
 - No real email, billing, or production merkado.cw connection
+- Nothing here is described as live on merkado.cw
 
 ### RE/MAX refresh (2026-07-17)
 

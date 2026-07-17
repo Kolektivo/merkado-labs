@@ -19,3 +19,9 @@ def test_twenty_five_listing_estimate_is_bounded() -> None:
     # Rough planning bound; not a spend authorization.
     assert est.estimated_usd < Decimal("1.00")
     assert "Indicative" in est.notes
+
+
+def test_unknown_model_pricing_is_unavailable() -> None:
+    est = estimate_enrichment_cost(model="totally-unknown-model", listing_count=5)
+    assert est.estimated_usd == Decimal("0")
+    assert "unavailable" in est.notes.lower()

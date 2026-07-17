@@ -47,8 +47,20 @@ def test_public_eligibility_requires_active_positive_price() -> None:
     assert not sold and reason == "not_active"
 
 
-def _run(outcome: SourceRunOutcome) -> SourceRunRecord:
+def _run(
+    outcome: SourceRunOutcome,
+    *,
+    complete_catalog: bool | None = None,
+    max_items: int | None = None,
+) -> SourceRunRecord:
     now = datetime(2026, 7, 16, tzinfo=UTC)
+    # Complete success tests must prove full catalog; partial/failure must not.
+    if complete_catalog is None:
+        complete_catalog = outcome == SourceRunOutcome.SUCCESS
+    meta: dict = {"complete_catalog": complete_catalog}
+    if max_items is not None:
+        meta["max_items"] = max_items
+        meta["bounded"] = True
     return SourceRunRecord(
         source_key="remax_curacao",
         adapter_name="remax_curacao",
@@ -58,6 +70,7 @@ def _run(outcome: SourceRunOutcome) -> SourceRunRecord:
         outcome=outcome,
         discovered_count=1,
         parsed_count=1,
+        metadata=meta,
     )
 
 
@@ -360,3 +373,130 @@ def test_relisted_uses_current_lifecycle_hint() -> None:
     )
     relisted = next(t for t in events if t.event_type == ActivityEventType.RELISTED)
     assert relisted.new_status == ListingLifecycleStatus.SOLD
+
+
+def test_bounded_five_item_run_never_removes_others() -> None:
+    """Regression: KW-style max_items=5 success must not drive absences."""
+
+    previous = {
+        f"id-{i}": ListingLifecycleState(
+            external_id=f"id-{i}",
+            status=ListingLifecycleStatus.ACTIVE,
+            first_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_successfully_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            missing_since=None,
+            sold_at=None,
+            removed_at=None,
+            original_price=Decimal("100"),
+            original_currency="USD",
+        )
+        for i in range(40)
+    }
+    # Mislabelled historical pattern: outcome=success but max_items set.
+    capped = _run(SourceRunOutcome.SUCCESS, complete_catalog=False, max_items=5)
+    assert not capped.is_complete_success
+    try:
+        compare_complete_success_snapshots(
+            previous=previous,
+            current_snapshots={f"id-{i}": _snapshot(f"id-{i}") for i in range(5)},
+            run=capped,
+        )
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+
+
+def test_partial_run_never_creates_absence_transitions() -> None:
+    previous = {
+        "keep-me": ListingLifecycleState(
+            external_id="keep-me",
+            status=ListingLifecycleStatus.ACTIVE,
+            first_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_successfully_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            missing_since=None,
+            sold_at=None,
+            removed_at=None,
+            original_price=Decimal("100"),
+            original_currency="USD",
+        )
+    }
+    partial = _run(SourceRunOutcome.PARTIAL, complete_catalog=False, max_items=5)
+    assert not partial.is_complete_success
+    try:
+        compare_complete_success_snapshots(
+            previous=previous,
+            current_snapshots={},
+            run=partial,
+        )
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+
+
+def test_success_without_complete_catalog_flag_is_not_complete() -> None:
+    run = SourceRunRecord(
+        source_key="keller_williams_curacao",
+        adapter_name="keller_williams_curacao",
+        adapter_version="0.1.0",
+        started_at=datetime(2026, 7, 16, tzinfo=UTC),
+        completed_at=datetime(2026, 7, 16, tzinfo=UTC),
+        outcome=SourceRunOutcome.SUCCESS,
+        discovered_count=5,
+        parsed_count=5,
+        metadata={"max_items": 5, "bounded": True},
+    )
+    assert not run.is_complete_success
+
+
+def test_complete_success_still_supports_missing_and_removal() -> None:
+    previous = {
+        "gone": ListingLifecycleState(
+            external_id="gone",
+            status=ListingLifecycleStatus.ACTIVE,
+            first_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_successfully_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            missing_since=None,
+            sold_at=None,
+            removed_at=None,
+            consecutive_absences=0,
+            original_price=Decimal("100"),
+            original_currency="USD",
+        )
+    }
+    complete = _run(SourceRunOutcome.SUCCESS, complete_catalog=True)
+    assert complete.is_complete_success
+    missing = compare_complete_success_snapshots(
+        previous=previous,
+        current_snapshots={},
+        run=complete,
+        removal_threshold=2,
+    )
+    assert any(t.event_type == ActivityEventType.MISSING_FROM_SOURCE for t in missing)
+
+    previous_missing = {
+        "gone": ListingLifecycleState(
+            external_id="gone",
+            status=ListingLifecycleStatus.MISSING,
+            first_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            last_successfully_seen_at=datetime(2026, 7, 1, tzinfo=UTC),
+            missing_since=datetime(2026, 7, 10, tzinfo=UTC),
+            sold_at=None,
+            removed_at=None,
+            consecutive_absences=1,
+            original_price=Decimal("100"),
+            original_currency="USD",
+        )
+    }
+    removed = compare_complete_success_snapshots(
+        previous=previous_missing,
+        current_snapshots={},
+        run=complete,
+        removal_threshold=2,
+    )
+    assert any(t.event_type == ActivityEventType.REMOVED_FROM_SOURCE for t in removed)

@@ -9,7 +9,12 @@ from merkado_labs.scrapers.adapters.moret_real_estate import (
     canonicalize_detail_url,
     extract_detail_links,
 )
-from tests.fixtures.moret_html import DETAIL_NO_PRICE, DETAIL_VANAF_PRICE, DETAIL_XCG_ACTIVE, INDEX_PAGE
+from tests.fixtures.moret_html import (
+    DETAIL_NO_PRICE,
+    DETAIL_VANAF_PRICE,
+    DETAIL_XCG_ACTIVE,
+    INDEX_PAGE,
+)
 
 
 def test_canonicalize_prefers_properties_path() -> None:

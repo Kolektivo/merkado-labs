@@ -1,12 +1,13 @@
 """Gated ~25-listing RE/MAX AI enrichment batch (Labs only).
 
-Uses gpt-4.1-mini explicitly. Prints estimate first, then runs.
+Model comes from OPENAI_ENRICHMENT_MODEL (no silent default). Prints estimate first.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -27,8 +28,6 @@ from merkado_labs.scrapers.import_pipeline import (  # noqa: E402
     resolve_property_source,
 )
 
-MODEL = "gpt-4.1-mini"
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -38,12 +37,17 @@ def main() -> int:
     parser.add_argument("--yes", action="store_true", help="Required to spend")
     args = parser.parse_args()
 
-    estimate = estimate_enrichment_cost(model=MODEL, listing_count=args.limit)
+    model = (os.environ.get("OPENAI_ENRICHMENT_MODEL") or "").strip()
+    if not model:
+        print("OPENAI_ENRICHMENT_MODEL is required", file=sys.stderr)
+        return 2
+
+    estimate = estimate_enrichment_cost(model=model, listing_count=args.limit)
     print(
         json.dumps(
             {
                 "estimate_usd": str(estimate.estimated_usd),
-                "model": MODEL,
+                "model": model,
                 "listing_count": args.limit,
                 "pricing_as_of": estimate.pricing_as_of,
                 "notes": estimate.notes,
@@ -132,7 +136,7 @@ def main() -> int:
         scope_type="manual_selection",
         scope_filter={"batch": "gated_25", "external_ids": [r["external_id"] for r in selected]},
         listing_ids=listing_ids,
-        model=MODEL,
+        model=model,
         requested_by="gated_batch25_script",
         property_source_id=str(source["id"]),
     )
@@ -142,7 +146,7 @@ def main() -> int:
         listing_ids=listing_ids,
         batch_size=args.batch_size,
         force=args.force,
-        model=MODEL,
+        model=model,
         client=client,
     )
     print(json.dumps(result, indent=2, default=str))

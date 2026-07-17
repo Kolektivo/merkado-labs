@@ -72,11 +72,25 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
+### July 17, 2026 - Property V2 stabilization and recovery
+
+- Backup branch `backup/property-v2-multitask-before-stabilization` (`bb8bf08`).
+- Root cause: KW `run_bounded` labeled capped runs `success`; lifecycle treated them as
+  complete and removed 35 listings absent from later `max_items=5` snapshots.
+- Fix: `classify_run_outcome` + `is_complete_success` requires `complete_catalog=true`
+  and no caps; KW/Moret/REMAX adapters emit `partial` when bounded.
+- Repair: restored 35 KW listings (`kw_bounded_run_false_removal_v1`); now 39 active + 1 unknown.
+- RLS: revoked anon SELECT on internal property tables; public view SELECT-only with
+  `security_invoker=false`.
+- Labs admin: httpOnly signed session cookie; secret no longer in ordinary forms/sessionStorage.
+- AI: no hardcoded model default; env-required `OPENAI_ENRICHMENT_MODEL`; unknown pricing unavailable.
+- Eligibility invariant: `public_eligible=true AND status!=active` → 0.
+
 ### July 17, 2026 - Property V2 continuation (imports + AI + matching)
 
 - Fixed import-pipeline realtor attribution (was hard-coded RE/MAX for all sources).
-- KW: dry-run 5 OK → import 40 (success; Crawl-Delay 20; 38 public-eligible);
-  evidence HTML uploaded for all 40.
+- KW: dry-run 5 OK → import 40 (Crawl-Delay 20); evidence HTML uploaded for all 40.
+  (Later corrected: those runs were partial/bounded, not complete catalog success.)
 - Moret: WPEstate adapter v0.1; bounded import 5 + evidence; rent/sale heuristics.
 - AI gated batch: job `f06f994b-…`, model `gpt-4.1-mini`, **25/25 succeeded**,
   0 failed; tokens in 66845 / out 24992 / total 91837; ~**$0.067** actual vs

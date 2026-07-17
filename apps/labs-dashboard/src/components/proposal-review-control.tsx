@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/select";
 import type { AiProposalReviewStatus } from "@/lib/domain/types";
 
-const STORAGE_KEY = "labs-admin-secret";
-
 export function ProposalReviewControl({
   proposalId,
   initialStatus,
@@ -27,7 +25,6 @@ export function ProposalReviewControl({
 }) {
   const [status, setStatus] = useState<AiProposalReviewStatus>(initialStatus);
   const [notes, setNotes] = useState(initialNotes ?? "");
-  const [secret, setSecret] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,15 +32,10 @@ export function ProposalReviewControl({
     setBusy(true);
     setMessage(null);
     try {
-      const adminSecret = secret.trim() || sessionStorage.getItem(STORAGE_KEY)?.trim() || "";
-      if (!adminSecret) throw new Error("Enter the Labs admin secret.");
-      sessionStorage.setItem(STORAGE_KEY, adminSecret);
       const response = await fetch(`/api/enrichment/proposals/${proposalId}/review`, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-labs-admin-secret": adminSecret,
-        },
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ reviewStatus: status, reviewNotes: notes }),
       });
       const result = await response.json().catch(() => ({}));
@@ -58,7 +50,7 @@ export function ProposalReviewControl({
 
   return (
     <div className="rounded-lg border bg-muted/20 p-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Review status</Label>
           <Select value={status} onValueChange={(value) => setStatus(value as AiProposalReviewStatus)}>
@@ -75,11 +67,10 @@ export function ProposalReviewControl({
           <Label>Review notes</Label>
           <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional notes" />
         </div>
-        <div className="space-y-2">
-          <Label>Labs admin secret</Label>
-          <Input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="Required to save" />
-        </div>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Requires an active Labs admin session cookie (unlock from Enrichment or Settings).
+      </p>
       <div className="mt-3 flex items-center gap-3">
         <Button type="button" size="sm" onClick={() => void submit()} disabled={busy}>
           {busy ? "Saving…" : "Save review"}

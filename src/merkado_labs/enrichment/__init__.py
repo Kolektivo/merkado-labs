@@ -17,7 +17,6 @@ from pydantic import BaseModel
 
 PROMPT_VERSION = "listing_enrichment_v1"
 SCHEMA_VERSION = "listing_enrichment_schema_v1"
-DEFAULT_MODEL = "gpt-4.1-mini"
 
 FeatureValue = Literal["present", "explicitly_absent", "unknown"]
 
@@ -238,7 +237,11 @@ def enrich_listing(
 ) -> EnrichmentResult:
     """Run one enrichment. Skips when input checksum unchanged unless force=True."""
 
-    model_name = model or DEFAULT_MODEL
+    if not model or not str(model).strip():
+        raise RuntimeError(
+            "OPENAI_ENRICHMENT_MODEL is required; no silent model default is allowed"
+        )
+    model_name = str(model).strip()
     checksum = compute_input_checksum(enrichment_input)
     generated_at = datetime.now(UTC)
 

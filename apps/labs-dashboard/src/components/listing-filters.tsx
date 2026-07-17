@@ -317,11 +317,13 @@ export function ListingFilters({
                 <SelectValue placeholder="Lifecycle" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all">All lifecycle states</SelectItem>
+                <SelectItem value="__all">All canonical statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="sold">Sold</SelectItem>
-                <SelectItem value="rented">Rented</SelectItem>
-                <SelectItem value="under_contract">Under contract</SelectItem>
+                <SelectItem value="sold">Sold (source-marked sold)</SelectItem>
+                <SelectItem value="inactive">Inactive (includes source rented)</SelectItem>
+                <SelectItem value="missing">Missing (absent from complete run)</SelectItem>
+                <SelectItem value="removed">Removed (confirmed absence)</SelectItem>
+                <SelectItem value="unknown">Unknown</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -54,7 +54,10 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Robots | `Crawl-Delay: 20` — sequential detail only; no parallel |
 | Price UI | USD primary with EUR/XCG equivalents; European thousands (`.` ) |
 | Adapter | `keller_williams_curacao.py` **v0.1**; CLI `scripts/adapters/run_keller_williams_curacao.py` |
-| Labs import | 2026-07-17: discovered/parsed 40, imported 36 + 4 prior = **40** listings; 38 public-eligible |
+| Labs import | 2026-07-17: discovered/parsed 40, imported 36 + 4 prior = **40** listings |
+| Run class | All KW runs to date are **partial** (`max_items` / incomplete catalog). Never treat as complete success. |
+| False-removal repair | 35 listings wrongly marked `removed` by two `max_items=5` runs mislabeled `success`; restored 2026-07-17 (`kw_bounded_run_false_removal_v1`) |
+| Current mix | 39 `active` + 1 `unknown` (Under Contract source status); 0 removed |
 | Evidence | Private Storage HTML backfilled for all 40 |
 | Scheduling | **Off** — manual only |
 

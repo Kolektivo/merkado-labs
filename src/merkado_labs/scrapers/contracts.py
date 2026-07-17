@@ -10,7 +10,11 @@ from typing import Any, Literal, Protocol
 
 
 class SourceRunOutcome(StrEnum):
-    """Outcome of one adapter run. Only success may drive removals."""
+    """Outcome of one adapter run.
+
+    Only ``success`` with ``complete_catalog=true`` may drive missing/removal.
+    Bounded or incomplete scope must be ``partial`` (or ``failure``).
+    """
 
     SUCCESS = "success"
     PARTIAL = "partial"
@@ -18,7 +22,12 @@ class SourceRunOutcome(StrEnum):
 
 
 class ListingLifecycleStatus(StrEnum):
-    """Canonical listing lifecycle states for Labs and public eligibility."""
+    """Canonical listing lifecycle states for Labs and public eligibility.
+
+    Source-specific labels (rented, under contract, for sale, …) stay on
+    ``source_listing_status`` and must not be silently remapped across
+    canonical states (e.g. rented↛sold, under_contract↛sold, inactive↛removed).
+    """
 
     ACTIVE = "active"
     SOLD = "sold"
@@ -184,7 +193,65 @@ class SourceRunRecord:
 
     @property
     def is_complete_success(self) -> bool:
-        return self.outcome == SourceRunOutcome.SUCCESS and self.completed_at is not None
+        """True only for a finished full-catalog success with no scope caps.
+
+        Defense in depth: even if an adapter mislabels a bounded run as
+        ``success``, ``complete_catalog`` must be explicitly true and no
+        ``max_items`` / ``max_pages`` / ``bounded`` flag may be set.
+        """
+
+        if self.outcome != SourceRunOutcome.SUCCESS or self.completed_at is None:
+            return False
+        meta = self.metadata or {}
+        if meta.get("complete_catalog") is not True:
+            return False
+        if meta.get("bounded") is True:
+            return False
+        if meta.get("max_items") is not None or meta.get("max_pages") is not None:
+            return False
+        if meta.get("truncated") is True:
+            return False
+        return True
+
+
+def classify_run_outcome(
+    *,
+    parsed_count: int,
+    target_count: int,
+    error_count: int,
+    complete_catalog: bool,
+    bounded: bool = False,
+    truncated: bool = False,
+    max_items: int | None = None,
+    max_pages: int | None = None,
+    failed_fetches: int = 0,
+    parser_failures: int = 0,
+    early_termination: bool = False,
+) -> SourceRunOutcome:
+    """Source-neutral run outcome classifier.
+
+    ``success`` is reserved for full configured scope with no caps and no
+    relevant failures. Any limit, subset, failed fetch, parser failure, early
+    stop, or incomplete catalog proof yields ``partial`` (or ``failure`` when
+    nothing usable was produced).
+    """
+
+    capped = (
+        bounded
+        or truncated
+        or max_items is not None
+        or max_pages is not None
+        or not complete_catalog
+        or early_termination
+    )
+    problems = error_count + failed_fetches + parser_failures
+    incomplete_targets = target_count > 0 and parsed_count < target_count
+
+    if parsed_count == 0 and (target_count > 0 or problems > 0 or capped):
+        return SourceRunOutcome.FAILURE
+    if problems > 0 or incomplete_targets or capped:
+        return SourceRunOutcome.PARTIAL if parsed_count > 0 else SourceRunOutcome.FAILURE
+    return SourceRunOutcome.SUCCESS
 
 
 class EurRateProvider(Protocol):

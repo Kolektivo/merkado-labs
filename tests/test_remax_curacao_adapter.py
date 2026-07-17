@@ -79,7 +79,7 @@ def test_parse_fixture_listing_is_public_priced() -> None:
     assert snapshot.listing_type == "sale"
 
 
-def test_bounded_run_without_urls_is_success_empty() -> None:
+def test_bounded_run_without_urls_is_not_complete_success() -> None:
     adapter = RemaxCuracaoAdapter()
     record, snapshots = adapter.run_bounded(
         listing_urls=[],
@@ -88,5 +88,8 @@ def test_bounded_run_without_urls_is_success_empty() -> None:
         max_items=0,
         honor_delay=False,
     )
-    assert record.outcome == SourceRunOutcome.SUCCESS
+    # Empty/capped runs must never be treated as complete catalog success.
+    assert record.outcome in {SourceRunOutcome.PARTIAL, SourceRunOutcome.FAILURE}
+    assert record.metadata.get("complete_catalog") is False
+    assert not record.is_complete_success
     assert snapshots == []

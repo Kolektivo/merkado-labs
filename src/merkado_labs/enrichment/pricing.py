@@ -48,18 +48,23 @@ def estimate_enrichment_cost(
         raise ValueError("listing_count must be >= 0")
 
     prices = MODEL_PRICES_USD_PER_1M.get(model)
-    notes = "Indicative estimate from centralized Labs pricing config."
+    input_tokens = listing_count * input_tokens_per_listing
+    output_tokens = listing_count * output_tokens_per_listing
     if prices is None:
-        # Unknown model: use gpt-4.1-mini as a planning placeholder and flag it.
-        prices = MODEL_PRICES_USD_PER_1M["gpt-4.1-mini"]
-        notes = (
-            f"Unknown model {model!r}; estimate uses gpt-4.1-mini rates as placeholder. "
-            "Validate model before spending."
+        return EnrichmentCostEstimate(
+            model=model,
+            listing_count=listing_count,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            estimated_usd=Decimal("0"),
+            pricing_as_of=PRICING_AS_OF,
+            notes=(
+                f"Pricing unavailable for model {model!r}. "
+                "Do not borrow another model's rates; validate before spending."
+            ),
         )
 
     in_price, out_price = prices
-    input_tokens = listing_count * input_tokens_per_listing
-    output_tokens = listing_count * output_tokens_per_listing
     estimated = (
         (Decimal(input_tokens) / Decimal(1_000_000)) * in_price
         + (Decimal(output_tokens) / Decimal(1_000_000)) * out_price
@@ -72,5 +77,5 @@ def estimate_enrichment_cost(
         output_tokens=output_tokens,
         estimated_usd=estimated,
         pricing_as_of=PRICING_AS_OF,
-        notes=notes,
+        notes="Indicative estimate from centralized Labs pricing config.",
     )

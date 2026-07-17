@@ -33,6 +33,22 @@ Applied forward migrations for the direct-source MVP foundation:
 - `20260717140000_v2_security_review_and_search_foundation.sql` — AI RLS lockdown,
   proposal review fields, `public_property_listings` view, Search Request / Agent /
   Match Report preview tables
+- `20260717160000_property_v2_rls_and_eligibility_hardening.sql` — revoke anon from
+  internal property tables; eligibility backfill; public view SELECT-only
+- `20260717161000_public_listings_view_security_definer.sql` — public view runs as
+  owner (`security_invoker=false`) so anon can read the projection without table grants
+
+### Complete vs partial source runs
+
+| Outcome | When | May create missing/removed? |
+|---|---|---|
+| `success` + `metadata.complete_catalog=true` | Full configured catalog finished with no caps (`max_items`/`max_pages`), no truncation, no relevant fetch/parser failures | Yes |
+| `partial` | Any bound (`max_items`, `max_pages`, URL subset, first-page only, section subset), failed fetches, parser failures, early stop, incomplete pagination/catalog proof | **No** |
+| `failure` | Nothing usable produced | **No** |
+
+`SourceRunRecord.is_complete_success` requires `outcome=success`, `completed_at` set,
+`complete_catalog=true`, and no `bounded` / `max_items` / `max_pages` / `truncated` flags.
+Adapters must classify source-neutrally via `classify_run_outcome`.
 
 ## 2. Public eligibility
 
@@ -110,16 +126,22 @@ Keep these separate:
 
 Never present `first_seen_at` as the original listing date.
 
-## 5. Lifecycle states
+## 5. Lifecycle states (canonical)
 
 | State | Meaning | Public browse |
 |---|---|---|
-| `active` | Present in latest complete successful snapshot and priced | Yes |
-| `sold` | Source explicitly marks sold | No; optional history/detail view |
-| `missing` | Absent from first complete successful snapshot | No; internal grace state |
-| `removed` | Absent from configured consecutive complete successful snapshots | No; history/detail view |
+| `active` | Available for consideration; may still have source under-contract label | Yes (if eligible) |
+| `sold` | Source explicitly marks sold | No |
+| `inactive` | Not publicly offerable; used for source-marked rented (among other cases) | No |
+| `missing` | Absent from first complete successful snapshot | No |
+| `removed` | Absent from configured consecutive complete successful snapshots | No |
+| `unknown` | Insufficient canonical mapping | No |
 
-Default removal threshold: two complete successful runs, configurable per source.
+Source-specific labels stay on `source_listing_status` (e.g. `Active`, `Under Contract`,
+`rented`). Do **not** silently remap: rented↛sold, under_contract↛sold,
+inactive↛removed, removed↛sold.
+
+Default removal threshold: two **complete successful** runs, configurable per source.
 
 `Sold` and `removed` are never synonyms.
 

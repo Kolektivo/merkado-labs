@@ -35,9 +35,23 @@ class Settings(BaseSettings):
         description="Server-only secret key; never expose this value to browser code",
     )
     openai_api_key: SecretStr | None = None
-    openai_enrichment_model: str = Field(
-        default="gpt-4.1-mini",
-        description="OpenAI model for Labs listing enrichment (server-only)",
+    openai_enrichment_model: str | None = Field(
+        default=None,
+        description="OpenAI model for Labs listing enrichment (required; no silent default)",
+    )
+    openai_enrichment_reasoning_effort: str | None = Field(
+        default=None,
+        description="Optional Responses API reasoning effort for enrichment",
+    )
+    openai_enrichment_max_output_tokens: int | None = Field(
+        default=None,
+        description="Optional max output tokens for enrichment responses",
+    )
+    openai_enrichment_batch_size: int = Field(
+        default=3,
+        ge=1,
+        le=25,
+        description="Listings processed per enrichment job batch",
     )
     labs_admin_secret: SecretStr | None = Field(
         default=None,

@@ -22,8 +22,12 @@ import {
   hasMappableCoordinates,
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
-import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
+
+/** Internal Labs reads use service-role; anon cannot SELECT property_listings. */
+function createInternalDataClient() {
+  return createLabsAdminClient();
+}
 
 const SOURCE_EMBED =
   "source:property_sources!inner(id,name,base_url,source_key,display_name,enabled,adapter_status)";
@@ -431,7 +435,7 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
 }
 
 async function loadUnresolvedConflictCounts(): Promise<Map<string, number>> {
-  const client = createReadOnlySupabaseClient();
+  const client = createInternalDataClient();
   const counts = new Map<string, number>();
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
@@ -457,7 +461,7 @@ async function loadUnresolvedConflictCounts(): Promise<Map<string, number>> {
 }
 
 export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
-  const client = createReadOnlySupabaseClient();
+  const client = createInternalDataClient();
   const pageSize = 1000;
   const rows: RawListing[] = [];
   const conflictCounts = await loadUnresolvedConflictCounts();
@@ -485,7 +489,7 @@ export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
 
 export const getMapListingMarkers = cache(
   async (): Promise<MapListingMarker[]> => {
-    const client = createReadOnlySupabaseClient();
+    const client = createInternalDataClient();
     const pageSize = 1000;
     const markers: MapListingMarker[] = [];
 
@@ -529,7 +533,7 @@ export const getPriceObservations = cache(
     const listing = await getListingById(listingId);
     if (!listing) return [];
 
-    const client = createReadOnlySupabaseClient();
+    const client = createInternalDataClient();
     const { data, error } = await client
       .from("price_observations")
       .select(
@@ -594,7 +598,7 @@ export const getPriceObservationCount = cache(async (): Promise<number> => {
 
 export const getPropertySources = cache(
   async (): Promise<PropertySourceSummary[]> => {
-    const client = createReadOnlySupabaseClient();
+    const client = createInternalDataClient();
     const [{ data: sources, error: sourcesError }, listingStats] =
       await Promise.all([
         client
@@ -667,7 +671,7 @@ async function loadListingStatsBySource() {
 }
 
 export const getSourceRuns = cache(async (): Promise<SourceRunSummary[]> => {
-  const client = createReadOnlySupabaseClient();
+  const client = createInternalDataClient();
   const { data, error } = await client
     .from("property_source_runs")
     .select(
@@ -724,7 +728,7 @@ export const getListingActivityEvents = cache(
     const listing = await getListingById(listingId);
     if (!listing) return [];
 
-    const client = createReadOnlySupabaseClient();
+    const client = createInternalDataClient();
     const { data, error } = await client
       .from("listing_activity_events")
       .select(

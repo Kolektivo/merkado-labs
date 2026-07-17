@@ -21,8 +21,8 @@ from merkado_labs.scrapers.contracts import (
     AdapterListingSnapshot,
     FieldProvenance,
     ListingLifecycleStatus,
-    SourceRunOutcome,
     SourceRunRecord,
+    classify_run_outcome,
 )
 from merkado_labs.scrapers.evidence import (
     evidence_storage_path,
@@ -382,12 +382,15 @@ class MoretRealEstateAdapter(DirectSourceAdapter):
                         warnings=(*snap.warnings, f"evidence_upload_failed:{upload_error}"),
                     )
             snapshots.append(snap)
-        if not snapshots and (urls or errors):
-            outcome = SourceRunOutcome.FAILURE
-        elif errors or len(snapshots) < len(urls):
-            outcome = SourceRunOutcome.PARTIAL
-        else:
-            outcome = SourceRunOutcome.SUCCESS
+        outcome = classify_run_outcome(
+            parsed_count=len(snapshots),
+            target_count=len(urls),
+            error_count=errors,
+            complete_catalog=False,
+            bounded=True,
+            max_items=max_items,
+            failed_fetches=errors,
+        )
         return SourceRunRecord(
             source_key=SOURCE_KEY,
             adapter_name=ADAPTER_NAME,
@@ -407,6 +410,8 @@ class MoretRealEstateAdapter(DirectSourceAdapter):
             metadata={
                 "dry_run": dry_run,
                 "max_items": max_items,
+                "bounded": True,
+                "complete_catalog": False,
                 "discover": discover,
                 "platform": "wpestate",
             },
