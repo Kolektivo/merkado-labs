@@ -62,8 +62,9 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "Adapter v0.4.1 active (220 listings; coordinates 199/220; "
             "map neighbourhood 193 inferred / 6 outside polygons). "
+            "Terra-v3 initial backfill complete (220/220). "
             "Manual/unscheduled. Normal Refresh & enrich bills new/changed only; "
-            "initial ~215 Terra backfill needs separate approval."
+            "any future full re-enrichment still requires separate approval."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -71,8 +72,9 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         allows_lifecycle_absence=True,
         notes=(
             "Adapter v0.4.1 deterministic import applied (offline, manual). "
-            "Coordinate coverage 199/220; point-in-polygon 193; Terra canary 5/5. "
-            "Initial never-enriched Terra backfill is not part of Refresh & enrich."
+            "Coordinate coverage 199/220; point-in-polygon 193; Terra-v3 "
+            "initial backfill complete (220/220). Normal Refresh & enrich "
+            "bills new/changed only."
         ),
     ),
     "moret_real_estate": SourceReadiness(

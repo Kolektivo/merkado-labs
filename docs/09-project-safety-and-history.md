@@ -108,6 +108,20 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 - KW remains **manual and unscheduled**. No production access, deploy,
   commit, or push.
 
+### July 20, 2026 - Property Labs final readiness audit
+
+- Merged Sotheby's BLOCKED recon checkpoint (PR #6 → `58c5bc2`).
+- Read-only Labs audit against `csaefdkpwukshtouyixg` only (no scrapes, imports,
+  AI, migrations, schedules, or production access).
+- Inventory confirmed: KW **84/81/84**, RE/MAX **220/119/220** (coords **199**),
+  Moret **71/71/71**, Monumentenzorg **5/2/5** (coords **0**), Sotheby's **0/0/0**
+  BLOCKED; public Browse **273**; CHH absent; no scheduled pipeline runs;
+  no duplicate `(property_source_id, external_id)`; no orphan observations;
+  no listing→`property_asset` auto-links; all Ready sources remain manual.
+- Small repository/read-model sync: RE/MAX readiness copy reflects completed
+  Terra-v3 backfill; harvest catalog v0.4.1; docs index status table refreshed.
+- Blocked source remains a valid final state for Sotheby's (official feed/API).
+
 ### July 20, 2026 - RE/MAX Terra enrichment preparation
 
 - Verified Labs RE/MAX state on `csaefdkpwukshtouyixg`: 220 listings, stable IDs/URLs, 119 public eligible, 208 XCG benchmarks, 29 historical gpt-4.1-mini v1 proposals (obsolete for v3).

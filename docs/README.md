@@ -2,27 +2,28 @@
 
 This folder holds the working context for Merkado Labs property work.
 
-**Last updated:** July 17, 2026  
+**Last updated:** July 20, 2026  
 **Active set:** `01`–`09` below. Older numbered docs were replaced by this set.
 
 ## Labs build status (this repository)
 
 | Area | Status |
 |---|---|
-| Direct-source foundation (adapters, currency, lifecycle, eligibility) | [LABS] Built; RE/MAX refreshed 2026-07-17 with rich evidence |
+| Direct-source foundation (adapters, currency, lifecycle, eligibility) | [LABS] Built; four Ready sources + Sotheby's BLOCKED |
 | Raw evidence + AI enrichment foundation | [LABS] Private Storage; proposals/jobs service-role only; review UX |
 | Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
 | CHH harvest / importer / workflow | Removed from active repo |
 | CHH Labs rows | Deleted 2026-07-16; verified local export retained |
-| Labs property schema + RLS | [LABS] Built; AI tables locked from anon 2026-07-17 |
-| Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX has 0 coords) |
+| Labs property schema + RLS | [LABS] Built; AI tables locked from anon; effective public view |
+| Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS][WIP] Ops + browse + Search Request / Agent previews |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only |
-| Keller Williams adapter | [LABS] v0.1; 40 listings imported (manual) |
-| Moret adapter | [LABS] v0.2.0; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
-| Monumentenzorg | [LABS] Adapter v0.2.0 Ready; 5 imported; 2 public; Terra 5/5 |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (**273** public-eligible) |
+| Keller Williams adapter | [LABS] v0.3.0 Ready; 84 catalog / 81 public / Terra 84/84 |
+| RE/MAX adapter | [LABS] v0.4.1 Ready; 220 catalog / 119 public / Terra 220/220 |
+| Moret adapter | [LABS] v0.2.0 Ready; 71 catalog / 71 public / Terra 71/71 |
+| Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog / 2 public / Terra 5/5 |
 | Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (not Ready; feed/API needed) |
-| AI enrichment (25 RE/MAX) | [LABS] Completed 2026-07-17; review pending |
+| AI enrichment (Terra-v3) | [LABS] Initial backfills complete for all Ready sources |
 | Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 
 ## The files
@@ -35,7 +36,8 @@ This folder holds the working context for Merkado Labs property work.
 | `04-data-sources-and-scraping.md` | Direct-source rules, CHH removal, adapter expectations. | Building or reviewing scrapers. |
 | `05-data-model-and-listing-lifecycle.md` | Schema, lifecycle, currency, eligibility, cleanup. | Schema or listing-state work. |
 | `06-currency-and-pricing-rules.md` | Original currency + XCG benchmark rules. | Price display or conversion. |
-| `07-passport-and-product-boundaries.md` | Off-chain Passport and product boundaries. | Product framing. |
+| `06-property-passport-and-intelligence.md` | Off-chain Passport and intelligence framing. | Product framing. |
+| `07-labs-architecture-and-geospatial.md` | Labs architecture and geospatial assignment. | Neighbourhood / geo work. |
 | `08-execution-plan-and-cursor-prompt.md` | Phased execution plan and agent prompt. | Starting a build pass. |
 | `09-project-safety-and-history.md` | Safety rules, decision history, CHH lessons. | Before writes, cleanup, or deploy talk. |
 | `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |

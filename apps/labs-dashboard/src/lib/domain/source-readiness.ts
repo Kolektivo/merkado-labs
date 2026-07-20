@@ -68,7 +68,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 220,
     catalogStatus: "complete",
     currentIssue:
-      "The initial AI backfill is separate from a normal source refresh and still requires approval.",
+      "Adapter v0.4.1 active (220 listings; coordinates 199/220). Terra-v3 initial backfill complete (220/220). Normal Refresh & enrich remains new/changed only. Manual/unscheduled. Any future full re-enrichment still requires separate approval.",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
