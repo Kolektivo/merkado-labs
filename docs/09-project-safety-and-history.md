@@ -172,6 +172,19 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   Sotheby's wording → **Access route under investigation** (not Ready).
 - Moret remains **manual/unscheduled**.
 
+### July 20, 2026 - Monumentenzorg adapter v0.2.0
+
+- Built `monumentenzorg_curacao` adapter **v0.2.0** for the proven 5-listing
+  `estate_property` catalog on `https://monumentenzorg.cw/` (`/properties/` +
+  `estate_property-sitemap.xml`; heritage `/our_property/` out of scope).
+- Certifi-backed TLS verification (historical 2026-07-17 SSL/DNS blocker was a
+  local trust-store / alt-domain DNS issue; leaf cert valid; never `verify=False`).
+- Stable IDs `property-{wordpress_post_id}`; ANG price preservation; 2/5 numeric
+  priced; sold-under-reservation scoped to primary listing; coordinates 0/5.
+- Fixture catalog + safety simulations + DB-free import preview; no Labs import,
+  AI, schedule, or deploy. Data Ops remains **not Ready** (partial / Continue
+  setup). Next: reviewed Labs import under separate approval.
+
 ### July 20, 2026 - Moret remaining Terra-v3 initial backfill
 
 - One-time GPT-5.6 Terra backfill for the **66** Moret listings without a matching

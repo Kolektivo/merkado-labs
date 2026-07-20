@@ -67,10 +67,11 @@ The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
 after a verified rollback export. RE/MAX and KW remain manual and unscheduled.
 Moret Terra-v3 initial backfill is complete; Moret remains manual/unscheduled
-with Refresh & enrich = new/changed only. Next active source task:
-**Monumentenzorg reconnaissance** (public pages reachable again; completeness
-must be reverified). Sotheby's: access route under investigation (approved
-public route/feed still required). Neither Monumentenzorg nor Sotheby's is Ready.
+with Refresh & enrich = new/changed only. Monumentenzorg adapter **v0.2.0** is complete for the proven 5-listing
+`estate_property` catalog (import/enrichment not run; not Ready). Next active
+source task: **Monumentenzorg Labs import** under separate approval. Sotheby's:
+access route under investigation (approved public route/feed still required).
+Neither Monumentenzorg nor Sotheby's is Ready.
 
 ## 3. Current property MVP direction `[WIP]`
 

@@ -33,6 +33,8 @@ def test_ready_sources_exclude_partial_and_blocked() -> None:
 def test_blocked_and_partial_cannot_full_refresh() -> None:
     with pytest.raises(PermissionError, match="blocked"):
         assert_can_enqueue_full_refresh("sothebys_curacao")
+    with pytest.raises(PermissionError, match="partial"):
+        assert_can_enqueue_full_refresh("monumentenzorg_curacao")
     assert assert_can_enqueue_full_refresh("moret_real_estate").allows_full_refresh
     assert assert_can_enqueue_full_refresh("keller_williams_curacao").allows_full_refresh
 
@@ -68,7 +70,7 @@ def test_preflight_lifecycle_risk_and_no_schedule() -> None:
 
 
 class _FakeQuery:
-    def __init__(self, store: "_FakeClient", table: str) -> None:
+    def __init__(self, store: _FakeClient, table: str) -> None:
         self.store = store
         self.table_name = table
         self._filters: list[tuple[str, Any]] = []
@@ -79,38 +81,38 @@ class _FakeQuery:
         self._in_values: list[Any] | None = None
         self._in_field: str | None = None
 
-    def select(self, *_args: Any, **_kwargs: Any) -> "_FakeQuery":
+    def select(self, *_args: Any, **_kwargs: Any) -> _FakeQuery:
         self._op = "select"
         return self
 
-    def insert(self, payload: Any) -> "_FakeQuery":
+    def insert(self, payload: Any) -> _FakeQuery:
         self._op = "insert"
         self._payload = payload
         return self
 
-    def update(self, payload: Any) -> "_FakeQuery":
+    def update(self, payload: Any) -> _FakeQuery:
         self._op = "update"
         self._payload = payload
         return self
 
-    def delete(self) -> "_FakeQuery":
+    def delete(self) -> _FakeQuery:
         self._op = "delete"
         return self
 
-    def eq(self, field: str, value: Any) -> "_FakeQuery":
+    def eq(self, field: str, value: Any) -> _FakeQuery:
         self._filters.append((field, value))
         return self
 
-    def in_(self, field: str, values: list[Any]) -> "_FakeQuery":
+    def in_(self, field: str, values: list[Any]) -> _FakeQuery:
         self._in_field = field
         self._in_values = list(values)
         return self
 
-    def order(self, field: str, **_kwargs: Any) -> "_FakeQuery":
+    def order(self, field: str, **_kwargs: Any) -> _FakeQuery:
         self._order = field
         return self
 
-    def limit(self, n: int) -> "_FakeQuery":
+    def limit(self, n: int) -> _FakeQuery:
         self._limit = n
         return self
 
@@ -195,13 +197,13 @@ def test_enqueue_is_queued_waiting_for_worker(monkeypatch: pytest.MonkeyPatch) -
     assert events[0]["message"] == "Queued — waiting for worker"
 
 
-def test_enqueue_blocked_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enqueue_partial_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "merkado_labs.pipeline.store.assert_ref",
         lambda: LABS_PROJECT_REF,
     )
     client = _FakeClient()
-    with pytest.raises(PermissionError, match="blocked"):
+    with pytest.raises(PermissionError, match="partial"):
         enqueue_pipeline_run(
             client,
             source_keys=["monumentenzorg_curacao"],
@@ -301,17 +303,19 @@ def test_moret_ready_after_v020_catalog_proof() -> None:
 def test_monumentenzorg_and_sothebys_wording_not_ready() -> None:
     mon = resolve_source_readiness("monumentenzorg_curacao")
     sot = resolve_source_readiness("sothebys_curacao")
-    assert mon.readiness == "blocked"
+    assert mon.readiness == "partial"
     assert sot.readiness == "blocked"
-    assert mon.primary_action == "Blocked"
+    assert mon.primary_action == "Continue setup"
     assert sot.primary_action == "Blocked"
     assert mon.allows_full_refresh is False
     assert sot.allows_full_refresh is False
-    assert mon.catalog_status == "reconnaissance_required"
+    assert mon.adapter_version == "0.2.0"
+    assert mon.listing_count_expected == 5
+    assert mon.catalog_status == "adapter_complete_import_pending"
     assert sot.catalog_status == "access_route_under_investigation"
-    assert "Reconnaissance required" in (mon.current_issue or "")
+    assert "import" in (mon.current_issue or "").lower()
     assert "Access route under investigation" in (sot.current_issue or "")
-    assert "reachable again" in (mon.current_issue or "").lower()
+    assert "not operationally ready" in (mon.current_issue or "").lower()
     assert "approved public route" in (sot.current_issue or "").lower()
 
 

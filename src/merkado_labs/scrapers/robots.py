@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import ssl
 import time
 from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPSHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
+
+import certifi
 
 USER_AGENT = "MerkadoLabs-PropertyAdapter/0.1 (+https://github.com/merkado; research)"
 DEFAULT_CRAWL_DELAY_SECONDS = 2.0
+
+
+def _https_opener():
+    context = ssl.create_default_context(cafile=certifi.where())
+    return build_opener(HTTPSHandler(context=context))
 
 
 @dataclass(frozen=True)
@@ -55,7 +63,7 @@ def check_robots(
     robots_url = robots_url_for_domain(domain)
     request = Request(robots_url, headers={"User-Agent": user_agent}, method="GET")
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+        with _https_opener().open(request, timeout=timeout_seconds) as response:  # noqa: S310
             status = getattr(response, "status", 200)
             body = response.read(200_000)
     except HTTPError as error:
