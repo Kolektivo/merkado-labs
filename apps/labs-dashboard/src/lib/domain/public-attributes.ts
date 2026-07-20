@@ -85,15 +85,14 @@ export const PUBLIC_FEATURE_GROUPS: Array<{
   keys: readonly string[];
 }> = [
   {
-    id: "comfort",
-    title: "Comfort",
-    keys: [
-      "furnished",
-      "air_conditioning",
-      "appliance_inclusion",
-      "accessibility",
-      "pet_suitability",
-    ],
+    id: "essentials",
+    title: "Essentials",
+    keys: ["furnished", "air_conditioning", "appliance_inclusion"],
+  },
+  {
+    id: "indoor",
+    title: "Indoor",
+    keys: ["accessibility", "pet_suitability"],
   },
   {
     id: "outdoor",
@@ -101,19 +100,19 @@ export const PUBLIC_FEATURE_GROUPS: Array<{
     keys: ["pool", "garden", "terrace", "balcony"],
   },
   {
-    id: "parking_access",
-    title: "Parking and access",
-    keys: ["parking", "parking_spaces", "garage", "gated_community"],
-  },
-  {
-    id: "security_utilities",
-    title: "Security and utilities",
-    keys: ["security_features", "solar_panels", "generator", "water_heater"],
+    id: "building_community",
+    title: "Building and community",
+    keys: ["gated_community", "parking", "parking_spaces", "garage"],
   },
   {
     id: "views_location",
     title: "Views and location",
     keys: ["sea_view"],
+  },
+  {
+    id: "security_utilities",
+    title: "Security and utilities",
+    keys: ["security_features", "solar_panels", "generator", "water_heater"],
   },
 ];
 
@@ -237,6 +236,41 @@ export function publicAttributeChipLabel(attr: PublicAttribute): string {
     return `Pool (${attr.subtype})`;
   }
   return attr.displayLabel;
+}
+
+export const PUBLIC_ATTRIBUTE_CHIP_PRIORITY = [
+  "pool",
+  "furnished",
+  "air_conditioning",
+  "gated_community",
+  "parking",
+  "sea_view",
+  "garden",
+  "terrace",
+  "balcony",
+  "security_features",
+] as const;
+
+const PUBLIC_ATTRIBUTE_CHIP_PRIORITY_INDEX = new Map<string, number>(
+  PUBLIC_ATTRIBUTE_CHIP_PRIORITY.map((key, index) => [key, index]),
+);
+
+/** Select compact, high-value positive facts for Browse cards. */
+export function selectBrowseAttributeChips(
+  attrs: PublicAttribute[],
+  limit = 5,
+): string[] {
+  return attrs
+    .filter(isPositivePublicAttribute)
+    .sort(
+      (a, b) =>
+        (PUBLIC_ATTRIBUTE_CHIP_PRIORITY_INDEX.get(a.key) ??
+          Number.POSITIVE_INFINITY) -
+          (PUBLIC_ATTRIBUTE_CHIP_PRIORITY_INDEX.get(b.key) ??
+            Number.POSITIVE_INFINITY) || a.key.localeCompare(b.key),
+    )
+    .slice(0, Math.max(0, limit))
+    .map(publicAttributeChipLabel);
 }
 
 export function groupPublicAttributes(

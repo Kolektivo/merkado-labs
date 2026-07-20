@@ -34,7 +34,9 @@ Uses the same public-effective read model as Browse:
   Views and location (empty groups hidden).
 - **About this property** — source description always; optional concise
   listing summary only when auto-applied and clearly labeled (never replaces
-  source text).
+  source text). v4 may additionally expose auto-applied, same-language
+  display blocks (overview, layout, location, highlights, practical details);
+  the forward public projection migration remains paused pending review.
 - **Property activity** — first seen, last seen, source listing date.
 - **Source** — attribution + original listing link.
 

@@ -28,9 +28,9 @@ export type EnrichmentPreview = {
 };
 
 /** Exactly one production Labs enrichment scope value for each dimension. */
-export const PROMPT_VERSION = "listing_enrichment_v3";
-export const SCHEMA_VERSION = "listing_enrichment_schema_v3";
-export const POLICY_VERSION = "enrichment_policy_v3";
+export const PROMPT_VERSION = "listing_enrichment_v4";
+export const SCHEMA_VERSION = "listing_enrichment_schema_v4";
+export const POLICY_VERSION = "enrichment_policy_v4";
 
 export function enrichmentModel(): string {
   const model = process.env.OPENAI_ENRICHMENT_MODEL?.trim();

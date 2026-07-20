@@ -1,4 +1,4 @@
-"""Deterministic policy replay for stored Terra-v3 proposals (no OpenAI).
+"""Deterministic policy replay for stored enrichment proposals (no OpenAI).
 
 Usage:
   python scripts/replay_enrichment_policy.py \\
@@ -166,7 +166,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--policy-version",
         default=POLICY_VERSION,
-        help="Must match enrichment_policy_v3",
+        help=f"Must match the current policy version ({POLICY_VERSION})",
     )
     parser.add_argument(
         "--apply",

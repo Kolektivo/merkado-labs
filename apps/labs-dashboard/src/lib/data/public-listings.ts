@@ -7,7 +7,10 @@ import {
   PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS,
   type PublicNeighbourhoodProvenance,
 } from "@/lib/domain/public-attributes";
-import type { PublicPropertyListing } from "@/lib/domain/types";
+import type {
+  PublicDisplayDescription,
+  PublicPropertyListing,
+} from "@/lib/domain/types";
 import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
 
 const PUBLIC_SELECT = [
@@ -44,6 +47,7 @@ const PUBLIC_SELECT = [
   "effective_property_type",
   "public_attributes",
   "effective_summary",
+  "display_description",
 ].join(",");
 
 /** Narrower select used when the enriched view columns are not yet migrated. */
@@ -97,7 +101,7 @@ function publicQueryError(message: string) {
 }
 
 function isMissingEffectiveColumnError(message: string): boolean {
-  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|column .* does not exist/i.test(
+  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description|column .* does not exist/i.test(
     message,
   );
 }
@@ -113,6 +117,33 @@ function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
     return value;
   }
   return "unavailable";
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeDisplayDescription(raw: unknown): PublicDisplayDescription | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const highlights = Array.isArray(value.highlights)
+    ? value.highlights
+        .map(textOrNull)
+        .filter((highlight): highlight is string => Boolean(highlight))
+    : [];
+  const displayDescription = {
+    language: textOrNull(value.language),
+    overview: textOrNull(value.overview),
+    layout: textOrNull(value.layout),
+    location: textOrNull(value.location),
+    highlights,
+    practical: textOrNull(value.practical),
+  };
+  return Object.values(displayDescription).some((item) =>
+    Array.isArray(item) ? item.length > 0 : Boolean(item),
+  )
+    ? displayDescription
+    : null;
 }
 
 export function normalizePublicListing(
@@ -189,6 +220,7 @@ export function normalizePublicListing(
     effectiveSummary: row.effective_summary
       ? String(row.effective_summary).trim() || null
       : null,
+    displayDescription: normalizeDisplayDescription(row.display_description),
   };
 }
 

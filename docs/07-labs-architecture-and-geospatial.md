@@ -75,10 +75,14 @@ Each source runs independently. Scheduling remains off until explicitly approved
   former `DEFAULT_MODEL` / config default before env-only hardening
 - Future hook after complete successful scrape: enqueue new/changed only — **not scheduled yet**
 
-#### Prompt / schema / policy v3
+#### Prompt / schema / policy v4
 
-- Current combination: prompt `listing_enrichment_v3`, JSON schema
-  `listing_enrichment_schema_v3`, application policy `enrichment_policy_v3`.
+- Current combination: prompt `listing_enrichment_v4`, JSON schema
+  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4`.
+- v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
+  values as `redundant` rather than rejected, auto-applies grounded
+  neighbourhood gap-fills, and adds source-language display-description blocks.
+- The forward public-effective migration remains paused pending review.
 - v3 is intentionally compact: the model emits only attributes it actually
   found (sparse `attributes[]`, capped string/array lengths) instead of a
   fixed 16-key `features` object — the main cause of structured-output

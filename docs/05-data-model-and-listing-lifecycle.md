@@ -186,12 +186,17 @@ Sold/rented timestamps:
 
 - `ai_enrichment_jobs` — manual job progress (queued → running → completed*)
 - `ai_enrichment_proposals` — model/prompt/schema/input-checksum keyed proposals
-  (current KW batches use prompt/schema/policy **v3**: `listing_enrichment_v3`
-  / `listing_enrichment_schema_v3` / `enrichment_policy_v3`)
+  (current foundation uses **v4**: `listing_enrichment_v4` /
+  `listing_enrichment_schema_v4` / `enrichment_policy_v4`; v3 JSON remains
+  replayable)
 - Review is **exception-based**: only conflicts, weak/ambiguous evidence, or
   new-attribute taxonomy reach `needs_attention`; unsupported, duplicated,
-  noisy, or already-represented proposals are rejected outright and never
+  noisy proposals are rejected; already-represented source/map values are
+  `redundant` and never
   enter the attention queue
+- v4 can auto-apply grounded neighbourhood gap-fills and public display
+  description blocks. The public-effective migration is forward-only and
+  remains unapplied pending review.
 - Never overwrite raw evidence, price, currency, status, dates, coords, address, neighbourhood, realtor, or source reference
 
 Each event should store:
