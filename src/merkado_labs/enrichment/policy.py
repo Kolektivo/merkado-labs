@@ -497,12 +497,17 @@ def decide_field(
             )
         map_nb = _map_neighbourhood_name(source_values)
         if (
-            not specific_source
-            and map_nb
+            map_nb
             and not is_generic_neighbourhood(map_nb)
+            and (
+                not specific_source
+                or _neighbourhood_names_equivalent(map_nb, str(coerced))
+            )
         ):
-            # Map already supplies the effective neighbourhood; AI candidates
-            # stay in the audit bag but must not flood the attention queue.
+            # Map already supplies (or duplicates) the neighbourhood; AI
+            # candidates stay in the audit bag but must not flood attention.
+            # When AI matches the map name, treat as duplicate even if a
+            # specific source neighbourhood also exists.
             return FieldDecision(
                 key=normalized_key,
                 proposed_value=coerced,

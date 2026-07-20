@@ -2,10 +2,52 @@ import "server-only";
 
 import { cache } from "react";
 
+import {
+  normalizePublicAttributes,
+  PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS,
+  type PublicNeighbourhoodProvenance,
+} from "@/lib/domain/public-attributes";
 import type { PublicPropertyListing } from "@/lib/domain/types";
 import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
 
 const PUBLIC_SELECT = [
+  "id",
+  "external_id",
+  "source_url",
+  "original_realtor_url",
+  "listing_type",
+  "source_listing_status",
+  "property_type",
+  "title",
+  "original_price",
+  "original_currency",
+  "benchmark_price_xcg",
+  "conversion_method",
+  "conversion_provider",
+  "conversion_rate_at",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
+  "primary_image_url",
+  "description",
+  "first_seen_at",
+  "last_seen_at",
+  "source_listed_at",
+  "source_key",
+  "source_display_name",
+  // Effective fields (optional during migration rollout — fail safe if absent).
+  "effective_neighbourhood",
+  "effective_neighbourhood_provenance",
+  "effective_neighbourhood_provenance_label",
+  "effective_property_type",
+  "public_attributes",
+  "effective_summary",
+].join(",");
+
+/** Narrower select used when the enriched view columns are not yet migrated. */
+const PUBLIC_SELECT_BASIC = [
   "id",
   "external_id",
   "source_url",
@@ -54,7 +96,46 @@ function publicQueryError(message: string) {
   return new Error(`Public listing query failed: ${message}`);
 }
 
-function normalize(row: Record<string, unknown>): PublicPropertyListing {
+function isMissingEffectiveColumnError(message: string): boolean {
+  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|column .* does not exist/i.test(
+    message,
+  );
+}
+
+function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
+  const value = String(raw ?? "unavailable");
+  if (
+    value === "source" ||
+    value === "map" ||
+    value === "ai_extracted" ||
+    value === "unavailable"
+  ) {
+    return value;
+  }
+  return "unavailable";
+}
+
+export function normalizePublicListing(
+  row: Record<string, unknown>,
+): PublicPropertyListing {
+  const provenance = normalizeProvenance(
+    row.effective_neighbourhood_provenance,
+  );
+  const neighbourhood = row.effective_neighbourhood
+    ? String(row.effective_neighbourhood).trim() || null
+    : null;
+  const provenanceLabel = row.effective_neighbourhood_provenance_label
+    ? String(row.effective_neighbourhood_provenance_label)
+    : neighbourhood
+      ? PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS[provenance]
+      : null;
+
+  const effectivePropertyType = row.effective_property_type
+    ? String(row.effective_property_type)
+    : row.property_type
+      ? String(row.property_type)
+      : null;
+
   return {
     id: String(row.id),
     externalId: String(row.external_id),
@@ -100,29 +181,52 @@ function normalize(row: Record<string, unknown>): PublicPropertyListing {
       : null,
     sourceKey: String(row.source_key),
     sourceDisplayName: String(row.source_display_name),
+    effectiveNeighbourhood: neighbourhood,
+    effectiveNeighbourhoodProvenance: provenance,
+    effectiveNeighbourhoodProvenanceLabel: provenanceLabel,
+    effectivePropertyType,
+    publicAttributes: normalizePublicAttributes(row.public_attributes),
+    effectiveSummary: row.effective_summary
+      ? String(row.effective_summary).trim() || null
+      : null,
   };
+}
+
+async function fetchPublicListingPages(
+  select: string,
+): Promise<Record<string, unknown>[]> {
+  const client = createReadOnlySupabaseClient();
+  const rows: Record<string, unknown>[] = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from("public_property_listings")
+      .select(select)
+      .order("last_seen_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw publicQueryError(error.message);
+    const page = (data ?? []) as unknown as Record<string, unknown>[];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return rows;
 }
 
 export const getPublicListings = cache(
   async (): Promise<PublicPropertyListing[]> => {
-    const client = createReadOnlySupabaseClient();
-    const rows: Record<string, unknown>[] = [];
-    const pageSize = 1000;
-
-    for (let from = 0; ; from += pageSize) {
-      const { data, error } = await client
-        .from("public_property_listings")
-        .select(PUBLIC_SELECT)
-        .order("last_seen_at", { ascending: false })
-        .range(from, from + pageSize - 1);
-
-      if (error) throw publicQueryError(error.message);
-      const page = (data ?? []) as unknown as Record<string, unknown>[];
-      rows.push(...page);
-      if (page.length < pageSize) break;
+    try {
+      const rows = await fetchPublicListingPages(PUBLIC_SELECT);
+      return rows.map(normalizePublicListing);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isMissingEffectiveColumnError(message)) throw error;
+      // Pre-migration rollout: serve basic public fields safely.
+      const rows = await fetchPublicListingPages(PUBLIC_SELECT_BASIC);
+      return rows.map(normalizePublicListing);
     }
-
-    return rows.map(normalize);
   },
 );
 

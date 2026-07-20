@@ -23,6 +23,24 @@ Do not automatically merge listings from different websites. A later reviewed wo
 
 ## 3. MVP Passport sections
 
+### Labs public Passport preview (`/browse/[id]`)
+
+Uses the same public-effective read model as Browse:
+
+- **Property overview** — title, image, XCG primary price, original price,
+  buy/rent, one effective neighbourhood, property type, beds/baths/areas.
+- **Property features** — allowlisted auto-applied attributes only, grouped
+  as Comfort / Outdoor / Parking and access / Security and utilities /
+  Views and location (empty groups hidden).
+- **About this property** — source description always; optional concise
+  listing summary only when auto-applied and clearly labeled (never replaces
+  source text).
+- **Property activity** — first seen, last seen, source listing date.
+- **Source** — attribution + original listing link.
+
+Do not present AI as a consumer-facing feature. Neighbourhood provenance on
+Passport may read: From source / Matched from map / Extracted from listing text.
+
 ### Current listing
 
 - title and property type;
