@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · merkado-labs",
   },
   description:
-    "Read-only property market intelligence for the merkado-labs dataset.",
+    "Internal property market intelligence for the merkado-labs dataset.",
   icons: {
     icon: [{ url: "/cw-logo.png", type: "image/png" }],
     apple: [{ url: "/cw-logo.png", type: "image/png" }],
@@ -40,6 +40,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-x-hidden">
+        <a
+          href="#main-content"
+          className="sr-only fixed left-3 top-3 z-50 rounded-md bg-background px-3 py-2 text-sm font-medium shadow focus:not-sr-only"
+        >
+          Skip to main content
+        </a>
         <TooltipProvider>
           <AppShell>{children}</AppShell>
         </TooltipProvider>

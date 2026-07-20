@@ -43,5 +43,36 @@ export const getSourceDetail = cache(async (sourceKey: string) => {
     missingPriceCount: sourceListings.filter(
       (listing) => listing.publicExclusionReason === "missing_price",
     ).length,
+    coverage: {
+      prices: sourceListings.filter(
+        (listing) =>
+          (listing.originalPrice ?? listing.currentPrice) !== null,
+      ).length,
+      descriptions: sourceListings.filter((listing) =>
+        Boolean(listing.description?.trim()),
+      ).length,
+      locations: sourceListings.filter(
+        (listing) =>
+          Boolean(listing.neighbourhood?.name) ||
+          Boolean(listing.inferredNeighbourhood?.name),
+      ).length,
+      coordinates: sourceListings.filter(
+        (listing) =>
+          listing.latitude !== null && listing.longitude !== null,
+      ).length,
+      neighbourhoods: sourceListings.filter(
+        (listing) =>
+          Boolean(listing.neighbourhood?.name) ||
+          Boolean(listing.inferredNeighbourhood?.name),
+      ).length,
+      images: sourceListings.filter((listing) =>
+        Boolean(listing.primaryImageUrl),
+      ).length,
+      enrichment: sourceListings.filter((listing) =>
+        ["succeeded", "needs_review", "skipped_unchanged"].includes(
+          listing.enrichmentStatus ?? "",
+        ),
+      ).length,
+    },
   };
 });

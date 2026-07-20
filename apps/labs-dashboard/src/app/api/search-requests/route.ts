@@ -12,16 +12,33 @@ export async function POST(request: Request) {
     const preferredNeighbourhoods = Array.isArray(body.preferredNeighbourhoods)
       ? body.preferredNeighbourhoods.map(String).filter(Boolean)
       : [];
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) {
+      return NextResponse.json({ error: "Request name is required." }, { status: 400 });
+    }
+    const optionalNumber = (value: unknown) => {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const minPrice = optionalNumber(body.minPrice);
+    const maxPrice = optionalNumber(body.maxPrice);
+    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+      return NextResponse.json(
+        { error: "Minimum budget cannot be greater than maximum budget." },
+        { status: 400 },
+      );
+    }
     const { data, error } = await createLabsAdminClient()
       .from("property_search_requests")
       .insert({
-        title: typeof body.title === "string" ? body.title.trim() || null : null,
+        title,
         status: "draft",
         transaction_type: ["sale", "rent", "either"].includes(String(body.transactionType)) ? body.transactionType : "either",
-        min_price: Number.isFinite(Number(body.minPrice)) ? Number(body.minPrice) : null,
-        max_price: Number.isFinite(Number(body.maxPrice)) ? Number(body.maxPrice) : null,
+        min_price: minPrice,
+        max_price: maxPrice,
         price_currency: typeof body.priceCurrency === "string" ? body.priceCurrency : "XCG",
-        min_bedrooms: Number.isFinite(Number(body.minBedrooms)) ? Number(body.minBedrooms) : null,
+        min_bedrooms: optionalNumber(body.minBedrooms),
         preferred_neighbourhoods: preferredNeighbourhoods,
         renovation_willingness: typeof body.renovationWillingness === "string" ? body.renovationWillingness : "unknown",
         notes: typeof body.notes === "string" ? body.notes.trim() || null : null,

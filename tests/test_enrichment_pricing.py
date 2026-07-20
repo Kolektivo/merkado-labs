@@ -25,3 +25,23 @@ def test_unknown_model_pricing_is_unavailable() -> None:
     est = estimate_enrichment_cost(model="totally-unknown-model", listing_count=5)
     assert est.estimated_usd == Decimal("0")
     assert "unavailable" in est.notes.lower()
+
+
+def test_gpt_56_terra_pricing_exact() -> None:
+    from merkado_labs.enrichment.pricing import calculate_usage_cost_usd
+
+    cost, note = calculate_usage_cost_usd(
+        model="gpt-5.6-terra",
+        input_tokens=1_000_000,
+        cached_input_tokens=0,
+        output_tokens=1_000_000,
+    )
+    assert note is None
+    assert cost == Decimal("17.5000")  # 2.50 + 15.00
+    cached, _ = calculate_usage_cost_usd(
+        model="gpt-5.6-terra",
+        input_tokens=1_000_000,
+        cached_input_tokens=1_000_000,
+        output_tokens=0,
+    )
+    assert cached == Decimal("0.2500")

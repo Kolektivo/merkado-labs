@@ -7,7 +7,10 @@ from pathlib import Path
 
 from merkado_labs.scrapers.adapters.remax_curacao import (
     RemaxCuracaoAdapter,
+    extract_coordinates,
+    extract_images,
     extract_labelled_rows,
+    extract_listing_agent,
     extract_listing_reference,
     extract_price,
     parse_area,
@@ -77,6 +80,57 @@ def test_parse_fixture_listing_is_public_priced() -> None:
     assert snapshot.original_price.currency == "EUR"
     assert snapshot.lifecycle_hint == ListingLifecycleStatus.ACTIVE
     assert snapshot.listing_type == "sale"
+
+
+def test_extract_coordinates_from_google_latlng() -> None:
+    html = (
+        '<script>var latlng = new google.maps.LatLng(12.0897404, -68.8610007);</script>'
+    )
+    lat, lng, warnings = extract_coordinates(html)
+    assert lat == 12.0897404
+    assert lng == -68.8610007
+    assert warnings == []
+
+
+def test_extract_listing_agent_from_employee() -> None:
+    html = '<strong itemprop="employee">Rick Seisveld </strong>'
+    agent = extract_listing_agent(html)
+    assert agent is not None
+    assert agent.normalized_value == "Rick Seisveld"
+
+
+def test_extract_images_filters_agent_headshots() -> None:
+    html = """
+    <img src="//cdn.remax-abc.com/img/cache/2-1770063802-1000x667.jpg" />
+    <div id="detail_agentlist">
+      <img src="//cdn.remax-abc.com/img/cache/img-7333-2-large-1738598875-112x150.jpg"
+           class="agent-image_detail" />
+    </div>
+    """
+    urls = extract_images(html)
+    assert len(urls) == 1
+    assert "1000x667" in urls[0]
+    assert "img-7333" not in urls[0]
+
+
+def test_parse_fixture_extracts_coords_agent_and_half_baths() -> None:
+    html = FIXTURE.read_text(encoding="utf-8")
+    adapter = RemaxCuracaoAdapter()
+    snapshot = adapter.parse_listing_html(
+        html,
+        listing_url=(
+            "https://www.realestate-curacao.com/en/homes/homes-for-sale/"
+            "hs3080/spacious-fixer-upper-villa-in-cas-grandi.html"
+        ),
+        raw_sha256="b" * 64,
+        observed_at=datetime(2026, 7, 16, tzinfo=UTC),
+    )
+    assert snapshot.adapter_version == "0.4.1"
+    assert snapshot.latitude == 12.0897404
+    assert snapshot.longitude == -68.8610007
+    assert snapshot.raw_payload.get("listing_agent") == "Rick Seisveld"
+    assert snapshot.raw_payload.get("coordinates_source") == "google_maps_latlng"
+    assert all("img-" not in (u or "") for u in snapshot.image_urls)
 
 
 def test_bounded_run_without_urls_is_not_complete_success() -> None:

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { FieldLabel } from "@/components/field-label";
@@ -19,6 +21,7 @@ export function AgentEntitlementControl({
 }: {
   requests: PropertySearchRequest[];
 }) {
+  const router = useRouter();
   const [requestId, setRequestId] = useState(requests[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
@@ -40,7 +43,8 @@ export function AgentEntitlementControl({
       if (!response.ok) {
         throw new Error(result.error ?? "Unable to create the access pass.");
       }
-      setMessage({ kind: "success", text: "Test access pass created." });
+      setMessage({ kind: "success", text: "Test access pass saved." });
+      router.refresh();
     } catch (error) {
       setMessage({
         kind: "error",
@@ -57,8 +61,14 @@ export function AgentEntitlementControl({
   if (!requests.length) {
     return (
       <p className="text-sm text-muted-foreground">
-        No confirmed search requests yet — create and confirm one on the
-        Search requests page first.
+        No confirmed search requests yet —{" "}
+        <Link
+          href="/search-requests"
+          className="font-medium text-foreground underline underline-offset-2"
+        >
+          create a draft on Search requests
+        </Link>
+        , open it, and tap Confirm before creating a test access pass.
       </p>
     );
   }
@@ -81,9 +91,9 @@ export function AgentEntitlementControl({
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={() => void create()} disabled={busy}>
+        <Button type="button" size="sm" onClick={() => void create()} disabled={busy}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-          Create test access pass
+          {busy ? "Saving…" : "Save test access pass"}
         </Button>
       </div>
       {message ? (

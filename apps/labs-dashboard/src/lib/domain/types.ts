@@ -146,6 +146,8 @@ export type PropertyListing = {
   firstSeenAt: string;
   lastSeenAt: string;
   source: ListingSource;
+  /** Raw website neighbourhood/location text from the source adapter. */
+  sourceNeighbourhoodText: string | null;
   neighbourhood: Neighbourhood | null;
   inferredNeighbourhood: Neighbourhood | null;
   neighbourhoodAssignmentStatus: NeighbourhoodAssignmentStatus;
@@ -345,6 +347,9 @@ export type SourceRunSummary = {
   excludedNoPriceCount: number;
   warningCount: number;
   errorCount: number;
+  /** From run metadata when present; only true for full-catalog success. */
+  completeCatalog: boolean | null;
+  duplicateCount: number | null;
 };
 
 export type ListingActivityEvent = {
@@ -374,6 +379,8 @@ export type ListingFilters = {
   coordinateQuality: string;
   assignmentStatus: string;
   publicEligible: string;
+  exclusionReason: string;
+  priceAvailability: string;
   sort: ListingSort;
   page: number;
 };

@@ -64,6 +64,14 @@ class ActivityEventType(StrEnum):
     SOURCE_ATTRIBUTION_CHANGED = "source_attribution_changed"
     MATERIAL_FIELD_CHANGED = "material_field_changed"
     SOURCE_DESCRIPTION_CHANGED = "source_description_changed"
+    # AI enrichment audit events (require migration 20260717180000 before insert)
+    AI_ENRICHMENT_STARTED = "ai_enrichment_started"
+    AI_ENRICHMENT_COMPLETED = "ai_enrichment_completed"
+    AI_ENRICHMENT_FAILED = "ai_enrichment_failed"
+    AI_ENRICHMENT_SKIPPED = "ai_enrichment_skipped"
+    AI_ENRICHMENT_AUTO_APPLIED = "ai_enrichment_auto_applied"
+    AI_ENRICHMENT_NEEDS_ATTENTION = "ai_enrichment_needs_attention"
+    MANUAL_OVERRIDE = "manual_override"
 
 
 class DerivationType(StrEnum):

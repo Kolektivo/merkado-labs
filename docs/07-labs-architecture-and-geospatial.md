@@ -65,13 +65,63 @@ Each source runs independently. Scheduling remains off until explicitly approved
   (secret never in sessionStorage/localStorage/client state after unlock)
 - Manual dashboard flow: `/enrichment` → unlock → preview → run job → poll → review
 - Shared runner: `scripts/run_ai_enrichment.py` / `merkado_labs.enrichment.jobs`
-- Pricing estimates: `merkado_labs.enrichment.pricing` (prefer estimates over spend)
+- Pricing estimates: `merkado_labs.enrichment.pricing` /
+  `apps/labs-dashboard/src/lib/enrichment/cost.ts` (mirrored line-for-line;
+  prefer estimates over spend)
 - AI tables: **service-role only**
 - Review statuses: `unreviewed` / `approved_for_research` / `rejected` / `needs_changes`
 - Approval never overwrites source facts
 - Why prior batch used `gpt-4.1-mini`: hardcoded in `run_ai_enrichment_batch25.py` +
   former `DEFAULT_MODEL` / config default before env-only hardening
 - Future hook after complete successful scrape: enqueue new/changed only — **not scheduled yet**
+
+#### Prompt / schema / policy v3
+
+- Current combination: prompt `listing_enrichment_v3`, JSON schema
+  `listing_enrichment_schema_v3`, application policy `enrichment_policy_v3`.
+- v3 is intentionally compact: the model emits only attributes it actually
+  found (sparse `attributes[]`, capped string/array lengths) instead of a
+  fixed 16-key `features` object — the main cause of structured-output
+  truncation under earlier `max_output_tokens` budgets.
+- Legacy v2 proposal JSON still parses for local policy replay
+  (`extra="ignore"`, defaulted fields); v3 proposals do not populate the
+  legacy `features` dict.
+
+#### Exception-based review
+
+Human review is exception-based, not a default gate: only genuine human
+decisions reach `needs_attention` — source conflicts, title/description
+disagreement, neighbourhood signal conflicts, high-value ambiguous fields,
+new-attribute taxonomy review, or moderate confidence on material
+search/display fields. Everything else is either auto-applied (evidenced,
+grounded, above the field's confidence bar, no conflict/negation, does not
+overwrite a protected source field) or **rejected outright with no
+operational attention required** — unsupported, duplicated, forbidden,
+malformed, noisy, generic-unhelpful, too-low-confidence, already
+represented by stronger source data, or a partial-word/encoding artifact.
+Rejected proposals never appear in the attention queue.
+
+#### AI cost & token observability (`/enrichment`)
+
+- Cost label shown next to every figure: *"Estimated from recorded token
+  usage and configured model pricing."* — never an OpenAI invoice total.
+- **Gross AI spend**: every recorded paid attempt, including retries and
+  attempts later superseded or failed.
+- **Retained-result cost**: only the result currently in effect per
+  listing (the latest successful attempt).
+- **Wasted / deferred cost**: paid attempts that were not retained (failed
+  calls, structured-output errors, or attempts replaced by a newer run).
+- Also shown: total API attempts (paid vs. recorded), avg cost per
+  successful/attempted listing, cost per auto-applied field, structured-
+  output failure rate, true attention rate (retained listings still
+  needing a human look), and input/cached/output/reasoning token totals.
+- **Model efficiency** groups attempts by model + prompt version + schema
+  version. A different prompt or schema combination is **not directly
+  comparable** to another — it changes what the model was even asked to
+  do, so historical rows are labelled accordingly.
+- Unknown OpenAI account-wide billing (transport retries, other models,
+  other projects) cannot be reconstructed from Labs data alone; see
+  `data/processed/ai_usage_reconciliation.md` for the gap analysis.
 
 ### Security model (Labs read access)
 
@@ -96,12 +146,15 @@ Each source runs independently. Scheduling remains off until explicitly approved
 - No real email, billing, or production merkado.cw connection
 - Nothing here is described as live on merkado.cw
 
-### RE/MAX refresh (2026-07-17)
+### RE/MAX refresh (2026-07-17) and Terra prep (2026-07-20)
 
 - Adapter `0.4.0`: full body description (was meta-only ~147 chars → avg ~1970)
 - Complete Labs refresh run `a6a32434-36e5-46b1-8033-143917eb0aeb`: 220 updated, 220 evidence uploads
 - Status backfill: 59 sold + 36 rented + 29 under_contract first-observed events
 - Initial AI validation: 5 listings succeeded; unchanged rerun skipped (0 tokens)
+- Adapter `0.4.1` (2026-07-20): parse `google.maps.LatLng` (199/220 on cache reparse), listing agent, filter agent headshots; Labs rows not updated (no import this task)
+- Terra v3 five-listing canary executed 2026-07-20 (`gpt-5.6-terra` + v3): **5/5** after `hs2467` retry
+- v0.4.1 activation + Terra-v3 initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** Terra-v3 coverage); public eligibility stable at **119**; RE/MAX remains manual/unscheduled; normal Refresh & enrich stays new/changed only
 
 ## 4. Geospatial principles
 
@@ -112,6 +165,30 @@ Each source runs independently. Scheduling remains off until explicitly approved
 - Bounding boxes are guards only.
 - Point-in-polygon assignment is authoritative when valid boundaries and coordinates exist.
 - Track coordinate provenance per source.
+
+### Effective neighbourhood (dashboard)
+
+Priority order used everywhere an "effective" neighbourhood is displayed
+(listing detail, browse, filters, table):
+
+1. **Source** — explicit, non-generic neighbourhood text from the realtor
+   website.
+2. **Map** — authoritative point-in-polygon assignment from valid
+   coordinates, used only when the source value is missing or generic.
+3. **AI gap-fill** — a high-confidence (≥ 0.85) evidence-grounded AI
+   neighbourhood candidate, consulted **only** when both stronger tiers
+   (source and map) are unavailable.
+4. **Unspecified** — otherwise.
+
+AI can never overwrite a stronger source or map value, and the map wins
+over a conflicting AI candidate because AI is only consulted once both
+stronger tiers are exhausted. Generic island-level mentions (`Curaçao`,
+`island`, `Netherlands Antilles`, `Dutch Caribbean`, …) never count as a
+specific neighbourhood.
+
+Implementation: `apps/labs-dashboard/src/lib/domain/effective-neighbourhood.ts`,
+mirrored in `src/merkado_labs/enrichment/neighbourhood.py` — keep both in
+sync when the priority rules change.
 
 ## 5. Assignment operations
 

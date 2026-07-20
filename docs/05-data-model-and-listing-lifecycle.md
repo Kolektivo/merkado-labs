@@ -178,6 +178,12 @@ Sold/rented timestamps:
 
 - `ai_enrichment_jobs` — manual job progress (queued → running → completed*)
 - `ai_enrichment_proposals` — model/prompt/schema/input-checksum keyed proposals
+  (current KW batches use prompt/schema/policy **v3**: `listing_enrichment_v3`
+  / `listing_enrichment_schema_v3` / `enrichment_policy_v3`)
+- Review is **exception-based**: only conflicts, weak/ambiguous evidence, or
+  new-attribute taxonomy reach `needs_attention`; unsupported, duplicated,
+  noisy, or already-represented proposals are rejected outright and never
+  enter the attention queue
 - Never overwrite raw evidence, price, currency, status, dates, coords, address, neighbourhood, realtor, or source reference
 
 Each event should store:

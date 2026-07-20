@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileSearch } from "lucide-react";
+import { notFound } from "next/navigation";
+import { ArrowLeft, FileSearch } from "lucide-react";
 
+import { ConfirmSearchRequestButton } from "@/components/confirm-search-request-button";
 import { HelpTip } from "@/components/help-tip";
 import { PageHeader } from "@/components/page-header";
 import { PrototypeNotice } from "@/components/prototype-notice";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getMatchReportsForRequest } from "@/lib/data/queries";
+import { listingDetailHref } from "@/lib/breadcrumbs";
+import {
+  getMatchReportsForRequest,
+  getPropertySearchRequests,
+} from "@/lib/data/queries";
+import { titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Match report" };
@@ -21,11 +29,26 @@ export default async function MatchReportsPage({
   params: Params;
 }) {
   const requestId = (await params).requestId;
-  const reports = await getMatchReportsForRequest(requestId);
+  const [reports, requests] = await Promise.all([
+    getMatchReportsForRequest(requestId),
+    getPropertySearchRequests(),
+  ]);
+  const request = requests.find((item) => item.id === requestId);
+  if (!request) notFound();
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button variant="ghost" asChild>
+          <Link href="/search-requests">
+            <ArrowLeft data-icon="inline-start" />
+            Back to search requests
+          </Link>
+        </Button>
+        <Badge variant="outline">{titleCase(request.status)}</Badge>
+      </div>
       <PageHeader
-        title="Match report"
+        title={request.title ?? "Match report"}
         description="Test scores showing how well listings fit one internal search request."
         icon={FileSearch}
       />
@@ -33,15 +56,22 @@ export default async function MatchReportsPage({
         Scores are experimental matching output, not property advice or a
         customer recommendation.
       </PrototypeNotice>
-      <Card>
+      <ConfirmSearchRequestButton
+        requestId={request.id}
+        initialStatus={request.status}
+      />
+      <Card className="gap-0 py-0">
         <CardContent className="divide-y px-0">
           {reports.length ? (
             reports.map((report) => (
-              <div key={report.id} className="space-y-2 px-6 py-4">
-                <div className="flex items-center justify-between gap-3">
+              <div key={report.id} className="space-y-2 px-4 py-4 sm:px-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <Link
-                    href={`/listings/${report.propertyListingId}`}
-                    className="font-medium underline"
+                    href={listingDetailHref(report.propertyListingId, {
+                      from: "match-reports",
+                      fromId: requestId,
+                    })}
+                    className="min-w-0 break-words font-medium underline"
                   >
                     {report.listingTitle ?? "Listing detail"}
                   </Link>
@@ -71,9 +101,19 @@ export default async function MatchReportsPage({
               </div>
             ))
           ) : (
-            <p className="px-6 py-8 text-sm text-muted-foreground">
-              No match report exists for this request.
-            </p>
+            <div className="space-y-3 px-6 py-8 text-sm text-muted-foreground">
+              <p>
+                No match scores yet for this request. Matching is experimental
+                and not generated automatically when you create a draft.
+              </p>
+              <p>
+                Confirm the request above if you want to use it with Merkado
+                Agent test access.
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/agent">Open Merkado Agent</Link>
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

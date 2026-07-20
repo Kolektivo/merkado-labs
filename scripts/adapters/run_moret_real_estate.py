@@ -66,6 +66,8 @@ def main() -> int:
                 "title": s.title,
                 "price": str(s.original_price.amount) if s.original_price else None,
                 "currency": s.original_price.currency if s.original_price else None,
+                "primary_image_url": s.primary_image_url,
+                "image_count": len(s.image_urls),
                 "warnings": list(s.warnings),
                 "url": s.source_url,
             }

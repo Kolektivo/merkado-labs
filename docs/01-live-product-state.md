@@ -31,23 +31,37 @@ The isolated Labs project currently has:
   Enrichment, Quality, Settings, and one clearly separated Prototypes area;
 - internal routes protected by the signed Labs admin cookie; public
   Browse/Passport reads only `public_property_listings`;
-- RE/MAX Curaçao as the first end-to-end direct-source adapter (220 listings;
-  evidence refresh 2026-07-17; still unscheduled);
-- Keller Williams adapter v0.1 with **40 Labs listings** (39 active + 1 unknown;
-  Crawl-Delay 20, sequential, unscheduled). All KW runs remain **partial**
-  (bounded `max_items` / incomplete pagination). On 2026-07-17 a bounded-run
-  classification bug falsely marked 35 KW listings `removed`; they were restored
-  from last valid pre-absence status without deleting immutable events.
+- RE/MAX Curaçao as the first end-to-end direct-source adapter (**220** listings;
+  adapter **v0.4.1** active; **199/220** coordinates; **119** public eligible;
+  GPT-5.6 Terra prompt/schema/policy **v3** initial backfill complete —
+  **220/220** successful Terra-v3 results; batch job
+  `remax_remaining_terra_backfill` 211/211 under USD 10; remains manual and
+  unscheduled; normal Refresh & enrich stays new/changed only);
+- Keller Williams complete catalog: **84 listings** (offline-imported from a
+  verified Stage-3 artifact; 81 public eligible / 3 excluded); Crawl-Delay
+  20 sequential, still unscheduled. Earlier bounded/partial adapter runs had
+  falsely marked 35 KW listings `removed` on 2026-07-17; restored from last
+  valid pre-absence status without deleting immutable events.
 - Moret Real Estate adapter v0.1 with **5 Labs listings** (bounded WPEstate import);
-- AI enrichment: 29 proposal rows (24 needs_review, 4 skipped_unchanged, 1 succeeded;
-  model `gpt-4.1-mini` because the prior batch script hardcoded that model). Proposals
-  only; no auto-approve. Model now required via `OPENAI_ENRICHMENT_MODEL` (no silent default).
+- AI enrichment stabilized on the KW catalog: GPT-5.6 Terra with prompt/
+  schema/policy **v3** (`listing_enrichment_v3` / `listing_enrichment_schema_v3`
+  / `enrichment_policy_v3`) and exception-based review — only conflicts, weak
+  evidence, or new-attribute taxonomy reach the attention queue; unsupported/
+  noisy/duplicate proposals are rejected outright and never shown as pending
+  review. A 24-listing retry batch on the compact v3 schema succeeded 24/24
+  (~USD 0.7054), bringing KW to **84/84** successful latest-proposal Terra
+  runs (0 failed, 0 never enriched). The `/enrichment` dashboard reports
+  gross vs. retained-result vs. wasted AI spend and a model-efficiency
+  comparison (grouped by model + prompt + schema version — different
+  combinations are not directly comparable). KW enrichment remains manual
+  and unscheduled.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
-after a verified rollback export. RE/MAX remains manual and unscheduled.
+after a verified rollback export. RE/MAX and KW remain manual and unscheduled.
+Next active source-development track: **Moret Real Estate**.
 
 ## 3. Current property MVP direction `[WIP]`
 
@@ -65,7 +79,9 @@ Core MVP rules:
 - Run adapters manually and in bounded mode during validation.
 - Show only active listings with a known positive price.
 - Preserve the original amount and original currency.
-- Display a benchmark price in XCG with disclaimer: indicative equivalent based on known information.
+- Display XCG as the primary displayed, search, and filter price; show the
+  original amount and currency as secondary, with disclaimer: indicative
+  equivalent based on known information.
 - Convert USD at `1 USD = 1.79 XCG`.
 - Convert EUR using ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`).
 - Show `Indicative equivalent based on known information.` for converted values.
@@ -76,7 +92,9 @@ Core MVP rules:
 
 ## 4. Not built yet
 
-- Production-ready adapters for all five sources (KW/Moret/Monumentenzorg/Sotheby's incomplete)
+- Production-ready adapters for all five sources (KW's live-crawl adapter still
+  has incomplete pagination — its 84-listing catalog came from an offline
+  Stage-3 import, not a live crawl; Moret/Monumentenzorg/Sotheby's incomplete)
 - Direct-source scheduled ingestion
 - Public property browse/detail UI on `merkado.cw` (Labs `/browse` preview exists)
 - Reliable multi-source property entity resolution

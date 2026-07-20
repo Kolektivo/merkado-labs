@@ -37,14 +37,15 @@ export const HARVEST_JOBS: HarvestJob[] = [
     runner: "Local Python (merkado_labs.scrapers.adapters.keller_williams_curacao)",
     workflowPath: null,
     pipeline: [
-      "Bounded sequential detail fetch (Crawl-Delay 20)",
-      "Exclude /silent-listings",
-      "Deterministic parse + fixture tests",
-      "Dry-run before Labs import",
+      "Approved-section catalog discovery (sale/rent categories)",
+      "Full-catalog sequential detail dry-run (Crawl-Delay 20, robots once/host)",
+      "Exclude /silent-listings; reject off-domain URLs",
+      "Complete-catalog success only when discovery + detail gates pass",
+      "Dry-run before Labs import; unscheduled",
     ],
     status: "manual",
     notes:
-      "Adapter v0.1. Labs import 2026-07-17: 40 listings (38 eligible). Crawl-Delay 20. Pagination incomplete. Scheduling disabled.",
+      "Adapter v0.3. Full catalog imported 2026-07-17 from verified Stage-3 artifact (84 listings: 52 sale + 32 rent, 3 no-price). Offline cache import; no live crawl. Crawl-Delay 20, sequential, manual/unscheduled. Partial runs never mark missing/removed.",
   },
   {
     id: "sothebys-planned",

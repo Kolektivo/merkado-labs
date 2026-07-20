@@ -45,7 +45,7 @@ export function LabsAdminLogin({
       setSecret("");
       setOk(true);
       window.location.assign(
-        returnTo && returnTo.startsWith("/") ? returnTo : window.location.href,
+        returnTo && /^\/(?!\/)/.test(returnTo) ? returnTo : window.location.href,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -56,23 +56,37 @@ export function LabsAdminLogin({
 
   async function logout() {
     setBusy(true);
-    await fetch("/api/admin/login", { method: "DELETE" });
-    setOk(false);
-    setBusy(false);
-    window.location.reload();
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/login", { method: "DELETE" });
+      if (!response.ok) throw new Error("Unable to sign out. Please try again.");
+      setOk(false);
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign out.");
+      setBusy(false);
+    }
   }
 
   if (ok) {
     return (
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-          You are signed in as Labs admin. The session ends after 12 hours.
-        </span>
-        <Button variant="outline" size="sm" onClick={logout} disabled={busy}>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-          Sign out
-        </Button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+            You are signed in as Labs admin. The session ends after 12 hours.
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={logout} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+            {busy ? "Signing out…" : "Sign out"}
+          </Button>
+        </div>
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Unable to sign out</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
     );
   }
@@ -100,9 +114,9 @@ export function LabsAdminLogin({
           }}
         />
       </div>
-      <Button onClick={login} disabled={busy || !secret.trim()}>
+      <Button type="button" onClick={login} disabled={busy || !secret.trim()}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
-        Unlock Labs admin
+        {busy ? "Signing in…" : "Unlock Labs admin"}
       </Button>
       {error ? (
         <Alert variant="destructive">

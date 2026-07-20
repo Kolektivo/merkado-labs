@@ -10,8 +10,11 @@ The future What Fits Me? and Merkado Agent journey is an approved product direct
 Labs dashboard demos of Search Request / What Fits Me / Agent / Match Reports are
 prototypes only — not live on merkado.cw and not activation-complete.
 
-Remaining activation gates: full KW/Moret/Sotheby's/Monumentenzorg catalog proof,
-scheduled runs off until QA, AI proposals manually reviewed, public RLS verified.
+Remaining activation gates: full Moret/Sotheby's/Monumentenzorg catalog proof
+(KW and RE/MAX catalogs are complete), scheduled runs off until QA, AI
+proposals reviewed under the exception-based v3 policy (high-confidence
+evidenced fields auto-apply; manual attention only for conflicts, weak
+evidence, or new-attribute taxonomy), public RLS verified.
 
 ## 2. MVP deliverables
 
@@ -48,6 +51,7 @@ scheduled runs off until QA, AI proposals manually reviewed, public RLS verified
 | Sold | Requires explicit source signal |
 | Removed | Requires consecutive successful complete snapshots with absence |
 | Passport | Off-chain listing/property activity log |
+| AI review model | Exception-based (`enrichment_policy_v3`): high-confidence evidenced fields auto-apply; only conflicts/weak/ambiguous exceptions need manual attention; unsupported or noisy proposals are rejected outright, never queued |
 | Guided discovery | Users may create a Property Search Request directly or through What Fits Me? |
 | Merkado Agent | Future paid monthly subscription; email delivery first |
 | Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |

@@ -50,6 +50,10 @@ experiments/caribbeanhousehunt_sample/pilot_contract.json
 *.swp
 ~$*
 
+# Playwright / local test artifacts (repo root or nested)
+test-results/
+playwright-report/
+
 # Local IDE configuration that may contain secrets
 .cursor/*.local.*
 .vscode/settings.json

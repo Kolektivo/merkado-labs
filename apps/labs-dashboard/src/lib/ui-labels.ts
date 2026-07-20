@@ -34,7 +34,7 @@ export const TIPS = {
   },
   enrichmentStatus: {
     label: "AI enrichment status",
-    tip: "Whether AI has been asked to suggest extra details for this listing. Suggestions stay separate from the original source facts until someone reviews them.",
+    tip: "Whether AI has enriched this listing. High-confidence evidenced fields apply automatically; only conflicts and weak results need attention. Source facts are never overwritten.",
   },
   lifecycle: {
     label: "listing lifecycle",
@@ -82,11 +82,15 @@ export const TIPS = {
   },
   unreviewedProposals: {
     label: "unreviewed",
-    tip: "AI suggestions that nobody has accepted or rejected yet. These need a human decision.",
+    tip: "Legacy research-review flags. Successful auto-applied enrichments do not require approval.",
   },
   needsReviewProposals: {
-    label: "needs review",
-    tip: "AI marked these suggestions as needing a closer look — for example low confidence or unusual fields.",
+    label: "needs attention",
+    tip: "Listings where AI found conflicts, weak evidence, or low-confidence fields that need a person to look afterwards.",
+  },
+  autoAppliedFields: {
+    label: "auto-applied fields",
+    tip: "High-confidence, evidence-backed fields that Labs applied automatically without asking for approval first.",
   },
   adapterJobs: {
     label: "collection jobs",
@@ -132,13 +136,37 @@ export const TIPS = {
     label: "aggregator record",
     tip: "An older third-party listing page. Preferred practice is the original realtor website when available.",
   },
+  grossAiSpend: {
+    label: "gross AI spend",
+    tip: "Estimated cost of every recorded paid API attempt, including retries and attempts that were later superseded or failed. Estimated from recorded token usage and configured model pricing — not an OpenAI invoice total.",
+  },
+  retainedResultCost: {
+    label: "retained result cost",
+    tip: "Estimated cost of only the latest successful attempt per listing — the result that is actually in effect today.",
+  },
+  wastedAttemptCost: {
+    label: "wasted / failed attempt cost",
+    tip: "Estimated cost of paid attempts that were not retained — failed calls, structured-output errors, or attempts later replaced by a newer run.",
+  },
+  costPerAutoAppliedField: {
+    label: "cost per auto-applied field",
+    tip: "Total estimated spend divided by the number of fields that were ever auto-applied across all attempts. A rough efficiency signal, not a unit price.",
+  },
+  structuredOutputFailureRate: {
+    label: "structured-output failure rate",
+    tip: "Share of API attempts where the model's response could not be parsed into the expected schema (status invalid_output).",
+  },
+  trueAttentionRate: {
+    label: "true attention rate",
+    tip: "Share of listings with a retained (currently in-effect) result that still have at least one field needing human attention.",
+  },
 } as const satisfies Record<string, TipEntry>;
 
 const ADAPTER_STATUS_LABELS: Record<string, string> = {
-  active: "Ready for schedule",
-  manual: "Manual import only",
-  recon: "Being researched",
-  planned: "Planned",
+  active: "Ready",
+  manual: "Ready · manual",
+  recon: "Incomplete",
+  planned: "Not ready",
   retired: "Retired",
   unknown: "Unknown",
 };
@@ -155,24 +183,25 @@ const RUN_OUTCOME_LABELS: Record<string, string> = {
 const LIFECYCLE_LABELS: Record<string, string> = {
   active: "Active (still listed)",
   sold: "Sold",
-  inactive: "Inactive (incl. rented)",
+  inactive: "Inactive",
   missing: "Missing from latest full check",
   removed: "Removed from website",
   unknown: "Unknown",
 };
 
 const ENRICHMENT_STATUS_LABELS: Record<string, string> = {
-  not_run: "Not run yet",
+  not_run: "Never enriched",
   queued: "Queued",
   running: "Running",
-  succeeded: "Succeeded",
-  skipped_unchanged: "Skipped (nothing changed)",
-  failed: "Failed",
-  needs_review: "Needs review",
+  succeeded: "Enriched",
+  skipped_unchanged: "No changes — AI skipped",
+  failed: "AI enrichment failed",
+  needs_review: "Needs attention",
 };
 
 const EXCLUSION_REASON_LABELS: Record<string, string> = {
   missing_price: "No asking price",
+  non_positive_price: "Price is zero or negative",
   missing_attribution: "Missing realtor name",
   attribution_conflict: "Conflicting realtor info",
   inactive: "No longer active",
@@ -184,6 +213,8 @@ const EXCLUSION_REASON_LABELS: Record<string, string> = {
   not_active: "Not currently active",
   unknown_status: "Unclear status",
   low_completeness: "Too little information",
+  source_disabled: "Website is disabled",
+  not_classified: "Not classified",
 };
 
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
@@ -192,19 +223,25 @@ const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   accepted: "Accepted",
   rejected: "Rejected",
   superseded: "Replaced by newer suggestion",
+  auto_applied: "Applied automatically",
+  skipped_unchanged: "No changes — AI skipped",
+  invalid_output: "AI response could not be processed",
+  failed: "AI enrichment failed",
 };
 
 const REVIEW_STATUS_LABELS: Record<string, string> = {
   unreviewed: "Waiting for review",
-  approved: "Approved",
+  approved_for_research: "Approved for research",
   rejected: "Rejected",
-  changes_requested: "Changes requested",
+  needs_changes: "Needs changes",
 };
 
 const JOB_STATUS_LABELS: Record<string, string> = {
   queued: "Queued",
   running: "Running",
   succeeded: "Finished",
+  completed: "Finished",
+  completed_with_errors: "Finished with errors",
   failed: "Failed",
   cancelled: "Cancelled",
 };
@@ -326,13 +363,13 @@ export function reviewStatusTone(
   value: string | null | undefined,
 ): UiStatusTone {
   switch ((value ?? "").toLowerCase()) {
-    case "approved":
+    case "approved_for_research":
       return "success";
     case "unreviewed":
       return "warning";
     case "rejected":
       return "error";
-    case "changes_requested":
+    case "needs_changes":
       return "info";
     default:
       return "neutral";
@@ -343,10 +380,13 @@ export function reviewStatusTone(
 export function jobStatusTone(value: string | null | undefined): UiStatusTone {
   switch ((value ?? "").toLowerCase()) {
     case "succeeded":
+    case "completed":
       return "success";
     case "queued":
     case "running":
       return "info";
+    case "completed_with_errors":
+      return "warning";
     case "failed":
       return "error";
     case "cancelled":

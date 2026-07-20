@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function ProposalReviewControl({
   initialStatus: AiProposalReviewStatus;
   initialNotes: string | null;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState<AiProposalReviewStatus>(initialStatus);
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [message, setMessage] = useState<{
@@ -48,6 +50,7 @@ export function ProposalReviewControl({
         kind: "success",
         text: "Review saved. The original listing facts were not changed.",
       });
+      router.refresh();
     } catch (error) {
       setMessage({
         kind: "error",

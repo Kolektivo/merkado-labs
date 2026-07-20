@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { listingDetailHref } from "@/lib/breadcrumbs";
 import type { MapListingMarker } from "@/lib/domain/types";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -35,10 +36,16 @@ export function PropertyMap({
   markers,
   styleUrl,
   attribution,
+  detailContext,
 }: {
   markers: MapListingMarker[];
   styleUrl: string;
   attribution: string;
+  detailContext?: {
+    from?: string;
+    fromId?: string;
+    returnTo?: string;
+  };
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [zoomRequest, setZoomRequest] = useState<{
@@ -115,6 +122,28 @@ export function PropertyMap({
         />
       </div>
 
+      <details className="rounded-lg border bg-card">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+          Browse mapped listings as a keyboard-friendly list
+        </summary>
+        <div className="max-h-72 divide-y overflow-y-auto border-t">
+          {markers.map((marker) => (
+            <Link
+              key={marker.id}
+              href={listingDetailHref(marker.id, detailContext)}
+              className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30"
+            >
+              <span className="min-w-0 truncate">
+                {marker.title ?? "Untitled listing"}
+              </span>
+              <span className="shrink-0 text-muted-foreground">
+                {formatCurrency(marker.currentPrice, marker.currency)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </details>
+
       <Sheet
         open={selectedMarkers.length > 0}
         onOpenChange={(open) => {
@@ -135,7 +164,11 @@ export function PropertyMap({
           </SheetHeader>
           <div className="mt-4 space-y-4 px-4 pb-6">
             {selectedMarkers.map((marker) => (
-              <MarkerDetails key={marker.id} marker={marker} />
+              <MarkerDetails
+                key={marker.id}
+                marker={marker}
+                detailContext={detailContext}
+              />
             ))}
           </div>
         </SheetContent>
@@ -144,8 +177,19 @@ export function PropertyMap({
   );
 }
 
-function MarkerDetails({ marker }: { marker: MapListingMarker }) {
+function MarkerDetails({
+  marker,
+  detailContext,
+}: {
+  marker: MapListingMarker;
+  detailContext?: {
+    from?: string;
+    fromId?: string;
+    returnTo?: string;
+  };
+}) {
   const title = marker.title ?? "Untitled listing";
+  const detailHref = listingDetailHref(marker.id, detailContext);
 
   return (
     <article className="space-y-3 rounded-lg border p-4">
@@ -197,12 +241,17 @@ function MarkerDetails({ marker }: { marker: MapListingMarker }) {
       </dl>
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm">
-          <Link href={`/listings/${marker.id}`}>Open internal detail</Link>
+          <Link href={detailHref}>Open internal detail</Link>
         </Button>
         <Button asChild size="sm" variant="outline">
-          <a href={marker.sourceUrl} target="_blank" rel="noreferrer">
+          <a
+            href={marker.originalRealtorUrl ?? marker.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
             Original listing
             <ExternalLink className="size-3.5" />
+            <span className="sr-only"> (opens in new tab)</span>
           </a>
         </Button>
       </div>
