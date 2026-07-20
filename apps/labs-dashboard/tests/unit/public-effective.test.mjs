@@ -7,8 +7,10 @@ import {
   isPositivePublicAttribute,
   listingHasPublicAttribute,
   normalizePublicAttributes,
+  PUBLIC_ATTRIBUTE_CHIP_PRIORITY,
   PUBLIC_ATTRIBUTE_FILTER_KEYS,
   PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS,
+  selectBrowseAttributeChips,
 } from "../../src/lib/domain/public-attributes.ts";
 import {
   isGenericNeighbourhood,
@@ -54,6 +56,37 @@ test("empty feature groups are omitted", () => {
     groups.map((group) => group.id),
     ["outdoor"],
   );
+});
+
+test("browse chips prioritize positive attributes and show up to five", () => {
+  const attrs = normalizePublicAttributes([
+    { key: "garden", value: true },
+    { key: "terrace", value: true },
+    { key: "pool", value: true },
+    { key: "furnished", value: true },
+    { key: "air_conditioning", value: true },
+    { key: "balcony", value: true },
+    { key: "parking", value: false },
+  ]);
+  assert.deepEqual(PUBLIC_ATTRIBUTE_CHIP_PRIORITY.slice(0, 5), [
+    "pool",
+    "furnished",
+    "air_conditioning",
+    "gated_community",
+    "parking",
+  ]);
+  assert.deepEqual(selectBrowseAttributeChips(attrs), [
+    "Pool",
+    "Furnished",
+    "Air conditioning",
+    "Garden",
+    "Terrace",
+  ]);
+  assert.deepEqual(selectBrowseAttributeChips(attrs, 3), [
+    "Pool",
+    "Furnished",
+    "Air conditioning",
+  ]);
 });
 
 test("generic Curacao is not a neighbourhood", () => {
@@ -110,11 +143,13 @@ test("browse and passport share the public attribute module", () => {
   assert.match(browse, /effectiveNeighbourhood/);
   assert.match(browse, /publicAttributes/);
   assert.match(browse, /benchmarkPriceXcg/);
+  assert.match(browse, /selectBrowseAttributeChips/);
   assert.match(passport, /groupPublicAttributes/);
   assert.match(passport, /effectiveNeighbourhoodProvenanceLabel/);
   assert.match(passport, /effectiveSummary/);
   assert.match(publicListings, /createReadOnlySupabaseClient/);
   assert.match(publicListings, /public_property_listings/);
+  assert.match(publicListings, /display_description/);
   assert.doesNotMatch(publicListings, /ai_enrichment_proposals/);
   assert.doesNotMatch(browse, /confidence/);
   assert.doesNotMatch(passport, /token_usage|supporting_evidence|field_decisions/);

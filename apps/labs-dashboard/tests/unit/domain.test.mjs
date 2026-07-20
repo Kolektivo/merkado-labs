@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -10,7 +11,10 @@ import {
   buildPriceDisplay,
   formatXcgPrimary,
 } from "../../src/lib/domain/price-display.ts";
-import { isOperationalAttentionDecision } from "../../src/lib/enrichment/display.ts";
+import {
+  decisionStatusLabel,
+  isOperationalAttentionDecision,
+} from "../../src/lib/enrichment/display.ts";
 
 test("specific source neighbourhood wins over map and AI", () => {
   const effective = resolveEffectiveNeighbourhood({
@@ -22,6 +26,17 @@ test("specific source neighbourhood wins over map and AI", () => {
   assert.equal(effective.name, "Jan Thiel");
   assert.equal(effective.provenance, "source");
   assert.equal(effective.conflict, true);
+});
+
+test("listing table prefers raw source neighbourhood text", () => {
+  const table = readFileSync(
+    new URL("../../src/components/listing-table.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    table,
+    /sourceName:\s*listing\.sourceNeighbourhoodText \?\? listing\.neighbourhood\?\.name \?\? null/,
+  );
 });
 
 test("generic source falls through to a valid map assignment", () => {
@@ -161,4 +176,18 @@ test("neighbourhood AI attention is demoted when source or map already exists", 
     ),
     true,
   );
+});
+
+test("represented candidates stay non-operational regardless of decision status", () => {
+  for (const status of ["rejected", "redundant"]) {
+    assert.equal(
+      isOperationalAttentionDecision({
+        key: "neighbourhood_candidate",
+        status,
+        reasons: ["already_represented_by_map"],
+      }),
+      false,
+    );
+  }
+  assert.equal(decisionStatusLabel("redundant"), "Redundant");
 });

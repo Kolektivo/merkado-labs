@@ -33,10 +33,22 @@ ALLOWED_AI_FIELDS: frozenset[str] = frozenset(
         "appliance_inclusion",
         "normalized_amenities",
         "concise_summary",
+        "display_overview",
+        "display_layout",
+        "display_location",
+        "display_highlights",
+        "display_practical",
         "title_normalization",
         "waterfront",
         "renovation_or_maintenance_mention",
     }
+)
+
+# Fields retained as immutable listing facts. They are deliberately not
+# allowlisted, so proposed values receive a protected-field rejection rather
+# than being treated as a new flexible attribute.
+PROTECTED_AI_PROPOSAL_FIELDS: frozenset[str] = frozenset(
+    {"bedrooms", "bathrooms", "floor_area_m2"}
 )
 
 # Identity / money / legal facts AI must never change or invent.
@@ -135,6 +147,11 @@ ATTRIBUTE_DISPLAY_LABELS: dict[str, str] = {
     "property_type": "Property type",
     "neighbourhood_candidate": "Neighbourhood (AI)",
     "concise_summary": "Summary",
+    "display_overview": "Overview",
+    "display_layout": "Layout",
+    "display_location": "Location",
+    "display_highlights": "Highlights",
+    "display_practical": "Practical details",
     "title_normalization": "Normalized title",
     "normalized_amenities": "Normalized amenities",
 }
@@ -143,6 +160,8 @@ ATTRIBUTE_DISPLAY_LABELS: dict[str, str] = {
 ATTRIBUTE_SYNONYMS: dict[str, str] = {
     "swimming pool": "pool",
     "private pool": "pool",
+    "has_pool": "pool",
+    "private_pool": "pool",
     "zwembad": "pool",
     "fully furnished": "furnished",
     "gemeubileerd": "furnished",
@@ -151,9 +170,11 @@ ATTRIBUTE_SYNONYMS: dict[str, str] = {
     "carport": "parking",
     "gated community": "gated_community",
     "gated resort": "gated_community",
+    "gated_resort": "gated_community",
     "a/c": "air_conditioning",
     "ac": "air_conditioning",
     "airco": "air_conditioning",
+    "a_c": "air_conditioning",
     "air conditioning": "air_conditioning",
     "ocean view": "sea_view",
     "sea view": "sea_view",
@@ -161,7 +182,12 @@ ATTRIBUTE_SYNONYMS: dict[str, str] = {
     "solar panels": "solar_panels",
     "solar": "solar_panels",
     "water heater": "water_heater",
+    "hot_water": "water_heater",
     "boiler": "water_heater",
+    "pets_allowed": "pet_suitability",
+    "pet_friendly": "pet_suitability",
+    "private_parking": "parking",
+    "on_site_parking": "parking",
 }
 
 
@@ -169,6 +195,8 @@ def normalize_attribute_key(raw: str) -> str:
     """Map a raw term or key onto a canonical attribute key when known."""
 
     cleaned = (raw or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if cleaned in ATTRIBUTE_SYNONYMS:
+        return ATTRIBUTE_SYNONYMS[cleaned]
     if cleaned in CANONICAL_ATTRIBUTE_KEYS or cleaned in ALLOWED_AI_FIELDS:
         if cleaned == "gated":
             return "gated_community"

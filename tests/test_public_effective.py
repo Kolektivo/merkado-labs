@@ -9,6 +9,7 @@ from merkado_labs.enrichment.policy import decide_field
 from merkado_labs.enrichment.public_effective import (
     assert_public_payload_is_safe,
     project_public_attributes,
+    project_public_display_description,
     resolve_public_effective_neighbourhood,
 )
 from merkado_labs.enrichment.values import AutoApplyStatus
@@ -117,7 +118,7 @@ def test_source_neighbourhood_wins_over_map_and_ai() -> None:
                 "proposed_value": "Mambo Beach",
                 "confidence": 0.99,
                 "evidence_snippet": "located in Mambo Beach",
-                "reasons": ["confidence_below_field_auto_apply_threshold"],
+                "reasons": ["high_confidence_evidence_backed"],
             }
         ],
     )
@@ -160,11 +161,11 @@ def test_ai_fills_neighbourhood_gap_safely() -> None:
         decisions=[
             {
                 "key": "neighbourhood_candidate",
-                "final_status": "needs_attention",
+                "final_status": "auto_applied",
                 "proposed_value": "Koraal Specht",
                 "confidence": 0.94,
                 "evidence_snippet": "home in Koraal Specht",
-                "reasons": ["confidence_below_field_auto_apply_threshold"],
+                "reasons": ["high_confidence_evidence_backed"],
             }
         ],
     )
@@ -244,7 +245,7 @@ def test_gated_with_surrounding_gate_can_auto_apply() -> None:
     assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
 
 
-def test_ai_matching_map_neighbourhood_is_rejected_as_duplicate() -> None:
+def test_ai_matching_map_neighbourhood_is_redundant_duplicate() -> None:
     decision = decide_field(
         key="neighbourhood_candidate",
         proposed_value="Jan Thiel",
@@ -253,8 +254,23 @@ def test_ai_matching_map_neighbourhood_is_rejected_as_duplicate() -> None:
         source_text="Beautiful villa in Jan Thiel with sea views",
         source_values={"inferred_neighbourhood_name": "Jan Thiel"},
     )
-    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status == AutoApplyStatus.REDUNDANT
     assert "already_represented_by_map" in decision.reasons
+
+
+def test_auto_applied_display_description_is_public_and_minimal() -> None:
+    proposal = _proposal_with(
+        applied=[],
+        decisions=[
+            {
+                "key": "display_overview",
+                "final_status": "auto_applied",
+                "resulting_effective": "Villa with a pool.",
+                "confidence": 0.95,
+            }
+        ],
+    )
+    assert project_public_display_description(proposal) == {"overview": "Villa with a pool."}
 
 
 def test_migration_keeps_public_view_read_only_and_private_safe() -> None:
@@ -274,6 +290,20 @@ def test_migration_keeps_public_view_read_only_and_private_safe() -> None:
     assert "skipped_unchanged" in sql
     # Public attribute objects must not embed confidence.
     assert "'confidence'" not in sql.split("jsonb_build_object(")[1].split(")")[0]
+
+
+def test_v4_migration_prefers_v4_and_exposes_display_description() -> None:
+    sql = Path(
+        "supabase/migrations/20260720180000_enrichment_quality_v4_public_effective.sql"
+    ).read_text(encoding="utf-8")
+    assert "listing_enrichment_v4" in sql
+    assert "listing_enrichment_v3" in sql
+    assert "display_description" in sql
+    assert "security_invoker = false" in sql
+    assert "supporting_evidence" not in sql
+    assert "token_usage" not in sql
+    assert "grant select on table public.public_property_listings" in sql
+    assert "public_property_listings_v3_projection" in sql
 
 
 def test_replay_script_is_bounded_and_openai_free() -> None:

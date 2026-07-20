@@ -1,4 +1,4 @@
-"""Automatic enrichment application policy (v3, exception-based).
+"""Automatic enrichment application policy (v4, exception-based).
 
 The model may recommend auto_apply; the application makes the final decision.
 Human review is exception-based: only genuine human decisions (source
@@ -22,6 +22,7 @@ from merkado_labs.enrichment.evidence import ground_evidence
 from merkado_labs.enrichment.fields import (
     ATTRIBUTE_DISPLAY_LABELS,
     FORBIDDEN_AI_FIELDS,
+    PROTECTED_AI_PROPOSAL_FIELDS,
     PROTECTED_SOURCE_STRUCTURED_FIELDS,
     is_allowed_ai_field,
     is_forbidden_field,
@@ -37,7 +38,7 @@ from merkado_labs.enrichment.values import (
     resolve_effective_value,
 )
 
-POLICY_VERSION = "enrichment_policy_v3"
+POLICY_VERSION = "enrichment_policy_v4"
 
 
 class ReasonCode:
@@ -66,6 +67,12 @@ class ReasonCode:
     HIGH_CONFIDENCE_EVIDENCE_BACKED = "high_confidence_evidence_backed"
     ALREADY_REPRESENTED_BY_SOURCE = "already_represented_by_source"
     ALREADY_REPRESENTED_BY_MAP = "already_represented_by_map"
+    REDUNDANT_SOURCE_VALUE = "redundant_source_value"
+    REDUNDANT_MAP_VALUE = "redundant_map_value"
+    REDUNDANT_DUPLICATE_PROPOSAL = "redundant_duplicate_proposal"
+    PROTECTED_SOURCE_FIELD = "protected_source_field"
+    GENERIC_NEIGHBOURHOOD = "generic_neighbourhood"
+    NARRATIVE_INVENTS_PROTECTED_CLAIM = "narrative_invents_protected_claim"
 
 
 # Configurable thresholds — not magic numbers sprinkled in call sites.
@@ -78,10 +85,8 @@ MAX_PARKING_SPACES = 20
 
 # Field-specific auto-apply confidence bars. Amenities auto-apply at the
 # default 0.85 with grounding; higher-value/ambiguous fields need a higher
-# bar, and neighbourhood is set above 1.0 so it can never auto-apply — it
-# always resolves to needs_attention or rejection, never a silent overwrite.
+# bar.
 FIELD_AUTO_APPLY_THRESHOLDS: dict[str, float] = {
-    "neighbourhood_candidate": 1.01,
     "property_type": 0.95,
 }
 
@@ -143,11 +148,16 @@ class PolicyEvaluation:
     def rejected(self) -> list[FieldDecision]:
         return [d for d in self.decisions if d.final_status == AutoApplyStatus.REJECTED]
 
+    @property
+    def redundant(self) -> list[FieldDecision]:
+        return [d for d in self.decisions if d.final_status == AutoApplyStatus.REDUNDANT]
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "auto_applied_count": len(self.auto_applied),
             "needs_attention_count": len(self.needs_attention),
             "rejected_count": len(self.rejected),
+            "redundant_count": len(self.redundant),
             "decisions": [d.as_dict() for d in self.decisions],
         }
 
@@ -189,6 +199,11 @@ def _build_source_corpus(source_values: dict[str, Any]) -> str:
         source_values.get("cleaned_listing_text"),
         source_values.get("description"),
         source_values.get("source_text"),
+        source_values.get("source_neighbourhood_text"),
+        source_values.get("location_text"),
+        source_values.get("dedicated_source_location"),
+        source_values.get("inferred_neighbourhood_name"),
+        source_values.get("map_neighbourhood_name"),
     ]
     features = source_values.get("existing_structured_features")
     if isinstance(features, (list, tuple)):
@@ -196,6 +211,18 @@ def _build_source_corpus(source_values: dict[str, Any]) -> str:
     elif isinstance(features, dict):
         parts.append(str(features))
     return "\n".join(str(part) for part in parts if part)
+
+
+def _narrative_has_protected_claim(value: Any) -> bool:
+    text = str(value or "").lower()
+    protected_markers = (
+        r"\b(?:usd|naf|ang|eur|dollar|guilders?)\b",
+        r"(?:\$\s?\d|€\s?\d|\bprice\b|\basking\b)",
+        r"\b(?:sold|rented|under offer|available now)\b",
+    )
+    import re
+
+    return any(re.search(pattern, text) for pattern in protected_markers)
 
 
 def _source_conflict(
@@ -337,6 +364,28 @@ def decide_field(
     coerced = _tri_state_to_bool(proposed_value)
     reasons: list[str] = []
     corpus = source_text if source_text is not None else _build_source_corpus(source_values)
+    narrative_field = normalized_key in {
+        "concise_summary",
+        "display_overview",
+        "display_layout",
+        "display_location",
+        "display_highlights",
+        "display_practical",
+    }
+
+    if normalized_key in PROTECTED_AI_PROPOSAL_FIELDS:
+        return FieldDecision(
+            key=normalized_key, proposed_value=coerced, value_type=value_type,
+            confidence=confidence, evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source, extraction_reason=extraction_reason,
+            classification=classification, conflict=True,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.FORBIDDEN,
+            reasons=(ReasonCode.PROTECTED_SOURCE_FIELD,),
+            previous_effective=previous_effective, resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
 
     if is_forbidden_field(normalized_key) or normalized_key in FORBIDDEN_AI_FIELDS:
         return FieldDecision(
@@ -403,6 +452,36 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
+    if narrative_field and _narrative_has_protected_claim(coerced):
+        return FieldDecision(
+            key=normalized_key, proposed_value=coerced, value_type=value_type,
+            confidence=confidence, evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source, extraction_reason=extraction_reason,
+            classification=classification, conflict=True,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.FORBIDDEN,
+            reasons=(ReasonCode.NARRATIVE_INVENTS_PROTECTED_CLAIM,),
+            previous_effective=previous_effective, resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
+
+    if narrative_field and len(corpus.strip()) < 40 and not source_values.get(
+        "existing_structured_features"
+    ):
+        return FieldDecision(
+            key=normalized_key, proposed_value=coerced, value_type=value_type,
+            confidence=confidence, evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source, extraction_reason=extraction_reason,
+            classification=classification, conflict=True,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.WEAK_EVIDENCE,
+            reasons=(ReasonCode.MISSING_OR_WEAK_EVIDENCE,),
+            previous_effective=previous_effective, resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
+
     if not _evidence_ok(evidence_snippet):
         return FieldDecision(
             key=normalized_key,
@@ -449,7 +528,7 @@ def decide_field(
             resulting_effective=previous_effective,
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
-    if grounding.ok_for_attention and not grounding.ok_for_auto_apply:
+    if not narrative_field and grounding.ok_for_attention and not grounding.ok_for_auto_apply:
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -468,7 +547,7 @@ def decide_field(
             resulting_effective=previous_effective,
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
-    reasons.append(grounding.reason)
+    reasons.append(grounding.reason if not narrative_field else "narrative_source_available")
 
     if normalized_key == "neighbourhood_candidate":
         specific_source = _specific_source_neighbourhood(source_values)
@@ -486,9 +565,12 @@ def decide_field(
                 classification=classification,
                 conflict=False,
                 model_recommended_action=model_recommended_action,
-                final_status=AutoApplyStatus.REJECTED,
+                final_status=AutoApplyStatus.REDUNDANT,
                 conflict_status=ConflictStatus.NONE,
-                reasons=(ReasonCode.ALREADY_REPRESENTED_BY_SOURCE,),
+                reasons=(
+                    ReasonCode.ALREADY_REPRESENTED_BY_SOURCE,
+                    ReasonCode.REDUNDANT_SOURCE_VALUE,
+                ),
                 previous_effective=previous_effective,
                 resulting_effective=previous_effective,
                 display_label=ATTRIBUTE_DISPLAY_LABELS.get(
@@ -519,15 +601,52 @@ def decide_field(
                 classification=classification,
                 conflict=False,
                 model_recommended_action=model_recommended_action,
-                final_status=AutoApplyStatus.REJECTED,
+                final_status=AutoApplyStatus.REDUNDANT,
                 conflict_status=ConflictStatus.NONE,
-                reasons=(ReasonCode.ALREADY_REPRESENTED_BY_MAP,),
+                reasons=(ReasonCode.ALREADY_REPRESENTED_BY_MAP, ReasonCode.REDUNDANT_MAP_VALUE),
                 previous_effective=previous_effective,
                 resulting_effective=previous_effective,
                 display_label=ATTRIBUTE_DISPLAY_LABELS.get(
                     normalized_key, normalized_key
                 ),
             )
+        if (
+            map_nb
+            and not specific_source
+            and not is_generic_neighbourhood(map_nb)
+            and not _neighbourhood_names_equivalent(map_nb, str(coerced))
+        ):
+            return FieldDecision(
+                key=normalized_key, proposed_value=coerced, value_type=value_type,
+                confidence=confidence, evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source, extraction_reason=extraction_reason,
+                classification=classification, conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.NEEDS_ATTENTION,
+                conflict_status=ConflictStatus.SOURCE_CONFLICT,
+                reasons=(ConflictStatus.SOURCE_CONFLICT.value,),
+                previous_effective=previous_effective, resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+
+    if previous_effective is not None and (
+        str(previous_effective).strip().casefold()
+        == str(coerced).strip().casefold()
+    ):
+        return FieldDecision(
+            key=normalized_key,
+            proposed_value=coerced,
+            value_type=value_type,
+            confidence=confidence, evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source, extraction_reason=extraction_reason,
+            classification=classification, conflict=False,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REDUNDANT,
+            conflict_status=ConflictStatus.NONE,
+            reasons=(ReasonCode.REDUNDANT_DUPLICATE_PROPOSAL,),
+            previous_effective=previous_effective, resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
 
     conflict = _source_conflict(normalized_key, coerced, source_values)
     if conflict is not None:
@@ -536,6 +655,8 @@ def decide_field(
             if conflict == ConflictStatus.FORBIDDEN
             else AutoApplyStatus.NEEDS_ATTENTION
         )
+        if normalized_key == "neighbourhood_candidate" and is_generic_neighbourhood(str(coerced)):
+            status = AutoApplyStatus.REJECTED
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -549,7 +670,12 @@ def decide_field(
             model_recommended_action=model_recommended_action,
             final_status=status,
             conflict_status=conflict,
-            reasons=(conflict.value,),
+            reasons=(
+                (ReasonCode.GENERIC_NEIGHBOURHOOD,)
+                if normalized_key == "neighbourhood_candidate"
+                and is_generic_neighbourhood(str(coerced))
+                else (conflict.value,)
+            ),
             previous_effective=previous_effective,
             resulting_effective=previous_effective,
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),

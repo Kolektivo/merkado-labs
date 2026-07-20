@@ -213,7 +213,7 @@ def test_neighbourhood_policy_cases() -> None:
         evidence_source="description",
         source_text="beautiful home located on Curaçao island",
     )
-    assert generic.final_status == AutoApplyStatus.NEEDS_ATTENTION
+    assert generic.final_status == AutoApplyStatus.REJECTED
 
     conflict = decide_field(
         key="neighbourhood_candidate",
@@ -275,8 +275,8 @@ def test_evaluate_proposal_idempotent_structure() -> None:
     assert first.as_dict()["auto_applied_count"] == 2
 
 
-def test_policy_version_is_v3() -> None:
-    assert POLICY_VERSION == "enrichment_policy_v3"
+def test_policy_version_is_v4() -> None:
+    assert POLICY_VERSION == "enrichment_policy_v4"
 
 
 def test_reason_codes_are_stable_machine_readable_strings() -> None:
@@ -327,10 +327,10 @@ def test_missing_confidence_is_rejected() -> None:
     assert decision.final_status == AutoApplyStatus.REJECTED
 
 
-def test_neighbourhood_never_auto_applies_even_when_clean() -> None:
-    """No conflict, no source, high confidence — still capped at attention."""
+def test_neighbourhood_gap_auto_applies_when_clean() -> None:
+    """A grounded high-confidence location fills a real source/map gap."""
 
-    assert FIELD_AUTO_APPLY_THRESHOLDS["neighbourhood_candidate"] > 1.0
+    assert "neighbourhood_candidate" not in FIELD_AUTO_APPLY_THRESHOLDS
     decision = decide_field(
         key="neighbourhood_candidate",
         proposed_value="Mambo Beach",
@@ -339,10 +339,10 @@ def test_neighbourhood_never_auto_applies_even_when_clean() -> None:
         evidence_source="description",
         source_text="clearly located in Mambo Beach near the boulevard",
     )
-    assert decision.final_status == AutoApplyStatus.NEEDS_ATTENTION
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
 
 
-def test_neighbourhood_matching_source_is_rejected_not_attention() -> None:
+def test_neighbourhood_matching_source_is_redundant_not_attention() -> None:
     """Source already carries the neighbourhood — do not queue AI echo."""
 
     decision = decide_field(
@@ -357,11 +357,11 @@ def test_neighbourhood_matching_source_is_rejected_not_attention() -> None:
         },
         source_text="apartment located in Toni Kunchi near the resort",
     )
-    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status == AutoApplyStatus.REDUNDANT
     assert ReasonCode.ALREADY_REPRESENTED_BY_SOURCE in decision.reasons
 
 
-def test_neighbourhood_with_map_and_no_source_is_rejected_not_attention() -> None:
+def test_neighbourhood_with_map_and_no_source_is_redundant_not_attention() -> None:
     """Map already supplies the effective neighbourhood."""
 
     decision = decide_field(
@@ -377,7 +377,7 @@ def test_neighbourhood_with_map_and_no_source_is_rejected_not_attention() -> Non
         },
         source_text="villa located in Zakito with sea views",
     )
-    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status == AutoApplyStatus.REDUNDANT
     assert ReasonCode.ALREADY_REPRESENTED_BY_MAP in decision.reasons
 
 
@@ -430,4 +430,28 @@ def test_gated_community_with_real_grounded_evidence_can_auto_apply() -> None:
         source_text="Villa in a quiet gated community with 24/7 security and a pool.",
     )
     decision = evaluation.decisions[0]
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_protected_bedrooms_rejected_before_flexible_bag() -> None:
+    decision = decide_field(
+        key="bedrooms",
+        proposed_value=4,
+        confidence=0.99,
+        evidence_snippet="four bedrooms",
+        source_text="The home has four bedrooms.",
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert ReasonCode.PROTECTED_SOURCE_FIELD in decision.reasons
+
+
+def test_has_pool_synonym_normalizes_and_auto_applies() -> None:
+    decision = decide_field(
+        key="has_pool",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet="private pool with sun deck",
+        source_text="Villa with private pool with sun deck.",
+    )
+    assert decision.key == "pool"
     assert decision.final_status == AutoApplyStatus.AUTO_APPLIED

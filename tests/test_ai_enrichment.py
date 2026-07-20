@@ -274,9 +274,9 @@ def test_skip_unchanged_without_api_call() -> None:
     assert result.proposal is None
 
 
-def test_versions_are_v3() -> None:
-    assert PROMPT_VERSION == "listing_enrichment_v3"
-    assert SCHEMA_VERSION == "listing_enrichment_schema_v3"
+def test_versions_are_v4() -> None:
+    assert PROMPT_VERSION == "listing_enrichment_v4"
+    assert SCHEMA_VERSION == "listing_enrichment_schema_v4"
 
 
 def test_compact_schema_v3_has_no_fixed_key_features_object() -> None:
@@ -398,8 +398,8 @@ def test_successful_parse_with_compact_sparse_attributes() -> None:
     assert pool_decision["final_status"] == "auto_applied"
 
 
-def test_neighbourhood_candidate_always_needs_attention() -> None:
-    """v3 policy: neighbourhood_candidate never auto-applies, even clean."""
+def test_neighbourhood_candidate_gap_auto_applies() -> None:
+    """v4 policy auto-applies a clean, grounded neighbourhood gap-fill."""
 
     import json
 
@@ -419,10 +419,19 @@ def test_neighbourhood_candidate_always_needs_attention() -> None:
         client.responses.create.return_value = response
         result = enrich_listing(enrichment_input, model="gpt-4.1-mini",
         api_key="sk-test")
-    assert result.status == "needs_review"
+    assert result.status == "succeeded"
     decisions = (result.policy_evaluation or {}).get("decisions") or []
     nb_decision = next(d for d in decisions if d["key"] == "neighbourhood_candidate")
-    assert nb_decision["final_status"] == "needs_attention"
+    assert nb_decision["final_status"] == "auto_applied"
+
+
+def test_payload_separates_protected_and_missing_gaps() -> None:
+    from merkado_labs.enrichment import build_enrichment_input_payload
+
+    payload = build_enrichment_input_payload(_sample_input())
+    assert payload["protected_known_fields"]["bedrooms"] == 4
+    assert "map_known_fields" in payload
+    assert "pool" in payload["missing_allowlisted_fields"]
 
 
 def test_force_rerun_calls_api_even_if_checksum_matches() -> None:

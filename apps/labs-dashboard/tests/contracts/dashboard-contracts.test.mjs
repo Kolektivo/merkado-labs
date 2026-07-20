@@ -177,3 +177,20 @@ test("public-effective migration projects allowlisted fields only", () => {
   assert.doesNotMatch(migration, /token_usage/);
   assert.doesNotMatch(migration, /cost_usd/);
 });
+
+test("v4 public-effective migration prefers v4 and adds display_description", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../../../supabase/migrations/20260720180000_enrichment_quality_v4_public_effective.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /listing_enrichment_v4/);
+  assert.match(migration, /listing_enrichment_v3/);
+  assert.match(migration, /display_description/);
+  assert.match(migration, /security_invoker = false/);
+  assert.match(migration, /public_property_listings_v3_projection/);
+  assert.doesNotMatch(migration, /supporting_evidence/);
+  assert.doesNotMatch(migration, /token_usage/);
+});

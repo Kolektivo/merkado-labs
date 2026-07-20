@@ -35,6 +35,7 @@ class AutoApplyStatus(StrEnum):
     AUTO_APPLIED = "auto_applied"
     NEEDS_ATTENTION = "needs_attention"
     REJECTED = "rejected"
+    REDUNDANT = "redundant"
     SKIPPED = "skipped"
     NOT_EVALUATED = "not_evaluated"
 

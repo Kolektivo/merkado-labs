@@ -7,9 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from merkado_labs.enrichment import PROMPT_VERSION, SCHEMA_VERSION
 from merkado_labs.enrichment.neighbourhood import is_generic_neighbourhood
-from merkado_labs.enrichment.policy import POLICY_VERSION
 from merkado_labs.enrichment.pricing import MODEL_PRICES_USD_PER_1M, calculate_usage_cost_usd
 from merkado_labs.scrapers.adapters.remax_curacao import ADAPTER_VERSION, SOURCE_KEY
 
@@ -18,6 +16,11 @@ PROCESSED = ROOT / "data" / "processed"
 SELECTION = PROCESSED / "remax_terra_canary_selection.json"
 COST = PROCESSED / "remax_terra_cost_preflight.json"
 STATE = PROCESSED / "remax_current_state.json"
+
+# Historical Terra-v3 prep artifact — versions stay pinned after code moves to v4.
+HISTORICAL_PROMPT = "listing_enrichment_v3"
+HISTORICAL_SCHEMA = "listing_enrichment_schema_v3"
+HISTORICAL_POLICY = "enrichment_policy_v3"
 
 
 @pytest.mark.skipif(not SELECTION.exists(), reason="Run build_remax_terra_prep.py first")
@@ -29,9 +32,9 @@ def test_canary_selection_exactly_five_and_enforced() -> None:
     assert len(payload["listing_ids"]) == 5
     assert len(set(payload["listing_ids"])) == 5
     assert len(payload["external_ids"]) == 5
-    assert payload["prompt_version"] == PROMPT_VERSION
-    assert payload["schema_version"] == SCHEMA_VERSION
-    assert payload["policy_version"] == POLICY_VERSION
+    assert payload["prompt_version"] == HISTORICAL_PROMPT
+    assert payload["schema_version"] == HISTORICAL_SCHEMA
+    assert payload["policy_version"] == HISTORICAL_POLICY
     assert payload["no_listings_outside_selection"] is True
 
 

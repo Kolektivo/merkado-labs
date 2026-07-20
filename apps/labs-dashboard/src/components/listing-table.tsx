@@ -135,7 +135,8 @@ export function ListingTable({
           const title = listing.title ?? "Untitled property";
           const detailHref = listingDetailHref(listing.id, detailContext);
           const effective = resolveEffectiveNeighbourhood({
-            sourceName: listing.neighbourhood?.name ?? null,
+            sourceName:
+              listing.sourceNeighbourhoodText ?? listing.neighbourhood?.name ?? null,
             mapName: listing.inferredNeighbourhood?.name ?? null,
           });
           return (
@@ -228,7 +229,8 @@ export function ListingTable({
               const title = listing.title ?? "Untitled property";
               const detailHref = listingDetailHref(listing.id, detailContext);
               const effective = resolveEffectiveNeighbourhood({
-                sourceName: listing.neighbourhood?.name ?? null,
+                sourceName:
+                  listing.sourceNeighbourhoodText ?? listing.neighbourhood?.name ?? null,
                 mapName: listing.inferredNeighbourhood?.name ?? null,
               });
               return (

@@ -174,6 +174,16 @@ export type PublicNeighbourhoodProvenance =
   | "ai_extracted"
   | "unavailable";
 
+/** Public-safe polished copy derived from a listing's source description. */
+export type PublicDisplayDescription = {
+  language: string | null;
+  overview: string | null;
+  layout: string | null;
+  location: string | null;
+  highlights: string[];
+  practical: string | null;
+};
+
 export type PublicPropertyListing = {
   id: string;
   externalId: string;
@@ -211,6 +221,8 @@ export type PublicPropertyListing = {
   publicAttributes: PublicListingAttribute[];
   /** Auto-applied concise summary when available; never replaces source description. */
   effectiveSummary: string | null;
+  /** Public-safe structured copy for the Passport; source text remains available separately. */
+  displayDescription: PublicDisplayDescription | null;
 };
 
 export type EnrichmentComparisonStatus =

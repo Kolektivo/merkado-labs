@@ -13,11 +13,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getPublicListings } from "@/lib/data/public-listings";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import {
-  isPositivePublicAttribute,
   listingHasPublicAttribute,
-  publicAttributeChipLabel,
   PUBLIC_ATTRIBUTE_DISPLAY_LABELS,
   PUBLIC_ATTRIBUTE_FILTER_KEYS,
+  selectBrowseAttributeChips,
 } from "@/lib/domain/public-attributes";
 import type { PublicPropertyListing } from "@/lib/domain/types";
 import { titleCase } from "@/lib/format";
@@ -65,10 +64,7 @@ function cardMetaLine(listing: PublicPropertyListing): string {
 }
 
 function cardAttributeChips(listing: PublicPropertyListing): string[] {
-  return listing.publicAttributes
-    .filter(isPositivePublicAttribute)
-    .slice(0, 3)
-    .map(publicAttributeChipLabel);
+  return selectBrowseAttributeChips(listing.publicAttributes);
 }
 
 function matchesFilters(

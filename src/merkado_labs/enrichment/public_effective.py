@@ -53,6 +53,15 @@ PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS = {
 }
 
 
+PUBLIC_DISPLAY_DESCRIPTION_KEYS: tuple[str, ...] = (
+    "display_overview",
+    "display_layout",
+    "display_location",
+    "display_highlights",
+    "display_practical",
+)
+
+
 def _coerce_public_value(raw: Any) -> tuple[Any, str] | None:
     if raw is None or raw == "" or raw == "unknown":
         return None
@@ -126,7 +135,7 @@ def public_ai_neighbourhood_candidate(proposal: dict[str, Any] | None) -> str | 
             continue
         if item.get("key") != "neighbourhood_candidate":
             continue
-        if item.get("final_status") not in {"needs_attention", "auto_applied"}:
+        if item.get("final_status") != "auto_applied":
             continue
         reasons = set(item.get("reasons") or [])
         if "source_conflict" in reasons or "title_description_conflict" in reasons:
@@ -140,6 +149,27 @@ def public_ai_neighbourhood_candidate(proposal: dict[str, Any] | None) -> str | 
         if best is None or score > best[0]:
             best = (score, value)
     return best[1] if best else None
+
+
+def project_public_display_description(proposal: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Return only auto-applied, public display-description blocks."""
+
+    if not proposal:
+        return None
+    decisions = {
+        str(item.get("key")): item
+        for item in proposal.get("field_decisions") or []
+        if isinstance(item, dict) and item.get("final_status") == "auto_applied"
+    }
+    out: dict[str, Any] = {}
+    for key in PUBLIC_DISPLAY_DESCRIPTION_KEYS:
+        decision = decisions.get(key)
+        if not decision:
+            continue
+        value = decision.get("resulting_effective", decision.get("proposed_value"))
+        if value not in (None, "", []):
+            out[key.removeprefix("display_")] = value
+    return out or None
 
 
 def resolve_public_effective_neighbourhood(

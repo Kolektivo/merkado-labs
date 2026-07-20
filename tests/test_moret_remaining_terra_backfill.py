@@ -6,10 +6,13 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from merkado_labs.enrichment import PROMPT_VERSION, SCHEMA_VERSION
 from merkado_labs.enrichment.jobs import has_identical_enrichment_attempt
 from merkado_labs.enrichment.neighbourhood import resolve_effective_neighbourhood
-from merkado_labs.enrichment.policy import POLICY_VERSION
+
+# Historical Terra-v3 backfill artifact — versions stay pinned after code moves to v4.
+HISTORICAL_PROMPT = "listing_enrichment_v3"
+HISTORICAL_SCHEMA = "listing_enrichment_schema_v3"
+HISTORICAL_POLICY = "enrichment_policy_v3"
 
 ROOT = Path(__file__).resolve().parents[1]
 SELECTION = ROOT / "data/processed/moret_remaining_terra_selection.json"
@@ -35,9 +38,9 @@ def test_selection_excludes_five_successful_canaries() -> None:
     payload = json.loads(SELECTION.read_text(encoding="utf-8"))
     assert payload["source_key"] == "moret_real_estate"
     assert payload["model_required"] == "gpt-5.6-terra"
-    assert payload["prompt_version"] == PROMPT_VERSION
-    assert payload["schema_version"] == SCHEMA_VERSION
-    assert payload["policy_version"] == POLICY_VERSION
+    assert payload["prompt_version"] == HISTORICAL_PROMPT
+    assert payload["schema_version"] == HISTORICAL_SCHEMA
+    assert payload["policy_version"] == HISTORICAL_POLICY
     assert payload["count"] == 66
     assert len(payload["listing_ids"]) == 66
     assert len(set(payload["listing_ids"])) == 66

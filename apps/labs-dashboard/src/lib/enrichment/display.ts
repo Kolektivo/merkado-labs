@@ -13,6 +13,7 @@ export type FieldDecisionStatus =
   | "auto_applied"
   | "needs_attention"
   | "rejected"
+  | "redundant"
   | "skipped"
   | "not_evaluated";
 
@@ -64,6 +65,8 @@ export function decisionStatusLabel(status: string): string {
       return "Needs attention";
     case "rejected":
       return "Rejected";
+    case "redundant":
+      return "Redundant";
     case "skipped":
       return "Skipped";
     default:
@@ -82,8 +85,6 @@ export function isOperationalAttentionDecision(
     mapNeighbourhood?: string | null;
   },
 ): boolean {
-  if (decision.status !== "needs_attention") return false;
-  if (decision.key !== "neighbourhood_candidate") return true;
   const reasons = decision.reasons ?? [];
   if (
     reasons.includes("already_represented_by_source") ||
@@ -91,6 +92,8 @@ export function isOperationalAttentionDecision(
   ) {
     return false;
   }
+  if (decision.status !== "needs_attention") return false;
+  if (decision.key !== "neighbourhood_candidate") return true;
   const source = (context?.sourceNeighbourhood ?? "").trim();
   const map = (context?.mapNeighbourhood ?? "").trim();
   const sourceSpecific =

@@ -49,8 +49,8 @@ The isolated Labs project currently has:
   under USD 2.40; cumulative ~USD 1.94; manual/unscheduled; normal Refresh &
   enrich remains new/changed only);
 - AI enrichment stabilized on the KW catalog: GPT-5.6 Terra with prompt/
-  schema/policy **v3** (`listing_enrichment_v3` / `listing_enrichment_schema_v3`
-  / `enrichment_policy_v3`) and exception-based review — only conflicts, weak
+  schema/policy **v4** (`listing_enrichment_v4` / `listing_enrichment_schema_v4`
+  / `enrichment_policy_v4`) with v3 history retained; exception-based review — only conflicts, weak
   evidence, or new-attribute taxonomy reach the attention queue; unsupported/
   noisy/duplicate proposals are rejected outright and never shown as pending
   review. A 24-listing retry batch on the compact v3 schema succeeded 24/24
