@@ -42,7 +42,12 @@ The isolated Labs project currently has:
   20 sequential, still unscheduled. Earlier bounded/partial adapter runs had
   falsely marked 35 KW listings `removed` on 2026-07-17; restored from last
   valid pre-absence status without deleting immutable events.
-- Moret Real Estate adapter v0.1 with **5 Labs listings** (bounded WPEstate import);
+- Moret Real Estate adapter **v0.2.0**: first complete catalog activated in Labs
+  (**71** listings; offline import 66 insert / 5 update; public eligible 71;
+  coordinates 71/71; GPT-5.6 Terra-v3 initial backfill complete — **71/71**
+  successful current results; canary ~USD 0.1165 + remaining 66 at ~USD 1.8259
+  under USD 2.40; cumulative ~USD 1.94; manual/unscheduled; normal Refresh &
+  enrich remains new/changed only);
 - AI enrichment stabilized on the KW catalog: GPT-5.6 Terra with prompt/
   schema/policy **v3** (`listing_enrichment_v3` / `listing_enrichment_schema_v3`
   / `enrichment_policy_v3`) and exception-based review — only conflicts, weak
@@ -61,7 +66,11 @@ The isolated Labs project currently has:
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
 after a verified rollback export. RE/MAX and KW remain manual and unscheduled.
-Next active source-development track: **Moret Real Estate**.
+Moret Terra-v3 initial backfill is complete; Moret remains manual/unscheduled
+with Refresh & enrich = new/changed only. Next active source task:
+**Monumentenzorg reconnaissance** (public pages reachable again; completeness
+must be reverified). Sotheby's: access route under investigation (approved
+public route/feed still required). Neither Monumentenzorg nor Sotheby's is Ready.
 
 ## 3. Current property MVP direction `[WIP]`
 

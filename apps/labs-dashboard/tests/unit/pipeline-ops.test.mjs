@@ -29,7 +29,8 @@ test("run-all ready filter excludes partial and blocked sources", () => {
   assert.match(readiness, /moret_real_estate/);
   assert.match(readiness, /monumentenzorg_curacao/);
   assert.match(readiness, /sothebys_curacao/);
-  assert.match(readiness, /readiness: "partial"/);
+  assert.match(readiness, /adapterVersion: "0\.2\.0"/);
+  assert.match(readiness, /listingCountExpected: 71/);
   assert.match(readiness, /readiness: "blocked"/);
   assert.match(readiness, /allowsFullRefresh: false/);
   assert.match(readiness, /adapterVersion: "0\.4\.1"/);
@@ -39,6 +40,21 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
   assert.match(readiness, /requires approval/);
+  // Ready sources include KW, RE/MAX, and Moret; blocked remain excluded.
+  assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
+  assert.match(readiness, /First complete catalog established \(71\)/);
+  assert.match(readiness, /Reconnaissance required/);
+  assert.match(readiness, /Access route under investigation/);
+  assert.match(readiness, /catalogStatus: "reconnaissance_required"/);
+  assert.match(readiness, /catalogStatus: "access_route_under_investigation"/);
+  assert.doesNotMatch(
+    readiness,
+    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "ready"/,
+  );
+  assert.doesNotMatch(
+    readiness,
+    /sourceKey: "sothebys_curacao"[\s\S]*?readiness: "ready"/,
+  );
 
   const enqueue = source("src/lib/pipeline/enqueue.ts");
   assert.match(enqueue, /filterRunAllReady/);

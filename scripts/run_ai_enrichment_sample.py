@@ -41,8 +41,12 @@ CANARY_EXTERNAL_IDS = frozenset(
 REMAX_TERRA_CANARY_EXTERNAL_IDS = frozenset(
     {"hs2467", "hr1013", "hr2165", "hs2941", "hr1393"}
 )
+MORET_TERRA_CANARY_EXTERNAL_IDS = frozenset(
+    {"post-75682", "post-75725", "post-74976", "post-75799", "post-74710"}
+)
 KW_SOURCE = "keller_williams_curacao"
 REMAX_SOURCE = "remax_curacao"
+MORET_SOURCE = "moret_real_estate"
 
 
 def _load_selection(path: Path) -> dict:
@@ -154,6 +158,17 @@ def main() -> int:
                 raise SystemExit(
                     f"RE/MAX Terra canary must target exactly 5 listings, got {len(listing_ids)}"
                 )
+        if args.source_key == MORET_SOURCE and selection_meta.get("allow_canary"):
+            external_ids = [str(x) for x in (selection_meta.get("external_ids") or [])]
+            if set(external_ids) != MORET_TERRA_CANARY_EXTERNAL_IDS:
+                raise SystemExit(
+                    "Moret Terra canary selection must be exactly "
+                    f"{sorted(MORET_TERRA_CANARY_EXTERNAL_IDS)}; got {sorted(external_ids)}"
+                )
+            if len(listing_ids) != 5:
+                raise SystemExit(
+                    f"Moret Terra canary must target exactly 5 listings, got {len(listing_ids)}"
+                )
     elif args.listing_ids:
         mode = "listing_ids"
         listing_ids = [part.strip() for part in args.listing_ids.split(",") if part.strip()]
@@ -227,6 +242,16 @@ def main() -> int:
         ):
             raise SystemExit(
                 f"Refusing canary listing {row['external_id']} in remaining batch"
+            )
+        if (
+            args.source_key == MORET_SOURCE
+            and mode == "selection_file"
+            and str(row.get("external_id")) in MORET_TERRA_CANARY_EXTERNAL_IDS
+            and not (selection_meta or {}).get("idempotency_check")
+            and not (selection_meta or {}).get("allow_canary")
+        ):
+            raise SystemExit(
+                f"Refusing Moret canary listing {row['external_id']} in remaining batch"
             )
 
     running = (
@@ -306,6 +331,9 @@ def main() -> int:
     # cannot cover a single listing's max-output worst case.
     if args.source_key == REMAX_SOURCE:
         observed_avg_usd = 0.035
+    elif args.source_key == MORET_SOURCE:
+        # Observed Moret Terra canary average (5/5 @ USD 0.1165 exact).
+        observed_avg_usd = 0.0233
     else:
         observed_avg_usd = 0.03956
     expected_from_canary = round(observed_avg_usd * len(billable_ids), 4)
@@ -371,11 +399,16 @@ def main() -> int:
 
     if args.max_estimated_cost_usd is not None:
         ceiling = float(args.max_estimated_cost_usd)
-        # Gate on conservative expected cost for large batches; absolute
-        # max-output * N is reported but not used as a hard preflight refuse
-        # when mid-run budget enforcement is active.
-        gate_cost = conservative_usd if len(billable_ids) > 20 else (
-            float(worst_cost) if worst_cost is not None else None
+        # Gate on conservative expected cost for large batches and approved
+        # canary selection files; absolute max-output * N is reported but not
+        # used as a hard preflight refuse when mid-run budget enforcement is
+        # active (process_enrichment_job still refuses the next call when the
+        # remaining budget cannot cover one listing's max-output worst case).
+        approved_canary = bool((selection_meta or {}).get("allow_canary"))
+        gate_cost = (
+            conservative_usd
+            if len(billable_ids) > 20 or approved_canary
+            else (float(worst_cost) if worst_cost is not None else None)
         )
         if gate_cost is None or gate_cost > ceiling:
             raise SystemExit(
@@ -411,6 +444,13 @@ def main() -> int:
         )
         if not requested_by and selection_name and "remaining" in selection_name:
             requested_by = "remax_remaining_terra_backfill"
+    elif args.source_key == MORET_SOURCE:
+        if (selection_meta or {}).get("allow_canary"):
+            requested_by = "moret_terra_canary"
+        elif "remaining" in selection_name:
+            requested_by = "moret_remaining_terra_backfill"
+        else:
+            requested_by = "moret_terra_selection"
     elif mode == "selection_file" and "retry" in selection_name:
         requested_by = "kw_terra_retry_24"
     elif mode == "selection_file":

@@ -78,16 +78,25 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
     "moret_real_estate": SourceReadiness(
         source_key="moret_real_estate",
         display_name="Moret Real Estate",
-        adapter_version="0.1.1",
-        readiness="partial",
-        listing_count_expected=5,
-        catalog_status="bounded_sample",
-        current_issue="Full catalog not proven; only five-listing sample imported",
-        primary_action="Continue setup",
+        adapter_version="0.2.0",
+        readiness="ready",
+        listing_count_expected=71,
+        catalog_status="complete",
+        current_issue=(
+            "First complete catalog established (71). Terra-v3 initial backfill "
+            "complete (71/71). Normal Refresh & enrich remains new/changed only. "
+            "Manual/unscheduled."
+        ),
+        primary_action="Refresh & enrich",
         blocker_kind=None,
-        allows_full_refresh=False,
-        allows_lifecycle_absence=False,
-        notes="Expand after catalog completeness QA; no missing/removed on partial.",
+        allows_full_refresh=True,
+        allows_lifecycle_absence=True,
+        notes=(
+            "Adapter v0.2.0 activated 2026-07-20: offline complete import 66 insert / "
+            "5 update; public eligible 71; Terra-v3 initial backfill complete "
+            "(canary + remaining 66; cumulative ~USD 1.94). "
+            "Normal Refresh & enrich bills new/changed only."
+        ),
     ),
     "monumentenzorg_curacao": SourceReadiness(
         source_key="monumentenzorg_curacao",
@@ -95,13 +104,19 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         adapter_version="0.1.1",
         readiness="blocked",
         listing_count_expected=None,
-        catalog_status="blocked",
-        current_issue="SSL/DNS failure; partner or official feed needed",
+        catalog_status="reconnaissance_required",
+        current_issue=(
+            "Reconnaissance required. Official public pages are reachable again; "
+            "completeness must be reverified."
+        ),
         primary_action="Blocked",
-        blocker_kind="ssl_dns_failure",
+        blocker_kind="access_unavailable",
         allows_full_refresh=False,
         allows_lifecycle_absence=False,
-        notes="Do not bypass SSL/DNS. Fixture parser only until access restored.",
+        notes=(
+            "Not Ready. Reconnaissance required before any scrape or import; "
+            "do not mark Ready until a complete public catalog is proven."
+        ),
     ),
     "sothebys_curacao": SourceReadiness(
         source_key="sothebys_curacao",
@@ -109,13 +124,19 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         adapter_version="0.1.1",
         readiness="blocked",
         listing_count_expected=None,
-        catalog_status="blocked",
-        current_issue="WAF / access controls block automated fetch (HTTP 202)",
+        catalog_status="access_route_under_investigation",
+        current_issue=(
+            "Access route under investigation. Official/network inventory exists but "
+            "automated access still requires an approved public route/feed."
+        ),
         primary_action="Blocked",
-        blocker_kind="waf_restriction",
+        blocker_kind="access_unavailable",
         allows_full_refresh=False,
         allows_lifecycle_absence=False,
-        notes="Official feed or approved access required. No WAF bypass.",
+        notes=(
+            "Not Ready. Access route under investigation; no WAF bypass and no scrape "
+            "until an approved public route/feed is confirmed."
+        ),
     ),
 }
 

@@ -19,8 +19,8 @@ This folder holds the working context for Merkado Labs property work.
 | Labs dashboard | [LABS][WIP] Ops + browse + Search Request / Agent previews |
 | Public browse on merkado.cw | [PLANNED] Labs `/browse` only |
 | Keller Williams adapter | [LABS] v0.1; 40 listings imported (manual) |
-| Moret adapter | [LABS][WIP] v0.1; 5 bounded listings |
-| Monumentenzorg / Sotheby's | [RISK] Access blocked (SSL/DNS / WAF 202) |
+| Moret adapter | [LABS] v0.2.0; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
+| Monumentenzorg / Sotheby's | [RISK] Reconnaissance required / access route under investigation (not Ready) |
 | AI enrichment (25 RE/MAX) | [LABS] Completed 2026-07-17; review pending |
 | Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 

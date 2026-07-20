@@ -10,11 +10,12 @@ The future What Fits Me? and Merkado Agent journey is an approved product direct
 Labs dashboard demos of Search Request / What Fits Me / Agent / Match Reports are
 prototypes only — not live on merkado.cw and not activation-complete.
 
-Remaining activation gates: full Moret/Sotheby's/Monumentenzorg catalog proof
-(KW and RE/MAX catalogs are complete), scheduled runs off until QA, AI
-proposals reviewed under the exception-based v3 policy (high-confidence
-evidenced fields auto-apply; manual attention only for conflicts, weak
-evidence, or new-attribute taxonomy), public RLS verified.
+Remaining activation gates: Monumentenzorg reconnaissance; Sotheby's
+access-route investigation (neither Ready). KW, RE/MAX, and Moret catalogs
+have complete Terra-v3 coverage and remain manual/unscheduled. Scheduled runs
+off until QA; AI proposals reviewed under the exception-based v3 policy
+(high-confidence evidenced fields auto-apply; manual attention only for
+conflicts, weak evidence, or new-attribute taxonomy); public RLS verified.
 
 ## 2. MVP deliverables
 
