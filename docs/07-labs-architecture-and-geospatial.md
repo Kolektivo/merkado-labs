@@ -83,12 +83,20 @@ Each source runs independently. Scheduling remains off until explicitly approved
   for current unresolved conflicts only; historical v3/v4 rows stay in advanced audit).
   Public Browse/Passport expose `image_urls` galleries with card/detail carousels;
   adapters already extract full galleries into `property_listings.image_urls`.
+- Labs activation (2026-07-20): policy v4.1 rematerialized on 346 retained v4
+  proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
+  151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
+  idempotent. Public view migrations
+  `review_v41_and_public_image_galleries` /
+  `review_v41_public_property_listings_view` expose `image_urls`. Ready-source
+  galleries were already stored (~12.1k URLs); no lifecycle scrape or image
+  binary copy was required. Public eligible count remains **273**.
 - v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds source-language display-description blocks.
-- Labs public-effective migration `20260720180000_enrichment_quality_v4_public_effective`
-  is applied: prefers retained v4 proposals (fallback v3) and exposes
-  `effective_summary` + `display_description` (never evidence/tokens/cost).
+- Labs public-effective migrations prefer retained v4 proposals (fallback v3)
+  and expose `effective_summary` + `display_description` + `image_urls`
+  (never evidence/tokens/cost).
 - Cross-source v4 canary (20 public) + public backfill (254; 253 succeeded)
   completed under the USD 25 hard ceiling (~USD 7.42 total exact). Production
   Merkado migration remains paused.
