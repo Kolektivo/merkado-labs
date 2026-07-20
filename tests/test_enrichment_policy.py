@@ -78,8 +78,10 @@ def test_source_conflict_never_auto_applies() -> None:
         source_values={"property_type": "villa"},
         source_text=source,
     )
-    assert decision.final_status == AutoApplyStatus.NEEDS_ATTENTION
+    # Specific structured source type wins quietly over conflicting AI.
+    assert decision.final_status == AutoApplyStatus.REJECTED
     assert decision.conflict_status == ConflictStatus.SOURCE_CONFLICT
+    assert ReasonCode.PROPERTY_TYPE_SOURCE_WINS_QUIET in decision.reasons
 
 
 def test_forbidden_field_rejected() -> None:

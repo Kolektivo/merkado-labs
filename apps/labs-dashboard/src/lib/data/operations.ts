@@ -25,6 +25,7 @@ export type PipelineRunRow = {
   correlationId: string;
   status: string;
   triggerMode: string;
+  triggerType: string;
   sourceKeys: string[];
   currentSourceKey: string | null;
   currentStage: string | null;
@@ -164,6 +165,7 @@ export async function getLatestPipelineRuns(limit = 10): Promise<PipelineRunRow[
     correlationId: String(row.correlation_id),
     status: String(row.status),
     triggerMode: String(row.trigger_mode),
+    triggerType: String(row.trigger_type ?? "manual"),
     sourceKeys: (row.source_keys as string[] | null) ?? [],
     currentSourceKey: row.current_source_key
       ? String(row.current_source_key)
@@ -214,6 +216,7 @@ export async function getPipelineRunDetail(runId: string): Promise<{
         correlationId: String(row.correlation_id),
         status: String(row.status),
         triggerMode: String(row.trigger_mode),
+        triggerType: String(row.trigger_type ?? "manual"),
         sourceKeys: (row.source_keys as string[] | null) ?? [],
         currentSourceKey: row.current_source_key
           ? String(row.current_source_key)

@@ -93,8 +93,8 @@ export function PipelineRefreshControls({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Ready sources can be refreshed manually. Incomplete and blocked sources
-          remain read-only.
+          Ready sources can be dispatched now. Automatic daily refresh remains
+          off; incomplete and blocked sources stay read-only.
         </p>
         <Button
           type="button"
@@ -206,7 +206,7 @@ export function PipelineRefreshControls({
                 <p className="mt-1 text-muted-foreground">
                   {confirm.cards.map((card) => card.displayName).join(", ")} will
                   be checked, validated, and saved. Nothing runs until the local
-                  worker claims the queued request.
+                  Labs workflow accepts the queued request.
                 </p>
               </section>
               <section>
@@ -226,7 +226,9 @@ export function PipelineRefreshControls({
               <section>
                 <h3 className="font-medium">Estimated cost and safety</h3>
                 <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                  <li>Hard AI ceiling: {formatUsd(0.75)}</li>
+                  <li>Daily AI budget: {formatUsd(2)}</li>
+                  <li>Monthly AI budget: {formatUsd(25)}</li>
+                  <li>Maximum changed listings per daily run: 25</li>
                   <li>Actual cost is estimated from recorded token use.</li>
                   <li>
                     Missing/removed status changes only follow a complete,

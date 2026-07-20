@@ -63,7 +63,8 @@ def test_preflight_lifecycle_risk_and_no_schedule() -> None:
         project_ref=LABS_PROJECT_REF,
         expected_ai_listing_count=0,
     )
-    assert preflight["schedule"] == "manual_only"
+    assert preflight["schedule"] == "off"
+    assert preflight["schedule_metadata"]["enabled"] is False
     assert "Missing/removed" in preflight["lifecycle_risk_summary"]
     assert preflight["import_will_occur"] is True
 
@@ -189,6 +190,7 @@ def test_enqueue_is_queued_waiting_for_worker(monkeypatch: pytest.MonkeyPatch) -
         project_ref=LABS_PROJECT_REF,
     )
     assert run["status"] == "queued"
+    assert run["trigger_type"] == "manual"
     assert run["progress"]["message"] == "Queued — waiting for worker"
     stages = client.tables["property_pipeline_source_stages"]
     assert len(stages) == len(PIPELINE_STAGES)
@@ -277,8 +279,8 @@ def test_run_all_ready_filters_sources() -> None:
         ]
     )
     assert keys == [
-        "keller_williams_curacao",
         "moret_real_estate",
+        "keller_williams_curacao",
         "remax_curacao",
     ]
 
@@ -341,7 +343,7 @@ def test_pipeline_ai_ceiling_and_checksum_guard_constants() -> None:
         PIPELINE_AI_COST_CEILING_USD,
     )
 
-    assert PIPELINE_AI_COST_CEILING_USD == 0.75
+    assert PIPELINE_AI_COST_CEILING_USD == 2
     assert MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION == 10
 
 
@@ -352,8 +354,8 @@ def test_preflight_stores_approved_ceiling() -> None:
         project_ref=LABS_PROJECT_REF,
         expected_ai_listing_count=84,
     )
-    assert preflight["estimated_ai_ceiling_usd"] == 0.75
-    assert preflight["schedule"] == "manual_only"
+    assert preflight["estimated_ai_ceiling_usd"] == 2
+    assert preflight["schedule"] == "off"
 
 
 def test_empty_worker_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -436,3 +438,57 @@ def test_worker_refuses_unexpected_checksum_invalidation(
             source_key="keller_williams_curacao",
             execute_live=True,
         )
+
+
+def test_trigger_type_allowlist_and_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.store.assert_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    client = _FakeClient()
+    with pytest.raises(ValueError, match="trigger_type"):
+        enqueue_pipeline_run(
+            client,
+            source_keys=["remax_curacao"],
+            trigger_type="cron",
+            project_ref=LABS_PROJECT_REF,
+        )
+
+    run = enqueue_pipeline_run(
+        client,
+        source_keys=["remax_curacao", "monumentenzorg_curacao"],
+        trigger_mode="run_all_ready",
+        trigger_type="local",
+        project_ref=LABS_PROJECT_REF,
+    )
+    assert run["trigger_type"] == "local"
+    assert run["source_keys"] == ["monumentenzorg_curacao", "remax_curacao"]
+
+
+def test_source_lock_stale_recovery() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from merkado_labs.pipeline.locks import acquire_source_lock, release_source_lock
+
+    client = _FakeClient()
+    now = datetime(2026, 7, 20, tzinfo=UTC)
+    client.tables["property_pipeline_source_locks"] = [
+        {
+            "source_key": "remax_curacao",
+            "pipeline_run_id": "old",
+            "locked_by": "old-worker",
+            "locked_at": (now - timedelta(hours=2)).isoformat(),
+            "expires_at": (now - timedelta(hours=1)).isoformat(),
+        }
+    ]
+    assert acquire_source_lock(
+        client,
+        source_key="remax_curacao",
+        pipeline_run_id="new",
+        locked_by="worker",
+        now=now,
+    )
+    release_source_lock(
+        client, source_key="remax_curacao", pipeline_run_id="new"
+    )
+    assert client.tables["property_pipeline_source_locks"] == []

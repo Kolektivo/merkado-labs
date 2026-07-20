@@ -1,5 +1,6 @@
-"""Manual Property Data Operations pipeline (unscheduled)."""
+"""Labs Property Data Operations automation foundation."""
 
+from merkado_labs.pipeline.orchestrator import run_property_pipeline
 from merkado_labs.pipeline.readiness import (
     PIPELINE_STAGES,
     SOURCE_READINESS,
@@ -25,4 +26,5 @@ __all__ = [
     "ready_source_keys",
     "request_stop_after_current_item",
     "resolve_source_readiness",
+    "run_property_pipeline",
 ]

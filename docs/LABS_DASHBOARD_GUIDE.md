@@ -68,11 +68,17 @@ or costs. The preview remains Labs-only and is not live on merkado.cw.
 - **Prototypes** — Browse/Passport, Search Request, What Fits Me?, Agent, and
   Match Reports. These are explicitly experimental.
 
+Data Operations can enqueue and dispatch the Labs-only property workflow.
+Automatic refresh remains **Off** in the foundation; 06:00 Curaçao is the
+intended daily schedule after a separate cron-enabling PR. The current workflow
+is `workflow_dispatch` only, enforces USD 2 daily / USD 25 monthly / 25-listing
+AI limits, and excludes blocked Sotheby's.
+
 ## Understand source runs
 
 `success` is meaningful only for a complete catalog. Bounded, truncated, or
 partially failed runs are `partial` and must never mark absent listings missing
-or removed. Every source remains manual and unscheduled.
+or removed. Dispatch automation exists, but the daily schedule remains off.
 
 Current maturity:
 

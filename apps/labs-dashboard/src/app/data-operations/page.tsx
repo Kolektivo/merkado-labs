@@ -38,7 +38,7 @@ export default async function DataOperationsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Data operations"
-          description="Manual Data refresh for property sources. Nothing is scheduled."
+          description="Labs property refresh automation. The daily schedule is not enabled."
           icon={RefreshCw}
         />
         <DataError
@@ -57,9 +57,48 @@ export default async function DataOperationsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Data operations"
-        description="Start a safe manual refresh, follow its progress, and review recent outcomes."
+        description="Dispatch a safe Labs refresh, follow its progress, and review recent outcomes."
         icon={RefreshCw}
       />
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardDescription>Automatic refresh</CardDescription>
+            <CardTitle>Off</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            workflow_dispatch only
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Intended schedule</CardDescription>
+            <CardTitle>06:00 Curaçao</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Pending a separate cron PR
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>AI budgets</CardDescription>
+            <CardTitle>USD 2 / day</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            USD 25 monthly
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Daily listing limit</CardDescription>
+            <CardTitle>25 listings</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Budget overflow is deferred
+          </CardContent>
+        </Card>
+      </section>
 
       <section
         aria-labelledby="operations-sources-heading"
@@ -139,6 +178,8 @@ export default async function DataOperationsPage() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatDateTime(run.createdAt)}
                         {" · "}
+                        {run.triggerMode} / {run.triggerType}
+                        {" · "}
                         AI processed {ai.billable_listings ?? 0}
                         {" · unchanged "}
                         {ai.skipped_unchanged ?? 0}
@@ -162,9 +203,9 @@ export default async function DataOperationsPage() {
           Technical operation details
         </summary>
         <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
-          Queueing does not run a scraper or AI call. A local worker must claim
-          the request. Partial and blocked sources cannot run a full refresh, and
-          every AI-enabled refresh has a hard USD 0.75 ceiling.
+          Queueing dispatches the Labs GitHub workflow. Partial and blocked
+          sources cannot run a full refresh. AI is capped at USD 2 daily, USD 25
+          monthly, and 25 changed listings per daily run.
         </p>
       </details>
     </div>

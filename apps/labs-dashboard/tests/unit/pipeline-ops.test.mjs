@@ -9,9 +9,10 @@ function source(path) {
 test("pipeline enqueue API requires admin session and never runs scrape/AI", () => {
   const route = source("src/app/api/pipeline/runs/route.ts");
   assert.match(route, /assertLabsAdminSession/);
+  assert.match(route, /assertPipelinePostAllowed/);
   assert.match(route, /enqueuePipelineRun/);
-  assert.match(route, /Queued — waiting for worker/);
-  assert.doesNotMatch(route, /process_enrichment_job|OPENAI|fetch\(/);
+  assert.match(route, /workflow_dispatch/);
+  assert.doesNotMatch(route, /process_enrichment_job|OPENAI_API_KEY/);
   assert.match(route, /Never scrapes|never scrapes|Enqueue a manual/i);
 });
 
@@ -39,8 +40,7 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     readiness,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(readiness, /requires separate approval/);
-  // Ready sources include KW, RE/MAX, Moret, and Monumentenzorg; blocked remain excluded.
+  assert.match(readiness, /workflow_dispatch only/);
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
   assert.match(readiness, /access_route_under_investigation/);
@@ -67,7 +67,8 @@ test("run-all ready filter excludes partial and blocked sources", () => {
   assert.match(enqueue, /Production project is forbidden/);
   assert.match(enqueue, /partial/);
   assert.match(enqueue, /blocked/);
-  assert.match(enqueue, /PIPELINE_AI_COST_CEILING_USD = 0\.75/);
+  assert.match(enqueue, /PIPELINE_AI_COST_CEILING_USD = 2/);
+  assert.match(enqueue, /dispatchPropertyPipelineWorkflow/);
 });
 
 test("confirmation separates changed-listing AI from initial backfill", () => {
@@ -81,19 +82,24 @@ test("confirmation separates changed-listing AI from initial backfill", () => {
     controls,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(controls, /formatUsd\(0\.75\)/);
+  assert.match(controls, /formatUsd\(2\)/);
+  assert.match(controls, /formatUsd\(25\)/);
   assert.match(
     controls,
     /Unchanged\s+successful listings are skipped at no AI cost/,
   );
 });
 
-test("data operations page shows progress stages and waiting-for-worker", () => {
+test("data operations page shows schedule-off state and budgets", () => {
   const page = source("src/app/data-operations/page.tsx");
   assert.match(page, /Data operations/);
   assert.match(page, /Refresh & enrich|PipelineRefreshControls/);
   assert.match(page, /PipelineRunProgress/);
-  assert.match(page, /local worker/);
+  assert.match(page, /Automatic refresh/);
+  assert.match(page, /workflow_dispatch only/);
+  assert.match(page, /06:00 Curaçao/);
+  assert.match(page, /USD 2 \/ day/);
+  assert.match(page, /GitHub workflow/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");
@@ -112,6 +118,16 @@ test("data operations page shows progress stages and waiting-for-worker", () => 
   assert.match(progress, /External API cost: USD 0/);
   assert.match(progress, /Infrastructure runtime not estimated/);
   assert.match(progress, /Skipped unchanged/);
+});
+
+test("dispatch credential stays server-only", () => {
+  const dispatch = source("src/lib/pipeline/dispatch-github.ts");
+  assert.match(dispatch, /server-only/);
+  assert.match(dispatch, /GITHUB_TOKEN/);
+  assert.doesNotMatch(dispatch, /NEXT_PUBLIC_GITHUB/);
+  const guard = source("src/lib/pipeline/request-guard.ts");
+  assert.match(guard, /Cross-site pipeline request rejected/);
+  assert.match(guard, /Too many pipeline requests/);
 });
 
 test("enrichment page has Overview / Runs / Needs review", () => {

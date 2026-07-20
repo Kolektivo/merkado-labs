@@ -42,17 +42,24 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     ),
     "garden": re.compile(r"\bgarden\b|\btuin\b", re.I),
     "balcony": re.compile(r"\bbalcon(y|ies)?\b|\bbalkon\b", re.I),
-    # Canonical terrace forms including Dutch compounds (buitenterras) and
-    # palapa outdoor terraces. Never treat terra/terrain as terrace.
+    # Canonical terrace forms including Dutch compounds (buitenterras),
+    # patio/porch/veranda equivalents, and palapa outdoor terraces.
+    # Never treat terra/terrain as terrace.
     "terrace": re.compile(
         r"\bterraces?\b"
         r"|\bterrasses\b"
         r"|\bbuiten\s*terras(?:sen)?\b"
         r"|\boverdekt(?:e)?\s+terras(?:sen)?\b"
         r"|\bterras(?:sen|se)?\b"
+        r"|\bdakterras(?:sen)?\b"
+        r"|\bpriv[eé]terras(?:sen)?\b"
+        r"|\bachterpatio\b"
+        r"|\bpatios?\b"
+        r"|\bporch(?:es|e)?\b"
+        r"|\bverandas?\b"
         r"|\bpalapa(\s+terrace|\s+terras)?\b"
         r"|\boutdoor\s+terrace\b"
-        r"|\bcovered\s+terrace\b",
+        r"|\bcovered\s+(terrace|patio|porch|veranda)\b",
         re.I,
     ),
     "furnished": re.compile(
