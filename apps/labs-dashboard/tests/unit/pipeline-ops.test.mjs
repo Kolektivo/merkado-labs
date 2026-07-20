@@ -40,19 +40,19 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
   assert.match(readiness, /requires approval/);
-  // Ready sources include KW, RE/MAX, and Moret; blocked remain excluded.
+  // Ready sources include KW, RE/MAX, Moret, and Monumentenzorg; blocked remain excluded.
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
-  assert.match(readiness, /adapter_complete_import_pending/);
   assert.match(readiness, /Access route under investigation/);
   assert.match(
     readiness,
-    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "partial"/,
+    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "ready"/,
   );
+  assert.match(readiness, /listingCountExpected: 5/);
   assert.match(readiness, /catalogStatus: "access_route_under_investigation"/);
   assert.doesNotMatch(
     readiness,
-    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "ready"/,
+    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "partial"/,
   );
   assert.doesNotMatch(
     readiness,

@@ -25,16 +25,15 @@ def test_ready_sources_exclude_partial_and_blocked() -> None:
     assert "keller_williams_curacao" in ready
     assert "remax_curacao" in ready
     assert "moret_real_estate" in ready
-    assert "monumentenzorg_curacao" not in ready
+    assert "monumentenzorg_curacao" in ready
     assert "sothebys_curacao" not in ready
     assert filter_run_all_ready() == ready
 
 
-def test_blocked_and_partial_cannot_full_refresh() -> None:
+def test_blocked_cannot_full_refresh() -> None:
     with pytest.raises(PermissionError, match="blocked"):
         assert_can_enqueue_full_refresh("sothebys_curacao")
-    with pytest.raises(PermissionError, match="partial"):
-        assert_can_enqueue_full_refresh("monumentenzorg_curacao")
+    assert assert_can_enqueue_full_refresh("monumentenzorg_curacao").allows_full_refresh
     assert assert_can_enqueue_full_refresh("moret_real_estate").allows_full_refresh
     assert assert_can_enqueue_full_refresh("keller_williams_curacao").allows_full_refresh
 
@@ -197,16 +196,16 @@ def test_enqueue_is_queued_waiting_for_worker(monkeypatch: pytest.MonkeyPatch) -
     assert events[0]["message"] == "Queued — waiting for worker"
 
 
-def test_enqueue_partial_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enqueue_blocked_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "merkado_labs.pipeline.store.assert_ref",
         lambda: LABS_PROJECT_REF,
     )
     client = _FakeClient()
-    with pytest.raises(PermissionError, match="partial"):
+    with pytest.raises(PermissionError, match="blocked"):
         enqueue_pipeline_run(
             client,
-            source_keys=["monumentenzorg_curacao"],
+            source_keys=["sothebys_curacao"],
             project_ref=LABS_PROJECT_REF,
         )
 
@@ -300,22 +299,22 @@ def test_moret_ready_after_v020_catalog_proof() -> None:
     assert "new/changed" in issue
 
 
-def test_monumentenzorg_and_sothebys_wording_not_ready() -> None:
+def test_monumentenzorg_ready_and_sothebys_blocked() -> None:
     mon = resolve_source_readiness("monumentenzorg_curacao")
     sot = resolve_source_readiness("sothebys_curacao")
-    assert mon.readiness == "partial"
+    assert mon.readiness == "ready"
     assert sot.readiness == "blocked"
-    assert mon.primary_action == "Continue setup"
+    assert mon.primary_action == "Refresh & enrich"
     assert sot.primary_action == "Blocked"
-    assert mon.allows_full_refresh is False
+    assert mon.allows_full_refresh is True
     assert sot.allows_full_refresh is False
     assert mon.adapter_version == "0.2.0"
     assert mon.listing_count_expected == 5
-    assert mon.catalog_status == "adapter_complete_import_pending"
+    assert mon.catalog_status == "complete"
     assert sot.catalog_status == "access_route_under_investigation"
-    assert "import" in (mon.current_issue or "").lower()
+    assert "5" in (mon.current_issue or "")
+    assert "backfill" in (mon.current_issue or "").lower()
     assert "Access route under investigation" in (sot.current_issue or "")
-    assert "not operationally ready" in (mon.current_issue or "").lower()
     assert "approved public route" in (sot.current_issue or "").lower()
 
 

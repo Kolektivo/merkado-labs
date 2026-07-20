@@ -102,24 +102,24 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         source_key="monumentenzorg_curacao",
         display_name="Monumentenzorg Curaçao",
         adapter_version="0.2.0",
-        readiness="partial",
+        readiness="ready",
         listing_count_expected=5,
-        catalog_status="adapter_complete_import_pending",
+        catalog_status="complete",
         current_issue=(
-            "Adapter v0.2.0 complete for the 5-listing estate_property catalog; "
-            "Labs import and Terra enrichment still require separate approval. "
-            "Not operationally Ready."
+            "First complete catalog established (5). Terra-v3 initial backfill "
+            "complete (5/5). Coordinates 0/5 (source has none). Normal Refresh & "
+            "enrich remains new/changed only. Manual/unscheduled."
         ),
-        primary_action="Continue setup",
+        primary_action="Refresh & enrich",
         blocker_kind=None,
-        allows_full_refresh=False,
-        allows_lifecycle_absence=False,
+        allows_full_refresh=True,
+        allows_lifecycle_absence=True,
         notes=(
-            "Recon complete; public route proven; fixture + live dry-run supported. "
-            "Import not run; AI not run; scheduling disabled. "
+            "Adapter v0.2.0 activated 2026-07-20: offline complete import 5/5; "
+            "public eligible 2; Terra-v3 initial backfill complete "
+            "(canary 2 + remaining 3; cumulative ~USD 0.06). "
             "Heritage /our_property/ CPT remains out of scope. "
-            "Historical 2026-07-17 SSL/DNS blocker was a local trust-store issue; "
-            "use certifi-backed TLS verification."
+            "Normal Refresh & enrich bills new/changed only."
         ),
     ),
     "sothebys_curacao": SourceReadiness(
