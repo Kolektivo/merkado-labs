@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 
+import {
+  ListingImageGallery,
+  resolveListingGalleryUrls,
+} from "@/components/listing-image-gallery";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,19 +95,15 @@ export default async function PublicListingPage({
       </Alert>
 
       <Card className="overflow-hidden py-0">
-        <div className="relative h-72 bg-muted">
-          {listing.primaryImageUrl ? (
-            <Image
-              src={listing.primaryImageUrl}
-              alt={listing.title ?? "Property"}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 896px"
-              priority
-              unoptimized
-            />
-          ) : null}
-        </div>
+        <ListingImageGallery
+          images={resolveListingGalleryUrls({
+            imageUrls: listing.imageUrls,
+            primaryImageUrl: listing.primaryImageUrl,
+          })}
+          altBase={listing.title ?? `Property ${listing.externalId}`}
+          variant="detail"
+          priority
+        />
         <CardContent className="space-y-4 p-6">
           <div className="flex flex-wrap gap-2">
             <Badge>{titleCase(listing.listingType)}</Badge>

@@ -22,7 +22,11 @@ MAX_EVIDENCE_SNIPPET_LENGTH = 180
 # that must stay a taxonomy-review case (see JC-003 canary), not auto-apply.
 AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     "pool": re.compile(r"\b(swimming\s+)?pool\b|\bzwembad\b|\bpiscina\b", re.I),
-    "parking": re.compile(r"\bparking\b|\bgarage\b|\bcarport\b", re.I),
+    "parking": re.compile(
+        r"\bparking\b|\bgarage\b|\bcarport\b|"
+        r"\bparkeerplaats(en)?\b|\bparkeren\b",
+        re.I,
+    ),
     "garage": re.compile(r"\bgarage\b", re.I),
     "gated_community": re.compile(
         r"\bgated(\s+(community|resort|complex))?\b"
@@ -38,29 +42,82 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     ),
     "garden": re.compile(r"\bgarden\b|\btuin\b", re.I),
     "balcony": re.compile(r"\bbalcon(y|ies)?\b|\bbalkon\b", re.I),
-    # Canonical terrace forms only. Non-canonical "terrasses" is handled
-    # separately as needs-attention. Never treat terra/terrain as terrace.
+    # Canonical terrace forms including Dutch compounds (buitenterras) and
+    # palapa outdoor terraces. Never treat terra/terrain as terrace.
     "terrace": re.compile(
-        r"\bterraces?\b|\bterras\b|\bterrasse\b|\bterrassen\b",
+        r"\bterraces?\b"
+        r"|\bterrasses\b"
+        r"|\bbuiten\s*terras(?:sen)?\b"
+        r"|\boverdekt(?:e)?\s+terras(?:sen)?\b"
+        r"|\bterras(?:sen|se)?\b"
+        r"|\bpalapa(\s+terrace|\s+terras)?\b"
+        r"|\boutdoor\s+terrace\b"
+        r"|\bcovered\s+terrace\b",
         re.I,
     ),
-    "furnished": re.compile(r"\bfurnished\b|\bgemeubileerd\b", re.I),
+    "furnished": re.compile(
+        r"\b(fully\s+)?furnished\b"
+        r"|\bunfurnished\b"
+        r"|\bnot\s+furnished\b"
+        r"|\b(volledig\s+)?gemeubileerd\b"
+        r"|\bongemeubileerd\b"
+        r"|\bniet\s+gemeubileerd\b",
+        re.I,
+    ),
     "sea_view": re.compile(r"\b(sea|ocean)\s+view\b|\bzeezicht\b", re.I),
     "solar_panels": re.compile(r"\bsolar(\s+panels?)?\b|\bzonnepanelen\b", re.I),
     "generator": re.compile(r"\bgenerator\b|\bnoodstroom\b", re.I),
     "water_heater": re.compile(
-        r"\bwater\s+heater\b|\bboiler\b|\bgeiser\b|\bcalentador(\s+de\s+agua)?\b", re.I
+        r"\bwater\s+heater\b"
+        r"|\bhot\s+water\b"
+        r"|\bwarm\s+water\b"
+        r"|\bwarmwater(boiler)?\b"
+        r"|\bboiler\b|\bgeiser\b"
+        r"|\bcalentador(\s+de\s+agua)?\b",
+        re.I,
     ),
     "security_features": re.compile(
         r"\bsecurity\b|\bbeveiliging\b|\bseguridad\b|\balarm(\s+system)?\b|"
         r"\bcctv\b|\bcameras?\b|\bbewaking\b|\bbeveiligd\b|"
-        r"\b24[\s-]?hour\s+security\b|\bguard(ed)?\b",
+        r"\b24[\s-]?hour\s+security\b|\bguard(ed)?\b|"
+        r"\belektrische\s+toegangspoort\b|\belectric\s+(access\s+)?gate\b",
         re.I,
     ),
     "appliance_inclusion": re.compile(
-        r"\bappliances?\b|\bapparatuur\b|\belectrodom[eé]sticos\b|\bwhite\s+goods\b", re.I
+        r"\bappliances?\b|\bapparatuur\b|\belectrodom[eé]sticos\b|\bwhite\s+goods\b|"
+        r"\bgasfornuis\b|\boven\b|\bkoelkast\b|\brefrigerator\b|\bstove\b",
+        re.I,
     ),
     "waterfront": re.compile(r"\bwaterfront\b|\bbeach\s*front\b", re.I),
+    "pet_suitability": re.compile(
+        r"\bpets?[_\s-]?allowed\b"
+        r"|\bpets?\s+(are\s+)?(not\s+)?allowed\b"
+        r"|\bhuisdieren?\b"
+        r"|\b(niet\s+)?toegestaan\b",
+        re.I,
+    ),
+    "living_room": re.compile(
+        r"\bliving\s+rooms?\b|\bwoonkamer\b|\bliving\s+area\b", re.I
+    ),
+    "kitchen": re.compile(
+        r"\bkitchen\b|\bkeuken\b|\bopen\s+keuken\b|\bopen[\s-]?plan\s+kitchen\b",
+        re.I,
+    ),
+    "outdoor_kitchen": re.compile(
+        r"\boutdoor\s+kitchen\b|\boutside\s+kitchen\b|\bside\s+kitchen\b|"
+        r"\bbuitenkeuken\b",
+        re.I,
+    ),
+    "gas_included": re.compile(
+        r"\bgas\s+included\b|\binclusief\s+gas\b|\bgas\s+.*included\b",
+        re.I,
+    ),
+    "garden_maintenance_included": re.compile(
+        r"\bgarden\s+maintenance(\s+included)?\b|"
+        r"\btuinonderhoud(\s+inbegrepen)?\b|"
+        r"\bgarden\s+maintenance,\s+all\s+included\b",
+        re.I,
+    ),
 }
 
 # Explicitly rejected near-misses for terrace grounding.

@@ -235,7 +235,7 @@ export function ListingAiChanges({
           {attention.length ? (
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                Needs attention
+                Needs review
               </h3>
               <DecisionTable decisions={attention} />
             </div>

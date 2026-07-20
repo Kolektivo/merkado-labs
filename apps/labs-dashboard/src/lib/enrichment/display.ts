@@ -60,9 +60,9 @@ export const PROVENANCE_LABELS: Record<
 export function decisionStatusLabel(status: string): string {
   switch (status) {
     case "auto_applied":
-      return "Auto-applied";
+      return "Applied";
     case "needs_attention":
-      return "Needs attention";
+      return "Needs review";
     case "rejected":
       return "Rejected";
     case "redundant":

@@ -67,7 +67,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Public eligibility | 81 public eligible / 3 excluded (no-price / ineligible) |
 | Coordinates | Present for 82/84; missing only `RL-42`, `RL-44` |
 | False-removal repair (earlier) | 35 listings wrongly marked `removed` by bounded runs; restored 2026-07-17 |
-| AI enrichment | **GPT-5.6 Terra** (`OPENAI_ENRICHMENT_MODEL=gpt-5.6-terra`) with automatic policy application; prompt/schema/policy **v4** (`listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4`); historical v3 proposals retained |
+| AI enrichment | **GPT-5.6 Terra** (`OPENAI_ENRICHMENT_MODEL=gpt-5.6-terra`) with automatic policy application; prompt/schema **v4** + policy **v4.1** (`listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`); historical v3/v4 rows retained; policy rematerialization is zero-AI-cost |
 | Enrichment architecture | Source facts / AI proposals / effective applied attributes kept as separate layers; evidence must ground in normalized source text |
 | Review model | Exception-based: high-confidence evidenced fields auto-apply; conflicts / weak / variant evidence need attention; unsupported/duplicated/noisy proposals are rejected outright and never reach the attention queue |
 | Cost safeguards | Preflight worst-case uses configured `max_output_tokens`; hard USD ceiling; per-listing persist; resume skips unchanged checksums (including prior failures unless `--force`) |

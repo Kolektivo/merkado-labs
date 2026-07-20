@@ -179,7 +179,7 @@ export function ListingTable({
                   {lifecycleLabel(listing.status)}
                 </StatusBadge>
                 {listing.unresolvedConflictCount > 0 ? (
-                  <StatusBadge tone="warning">Needs attention</StatusBadge>
+                  <StatusBadge tone="warning">Needs review</StatusBadge>
                 ) : (
                   <StatusBadge
                     tone={enrichmentStatusTone(
@@ -294,7 +294,7 @@ export function ListingTable({
                   </TableCell>
                   <TableCell>
                     {listing.unresolvedConflictCount > 0 ? (
-                      <StatusBadge tone="warning">Needs attention</StatusBadge>
+                      <StatusBadge tone="warning">Needs review</StatusBadge>
                     ) : (
                       <StatusBadge
                         tone={enrichmentStatusTone(

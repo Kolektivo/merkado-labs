@@ -51,7 +51,9 @@ def test_high_confidence_attribute_auto_applies() -> None:
     assert decision.confidence >= AUTO_APPLY_CONFIDENCE_THRESHOLD
 
 
-def test_medium_confidence_needs_attention() -> None:
+def test_medium_confidence_rejected_quietly() -> None:
+    """Confidence alone must not create operational review (policy v4.1)."""
+
     source = "fully furnished apartment with bright living room"
     decision = decide_field(
         key="furnished",
@@ -61,7 +63,8 @@ def test_medium_confidence_needs_attention() -> None:
         evidence_source="description",
         source_text=source,
     )
-    assert decision.final_status == AutoApplyStatus.NEEDS_ATTENTION
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert ReasonCode.CONFIDENCE_BELOW_AUTO_APPLY_REJECTED in decision.reasons
 
 
 def test_source_conflict_never_auto_applies() -> None:
@@ -276,7 +279,7 @@ def test_evaluate_proposal_idempotent_structure() -> None:
 
 
 def test_policy_version_is_v4() -> None:
-    assert POLICY_VERSION == "enrichment_policy_v4"
+    assert POLICY_VERSION == "enrichment_policy_v4_1"
 
 
 def test_reason_codes_are_stable_machine_readable_strings() -> None:

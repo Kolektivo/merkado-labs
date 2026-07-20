@@ -187,7 +187,7 @@ Sold/rented timestamps:
 - `ai_enrichment_jobs` — manual job progress (queued → running → completed*)
 - `ai_enrichment_proposals` — model/prompt/schema/input-checksum keyed proposals
   (current foundation uses **v4**: `listing_enrichment_v4` /
-  `listing_enrichment_schema_v4` / `enrichment_policy_v4`; v3 JSON remains
+  `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`; v3 JSON remains
   replayable)
 - Review is **exception-based**: only conflicts, weak/ambiguous evidence, or
   new-attribute taxonomy reach `needs_attention`; unsupported, duplicated,

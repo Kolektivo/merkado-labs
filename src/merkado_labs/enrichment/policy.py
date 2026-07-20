@@ -1,16 +1,17 @@
-"""Automatic enrichment application policy (v4, exception-based).
+"""Automatic enrichment application policy (v4.1, exception-based).
 
 The model may recommend auto_apply; the application makes the final decision.
-Human review is exception-based: only genuine human decisions (source
-conflicts, title/description disagreement, neighbourhood signal conflicts,
-high-value ambiguous fields, new-attribute taxonomy review, moderate
-confidence on material search/display fields) reach needs_attention.
+Human review is exception-based: only genuine unresolved factual conflicts
+reach needs_attention. Confidence-alone gaps, subjective marketing language,
+Dutch/English synonym normalization, and property-type equivalence are handled
+deterministically without creating operational review work.
+
 Everything else is either auto-applied (allowed, evidenced, grounded, above
 the field's confidence bar, no conflict, no negation, doesn't overwrite a
-protected source field) or rejected outright with no operational attention
+protected source field) or rejected quietly with no operational attention
 required (unsupported, duplicated, forbidden, malformed, noisy, generic
-unhelpful, too-low-confidence, already represented by stronger source data,
-or a partial-word/encoding artifact).
+unhelpful, too-low-confidence, subjective accessibility/marketing, already
+represented by stronger source data, or a partial-word/encoding artifact).
 """
 
 from __future__ import annotations
@@ -29,6 +30,14 @@ from merkado_labs.enrichment.fields import (
     normalize_attribute_key,
 )
 from merkado_labs.enrichment.neighbourhood import is_generic_neighbourhood
+from merkado_labs.enrichment.normalization import (
+    is_generic_property_type,
+    is_subjective_accessibility,
+    is_subjective_marketing_claim,
+    normalize_property_type,
+    normalize_proposed_value,
+    property_types_equivalent,
+)
 from merkado_labs.enrichment.values import (
     AiValue,
     AutoApplyStatus,
@@ -38,7 +47,7 @@ from merkado_labs.enrichment.values import (
     resolve_effective_value,
 )
 
-POLICY_VERSION = "enrichment_policy_v4"
+POLICY_VERSION = "enrichment_policy_v4_1"
 
 
 class ReasonCode:
@@ -73,6 +82,11 @@ class ReasonCode:
     PROTECTED_SOURCE_FIELD = "protected_source_field"
     GENERIC_NEIGHBOURHOOD = "generic_neighbourhood"
     NARRATIVE_INVENTS_PROTECTED_CLAIM = "narrative_invents_protected_claim"
+    PROPERTY_TYPE_EQUIVALENT = "property_type_equivalent"
+    PROPERTY_TYPE_REFINES_GENERIC_SOURCE = "property_type_refines_generic_source"
+    SUBJECTIVE_ACCESSIBILITY_REJECTED = "subjective_accessibility_rejected"
+    SUBJECTIVE_MARKETING_REJECTED = "subjective_marketing_rejected"
+    CONFIDENCE_BELOW_AUTO_APPLY_REJECTED = "confidence_below_auto_apply_rejected"
 
 
 # Configurable thresholds — not magic numbers sprinkled in call sites.
@@ -302,9 +316,23 @@ def _source_conflict(
         and structured is not None
         and structured != ""
         and proposed is not None
-        and str(structured).strip().lower() != str(proposed).strip().lower()
     ):
-        return ConflictStatus.SOURCE_CONFLICT
+        if key == "property_type":
+            if property_types_equivalent(structured, proposed):
+                return None
+            if is_generic_property_type(structured) and not is_generic_property_type(
+                proposed
+            ):
+                # KW-style generic "residential" may be refined by evidenced AI.
+                return None
+        if str(structured).strip().lower() != str(proposed).strip().lower():
+            if key == "property_type":
+                source_norm = normalize_property_type(structured)
+                proposed_norm = normalize_property_type(proposed)
+                if source_norm and proposed_norm and source_norm != proposed_norm:
+                    return ConflictStatus.SOURCE_CONFLICT
+            else:
+                return ConflictStatus.SOURCE_CONFLICT
     return None
 
 
@@ -391,6 +419,7 @@ def decide_field(
 
     source_values = source_values or {}
     normalized_key = normalize_attribute_key(key)
+    proposed_value = normalize_proposed_value(normalized_key, proposed_value)
     value_type = _infer_value_type(normalized_key, proposed_value)
     coerced = _tri_state_to_bool(proposed_value)
     reasons: list[str] = []
@@ -482,6 +511,85 @@ def decide_field(
             resulting_effective=previous_effective,
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
+
+    # Quiet-reject location/marketing "accessibility" — never disability access.
+    if normalized_key == "accessibility" and is_subjective_accessibility(
+        coerced, evidence_snippet
+    ):
+        return FieldDecision(
+            key=normalized_key,
+            proposed_value=coerced,
+            value_type=value_type,
+            confidence=confidence,
+            evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source,
+            extraction_reason=extraction_reason,
+            classification=classification,
+            conflict=False,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.UNSUPPORTED,
+            reasons=(ReasonCode.SUBJECTIVE_ACCESSIBILITY_REJECTED,),
+            previous_effective=previous_effective,
+            resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
+
+    # Reject free-text amenity values that are pure marketing language.
+    if (
+        not narrative_field
+        and isinstance(coerced, str)
+        and is_subjective_marketing_claim(coerced, None)
+    ):
+        return FieldDecision(
+            key=normalized_key,
+            proposed_value=coerced,
+            value_type=value_type,
+            confidence=confidence,
+            evidence_snippet=evidence_snippet,
+            evidence_source=evidence_source,
+            extraction_reason=extraction_reason,
+            classification=classification,
+            conflict=False,
+            model_recommended_action=model_recommended_action,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.UNSUPPORTED,
+            reasons=(ReasonCode.SUBJECTIVE_MARKETING_REJECTED,),
+            previous_effective=previous_effective,
+            resulting_effective=previous_effective,
+            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        )
+
+    # Property-type equivalence with an existing source type is redundant, not
+    # a conflict (e.g. "Detached Single Family Home" ↔ house).
+    if normalized_key == "property_type":
+        source_type = source_values.get("property_type")
+        if source_type and property_types_equivalent(source_type, coerced):
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REDUNDANT,
+                conflict_status=ConflictStatus.NONE,
+                reasons=(
+                    ReasonCode.PROPERTY_TYPE_EQUIVALENT,
+                    ReasonCode.ALREADY_REPRESENTED_BY_SOURCE,
+                ),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
+        if source_type and is_generic_property_type(source_type):
+            reasons.append(ReasonCode.PROPERTY_TYPE_REFINES_GENERIC_SOURCE)
 
     if narrative_field and _narrative_has_protected_claim(
         coerced, source_text=corpus
@@ -796,9 +904,8 @@ def decide_field(
         )
 
     # Field-specific bar: amenities default to AUTO_APPLY_CONFIDENCE_THRESHOLD
-    # (0.85); higher-value/ambiguous fields (neighbourhood, property_type)
-    # require more, and neighbourhood's bar is set above 1.0 so it can never
-    # auto-apply.
+    # (0.85); property_type requires 0.95. Confidence alone never creates
+    # operational review — fall below the bar and reject quietly.
     auto_apply_threshold = FIELD_AUTO_APPLY_THRESHOLDS.get(
         normalized_key, AUTO_APPLY_CONFIDENCE_THRESHOLD
     )
@@ -814,12 +921,12 @@ def decide_field(
             classification=classification,
             conflict=False,
             model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.NEEDS_ATTENTION,
-            conflict_status=ConflictStatus.NONE,
+            final_status=AutoApplyStatus.REJECTED,
+            conflict_status=ConflictStatus.WEAK_EVIDENCE,
             reasons=(
                 ReasonCode.CONFIDENCE_BELOW_FIELD_AUTO_APPLY_THRESHOLD
                 if normalized_key in FIELD_AUTO_APPLY_THRESHOLDS
-                else ReasonCode.CONFIDENCE_MODERATE_NEEDS_ATTENTION,
+                else ReasonCode.CONFIDENCE_BELOW_AUTO_APPLY_REJECTED,
             ),
             previous_effective=previous_effective,
             resulting_effective=previous_effective,
@@ -827,9 +934,15 @@ def decide_field(
         )
 
     # Build effective via layered resolver (source still wins).
+    # Generic source property types (e.g. KW "residential") may be refined by
+    # evidenced AI without treating the refinement as a source conflict.
     source_val = None
-    if normalized_key in source_values and source_values[normalized_key] is not None:
-        source_val = SourceValue(key=normalized_key, value=source_values[normalized_key])
+    source_raw = source_values.get(normalized_key)
+    if source_raw is not None and source_raw != "":
+        if normalized_key == "property_type" and is_generic_property_type(source_raw):
+            source_val = None
+        else:
+            source_val = SourceValue(key=normalized_key, value=source_raw)
     ai_val = AiValue(
         key=normalized_key,
         value=coerced,

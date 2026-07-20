@@ -133,6 +133,7 @@ export type PropertyListing = {
   longitude: number | null;
   coordinatesSource: string | null;
   primaryImageUrl: string | null;
+  imageUrls: string[];
   description: string | null;
   street: string | null;
   houseNumber: string | null;
@@ -205,6 +206,8 @@ export type PublicPropertyListing = {
   lotAreaValue: number | null;
   lotAreaUnit: string | null;
   primaryImageUrl: string | null;
+  /** Ordered public gallery URLs; primary is usually index 0. */
+  imageUrls: string[];
   description: string | null;
   firstSeenAt: string;
   lastSeenAt: string;

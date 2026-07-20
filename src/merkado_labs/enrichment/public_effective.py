@@ -35,6 +35,11 @@ PUBLIC_ATTRIBUTE_ALLOWLIST: frozenset[str] = frozenset(
         "appliance_inclusion",
         "accessibility",
         "pet_suitability",
+        "living_room",
+        "kitchen",
+        "outdoor_kitchen",
+        "gas_included",
+        "garden_maintenance_included",
     }
 )
 

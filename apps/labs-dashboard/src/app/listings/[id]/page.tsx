@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -20,6 +19,10 @@ import {
 import { DataError } from "@/components/data-error";
 import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
 import { HelpTip } from "@/components/help-tip";
+import {
+  ListingImageGallery,
+  resolveListingGalleryUrls,
+} from "@/components/listing-image-gallery";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { ListingAiChanges } from "@/components/listing-ai-changes";
@@ -360,24 +363,16 @@ export default async function ListingDetailPage({
 
       <Card className="gap-0 py-0">
         <div className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <div className="relative min-h-64 bg-muted xl:min-h-[430px]">
-            {listing.primaryImageUrl ? (
-              <Image
-                src={listing.primaryImageUrl}
-                alt={listing.title ?? `Listing ${listing.externalId}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 1280px) 100vw, 55vw"
-                priority
-                unoptimized
-              />
-            ) : (
-              <div className="flex h-full min-h-64 items-center justify-center text-muted-foreground">
-                <Building2 className="size-10" aria-hidden="true" />
-                <span className="sr-only">No property image available</span>
-              </div>
-            )}
-          </div>
+          <ListingImageGallery
+            images={resolveListingGalleryUrls({
+              imageUrls: listing.imageUrls,
+              primaryImageUrl: listing.primaryImageUrl,
+            })}
+            altBase={listing.title ?? `Listing ${listing.externalId}`}
+            variant="detail"
+            priority
+            aspectClassName="relative min-h-64 bg-muted xl:min-h-[430px]"
+          />
           <div className="flex min-w-0 flex-col justify-between gap-6 p-5 md:p-7">
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap gap-2">

@@ -53,7 +53,7 @@ conflicts, weak evidence, or new-attribute taxonomy); public RLS verified.
 | Sold | Requires explicit source signal |
 | Removed | Requires consecutive successful complete snapshots with absence |
 | Passport | Off-chain listing/property activity log |
-| AI review model | Exception-based (`enrichment_policy_v4`): high-confidence evidenced gap-filling fields auto-apply; source/map duplicates are `redundant` (not rejected); only genuine conflicts need attention; unsupported/protected/noisy proposals reject; production migration remains paused |
+| AI review model | Exception-based (`enrichment_policy_v4_1`): high-confidence evidenced gap-filling fields auto-apply; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused |
 | Guided discovery | Users may create a Property Search Request directly or through What Fits Me? |
 | Merkado Agent | Future paid monthly subscription; email delivery first |
 | Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |

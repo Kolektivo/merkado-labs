@@ -102,7 +102,7 @@ export default async function Home() {
               icon: Radio,
             },
             {
-              label: "Needs attention",
+              label: "Needs review",
               value: formatNumber(issueCount),
               helper: issueCount ? "Prioritized below" : "No meaningful issues",
               href: issueCount ? "#needs-attention" : undefined,
@@ -182,7 +182,7 @@ export default async function Home() {
           <section id="needs-attention" aria-labelledby="attention-heading">
             <div className="mb-3">
               <h2 id="attention-heading" className="text-lg font-semibold">
-                Needs attention
+                Needs review
               </h2>
               <p className="text-sm text-muted-foreground">
                 Exceptions that may need a person to act.
@@ -226,7 +226,7 @@ export default async function Home() {
                       listings with AI suggestions
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      Open Needs attention
+                      Open Needs review
                     </span>
                   </Link>
                 ) : null}
