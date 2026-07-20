@@ -173,12 +173,12 @@ def _tri_state_to_bool(value: Any) -> Any:
 
 
 def _infer_value_type(key: str, value: Any) -> ValueType:
+    if isinstance(value, list):
+        return ValueType.LIST
     if key == "parking_spaces" or isinstance(value, (int, float)):
         return ValueType.NUMBER
     if isinstance(value, bool) or value in {"present", "explicitly_absent", "unknown"}:
         return ValueType.BOOLEAN
-    if isinstance(value, list):
-        return ValueType.LIST
     return ValueType.TEXT
 
 
@@ -213,16 +213,47 @@ def _build_source_corpus(source_values: dict[str, Any]) -> str:
     return "\n".join(str(part) for part in parts if part)
 
 
-def _narrative_has_protected_claim(value: Any) -> bool:
-    text = str(value or "").lower()
-    protected_markers = (
-        r"\b(?:usd|naf|ang|eur|dollar|guilders?)\b",
-        r"(?:\$\s?\d|€\s?\d|\bprice\b|\basking\b)",
-        r"\b(?:sold|rented|under offer|available now)\b",
-    )
+def _narrative_has_protected_claim(
+    value: Any, *, source_text: str | None = None
+) -> bool:
+    """Flag invented price/currency amounts — not ordinary sale/rent wording.
+
+    Source listings routinely say \"for sale\", \"rented units\", etc. Those
+    phrases are allowed when they also appear in the source corpus. Bare
+    currency amounts or asking-price figures that are absent from source are
+    still blocked.
+    """
+
     import re
 
-    return any(re.search(pattern, text) for pattern in protected_markers)
+    text = str(value or "")
+    corpus = str(source_text or "")
+    text_l = text.lower()
+    corpus_l = corpus.lower()
+
+    amount_patterns = (
+        r"(?:\$\s?\d[\d,]*(?:\.\d+)?)",
+        r"(?:€\s?\d[\d,]*(?:\.\d+)?)",
+        r"\b(?:usd|naf|ang|eur)\s*\d[\d,]*(?:\.\d+)?\b",
+        r"\b\d[\d,]*(?:\.\d+)?\s*(?:usd|naf|ang|eur|dollars?|guilders?)\b",
+    )
+    for pattern in amount_patterns:
+        for match in re.finditer(pattern, text_l, flags=re.IGNORECASE):
+            snippet = match.group(0)
+            if snippet and snippet not in corpus_l:
+                # Also allow if digits appear near currency words in source.
+                digits = re.sub(r"[^\d]", "", snippet)
+                if digits and digits in re.sub(r"[^\d]", "", corpus_l):
+                    continue
+                return True
+
+    # Status words are only blocked when narrative invents them vs source.
+    for token in ("sold", "under offer", "available now"):
+        if re.search(rf"\b{re.escape(token)}\b", text_l) and not re.search(
+            rf"\b{re.escape(token)}\b", corpus_l
+        ):
+            return True
+    return False
 
 
 def _source_conflict(
@@ -452,7 +483,9 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
-    if narrative_field and _narrative_has_protected_claim(coerced):
+    if narrative_field and _narrative_has_protected_claim(
+        coerced, source_text=corpus
+    ):
         return FieldDecision(
             key=normalized_key, proposed_value=coerced, value_type=value_type,
             confidence=confidence, evidence_snippet=evidence_snippet,
@@ -466,88 +499,106 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
-    if narrative_field and len(corpus.strip()) < 40 and not source_values.get(
-        "existing_structured_features"
-    ):
-        return FieldDecision(
-            key=normalized_key, proposed_value=coerced, value_type=value_type,
-            confidence=confidence, evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source, extraction_reason=extraction_reason,
-            classification=classification, conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.REJECTED,
-            conflict_status=ConflictStatus.WEAK_EVIDENCE,
-            reasons=(ReasonCode.MISSING_OR_WEAK_EVIDENCE,),
-            previous_effective=previous_effective, resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
-        )
+    if narrative_field:
+        title_bits = " ".join(
+            str(source_values.get(k) or "")
+            for k in ("title", "source_neighbourhood_text", "property_type")
+        ).strip()
+        narrative_corpus = (corpus or "").strip() or title_bits
+        # Short commercial listings may only have a title + area — still allow
+        # a compact display overview derived from that source material.
+        if len(narrative_corpus) < 12 and not source_values.get(
+            "existing_structured_features"
+        ):
+            return FieldDecision(
+                key=normalized_key, proposed_value=coerced, value_type=value_type,
+                confidence=confidence, evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source, extraction_reason=extraction_reason,
+                classification=classification, conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.WEAK_EVIDENCE,
+                reasons=(ReasonCode.MISSING_OR_WEAK_EVIDENCE,),
+                previous_effective=previous_effective, resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+        if not corpus.strip() and title_bits:
+            corpus = title_bits
 
-    if not _evidence_ok(evidence_snippet):
-        return FieldDecision(
-            key=normalized_key,
-            proposed_value=coerced,
-            value_type=value_type,
-            confidence=confidence,
-            evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source,
-            extraction_reason=extraction_reason,
-            classification=classification,
-            conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.REJECTED,
-            conflict_status=ConflictStatus.WEAK_EVIDENCE,
-            reasons=("missing_or_weak_evidence",),
-            previous_effective=previous_effective,
-            resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
-        )
+    # Display/summary text is intentionally paraphrased from the source, so it
+    # must not be substring-grounded like feature claims. Require a usable
+    # source corpus (above) and no protected-fact invention (above) only.
+    if narrative_field:
+        reasons.append("narrative_source_available")
+        if not evidence_snippet:
+            evidence_snippet = corpus[:160]
+    else:
+        if not _evidence_ok(evidence_snippet):
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.WEAK_EVIDENCE,
+                reasons=("missing_or_weak_evidence",),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
 
-    grounding = ground_evidence(
-        key=normalized_key,
-        evidence_snippet=evidence_snippet,
-        source_text=corpus,
-    )
-    if grounding.normalization_warning:
-        reasons.append(grounding.normalization_warning)
-    if not grounding.ok_for_attention and not grounding.ok_for_auto_apply:
-        return FieldDecision(
+        grounding = ground_evidence(
             key=normalized_key,
-            proposed_value=coerced,
-            value_type=value_type,
-            confidence=confidence,
             evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source,
-            extraction_reason=extraction_reason,
-            classification=classification,
-            conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.REJECTED,
-            conflict_status=ConflictStatus.WEAK_EVIDENCE,
-            reasons=tuple(["evidence_not_grounded", grounding.reason, *reasons]),
-            previous_effective=previous_effective,
-            resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            source_text=corpus,
         )
-    if not narrative_field and grounding.ok_for_attention and not grounding.ok_for_auto_apply:
-        return FieldDecision(
-            key=normalized_key,
-            proposed_value=coerced,
-            value_type=value_type,
-            confidence=confidence,
-            evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source,
-            extraction_reason=extraction_reason,
-            classification=classification,
-            conflict=False,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.NEEDS_ATTENTION,
-            conflict_status=ConflictStatus.AMBIGUOUS,
-            reasons=tuple(["evidence_grounding", grounding.reason, *reasons]),
-            previous_effective=previous_effective,
-            resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
-        )
-    reasons.append(grounding.reason if not narrative_field else "narrative_source_available")
+        if grounding.normalization_warning:
+            reasons.append(grounding.normalization_warning)
+        if not grounding.ok_for_attention and not grounding.ok_for_auto_apply:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.WEAK_EVIDENCE,
+                reasons=tuple(["evidence_not_grounded", grounding.reason, *reasons]),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+        if grounding.ok_for_attention and not grounding.ok_for_auto_apply:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.NEEDS_ATTENTION,
+                conflict_status=ConflictStatus.AMBIGUOUS,
+                reasons=tuple(["evidence_grounding", grounding.reason, *reasons]),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+        reasons.append(grounding.reason)
 
     if normalized_key == "neighbourhood_candidate":
         specific_source = _specific_source_neighbourhood(source_values)
@@ -751,7 +802,7 @@ def decide_field(
     auto_apply_threshold = FIELD_AUTO_APPLY_THRESHOLDS.get(
         normalized_key, AUTO_APPLY_CONFIDENCE_THRESHOLD
     )
-    if confidence < auto_apply_threshold:
+    if confidence < auto_apply_threshold and not narrative_field:
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
