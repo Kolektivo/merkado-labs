@@ -43,9 +43,12 @@ test("run-all ready filter excludes partial and blocked sources", () => {
   // Ready sources include KW, RE/MAX, and Moret; blocked remain excluded.
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
-  assert.match(readiness, /Reconnaissance required/);
+  assert.match(readiness, /adapter_complete_import_pending/);
   assert.match(readiness, /Access route under investigation/);
-  assert.match(readiness, /catalogStatus: "reconnaissance_required"/);
+  assert.match(
+    readiness,
+    /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "partial"/,
+  );
   assert.match(readiness, /catalogStatus: "access_route_under_investigation"/);
   assert.doesNotMatch(
     readiness,

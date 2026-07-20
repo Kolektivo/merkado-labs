@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import ssl
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPSHandler, Request, build_opener
+
+import certifi
 
 from merkado_labs.scrapers.robots import USER_AGENT
 
@@ -17,6 +20,18 @@ DEFAULT_TIMEOUT_SECONDS = 20.0
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_RETRIES = 2
 RETRY_BACKOFF_SECONDS = 2.0
+
+
+def _ssl_context(*, use_certifi: bool = True) -> ssl.SSLContext:
+    """Build a verifying TLS context.
+
+    When ``use_certifi`` is true (default), verify against the Mozilla CA bundle.
+    This avoids stale local intermediate-trust failures without disabling verify.
+    """
+
+    if use_certifi:
+        return ssl.create_default_context(cafile=certifi.where())
+    return ssl.create_default_context()
 
 
 @dataclass(frozen=True)
@@ -48,8 +63,14 @@ def fetch_url(
     user_agent: str = USER_AGENT,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     use_cache: bool = True,
+    use_certifi: bool = True,
 ) -> CachedFetch:
-    """GET one URL with disk cache. HTTPS only."""
+    """GET one URL with disk cache. HTTPS only.
+
+    TLS is always verified. ``use_certifi`` (default True) uses the Mozilla CA
+    bundle so stale local intermediate trust stores do not falsely block sites
+    with valid leaf certificates.
+    """
 
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:
@@ -72,12 +93,13 @@ def fetch_url(
             cache_path=cache_path,
         )
 
+    opener = build_opener(HTTPSHandler(context=_ssl_context(use_certifi=use_certifi)))
     last_error: Exception | None = None
     for attempt in range(MAX_RETRIES + 1):
         started = time.monotonic()
         request = Request(url, headers={"User-Agent": user_agent}, method="GET")
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            with opener.open(request, timeout=timeout_seconds) as response:  # noqa: S310
                 status = getattr(response, "status", 200)
                 content_type = response.headers.get_content_type().lower()
                 if status != 200:
@@ -99,6 +121,7 @@ def fetch_url(
                             "sha256": sha,
                             "elapsed_ms": elapsed_ms,
                             "content_type": content_type,
+                            "tls": "certifi" if use_certifi else "system",
                         }
                     )
                     + "\n",

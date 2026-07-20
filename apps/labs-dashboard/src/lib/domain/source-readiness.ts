@@ -89,14 +89,14 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
   {
     sourceKey: "monumentenzorg_curacao",
     displayName: "Monumentenzorg Curaçao",
-    adapterVersion: "0.1.1",
-    readiness: "blocked",
-    listingCountExpected: null,
-    catalogStatus: "reconnaissance_required",
+    adapterVersion: "0.2.0",
+    readiness: "partial",
+    listingCountExpected: 5,
+    catalogStatus: "adapter_complete_import_pending",
     currentIssue:
-      "Reconnaissance required. Official public pages are reachable again; completeness must be reverified.",
-    primaryAction: "Blocked",
-    blockerKind: "access_unavailable",
+      "Adapter v0.2.0 is complete for the 5-listing catalog. Labs import and AI enrichment still need separate approval. Not Ready.",
+    primaryAction: "Continue setup",
+    blockerKind: null,
     allowsFullRefresh: false,
   },
   {

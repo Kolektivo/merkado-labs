@@ -10,7 +10,7 @@
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route under investigation; not Ready |
 | `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
 | `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
-| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [RISK] Reconnaissance required; not Ready |
+| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [WIP] Adapter v0.2.0 complete; import pending; not Ready |
 
 Confirm the exact domain, listing index, detail paths, robots rules, and terms note before implementing each adapter.
 
@@ -51,7 +51,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | AI / refresh policy | Normal `Refresh & enrich` = new/changed only (ceiling USD 0.75). Initial Terra backfill was a separately approved one-time action (ceiling USD 10; completed 2026-07-20). Coordinate-only import must not rebill all 220. |
 | Terra-v3 initial backfill | Selection **211** + **9** already current; job `remax_remaining_terra_backfill` **211/211** succeeded; gross ≈ **USD 6.67**; coverage **220/220**; see `data/processed/remax_activation_final_report.*` |
 | Verdict | **v0.4.1 active** + Terra-v3 initial backfill **complete**; remains manual/unscheduled |
-| Next gated action | Monumentenzorg reconnaissance (not Ready); normal refresh = new/changed only |
+| Next gated action | Monumentenzorg Labs import (adapter v0.2.0 complete; not Ready); normal refresh = new/changed only |
 
 ### Keller Williams Curaçao (`keller_williams_curacao`) — [LABS] 2026-07-17
 
@@ -99,12 +99,36 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Scheduling | Manual / unscheduled; normal Refresh & enrich = new/changed only |
 | Artifact | `data/processed/moret_complete_catalog.json` (`complete_catalog=true`; checksum `386cbe65…`); final report `moret_activation_final_report.*` |
 
+### Monumentenzorg Curaçao (`monumentenzorg_curacao`) — [WIP] 2026-07-20 (adapter v0.2.0)
+
+| Item | Value |
+|---|---|
+| Primary domain | `https://monumentenzorg.cw/` (`www` → apex) |
+| Scope | WPEstate `estate_property` for-rent/sale catalog only |
+| Out of scope | `/our_property/*` and `/our-properties/` heritage portfolio CPT |
+| Index | `/properties/` (single page; termination `no_next_page`) |
+| Sitemap | `estate_property-sitemap.xml` (cross-check required) |
+| Detail URL | `/properties/{slug}/` |
+| External ID | `property-{wordpress_post_id}` from Property Id / postid |
+| Catalog | **5** unique commercial listings (4 rent / 1 sale) |
+| Price | ANG when numeric; preserve text for TBD/offers; do not invent amounts |
+| Numeric priced | 2/5; 3/5 non-numeric (`Rental fee to be determined` / `Open to reasonable offers`) |
+| Status | Includes `sold_under_reservation` (sale); scope status to primary listing only |
+| Coordinates | None observed (0/5) |
+| Robots | Allow-all (`Disallow` empty); no Crawl-Delay; effective delay **≥2s** |
+| TLS | Certifi-backed verification required. Historical 2026-07-17 SSL/DNS notes were local trust-store / alt-domain DNS failures — leaf cert is valid; never use `verify=False`. |
+| Adapter | `monumentenzorg_curacao.py` **v0.2.0**; CLI `scripts/adapters/run_monumentenzorg_curacao.py` |
+| Labs import | **Not run** |
+| AI enrichment | **Not run** |
+| Scheduling | **Off** — manual/unscheduled |
+| Data Ops | **Not Ready** (partial / Continue setup); next: reviewed Labs import under separate approval |
+
 ### Adapter status — July 2026
 
 - [LABS] **RE/MAX**: complete manual catalog; **adapter v0.4.1 active** (199/220 coords); Terra-v3 initial backfill complete (**220/220**); remains manual/unscheduled.
 - [LABS] **Keller Williams**: adapter v0.3.0; complete 84-listing catalog imported offline; Terra v3 auto-enrichment activated, 84/84 successful proposals (manual/unscheduled).
 - [LABS] **Moret**: adapter v0.2.0; first complete catalog activated (71); Terra-v3 initial backfill complete (**71/71**); manual/unscheduled.
-- [RISK] **Monumentenzorg**: Reconnaissance required — official public pages reachable again; completeness must be reverified. Not Ready.
+- [WIP] **Monumentenzorg**: adapter **v0.2.0** complete for 5-listing estate_property catalog; import/enrichment pending; not Ready.
 - [PLANNED] **Sotheby's**: Access route under investigation — official/network inventory exists but automated access still requires an approved public route/feed. Not Ready.
 
 ### Source readiness matrix and next track
@@ -112,10 +136,10 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 `data/processed/property_source_readiness.md` is a read-only audit (no
 scrapes, imports, or AI calls) comparing listings/public-eligible/AI
 proposals/catalog maturity per source. Moret v0.2.0 activation + Terra-v3
-initial backfill completed 2026-07-20. Next active source task:
-**Monumentenzorg reconnaissance**. Sotheby's remains access-route investigation.
-Normal Refresh & enrich enriches new/changed only. KW/RE/MAX/Moret remain
-manual and unscheduled.
+initial backfill completed 2026-07-20. Next active source task after Monumentenzorg adapter v0.2.0:
+**Monumentenzorg Labs import** (separate approval). Sotheby's remains
+access-route investigation. Normal Refresh & enrich enriches new/changed only.
+KW/RE/MAX/Moret remain manual and unscheduled. Monumentenzorg is not Ready.
 
 ## 2. CHH removal rule
 
