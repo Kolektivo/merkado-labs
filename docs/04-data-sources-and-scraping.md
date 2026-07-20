@@ -10,7 +10,7 @@
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route under investigation; not Ready |
 | `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
 | `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
-| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [WIP] Adapter v0.2.0 complete; import pending; not Ready |
+| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [LABS] Adapter v0.2.0 Ready; catalog 5; public eligible 2; Terra 5/5 |
 
 Confirm the exact domain, listing index, detail paths, robots rules, and terms note before implementing each adapter.
 
@@ -99,7 +99,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Scheduling | Manual / unscheduled; normal Refresh & enrich = new/changed only |
 | Artifact | `data/processed/moret_complete_catalog.json` (`complete_catalog=true`; checksum `386cbe65…`); final report `moret_activation_final_report.*` |
 
-### Monumentenzorg Curaçao (`monumentenzorg_curacao`) — [WIP] 2026-07-20 (adapter v0.2.0)
+### Monumentenzorg Curaçao (`monumentenzorg_curacao`) — [LABS] Ready 2026-07-20 (adapter v0.2.0)
 
 | Item | Value |
 |---|---|
@@ -112,34 +112,35 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | External ID | `property-{wordpress_post_id}` from Property Id / postid |
 | Catalog | **5** unique commercial listings (4 rent / 1 sale) |
 | Price | ANG when numeric; preserve text for TBD/offers; do not invent amounts |
-| Numeric priced | 2/5; 3/5 non-numeric (`Rental fee to be determined` / `Open to reasonable offers`) |
-| Status | Includes `sold_under_reservation` (sale); scope status to primary listing only |
-| Coordinates | None observed (0/5) |
-| Robots | Allow-all (`Disallow` empty); no Crawl-Delay; effective delay **≥2s** |
-| TLS | Certifi-backed verification required. Historical 2026-07-17 SSL/DNS notes were local trust-store / alt-domain DNS failures — leaf cert is valid; never use `verify=False`. |
+| Numeric priced | 2/5 public-eligible; 3/5 non-numeric excluded from Browse (`Rental fee to be determined` / `Open to reasonable offers`) |
+| From-price | Villa Maria preserves “Starting at” evidence; marked `from_price` in adapter payload |
+| Status | `sold_under_reservation` → sold/inactive for public; raw status retained |
+| Currency | Original ANG retained; XCG benchmark via existing `legacy_1_to_1` |
+| Coordinates | **0/5** (source has none; no geocoding; geospatial unresolved) |
+| Robots | Allow-all; effective delay **≥2s**; certifi-backed TLS (never `verify=False`) |
 | Adapter | `monumentenzorg_curacao.py` **v0.2.0**; CLI `scripts/adapters/run_monumentenzorg_curacao.py` |
-| Labs import | **Not run** |
-| AI enrichment | **Not run** |
-| Scheduling | **Off** — manual/unscheduled |
-| Data Ops | **Not Ready** (partial / Continue setup); next: reviewed Labs import under separate approval |
+| Labs import | Offline complete import 2026-07-20; source run `8b78353b-ec47-4126-b251-db247fcdcb1a`; checksum `b4dd8d05…` |
+| Public Browse | **2** eligible (Bargestraat 28-D, Villa Maria) |
+| AI enrichment | Terra-v3 initial backfill **5/5** (canary 2 + remaining 3; ~USD 0.06 total) |
+| Scheduling | **Off** — manual/unscheduled; Refresh & enrich = new/changed only |
+| Data Ops | **Ready** |
 
 ### Adapter status — July 2026
 
 - [LABS] **RE/MAX**: complete manual catalog; **adapter v0.4.1 active** (199/220 coords); Terra-v3 initial backfill complete (**220/220**); remains manual/unscheduled.
 - [LABS] **Keller Williams**: adapter v0.3.0; complete 84-listing catalog imported offline; Terra v3 auto-enrichment activated, 84/84 successful proposals (manual/unscheduled).
 - [LABS] **Moret**: adapter v0.2.0; first complete catalog activated (71); Terra-v3 initial backfill complete (**71/71**); manual/unscheduled.
-- [WIP] **Monumentenzorg**: adapter **v0.2.0** complete for 5-listing estate_property catalog; import/enrichment pending; not Ready.
+- [LABS] **Monumentenzorg**: adapter **v0.2.0** Ready; catalog 5; public eligible 2; Terra-v3 **5/5**; coordinates 0/5; manual/unscheduled.
 - [PLANNED] **Sotheby's**: Access route under investigation — official/network inventory exists but automated access still requires an approved public route/feed. Not Ready.
 
 ### Source readiness matrix and next track
 
 `data/processed/property_source_readiness.md` is a read-only audit (no
 scrapes, imports, or AI calls) comparing listings/public-eligible/AI
-proposals/catalog maturity per source. Moret v0.2.0 activation + Terra-v3
-initial backfill completed 2026-07-20. Next active source task after Monumentenzorg adapter v0.2.0:
-**Monumentenzorg Labs import** (separate approval). Sotheby's remains
-access-route investigation. Normal Refresh & enrich enriches new/changed only.
-KW/RE/MAX/Moret remain manual and unscheduled. Monumentenzorg is not Ready.
+proposals/catalog maturity per source. Monumentenzorg v0.2.0 activation +
+Terra-v3 initial backfill completed 2026-07-20. Next active source task:
+**Sotheby's** access-route investigation. Normal Refresh & enrich enriches
+new/changed only. KW/RE/MAX/Moret/Monumentenzorg remain manual and unscheduled.
 
 ## 2. CHH removal rule
 

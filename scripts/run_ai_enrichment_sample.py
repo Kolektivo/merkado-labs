@@ -44,9 +44,13 @@ REMAX_TERRA_CANARY_EXTERNAL_IDS = frozenset(
 MORET_TERRA_CANARY_EXTERNAL_IDS = frozenset(
     {"post-75682", "post-75725", "post-74976", "post-75799", "post-74710"}
 )
+MONUMENTENZORG_TERRA_CANARY_EXTERNAL_IDS = frozenset(
+    {"property-19349", "property-18650"}
+)
 KW_SOURCE = "keller_williams_curacao"
 REMAX_SOURCE = "remax_curacao"
 MORET_SOURCE = "moret_real_estate"
+MONUMENTENZORG_SOURCE = "monumentenzorg_curacao"
 
 
 def _load_selection(path: Path) -> dict:
@@ -169,6 +173,19 @@ def main() -> int:
                 raise SystemExit(
                     f"Moret Terra canary must target exactly 5 listings, got {len(listing_ids)}"
                 )
+        if args.source_key == MONUMENTENZORG_SOURCE and selection_meta.get("allow_canary"):
+            external_ids = [str(x) for x in (selection_meta.get("external_ids") or [])]
+            if set(external_ids) != MONUMENTENZORG_TERRA_CANARY_EXTERNAL_IDS:
+                raise SystemExit(
+                    "Monumentenzorg Terra canary selection must be exactly "
+                    f"{sorted(MONUMENTENZORG_TERRA_CANARY_EXTERNAL_IDS)}; "
+                    f"got {sorted(external_ids)}"
+                )
+            if len(listing_ids) != 2:
+                raise SystemExit(
+                    "Monumentenzorg Terra canary must target exactly 2 listings, "
+                    f"got {len(listing_ids)}"
+                )
     elif args.listing_ids:
         mode = "listing_ids"
         listing_ids = [part.strip() for part in args.listing_ids.split(",") if part.strip()]
@@ -253,6 +270,17 @@ def main() -> int:
             raise SystemExit(
                 f"Refusing Moret canary listing {row['external_id']} in remaining batch"
             )
+        if (
+            args.source_key == MONUMENTENZORG_SOURCE
+            and mode == "selection_file"
+            and str(row.get("external_id")) in MONUMENTENZORG_TERRA_CANARY_EXTERNAL_IDS
+            and not (selection_meta or {}).get("idempotency_check")
+            and not (selection_meta or {}).get("allow_canary")
+        ):
+            raise SystemExit(
+                "Refusing Monumentenzorg canary listing "
+                f"{row['external_id']} in remaining batch"
+            )
 
     running = (
         client.table("ai_enrichment_jobs")
@@ -334,6 +362,9 @@ def main() -> int:
     elif args.source_key == MORET_SOURCE:
         # Observed Moret Terra canary average (5/5 @ USD 0.1165 exact).
         observed_avg_usd = 0.0233
+    elif args.source_key == MONUMENTENZORG_SOURCE:
+        # Conservative estimate for short commercial listings; hard ceiling 0.10/0.30.
+        observed_avg_usd = 0.03
     else:
         observed_avg_usd = 0.03956
     expected_from_canary = round(observed_avg_usd * len(billable_ids), 4)
@@ -451,6 +482,13 @@ def main() -> int:
             requested_by = "moret_remaining_terra_backfill"
         else:
             requested_by = "moret_terra_selection"
+    elif args.source_key == MONUMENTENZORG_SOURCE:
+        if (selection_meta or {}).get("allow_canary"):
+            requested_by = "monumentenzorg_terra_canary"
+        elif "remaining" in selection_name:
+            requested_by = "monumentenzorg_remaining_terra_backfill"
+        else:
+            requested_by = "monumentenzorg_terra_selection"
     elif mode == "selection_file" and "retry" in selection_name:
         requested_by = "kw_terra_retry_24"
     elif mode == "selection_file":

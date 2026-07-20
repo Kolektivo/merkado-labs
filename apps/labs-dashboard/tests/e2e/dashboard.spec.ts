@@ -77,7 +77,7 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   await expect(page.getByLabel("Buy or rent")).toBeVisible();
   await expect(page.getByLabel("Neighbourhood")).toBeVisible();
   await expect(page.getByLabel("Min price (XCG)")).toBeVisible();
-  await expect(page.locator('a[href^="/browse/"]')).toHaveCount(271);
+  await expect(page.locator('a[href^="/browse/"]')).toHaveCount(273);
   await expectNoHorizontalOverflow(page, "/browse");
 
   const detailHref = await page.locator('a[href^="/browse/"]').first().getAttribute("href");

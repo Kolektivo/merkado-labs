@@ -123,8 +123,24 @@ DESCRIPTION_RE = re.compile(
     re.I,
 )
 FEATURES_RE = re.compile(
-    r"(?:Features|Amenities|Kenmerken).*?(?:<ul[^>]*>(?P<body>.*?)</ul>)",
+    r'(?:id|class)=["\'][^"\']*(?:accordion_property_details|property_features|'
+    r"wpestate_property_features|listing_detail_features)[^\"']*[\"']"
+    r"[\s\S]{0,2000}?<ul[^>]*>(?P<body>.*?)</ul>",
     re.I | re.S,
+)
+NAV_AMENITY_DENYLIST = frozenset(
+    {
+        "home",
+        "for rent/sale",
+        "our properties",
+        "about us who we are",
+        "about us",
+        "news",
+        "vacatures",
+        "links",
+        "contact",
+        "search",
+    }
 )
 TAG_RE = re.compile(r"<[^>]+>")
 WS_RE = re.compile(r"\s+")
@@ -658,8 +674,13 @@ class MonumentenzorgCuracaoAdapter(DirectSourceAdapter):
         if feat_m:
             for li in re.findall(r"<li[^>]*>(.*?)</li>", feat_m.group("body"), re.I | re.S):
                 label = _text(li)
-                if label:
-                    features.append({"name": label, "source": "features_list"})
+                if not label:
+                    continue
+                if label.casefold() in NAV_AMENITY_DENYLIST:
+                    continue
+                if len(label) > 80:
+                    continue
+                features.append({"name": label, "source": "features_list"})
 
         images = _extract_images(primary)
         # Coordinates: only explicit LatLng / lat-lon pairs in primary body

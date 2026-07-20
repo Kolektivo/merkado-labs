@@ -181,9 +181,22 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   local trust-store / alt-domain DNS issue; leaf cert valid; never `verify=False`).
 - Stable IDs `property-{wordpress_post_id}`; ANG price preservation; 2/5 numeric
   priced; sold-under-reservation scoped to primary listing; coordinates 0/5.
-- Fixture catalog + safety simulations + DB-free import preview; no Labs import,
-  AI, schedule, or deploy. Data Ops remains **not Ready** (partial / Continue
-  setup). Next: reviewed Labs import under separate approval.
+- Merged via PR #4 (`1268f65`).
+
+### July 20, 2026 - Monumentenzorg Labs activation (Ready)
+
+- Offline complete import into Labs only (`csaefdkpwukshtouyixg`): **5** inserts;
+  source run `8b78353b-ec47-4126-b251-db247fcdcb1a`; checksum `b4dd8d05…`;
+  public eligible **2**; sold/inactive **1**; no-price exclusions **3**;
+  coordinates **0/5**; ANG original + `legacy_1_to_1` XCG for priced rows;
+  evidence uploaded privately; no geocoding; no other-source writes.
+- Amenity nav-contamination repair reparse (update path); amenities cleared.
+- Terra-v3 canary (Bargestraat + Villa Maria): **2/2**, exact **USD 0.0269**
+  under USD 0.10. Remaining **3/3**, exact **USD 0.0308**. Total ≈ **USD 0.0577**
+  under USD 0.30. Policy rejected unsupported claims; **0** needs_attention;
+  protected source fields unchanged. Public Browse smoke: exactly two titles.
+- Data Ops **Ready**; Refresh & enrich = new/changed only; scheduling remains
+  off. Next active source task: **Sotheby's** access-route investigation.
 
 ### July 20, 2026 - Moret remaining Terra-v3 initial backfill
 

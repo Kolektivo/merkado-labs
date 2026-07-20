@@ -82,10 +82,10 @@ export const HARVEST_JOBS: HarvestJob[] = [
       "Adapter v0.2.0 activated 2026-07-20: first complete catalog (71), offline import 66 insert / 5 update, public eligible 71, Terra-v3 initial backfill complete (71/71). Normal refresh = new/changed only. Scheduling remains disabled.",
   },
   {
-    id: "monumentenzorg-adapter-v020",
-    name: "Monumentenzorg Curaçao adapter",
+    id: "monumentenzorg-manual",
+    name: "Monumentenzorg Curaçao manual adapter",
     sourceName: "Monumentenzorg Curaçao",
-    schedule: "Not scheduled",
+    schedule: "Manual only",
     cron: null,
     timezone: "UTC",
     runner: "scripts/adapters/run_monumentenzorg_curacao.py",
@@ -94,11 +94,12 @@ export const HARVEST_JOBS: HarvestJob[] = [
       "estate_property /properties/ discovery",
       "estate_property-sitemap.xml cross-check",
       "Detail parse (certifi TLS, ≥2s)",
-      "DB-free import preview",
+      "Complete-catalog offline import establishes baseline",
+      "Lifecycle absence only after successful complete catalog",
     ],
     status: "manual",
     notes:
-      "Adapter v0.2.0 complete for 5-listing estate_property catalog. Labs import and Terra enrichment pending separate approval. Heritage /our_property/ out of scope. Not operationally Ready.",
+      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (5), public eligible 2, coordinates 0/5, Terra-v3 initial backfill complete (5/5). Heritage /our_property/ out of scope. Scheduling remains disabled.",
   },
 ];
 

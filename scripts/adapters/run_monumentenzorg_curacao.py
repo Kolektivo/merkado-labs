@@ -1,13 +1,15 @@
-"""Manual Monumentenzorg Curaçao adapter runner (dry-run / non-writing by default).
+"""Manual Monumentenzorg Curaçao adapter runner.
 
 Modes:
   --fixture-complete   Offline complete catalog from committed fixtures
   --discover-complete  Live full catalog dry-run (requires --live-fetch)
   --discover           Bounded discovery (requires --max-items)
-  --preview-import     Database-free import preview from a local catalog JSON
-  --dry-run            Explicit dry-run (default)
+  --preview-import     Local DB-free import preview from a catalog JSON
+  --preview-labs-import  Read-only Labs reconcile preview (no writes)
+  --import-from-file --import-db  Controlled offline Labs import
+  --dry-run            Explicit dry-run (default for discovery)
 
-Never writes to Supabase. Never schedules. Never calls AI.
+Never schedules. Never calls AI. Never live-fetches during import-from-file.
 """
 
 from __future__ import annotations
@@ -34,7 +36,9 @@ from merkado_labs.scrapers.adapters.monumentenzorg_curacao import (  # noqa: E40
 )
 from merkado_labs.scrapers.monumentenzorg_import_preview import (  # noqa: E402
     dump_json,
+    import_monumentenzorg_catalog_from_file,
     run_monumentenzorg_import_preview,
+    run_monumentenzorg_labs_import_preview,
 )
 
 
@@ -120,6 +124,14 @@ def main() -> int:
     )
     parser.add_argument("--live-fetch", action="store_true")
     parser.add_argument("--preview-import", action="store_true")
+    parser.add_argument("--preview-labs-import", action="store_true")
+    parser.add_argument("--import-from-file", action="store_true")
+    parser.add_argument("--import-db", action="store_true")
+    parser.add_argument(
+        "--skip-evidence-upload",
+        action="store_true",
+        help="Skip private listing-raw-evidence upload during --import-from-file",
+    )
     parser.add_argument(
         "--input",
         type=Path,
@@ -137,10 +149,64 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.import_db and not args.import_from_file:
+        parser.error(
+            "--import-db requires --import-from-file for the approved offline import"
+        )
+
+    if args.preview_labs_import:
+        if args.live_fetch or args.import_from_file or args.import_db:
+            parser.error("--preview-labs-import cannot combine with live/import modes")
+        result = run_monumentenzorg_labs_import_preview(input_path=args.input)
+        payload = result.as_dict()
+        out = args.summary_output
+        if args.output and args.output != Path(
+            "data/processed/monumentenzorg_complete_catalog.json"
+        ):
+            out = args.output
+        dump_json(out, payload)
+        print(json.dumps(payload, indent=2, default=str))
+        print(
+            "READ-ONLY LABS IMPORT PREVIEW complete: "
+            f"insert={result.inserts} update={result.updates} "
+            f"no_change={result.no_change} absent={result.absent_from_catalog} "
+            f"failed={result.failed}"
+        )
+        return 1 if result.failed else 0
+
     if args.preview_import:
+        if args.live_fetch or args.import_from_file or args.import_db:
+            parser.error("--preview-import cannot combine with live/import modes")
         preview = run_monumentenzorg_import_preview(args.input)
         dump_json(args.summary_output, preview)
         print(json.dumps(preview, indent=2))
+        return 0
+
+    if args.import_from_file:
+        if not args.import_db:
+            parser.error("--import-from-file requires --import-db")
+        if args.live_fetch or args.discover or args.discover_complete:
+            parser.error("file modes cannot combine with live discovery flags")
+        print("OFFLINE IMPORT FROM VERIFIED MONUMENTENZORG ARTIFACT")
+        payload = import_monumentenzorg_catalog_from_file(
+            input_path=args.input,
+            cache_dir=args.cache_dir,
+            upload_evidence=not args.skip_evidence_upload,
+        )
+        out = args.output
+        if out == Path("data/processed/monumentenzorg_complete_catalog.json"):
+            out = Path("data/processed/monumentenzorg_import_result.json")
+        dump_json(out, payload)
+        print(json.dumps(payload, indent=2, default=str))
+        imported = payload.get("import") or {}
+        print(
+            "OFFLINE IMPORT complete: "
+            f"imported={imported.get('imported_count')} "
+            f"updated={imported.get('updated_count')} "
+            f"observations={imported.get('observation_count')} "
+            f"events={imported.get('event_count')} "
+            f"evidence_ok={payload.get('evidence_upload_succeeded')}"
+        )
         return 0
 
     if args.fixture_complete:
