@@ -7,7 +7,7 @@
 | Source key | Display name | Status |
 |---|---|---|
 | `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.0; 84-listing complete catalog; 84/84 successful Terra v3 proposals (manual/unscheduled) |
-| `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route under investigation; not Ready |
+| `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route BLOCKED (2026-07-20 recon); not Ready |
 | `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
 | `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
 | `monumentenzorg_curacao` | Monumentenzorg Curaçao | [LABS] Adapter v0.2.0 Ready; catalog 5; public eligible 2; Terra 5/5 |
@@ -131,7 +131,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 - [LABS] **Keller Williams**: adapter v0.3.0; complete 84-listing catalog imported offline; Terra v3 auto-enrichment activated, 84/84 successful proposals (manual/unscheduled).
 - [LABS] **Moret**: adapter v0.2.0; first complete catalog activated (71); Terra-v3 initial backfill complete (**71/71**); manual/unscheduled.
 - [LABS] **Monumentenzorg**: adapter **v0.2.0** Ready; catalog 5; public eligible 2; Terra-v3 **5/5**; coordinates 0/5; manual/unscheduled.
-- [PLANNED] **Sotheby's**: Access route under investigation — official/network inventory exists but automated access still requires an approved public route/feed. Not Ready.
+- [PLANNED] **Sotheby's**: Access route **BLOCKED** (recon 2026-07-20) — affiliate `curacaosothebysrealty.com` TLS expired/mismatched (HTTP redirects to network office path); `www.sothebysrealty.com` inventory/office/robots/sitemap return HTTP 202 WAF/challenge; `app.sir.com/curacaosir` is an office/app shell without listing catalog HTML. Skeleton adapter **v0.1.2** remains fail-closed. Not Ready. Next: official affiliate feed/export or Anywhere partner API with written approval (no WAF bypass).
 
 ### Source readiness matrix and next track
 
@@ -139,8 +139,9 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 scrapes, imports, or AI calls) comparing listings/public-eligible/AI
 proposals/catalog maturity per source. Monumentenzorg v0.2.0 activation +
 Terra-v3 initial backfill completed 2026-07-20. Next active source task:
-**Sotheby's** access-route investigation. Normal Refresh & enrich enriches
-new/changed only. KW/RE/MAX/Moret/Monumentenzorg remain manual and unscheduled.
+**Sotheby's** remains access-route **BLOCKED** (2026-07-20 recon; official
+feed/partner API required). Normal Refresh & enrich enriches new/changed only.
+KW/RE/MAX/Moret/Monumentenzorg remain manual and unscheduled.
 
 ## 2. CHH removal rule
 

@@ -125,21 +125,24 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
     "sothebys_curacao": SourceReadiness(
         source_key="sothebys_curacao",
         display_name="Sotheby's International Realty",
-        adapter_version="0.1.1",
+        adapter_version="0.1.2",
         readiness="blocked",
         listing_count_expected=None,
         catalog_status="access_route_under_investigation",
         current_issue=(
-            "Access route under investigation. Official/network inventory exists but "
-            "automated access still requires an approved public route/feed."
+            "BLOCKED (2026-07-20 recon): affiliate TLS expired/mismatched; "
+            "www.sothebysrealty.com inventory/office/robots/sitemap return HTTP 202 "
+            "WAF/challenge; app.sir.com/curacaosir is an office shell without catalog "
+            "HTML. Approved public route or partner feed/API still required."
         ),
         primary_action="Blocked",
-        blocker_kind="access_unavailable",
+        blocker_kind="waf_restriction",
         allows_full_refresh=False,
         allows_lifecycle_absence=False,
         notes=(
-            "Not Ready. Access route under investigation; no WAF bypass and no scrape "
-            "until an approved public route/feed is confirmed."
+            "Not Ready. Verdict BLOCKED — no complete legitimate public catalog route. "
+            "No WAF bypass, no browser automation, no verify=False. Next: official "
+            "affiliate feed/export or Anywhere partner API with written approval."
         ),
     ),
 }

@@ -172,6 +172,26 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   Sotheby's wording → **Access route under investigation** (not Ready).
 - Moret remains **manual/unscheduled**.
 
+### July 20, 2026 - Sotheby's access-route recon (BLOCKED)
+
+- Bounded polite recon only (UA `MerkadoLabs-PropertyAdapter/0.1`, ≥2.1s delay,
+  certifi TLS, no `verify=False`, no browser automation, no WAF bypass, no
+  proxies, no aggregator fallback, no Labs DB writes).
+- Affiliate `curacaosothebysrealty.com`: HTTPS certificate expired/mismatched
+  (`CN=*.hostingplatform.com`, not valid after 2022-09-12); HTTP 301 →
+  `www.sothebysrealty.com/curacaosir/eng`.
+- Network host `www.sothebysrealty.com`: robots, sitemap, office, sales/rentals
+  country paths, terms, RSS/feeds all returned **HTTP 202** empty CloudFront
+  responses (confirms 2026-07-17 finding).
+- `app.sir.com/curacaosir`: HTTP 200 office/app shell only; path variants are
+  identical shells; no listing catalog HTML, robots, or sitemap.
+- Verdict **BLOCKED** — complete public catalog not proven. Skeleton adapter
+  notes bumped to **v0.1.2**; readiness remains blocked /
+  `access_route_under_investigation`. Evidence under ignored
+  `data/processed/sothebys_recon_20260720/` (not committed).
+- Next approved options: official affiliate feed/export; Anywhere Developers
+  partner API with written approval; future polite recheck — never bypass.
+
 ### July 20, 2026 - Monumentenzorg adapter v0.2.0
 
 - Built `monumentenzorg_curacao` adapter **v0.2.0** for the proven 5-listing
@@ -196,7 +216,7 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   under USD 0.30. Policy rejected unsupported claims; **0** needs_attention;
   protected source fields unchanged. Public Browse smoke: exactly two titles.
 - Data Ops **Ready**; Refresh & enrich = new/changed only; scheduling remains
-  off. Next active source task: **Sotheby's** access-route investigation.
+  off. Next active source task: **Sotheby's** (access route BLOCKED; feed/API).
 
 ### July 20, 2026 - Moret remaining Terra-v3 initial backfill
 

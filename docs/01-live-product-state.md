@@ -69,7 +69,8 @@ after a verified rollback export. RE/MAX and KW remain manual and unscheduled.
 Moret Terra-v3 initial backfill is complete; Moret remains manual/unscheduled
 with Refresh & enrich = new/changed only. Monumentenzorg adapter **v0.2.0** is Ready
 (5 imported, 2 public-eligible, Terra-v3 5/5, coordinates 0/5, manual/unscheduled).
-Next active source task: **Sotheby's** access-route investigation (not Ready).
+Next active source task: **Sotheby's** remains access-route **BLOCKED** after
+2026-07-20 recon (not Ready; official feed/partner API required).
 
 ## 3. Current property MVP direction `[WIP]`
 
