@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { Building2, FlaskConical, Search } from "lucide-react";
+import { FlaskConical, Search } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
+import {
+  ListingImageGallery,
+  resolveListingGalleryUrls,
+} from "@/components/listing-image-gallery";
 import { PageHeader } from "@/components/page-header";
 import { PriceDisplay } from "@/components/price-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -355,24 +358,16 @@ export default async function BrowsePage({
               className="min-w-0 max-w-full"
             >
               <Card className="h-full max-w-full overflow-hidden py-0">
-                <div className="relative h-44 bg-muted">
-                  {listing.primaryImageUrl ? (
-                    <Image
-                      src={listing.primaryImageUrl}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 1280px) 50vw, 33vw"
-                      priority={index === 0}
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-muted-foreground">
-                      <Building2 className="size-8" aria-hidden />
-                      <span className="sr-only">No property image available</span>
-                    </div>
-                  )}
-                </div>
+                <ListingImageGallery
+                  images={resolveListingGalleryUrls({
+                    imageUrls: listing.imageUrls,
+                    primaryImageUrl: listing.primaryImageUrl,
+                  })}
+                  altBase={listing.title ?? `Property ${listing.externalId}`}
+                  variant="card"
+                  priority={index === 0}
+                  aspectClassName="relative h-44 bg-muted"
+                />
                 <CardContent className="space-y-2 p-4">
                   <div className="flex flex-wrap gap-2">
                     <Badge>{titleCase(listing.listingType ?? "Listing")}</Badge>

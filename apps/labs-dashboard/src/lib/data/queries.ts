@@ -82,6 +82,7 @@ const LISTING_SELECT = [
   "longitude",
   "coordinates_source",
   "primary_image_url",
+  "image_urls",
   "description",
   "street",
   "house_number",
@@ -346,6 +347,18 @@ function normalizeListing(
     primaryImageUrl: row.primary_image_url
       ? String(row.primary_image_url)
       : null,
+    imageUrls: (() => {
+      const urls: string[] = [];
+      if (Array.isArray(row.image_urls)) {
+        for (const item of row.image_urls) {
+          if (typeof item === "string" && item.trim()) urls.push(item.trim());
+        }
+      }
+      if (!urls.length && row.primary_image_url) {
+        urls.push(String(row.primary_image_url));
+      }
+      return [...new Set(urls)];
+    })(),
     description: row.description ? String(row.description) : null,
     street: row.street ? String(row.street) : null,
     houseNumber: row.house_number ? String(row.house_number) : null,

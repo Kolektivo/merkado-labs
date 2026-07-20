@@ -292,7 +292,12 @@ const loadAllAiEnrichmentAttempts = cache(async (): Promise<UsageAttempt[]> => {
   return markRetainedAttempts(draft);
 });
 
-/** Marks, per listing, the single latest successful attempt as "retained" (the result in effect). */
+/**
+ * Marks the retained attempt per listing.
+ * Prefer current v4 prompt/schema (matches public_property_listings), then
+ * newest successful attempt. Historical v3 rows must not drive the
+ * operational "Needs review" badge when a newer v4 result exists.
+ */
 function markRetainedAttempts(attempts: UsageAttempt[]): UsageAttempt[] {
   const byListing = new Map<string, UsageAttempt[]>();
   for (const attempt of attempts) {
@@ -302,12 +307,23 @@ function markRetainedAttempts(attempts: UsageAttempt[]): UsageAttempt[] {
   }
   const retainedIds = new Set<string>();
   for (const list of byListing.values()) {
-    const latest = [...list].sort((a, b) =>
-      b.generatedAt.localeCompare(a.generatedAt),
-    )[0];
-    if (latest && isSuccessStatus(latest.status)) {
-      retainedIds.add(latest.id);
-    }
+    const successful = list.filter((a) => isSuccessStatus(a.status));
+    if (!successful.length) continue;
+    const ranked = [...successful].sort((a, b) => {
+      const aV4 =
+        a.promptVersion === "listing_enrichment_v4" &&
+        a.schemaVersion === "listing_enrichment_schema_v4"
+          ? 0
+          : 1;
+      const bV4 =
+        b.promptVersion === "listing_enrichment_v4" &&
+        b.schemaVersion === "listing_enrichment_schema_v4"
+          ? 0
+          : 1;
+      if (aV4 !== bV4) return aV4 - bV4;
+      return b.generatedAt.localeCompare(a.generatedAt);
+    });
+    retainedIds.add(ranked[0]!.id);
   }
   return attempts.map((attempt) => ({
     ...attempt,

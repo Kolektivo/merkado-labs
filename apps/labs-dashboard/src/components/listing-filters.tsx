@@ -342,7 +342,7 @@ export function ListingFilters({
                     { value: "not_run", label: "Not run" },
                     { value: "succeeded", label: "Added" },
                     { value: "skipped_unchanged", label: "No changes — skipped" },
-                    { value: "needs_review", label: "Needs attention" },
+                    { value: "needs_review", label: "Needs review" },
                     { value: "failed", label: "Failed" },
                   ]}
                 />

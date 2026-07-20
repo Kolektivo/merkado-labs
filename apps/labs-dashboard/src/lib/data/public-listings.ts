@@ -34,6 +34,7 @@ const PUBLIC_SELECT = [
   "lot_area_value",
   "lot_area_unit",
   "primary_image_url",
+  "image_urls",
   "description",
   "first_seen_at",
   "last_seen_at",
@@ -101,9 +102,23 @@ function publicQueryError(message: string) {
 }
 
 function isMissingEffectiveColumnError(message: string): boolean {
-  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description|column .* does not exist/i.test(
+  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description|image_urls|column .* does not exist/i.test(
     message,
   );
+}
+
+function normalizeImageUrls(
+  raw: unknown,
+  primaryImageUrl: string | null,
+): string[] {
+  const urls: string[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === "string" && item.trim()) urls.push(item.trim());
+    }
+  }
+  if (!urls.length && primaryImageUrl) urls.push(primaryImageUrl);
+  return [...new Set(urls)];
 }
 
 function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
@@ -204,6 +219,10 @@ export function normalizePublicListing(
     primaryImageUrl: row.primary_image_url
       ? String(row.primary_image_url)
       : null,
+    imageUrls: normalizeImageUrls(
+      row.image_urls,
+      row.primary_image_url ? String(row.primary_image_url) : null,
+    ),
     description: row.description ? String(row.description) : null,
     firstSeenAt: String(row.first_seen_at),
     lastSeenAt: String(row.last_seen_at),

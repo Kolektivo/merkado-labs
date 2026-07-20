@@ -25,7 +25,27 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "www.kw-curacao.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "moretrealestate.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.moretrealestate.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "monumentenzorg.cw",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.monumentenzorg.cw",
         pathname: "/**",
       },
     ],

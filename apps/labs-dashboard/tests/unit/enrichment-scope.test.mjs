@@ -11,21 +11,21 @@ test("enrichment scope metadata is exactly one v4 value each", () => {
 
   const promptMatches = scope.match(/listing_enrichment_v\d+/g) || [];
   const schemaMatches = scope.match(/listing_enrichment_schema_v\d+/g) || [];
-  const policyMatches = scope.match(/enrichment_policy_v\d+/g) || [];
+  const policyMatches = scope.match(/enrichment_policy_v\d+(?:_\d+)?/g) || [];
 
   assert.deepEqual([...new Set(promptMatches)], ["listing_enrichment_v4"]);
   assert.deepEqual(
     [...new Set(schemaMatches)],
     ["listing_enrichment_schema_v4"],
   );
-  assert.deepEqual([...new Set(policyMatches)], ["enrichment_policy_v4"]);
+  assert.deepEqual([...new Set(policyMatches)], ["enrichment_policy_v4_1"]);
 
   assert.match(scope, /export const PROMPT_VERSION = "listing_enrichment_v4"/);
   assert.match(
     scope,
     /export const SCHEMA_VERSION = "listing_enrichment_schema_v4"/,
   );
-  assert.match(scope, /export const POLICY_VERSION = "enrichment_policy_v4"/);
+  assert.match(scope, /export const POLICY_VERSION = "enrichment_policy_v4_1"/);
   assert.match(scope, /policyVersion: POLICY_VERSION/);
 
   assert.doesNotMatch(scope, /listing_enrichment_v1/);

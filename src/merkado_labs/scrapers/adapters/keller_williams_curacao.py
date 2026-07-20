@@ -515,8 +515,22 @@ def property_type_from_context(type_context: str | None) -> str | None:
     lowered = type_context.casefold()
     if "lots" in lowered or "land" in lowered:
         return "lots_and_land"
-    if "commercial" in lowered:
+    if "commercial" in lowered or "office" in lowered:
         return "commercial"
+    if "apartment" in lowered or "condo" in lowered or "penthouse" in lowered:
+        return "apartment"
+    if "villa" in lowered:
+        return "villa"
+    if (
+        "detached single" in lowered
+        or "single family" in lowered
+        or "family home" in lowered
+        or "townhouse" in lowered
+        or "bungalow" in lowered
+        or "house" in lowered
+        or "home" in lowered
+    ):
+        return "house"
     if "residential" in lowered:
         return "residential"
     return None

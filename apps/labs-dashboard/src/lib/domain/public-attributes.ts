@@ -52,6 +52,11 @@ export const PUBLIC_ATTRIBUTE_ALLOWLIST = [
   "appliance_inclusion",
   "accessibility",
   "pet_suitability",
+  "living_room",
+  "kitchen",
+  "outdoor_kitchen",
+  "gas_included",
+  "garden_maintenance_included",
 ] as const;
 
 export type PublicAttributeKey = (typeof PUBLIC_ATTRIBUTE_ALLOWLIST)[number];
@@ -76,6 +81,11 @@ export const PUBLIC_ATTRIBUTE_DISPLAY_LABELS: Record<string, string> = {
   appliance_inclusion: "Appliances",
   accessibility: "Accessibility",
   pet_suitability: "Pet suitability",
+  living_room: "Living room",
+  kitchen: "Kitchen",
+  outdoor_kitchen: "Outdoor kitchen",
+  gas_included: "Gas included",
+  garden_maintenance_included: "Garden maintenance included",
 };
 
 /** Passport feature groups — omit empty groups at render time. */

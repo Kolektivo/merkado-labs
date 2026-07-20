@@ -43,7 +43,9 @@ def test_normalize_decodes_entities_and_quotes() -> None:
     assert "smart" in normalized
 
 
-def test_jc003_terrasses_variant_needs_attention() -> None:
+def test_jc003_terrasses_variant_auto_applies_v41() -> None:
+    """v4.1 accepts the recurring terrasses spelling as terrace evidence."""
+
     decision = decide_field(
         key="terrace",
         proposed_value=True,
@@ -53,8 +55,7 @@ def test_jc003_terrasses_variant_needs_attention() -> None:
         model_recommended_action="auto_apply",
         source_text=JC003_DESCRIPTION,
     )
-    assert decision.final_status == AutoApplyStatus.NEEDS_ATTENTION
-    assert "terrace_variant_needs_attention" in decision.reasons
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
 
 
 def test_canonical_terrace_still_auto_applies() -> None:

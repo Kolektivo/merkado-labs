@@ -51,7 +51,7 @@ The isolated Labs project currently has:
 - AI enrichment quality **v4** is active in Labs across KW, RE/MAX, Moret, and
   Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
   `listing_enrichment_v4` / `listing_enrichment_schema_v4` /
-  `enrichment_policy_v4` with v3 history retained. Decisions distinguish
+  `enrichment_policy_v4_1` with v3/v4 history retained. Decisions distinguish
   accepted / redundant / rejected / needs_attention. Public listings (273)
   expose effective neighbourhood, feature attrs, `effective_summary`, and
   same-language `display_description` (100% overview coverage after

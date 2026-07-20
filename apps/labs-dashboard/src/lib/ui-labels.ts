@@ -21,8 +21,8 @@ export const TIPS = {
     tip: "Realtor websites we collect listings from. Automatic daily updates are turned off until each site is approved.",
   },
   aiNeedsReview: {
-    label: "AI needs review",
-    tip: "AI wrote suggestions for some listings (for example clearer features). A person still has to accept or reject them — they never overwrite the original ad automatically.",
+    label: "Needs review",
+    tip: "Only listings with a current unresolved factual conflict need a person. Historical rejected rows and confidence-alone noise stay in advanced audit.",
   },
   publicEligibility: {
     label: "public eligibility",
@@ -85,8 +85,8 @@ export const TIPS = {
     tip: "Legacy research-review flags. Successful auto-applied enrichments do not require approval.",
   },
   needsReviewProposals: {
-    label: "needs attention",
-    tip: "Listings where AI found conflicts, weak evidence, or low-confidence fields that need a person to look afterwards.",
+    label: "Needs review",
+    tip: "Listings with at least one current unresolved factual conflict. Quiet rejections and historical rows do not appear here.",
   },
   autoAppliedFields: {
     label: "auto-applied fields",
@@ -196,7 +196,7 @@ const ENRICHMENT_STATUS_LABELS: Record<string, string> = {
   succeeded: "Enriched",
   skipped_unchanged: "No changes — AI skipped",
   failed: "AI enrichment failed",
-  needs_review: "Needs attention",
+  needs_review: "Needs review",
 };
 
 const EXCLUSION_REASON_LABELS: Record<string, string> = {
@@ -219,11 +219,11 @@ const EXCLUSION_REASON_LABELS: Record<string, string> = {
 
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   proposed: "Suggested",
-  needs_review: "Needs closer look",
+  needs_review: "Needs review",
   accepted: "Accepted",
   rejected: "Rejected",
   superseded: "Replaced by newer suggestion",
-  auto_applied: "Applied automatically",
+  auto_applied: "Applied",
   skipped_unchanged: "No changes — AI skipped",
   invalid_output: "AI response could not be processed",
   failed: "AI enrichment failed",

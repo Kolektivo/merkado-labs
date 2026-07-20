@@ -56,7 +56,7 @@ type SearchParams = Promise<{
 
 const FILTERS: Array<{ id: EnrichmentAuditFilter; label: string }> = [
   { id: "all", label: "All" },
-  { id: "needs_attention", label: "Needs attention" },
+  { id: "needs_attention", label: "Needs review" },
   { id: "conflicts", label: "Conflicts" },
   { id: "low_confidence", label: "Low confidence" },
   { id: "changed_by_ai", label: "Changed by AI" },
@@ -141,7 +141,7 @@ export default async function EnrichmentPage({
         <TabsList variant="line" className="w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="runs">Runs</TabsTrigger>
-          <TabsTrigger value="attention">Needs attention</TabsTrigger>
+          <TabsTrigger value="attention">Needs review</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -154,7 +154,7 @@ export default async function EnrichmentPage({
                 icon: Sparkles,
               },
               {
-                label: "Needs attention",
+                label: "Needs review",
                 value: formatNumber(dashboard.needsAttentionListings),
                 helper: "Genuine decisions only",
                 href: "/enrichment?view=attention&filter=needs_attention",
@@ -228,7 +228,7 @@ export default async function EnrichmentPage({
           <Card>
             <CardHeader>
               <CardTitle>
-                <h2>Needs attention</h2>
+                <h2>Needs review</h2>
               </CardTitle>
               <CardDescription>
                 Real exceptions requiring a decision. Rejected noise stays in
@@ -267,7 +267,7 @@ export default async function EnrichmentPage({
                           {proposal.needsAttentionCount}{" "}
                           {proposal.needsAttentionCount === 1 ? "field" : "fields"}
                         </Badge>
-                        <StatusBadge tone="warning">Needs attention</StatusBadge>
+                        <StatusBadge tone="warning">Needs review</StatusBadge>
                       </div>
                     </div>
                     {proposal.attentionFields.slice(0, 2).map((field) => (

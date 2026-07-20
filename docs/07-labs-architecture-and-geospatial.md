@@ -78,7 +78,11 @@ Each source runs independently. Scheduling remains off until explicitly approved
 #### Prompt / schema / policy v4
 
 - Current combination: prompt `listing_enrichment_v4`, JSON schema
-  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4`.
+  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4_1`
+  (deterministic Dutch/English normalization; operational UI label **Needs review**
+  for current unresolved conflicts only; historical v3/v4 rows stay in advanced audit).
+  Public Browse/Passport expose `image_urls` galleries with card/detail carousels;
+  adapters already extract full galleries into `property_listings.image_urls`.
 - v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds source-language display-description blocks.

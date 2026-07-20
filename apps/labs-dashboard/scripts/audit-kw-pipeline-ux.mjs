@@ -50,7 +50,7 @@ const enrichText = await page.locator("body").innerText();
 findings.enrichment = {
   hasOverview: /Overview/i.test(enrichText),
   hasRuns: /Runs/i.test(enrichText),
-  hasNeedsAttention: /Needs attention/i.test(enrichText),
+  hasNeedsAttention: /Needs review/i.test(enrichText),
 };
 
 await page.goto(`${baseURL}/listings?source=keller_williams_curacao`);

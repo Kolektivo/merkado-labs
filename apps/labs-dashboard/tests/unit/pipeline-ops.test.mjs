@@ -114,11 +114,11 @@ test("data operations page shows progress stages and waiting-for-worker", () => 
   assert.match(progress, /Skipped unchanged/);
 });
 
-test("enrichment page has Overview / Runs / Needs attention", () => {
+test("enrichment page has Overview / Runs / Needs review", () => {
   const page = source("src/app/enrichment/page.tsx");
   assert.match(page, /TabsTrigger value="overview"/);
   assert.match(page, /TabsTrigger value="runs"/);
-  assert.match(page, /Needs attention/);
+  assert.match(page, /Needs review/);
   assert.match(page, /Advanced audit detail/);
   assert.match(page, /COST_ESTIMATE_LABEL/);
 });

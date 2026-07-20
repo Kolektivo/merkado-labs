@@ -118,7 +118,7 @@ test("authenticated core routes load real data without browser errors", async ({
   await expect(page.getByText("All listings", { exact: true })).toBeVisible();
   await expect(page.getByText("Public-ready", { exact: true })).toBeVisible();
   await expect(page.getByText("Healthy sources", { exact: true })).toBeVisible();
-  await expect(page.getByText("Needs attention", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Needs review", { exact: true }).first()).toBeVisible();
 
   await page.goto("/listings");
   const detailHref = await page.locator('a[href^="/listings/"]').first().getAttribute("href");
@@ -283,9 +283,9 @@ test("progressive disclosures and enrichment views are keyboard accessible", asy
     "data-state",
     "active",
   );
-  await page.getByRole("tab", { name: "Needs attention" }).click();
+  await page.getByRole("tab", { name: "Needs review" }).click();
   await expect(
-    page.getByRole("heading", { name: "Needs attention" }),
+    page.getByRole("heading", { name: "Needs review" }),
   ).toBeVisible();
   const advanced = page.getByText("Advanced audit detail", { exact: true });
   await expect(advanced).toBeVisible();
