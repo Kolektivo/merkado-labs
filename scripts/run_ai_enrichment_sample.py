@@ -133,7 +133,11 @@ def main() -> int:
     if args.selection_file:
         mode = "selection_file"
         selection_meta = _load_selection(args.selection_file)
-        if selection_meta.get("source_key") not in {None, args.source_key}:
+        cross_source = bool(selection_meta.get("allow_cross_source"))
+        if (
+            not cross_source
+            and selection_meta.get("source_key") not in {None, args.source_key}
+        ):
             raise SystemExit(
                 f"Selection source_key {selection_meta.get('source_key')!r} "
                 f"does not match --source-key {args.source_key!r}"
@@ -216,7 +220,8 @@ def main() -> int:
             "(refuses manually pasted comma-separated lists)"
         )
 
-    source = resolve_property_source(client, args.source_key)
+    cross_source = bool((selection_meta or {}).get("allow_cross_source"))
+    source = None if cross_source else resolve_property_source(client, args.source_key)
     rows = (
         client.table("property_listings")
         .select(
@@ -237,16 +242,29 @@ def main() -> int:
     # Preserve selection order.
     selected_rows = [by_id[lid] for lid in listing_ids]
 
+    allowed_cross = {
+        KW_SOURCE,
+        REMAX_SOURCE,
+        MORET_SOURCE,
+        MONUMENTENZORG_SOURCE,
+    }
     for row in selected_rows:
         source_key = None
         if isinstance(row.get("property_sources"), dict):
             source_key = row["property_sources"].get("source_key")
+        if cross_source:
+            if source_key not in allowed_cross:
+                raise SystemExit(
+                    f"Listing {row['external_id']} source_key={source_key!r} "
+                    "is outside the approved cross-source canary set"
+                )
+            continue
         if source_key and source_key != args.source_key:
             raise SystemExit(
                 f"Listing {row['external_id']} source_key={source_key!r} "
                 f"is outside approved source {args.source_key!r}"
             )
-        if str(row.get("property_source_id")) != str(source["id"]):
+        if source is None or str(row.get("property_source_id")) != str(source["id"]):
             raise SystemExit(
                 f"Listing {row['external_id']} is not in source {args.source_key}"
             )
@@ -465,9 +483,15 @@ def main() -> int:
         print(json.dumps(payload, indent=2, default=str))
         return 0
 
-    property_source_id = str(source["id"])
+    property_source_id = None if cross_source else str(source["id"])
     selection_name = args.selection_file.name if args.selection_file else ""
-    if args.source_key == "remax_curacao":
+    if cross_source and (selection_meta or {}).get("purpose") == "enrichment_quality_v4_canary":
+        requested_by = "enrichment_quality_v4_canary"
+    elif cross_source and (selection_meta or {}).get("purpose") == (
+        "enrichment_quality_v4_public_backfill"
+    ):
+        requested_by = "enrichment_quality_v4_public_backfill"
+    elif args.source_key == "remax_curacao":
         requested_by = (
             (selection_meta or {}).get("job_label")
             if isinstance(selection_meta, dict) and (selection_meta or {}).get("job_label")
@@ -501,7 +525,7 @@ def main() -> int:
         scope_type="manual_selection",
         scope_filter={
             "listing_ids": listing_ids,
-            "source_key": args.source_key,
+            "source_key": args.source_key if not cross_source else "cross_source",
             "selection_file": str(args.selection_file) if args.selection_file else None,
             "canary": bool((selection_meta or {}).get("allow_canary"))
             if mode == "selection_file"
@@ -509,6 +533,7 @@ def main() -> int:
             "remaining_batch": mode == "selection_file"
             and not bool((selection_meta or {}).get("allow_canary")),
             "job_label": requested_by,
+            "allow_cross_source": cross_source,
         },
         listing_ids=listing_ids,
         model=env_model,

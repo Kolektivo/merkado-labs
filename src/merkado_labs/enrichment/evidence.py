@@ -52,7 +52,10 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
         r"\bwater\s+heater\b|\bboiler\b|\bgeiser\b|\bcalentador(\s+de\s+agua)?\b", re.I
     ),
     "security_features": re.compile(
-        r"\bsecurity\b|\bbeveiliging\b|\bseguridad\b|\balarm\s+system\b", re.I
+        r"\bsecurity\b|\bbeveiliging\b|\bseguridad\b|\balarm(\s+system)?\b|"
+        r"\bcctv\b|\bcameras?\b|\bbewaking\b|\bbeveiligd\b|"
+        r"\b24[\s-]?hour\s+security\b|\bguard(ed)?\b",
+        re.I,
     ),
     "appliance_inclusion": re.compile(
         r"\bappliances?\b|\bapparatuur\b|\belectrodom[eé]sticos\b|\bwhite\s+goods\b", re.I
@@ -316,9 +319,8 @@ def ground_evidence(
         )
 
     if exact and synonym_hit is False:
-        # Exact snippet exists but key synonym absent — likely mismatched claim.
-        # For gated_community, resort/marketing copy without a gate synonym is
-        # rejected as noise rather than queued for attention.
+        # Exact snippet exists but key synonym absent — mismatched / weak claim.
+        # v4: reject as unsupported noise rather than queueing review.
         if key == "gated_community":
             return EvidenceGrounding(
                 ok_for_auto_apply=False,
@@ -329,7 +331,7 @@ def ground_evidence(
             )
         return EvidenceGrounding(
             ok_for_auto_apply=False,
-            ok_for_attention=True,
+            ok_for_attention=False,
             reason="snippet_present_synonym_missing",
             normalization_warning=warning,
             normalized_snippet=norm_snippet,

@@ -48,18 +48,18 @@ The isolated Labs project currently has:
   successful current results; canary ~USD 0.1165 + remaining 66 at ~USD 1.8259
   under USD 2.40; cumulative ~USD 1.94; manual/unscheduled; normal Refresh &
   enrich remains new/changed only);
-- AI enrichment stabilized on the KW catalog: GPT-5.6 Terra with prompt/
-  schema/policy **v4** (`listing_enrichment_v4` / `listing_enrichment_schema_v4`
-  / `enrichment_policy_v4`) with v3 history retained; exception-based review — only conflicts, weak
-  evidence, or new-attribute taxonomy reach the attention queue; unsupported/
-  noisy/duplicate proposals are rejected outright and never shown as pending
-  review. A 24-listing retry batch on the compact v3 schema succeeded 24/24
-  (~USD 0.7054), bringing KW to **84/84** successful latest-proposal Terra
-  runs (0 failed, 0 never enriched). The `/enrichment` dashboard reports
-  gross vs. retained-result vs. wasted AI spend and a model-efficiency
-  comparison (grouped by model + prompt + schema version — different
-  combinations are not directly comparable). KW enrichment remains manual
-  and unscheduled.
+- AI enrichment quality **v4** is active in Labs across KW, RE/MAX, Moret, and
+  Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
+  `listing_enrichment_v4` / `listing_enrichment_schema_v4` /
+  `enrichment_policy_v4` with v3 history retained. Decisions distinguish
+  accepted / redundant / rejected / needs_attention. Public listings (273)
+  expose effective neighbourhood, feature attrs, `effective_summary`, and
+  same-language `display_description` (100% overview coverage after
+  deterministic fallback). Cross-source canary 20 @ ~USD 0.61 + public
+  backfill 253/254 @ ~USD 6.81 (total ~USD 7.42; hard ceiling USD 25).
+  Review rate on non-redundant proposals stays near ~4%. Exception-based
+  review only; enrichment remains manual and unscheduled. Production
+  migration remains paused.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 

@@ -389,6 +389,41 @@ def test_amenity_auto_applies_at_field_default_threshold() -> None:
     )
 
 
+def test_display_overview_auto_applies_without_substring_grounding() -> None:
+    """Paraphrased display text must not require an exact source span."""
+
+    source = (
+        "Beautiful villa in Jan Thiel with a large swimming pool, covered terrace, "
+        "and air conditioning throughout. Ideal for families seeking a quiet stay."
+    )
+    decision = decide_field(
+        key="display_overview",
+        proposed_value="A family villa in Jan Thiel with pool, terrace, and A/C.",
+        confidence=0.92,
+        evidence_snippet="A family villa in Jan Thiel with pool, terrace, and A/C.",
+        evidence_source="description",
+        source_text=source,
+        source_values={"title": "Villa Jan Thiel", "description": source},
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    assert "narrative_source_available" in decision.reasons
+
+
+def test_snippet_synonym_missing_rejects_not_attention() -> None:
+    """Exact snippet without a field synonym is unsupported, not review."""
+
+    decision = decide_field(
+        key="security_features",
+        proposed_value="present",
+        confidence=0.95,
+        evidence_snippet="quiet residential neighbourhood with friendly neighbors",
+        evidence_source="description",
+        source_text="quiet residential neighbourhood with friendly neighbors nearby",
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status != AutoApplyStatus.NEEDS_ATTENTION
+
+
 def test_local_generic_neighbourhood_helper_used_by_policy() -> None:
     assert is_generic_neighbourhood("Curaçao") is True
     assert is_generic_neighbourhood("Jan Thiel") is False

@@ -82,7 +82,12 @@ Each source runs independently. Scheduling remains off until explicitly approved
 - v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds source-language display-description blocks.
-- The forward public-effective migration remains paused pending review.
+- Labs public-effective migration `20260720180000_enrichment_quality_v4_public_effective`
+  is applied: prefers retained v4 proposals (fallback v3) and exposes
+  `effective_summary` + `display_description` (never evidence/tokens/cost).
+- Cross-source v4 canary (20 public) + public backfill (254; 253 succeeded)
+  completed under the USD 25 hard ceiling (~USD 7.42 total exact). Production
+  Merkado migration remains paused.
 - v3 is intentionally compact: the model emits only attributes it actually
   found (sparse `attributes[]`, capped string/array lengths) instead of a
   fixed 16-key `features` object — the main cause of structured-output
