@@ -34,12 +34,12 @@ test("run-all ready filter excludes partial and blocked sources", () => {
   assert.match(readiness, /readiness: "blocked"/);
   assert.match(readiness, /allowsFullRefresh: false/);
   assert.match(readiness, /adapterVersion: "0\.4\.1"/);
-  assert.match(readiness, /initial AI backfill is separate/);
+  assert.match(readiness, /Terra-v3 initial backfill complete \(220\/220\)/);
   assert.doesNotMatch(
     readiness,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(readiness, /requires approval/);
+  assert.match(readiness, /requires separate approval/);
   // Ready sources include KW, RE/MAX, Moret, and Monumentenzorg; blocked remain excluded.
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);

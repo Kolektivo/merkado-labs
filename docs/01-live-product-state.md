@@ -1,7 +1,7 @@
 # 01 - Merkado Live Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 17, 2026
+**Last updated:** July 20, 2026
 
 ## 1. Production today `[LIVE]`
 
@@ -101,9 +101,9 @@ Core MVP rules:
 
 ## 4. Not built yet
 
-- Production-ready adapters for all five sources (KW's live-crawl adapter still
-  has incomplete pagination — its 84-listing catalog came from an offline
-  Stage-3 import, not a live crawl; Moret/Monumentenzorg/Sotheby's incomplete)
+- Production-ready live-crawl adapters for all five sources (KW/Moret/
+  Monumentenzorg catalogs were activated from verified offline complete-catalog
+  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED)
 - Direct-source scheduled ingestion
 - Public property browse/detail UI on `merkado.cw` (Labs `/browse` preview exists)
 - Reliable multi-source property entity resolution

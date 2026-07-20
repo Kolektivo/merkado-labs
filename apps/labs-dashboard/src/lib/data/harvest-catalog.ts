@@ -25,7 +25,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     ],
     status: "manual",
     notes:
-      "Complete manual catalog imported (v0.4). Rich evidence + description refresh 2026-07-17. Scheduling remains disabled.",
+      "Complete manual catalog imported (v0.4.1). 220 listings; 119 public eligible; coordinates 199/220; Terra-v3 initial backfill complete (220/220). Scheduling remains disabled.",
   },
   {
     id: "keller-williams-manual",

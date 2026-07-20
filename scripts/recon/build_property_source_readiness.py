@@ -154,8 +154,10 @@ def main() -> int:
 
         if key == "keller_williams_curacao":
             catalog_completeness = "activated_manual_full_catalog_84"
-            safest_next = "Keep KW manual; no further paid batch unless remaining failures"
-            known_gaps = ["Manual only; not scheduled"]
+            safest_next = (
+                "Keep KW Ready and manual/unscheduled; Refresh & enrich = new/changed only"
+            )
+            known_gaps = ["Manual only; not scheduled", "Live-crawl pagination still incomplete"]
         elif key == "remax_curacao":
             catalog_completeness = (
                 "complete_manual_adapter_220"
@@ -163,44 +165,47 @@ def main() -> int:
                 else f"labs_rows_{len(listings)}"
             )
             safest_next = (
-                "RE/MAX enrichment preparation (no scrape/import/AI in this track yet)"
+                "Keep RE/MAX Ready and manual/unscheduled; Refresh & enrich = new/changed only"
             )
             known_gaps = [
-                "Historical AI used gpt-4.1-mini — not comparable to Terra v3",
-                "Prepare compact-schema cost preflight before any Terra batch",
+                "Coordinates 199/220 (21 still missing)",
+                "Historical gpt-4.1-mini v1 proposals not comparable to Terra v3",
             ]
         elif key == "moret_real_estate":
             catalog_completeness = "complete_activated_71"
             safest_next = (
-                "Normal refresh = new/changed only; next source track = "
-                "Monumentenzorg reconnaissance"
+                "Keep Moret Ready and manual/unscheduled; Refresh & enrich = new/changed only"
             )
             known_gaps = [
                 "Terra-v3 initial backfill complete (71/71)",
                 "Manual/unscheduled only",
             ]
         elif key == "monumentenzorg_curacao":
-            blocked_reason = (
-                "Reconnaissance required. Official public pages are reachable again; "
-                "completeness must be reverified."
-            )
-            catalog_completeness = "reconnaissance_required"
+            catalog_completeness = "complete_activated_5"
             safest_next = (
-                "Reconnaissance task: reverify public catalog completeness "
-                "(do not scrape until approved)"
+                "Keep Monumentenzorg Ready and manual/unscheduled; "
+                "Refresh & enrich = new/changed only"
             )
-            known_gaps = ["Not Ready", "Completeness must be reverified"]
+            known_gaps = [
+                "Coordinates 0/5 (source has none)",
+                "Public eligible 2/5 (sold + missing_price exclusions)",
+                "Manual/unscheduled only",
+            ]
         elif key == "sothebys_curacao":
             blocked_reason = (
-                "Access route under investigation. Official/network inventory exists but "
-                "automated access still requires an approved public route/feed."
+                "BLOCKED 2026-07-20: affiliate TLS broken; network HTTP 202 WAF; "
+                "app.sir.com office shell has no catalog. Official feed/API required."
             )
             catalog_completeness = "access_route_under_investigation"
             safest_next = (
-                "Access-route reconnaissance: confirm approved public route/feed "
-                "(no WAF bypass)"
+                "Official affiliate feed/export or Anywhere partner API with written "
+                "approval (no WAF bypass)"
             )
-            known_gaps = ["Not Ready", "No approved automated access route yet"]
+            known_gaps = [
+                "Not Ready / BLOCKED",
+                "No imported listings",
+                "No approved automated access route",
+            ]
 
         if not adapter:
             known_gaps.append("Adapter file not found in repository")
@@ -266,21 +271,20 @@ def main() -> int:
             }
         )
 
-    # Recommend only one next track after KW
     recommendation = {
-        "recommended_track": "remax_enrichment_preparation",
+        "recommended_track": "property_labs_ready_with_sothebys_blocked",
         "rationale": (
-            "RE/MAX already has a complete 220-listing manual catalog with strong "
-            "field coverage. Preparing Terra enrichment (cost preflight, selection, "
-            "compact schema) is the highest-leverage next step. Moret still needs "
-            "catalog/parser completion before any larger import or AI."
+            "KW, RE/MAX, Moret, and Monumentenzorg are Ready with complete Terra-v3 "
+            "coverage and remain manual/unscheduled. Sotheby's access route is BLOCKED "
+            "pending an official feed/export or partner API. A blocked source is a "
+            "valid final state — do not attempt WAF bypass or browser automation."
         ),
         "do_not_begin": [
-            "moret_catalog_and_parser_in_parallel",
-            "remax_live_scrape",
-            "remax_ai_calls",
-            "moret_ai_calls",
-            "blocked_source_workarounds",
+            "sothebys_waf_bypass",
+            "sothebys_browser_automation",
+            "scheduled_ingestion",
+            "production_deploy",
+            "automatic_property_asset_merge",
         ],
     }
 

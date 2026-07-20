@@ -66,7 +66,7 @@ conflicts, weak evidence, or new-attribute taxonomy); public RLS verified.
 | Avoided claim | Correct description |
 |---|---|
 | Property marketplace is live | Property is Labs/WIP; cars are live |
-| Five direct scrapers are running | Five adapters are approved and under development |
+| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg) are manual/unscheduled; Sotheby's remains BLOCKED |
 | Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
 | Sold price is known | Last known asking price may be known; sale price is not confirmed |
 | Removed means sold | Removed means absent from the source after confirmation |
