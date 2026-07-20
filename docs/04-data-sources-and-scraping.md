@@ -7,10 +7,10 @@
 | Source key | Display name | Status |
 |---|---|---|
 | `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.0; 84-listing complete catalog; 84/84 successful Terra v3 proposals (manual/unscheduled) |
-| `sothebys_curacao` | Sotheby's International Realty | [PLANNED][RISK] HTTP 202/WAF; skeleton only |
+| `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route under investigation; not Ready |
 | `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
-| `moret_real_estate` | Moret Real Estate | [LABS][WIP] v0.1 WPEstate; 5 bounded listings |
-| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [RISK] SSL expired / DNS fail; fixture parser only |
+| `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
+| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [RISK] Reconnaissance required; not Ready |
 
 Confirm the exact domain, listing index, detail paths, robots rules, and terms note before implementing each adapter.
 
@@ -51,7 +51,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | AI / refresh policy | Normal `Refresh & enrich` = new/changed only (ceiling USD 0.75). Initial Terra backfill was a separately approved one-time action (ceiling USD 10; completed 2026-07-20). Coordinate-only import must not rebill all 220. |
 | Terra-v3 initial backfill | Selection **211** + **9** already current; job `remax_remaining_terra_backfill` **211/211** succeeded; gross ≈ **USD 6.67**; coverage **220/220**; see `data/processed/remax_activation_final_report.*` |
 | Verdict | **v0.4.1 active** + Terra-v3 initial backfill **complete**; remains manual/unscheduled |
-| Next gated action | Optional live Refresh & enrich (new/changed only). Next source-development track: **Moret** — not auto-started |
+| Next gated action | Monumentenzorg reconnaissance (not Ready); normal refresh = new/changed only |
 
 ### Keller Williams Curaçao (`keller_williams_curacao`) — [LABS] 2026-07-17
 
@@ -79,37 +79,42 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Scheduling | **Off** — manual only; AI enrichment also unscheduled |
 | Production claims | Labs research only — no production property marketplace claims |
 
-### Moret Real Estate (`moret_real_estate`) — [LABS][WIP] 2026-07-17
+### Moret Real Estate (`moret_real_estate`) — [LABS] 2026-07-20
 
 | Item | Value |
 |---|---|
 | Domain | `https://moretrealestate.com` (WPEstate) |
-| Index | `/properties/` (+ pagination `/properties/page/{n}/`) |
-| External ID | `post-{wordpress_post_id}` when present |
-| Bilingual | Canonicalize `/en|nl/properties/` → `/properties/` |
-| Price | Prefer `price_area`; flag `vanaf`/from prices; rent inferred when low/“te huur” |
-| Adapter | `moret_real_estate.py` **v0.1.1**; CLI `scripts/adapters/run_moret_real_estate.py` |
-| Images | prettyPhoto gallery `href`s (full-size); `og:image` fallback; skip site logos / related cards |
-| Labs import | Bounded **5** listings + evidence; scheduling off |
-| Notes | Some prices use global fallback — tighten price_area selectors before full catalog |
+| Robots | Allows `/properties/`; empty `Disallow:`; sitemap index present; effective delay **2s** |
+| Index | Canonical Dutch `/properties/` with `rel=next` + `/properties/page/{n}/` |
+| Catalog | **71** unique Dutch archive listings (8 index pages; pagination termination `no_next_page`) |
+| External ID | `post-{wordpress_post_id}` (Dutch page). WPML English mirrors use distinct post IDs — treat as aliases, do not double-import |
+| Bilingual | Prefer Dutch `/properties/{slug}/`; record EN switcher URLs as aliases |
+| Price | Prefer nested-aware `price_area` (incl. `635.000 euro`); labelled Prijs; reject global/footer amounts |
+| Sale/rent | Explicit category / phrase evidence only (no low-price sole classifier) |
+| Status | Explicit sold/rented/under-contract/reserved; page load alone does not force active beyond listing body |
+| Adapter | `moret_real_estate.py` **v0.2.0**; CLI `scripts/adapters/run_moret_real_estate.py` |
+| Images | prettyPhoto gallery `href`s; `og:image` fallback; skip logos / agent / related cards |
+| Labs import | **Activated 2026-07-20** — offline `--import-from-file` (66 insert / 5 update); first complete baseline; public eligible **71**; coords **71/71**; evidence private `listing-raw-evidence` |
+| AI | Terra-v3 initial backfill **complete**: canary **5/5** (~USD 0.1165) + remaining **66/66** (~USD 1.8259 / ceiling 2.40); coverage **71/71**; cumulative ~USD 1.94; public effective attributes on Browse/Passport |
+| Scheduling | Manual / unscheduled; normal Refresh & enrich = new/changed only |
+| Artifact | `data/processed/moret_complete_catalog.json` (`complete_catalog=true`; checksum `386cbe65…`); final report `moret_activation_final_report.*` |
 
 ### Adapter status — July 2026
 
 - [LABS] **RE/MAX**: complete manual catalog; **adapter v0.4.1 active** (199/220 coords); Terra-v3 initial backfill complete (**220/220**); remains manual/unscheduled.
 - [LABS] **Keller Williams**: adapter v0.3.0; complete 84-listing catalog imported offline; Terra v3 auto-enrichment activated, 84/84 successful proposals (manual/unscheduled).
-- [LABS][WIP] **Moret**: WPEstate parser + 5 bounded imports; expand after price QA.
-- [RISK] **Monumentenzorg**: SSL certificate expired on `monumentenzorg.cw`; alt DNS failed; fixture-only parser.
-- [PLANNED][RISK] **Sotheby's**: robots/search/sitemap HTTP 202 (WAF); no browser automation.
+- [LABS] **Moret**: adapter v0.2.0; first complete catalog activated (71); Terra-v3 initial backfill complete (**71/71**); manual/unscheduled.
+- [RISK] **Monumentenzorg**: Reconnaissance required — official public pages reachable again; completeness must be reverified. Not Ready.
+- [PLANNED] **Sotheby's**: Access route under investigation — official/network inventory exists but automated access still requires an approved public route/feed. Not Ready.
 
 ### Source readiness matrix and next track
 
 `data/processed/property_source_readiness.md` is a read-only audit (no
 scrapes, imports, or AI calls) comparing listings/public-eligible/AI
-proposals/catalog maturity per source. RE/MAX v0.4.1 preflight artifacts are
-in `data/processed/remax_v041_*` and `remax_pipeline_preflight.*`. Next gated
-step (completed): **controlled offline v0.4.1 import** + Terra-v3 initial backfill.
-Normal Refresh & enrich enriches new/changed only; initial backfill was
-separately approved. Moret still needs catalog/parser completion. KW remains
+proposals/catalog maturity per source. Moret v0.2.0 activation + Terra-v3
+initial backfill completed 2026-07-20. Next active source task:
+**Monumentenzorg reconnaissance**. Sotheby's remains access-route investigation.
+Normal Refresh & enrich enriches new/changed only. KW/RE/MAX/Moret remain
 manual and unscheduled.
 
 ## 2. CHH removal rule

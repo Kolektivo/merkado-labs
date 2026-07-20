@@ -24,7 +24,7 @@ def test_ready_sources_exclude_partial_and_blocked() -> None:
     ready = ready_source_keys()
     assert "keller_williams_curacao" in ready
     assert "remax_curacao" in ready
-    assert "moret_real_estate" not in ready
+    assert "moret_real_estate" in ready
     assert "monumentenzorg_curacao" not in ready
     assert "sothebys_curacao" not in ready
     assert filter_run_all_ready() == ready
@@ -33,8 +33,7 @@ def test_ready_sources_exclude_partial_and_blocked() -> None:
 def test_blocked_and_partial_cannot_full_refresh() -> None:
     with pytest.raises(PermissionError, match="blocked"):
         assert_can_enqueue_full_refresh("sothebys_curacao")
-    with pytest.raises(PermissionError, match="partial"):
-        assert_can_enqueue_full_refresh("moret_real_estate")
+    assert assert_can_enqueue_full_refresh("moret_real_estate").allows_full_refresh
     assert assert_can_enqueue_full_refresh("keller_williams_curacao").allows_full_refresh
 
 
@@ -276,7 +275,44 @@ def test_run_all_ready_filters_sources() -> None:
             "remax_curacao",
         ]
     )
-    assert keys == ["keller_williams_curacao", "remax_curacao"]
+    assert keys == [
+        "keller_williams_curacao",
+        "moret_real_estate",
+        "remax_curacao",
+    ]
+
+
+def test_moret_ready_after_v020_catalog_proof() -> None:
+    info = resolve_source_readiness("moret_real_estate")
+    assert info.readiness == "ready"
+    assert info.adapter_version == "0.2.0"
+    assert info.listing_count_expected == 71
+    assert info.catalog_status == "complete"
+    assert info.allows_full_refresh is True
+    assert info.primary_action == "Refresh & enrich"
+    assert info.current_issue is not None
+    issue = info.current_issue.lower()
+    assert "first complete catalog" in issue
+    assert "71" in info.current_issue
+    assert "backfill" in issue
+    assert "new/changed" in issue
+
+
+def test_monumentenzorg_and_sothebys_wording_not_ready() -> None:
+    mon = resolve_source_readiness("monumentenzorg_curacao")
+    sot = resolve_source_readiness("sothebys_curacao")
+    assert mon.readiness == "blocked"
+    assert sot.readiness == "blocked"
+    assert mon.primary_action == "Blocked"
+    assert sot.primary_action == "Blocked"
+    assert mon.allows_full_refresh is False
+    assert sot.allows_full_refresh is False
+    assert mon.catalog_status == "reconnaissance_required"
+    assert sot.catalog_status == "access_route_under_investigation"
+    assert "Reconnaissance required" in (mon.current_issue or "")
+    assert "Access route under investigation" in (sot.current_issue or "")
+    assert "reachable again" in (mon.current_issue or "").lower()
+    assert "approved public route" in (sot.current_issue or "").lower()
 
 
 def test_remax_ready_after_v041_activation() -> None:

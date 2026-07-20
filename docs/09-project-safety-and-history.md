@@ -103,7 +103,7 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   no scrapes, imports, or AI calls). Recommended next track: **RE/MAX
   enrichment preparation** (cost preflight, selection, compact v3 schema) —
   RE/MAX already has a complete 220-listing manual catalog with strong
-  field coverage; Moret still needs catalog/parser completion before any
+  field coverage; Moret v0.2.0 complete catalog verified 2026-07-20 before any
   larger import or AI.
 - KW remains **manual and unscheduled**. No production access, deploy,
   commit, or push.
@@ -141,7 +141,54 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 - Normal Refresh & enrich remains new/changed only; initial backfill stays a
   separate approved action. No live RE/MAX scrape/import/refresh, schedules,
   migrations, deploy, commit, or push. RE/MAX remains **manual and unscheduled**.
-  Next source-development track: **Moret**.
+  Next source-development track: **Moret** (completed catalog proof below).
+
+### July 20, 2026 - Moret Real Estate complete-catalog verification
+
+- Adapter **v0.2.0**: Dutch `/properties/` pagination (8 pages, `rel=next` /
+  `/page/{n}/`), termination `no_next_page`, **71/71** detail dry-run success.
+- Robots allow properties; delay policy 2s; sequential; repository HTTP cache.
+- Identity: WordPress post ID; WPML English mirrors are aliases (distinct post
+  IDs) and must not double-import; sitemap ~190 paths vs 71 Dutch archive URLs.
+- Price: nested `price_area` including amount-then-`euro`; no global fallback
+  for import eligibility. Currencies observed: XCG/USD/EUR; 5 from-price.
+- Sale/rent from category evidence (34 sale / 37 rent). All archive rows active.
+- Catalog proof artifacts under `data/processed/moret_*` (checksum `386cbe65…`).
+
+### July 20, 2026 - Moret Real Estate v0.2.0 activation + Terra canary
+
+- Offline-imported verified `moret_complete_catalog.json` into Labs only
+  (`csaefdkpwukshtouyixg`): **66** inserts / **5** updates; first complete
+  baseline; **0** missing/removed events; coords **71/71**; public eligible **71**.
+- Private evidence uploads to `listing-raw-evidence` (66 new + 5 already present);
+  zero website requests; geospatial neighbourhood assignment applied.
+- Terra-v3 canary exactly five IDs (`post-75682`, `post-75725`, `post-74976`,
+  `post-75799`, `post-74710`): **5/5** processed; exact cost **USD 0.1165** under
+  USD 0.25; protected fields intact; 1 listing exception-based attention.
+- Remaining 66-listing Terra backfill prepared (recommended ceiling ~USD 2.40),
+  then executed the same day (see below). Idempotency after canary: re-import
+  preview 0 inserts / 71 no-change; canaries skip unchanged.
+- Monumentenzorg wording → **Reconnaissance required** (not Ready).
+  Sotheby's wording → **Access route under investigation** (not Ready).
+- Moret remains **manual/unscheduled**.
+
+### July 20, 2026 - Moret remaining Terra-v3 initial backfill
+
+- One-time GPT-5.6 Terra backfill for the **66** Moret listings without a matching
+  successful Terra-v3 proposal (`csaefdkpwukshtouyixg` only). Excluded the five
+  successful canaries. Job `moret_remaining_terra_backfill`: **66/66** processed,
+  **0** failed; exact cost **USD 1.8259** under USD 2.40; max output tokens 3500.
+- Coverage: **71/71** Moret listings now have current Terra-v3
+  (`listing_enrichment_v3` / `listing_enrichment_schema_v3` /
+  `enrichment_policy_v3`). Cumulative canary+backfill ≈ **USD 1.94**. Auto-applied
+  **126** fields in the remaining batch; **32** listings with exception-based
+  attention. Protected source facts unchanged. Public Browse/Passport consumes
+  effective attributes (71 public; allowlisted only).
+- Idempotency dry-run on all 71: **0** billable, USD 0, no OpenAI calls. No retry
+  batch. Normal Refresh & enrich remains new/changed only. No live Moret
+  scrape/import/refresh, other-source network, pipeline enqueue, schedule,
+  migration, deploy, commit, or push. Moret remains **manual and unscheduled**.
+  Next active source task: **Monumentenzorg reconnaissance**.
 
 ### July 20, 2026 - RE/MAX v0.4.1 activation + five-listing semantic refresh
 
@@ -220,8 +267,10 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 - AI gated batch: job `f06f994b-…`, model `gpt-4.1-mini`, **25/25 succeeded**,
   0 failed; tokens in 66845 / out 24992 / total 91837; ~**$0.067** actual vs
   ~$0.046 planning estimate; proposals unreviewed; did **not** run all 220.
-- Monumentenzorg recon: SSL expired / DNS fail; fixture parser only.
-- Sotheby's recon: HTTP 202 on robots/search/sitemap (WAF); no bypass.
+- Monumentenzorg: Reconnaissance required (public pages reachable again;
+  completeness must be reverified). Not Ready.
+- Sotheby's: Access route under investigation (approved public route/feed
+  still required). Not Ready.
 - Demo Search Request `4ec62242-…` + test Agent entitlement + **15** Match Reports.
 - Tests: 95 passed; dashboard typecheck clean.
 

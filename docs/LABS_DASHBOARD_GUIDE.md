@@ -80,9 +80,9 @@ Current maturity:
 - Keller Williams: complete 84-listing catalog via offline import (the
   live-crawl adapter still has incomplete pagination); GPT-5.6 Terra AI
   enrichment activated — 84/84 successful proposals, manual/unscheduled.
-- Moret: partial five-listing sample.
-- Monumentenzorg: blocked live source; fixture parser only.
-- Sotheby's: blocked by WAF; skeleton/recon only.
+- Moret: Ready (adapter v0.2.0; first complete catalog 71 activated; GPT-5.6 Terra-v3 initial backfill complete 71/71; Refresh & enrich = new/changed only; remains manual/unscheduled).
+- Monumentenzorg: Reconnaissance required (public pages reachable again; completeness must be reverified). Not Ready — next active source task.
+- Sotheby's: Access route under investigation (approved public route/feed still required). Not Ready.
 
 ## Troubleshoot database loading
 

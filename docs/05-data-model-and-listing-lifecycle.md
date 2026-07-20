@@ -50,6 +50,14 @@ Applied forward migrations for the direct-source MVP foundation:
 `complete_catalog=true`, and no `bounded` / `max_items` / `max_pages` / `truncated` flags.
 Adapters must classify source-neutrally via `classify_run_outcome`.
 
+Moret (`moret_real_estate`) v0.2.0: first complete catalog is the Dutch
+`/properties/` archive (71). A prior five-listing bounded sample must not drive
+missing/removed for listings never included in a previous complete catalog.
+WPML English mirrors have distinct WordPress post IDs and merge via alias
+metadata — they are not separate source listings. Terra-v3 initial backfill is
+complete (**71/71** current results); normal Refresh & enrich remains
+new/changed only and must not re-run the one-time backfill.
+
 ## 2. Public eligibility
 
 A listing may appear publicly only when all are true:

@@ -805,10 +805,37 @@ def process_enrichment_job(
                 worst_note
                 or f"Unable to estimate worst-case cost for model {model_name!r}"
             )
-        # Absolute max-output * N can exceed an approved large-batch ceiling even
-        # when the expected run is under budget. Mid-run enforcement below still
-        # stops before any call that would exceed the remaining ceiling.
-        observed_avg = 0.035 if billable_count > 20 else None
+        # Absolute max-output * N can exceed an approved large-batch / canary
+        # ceiling even when the expected run is under budget. Mid-run
+        # enforcement below still stops before any call that would exceed the
+        # remaining ceiling.
+        job_meta = (
+            client.table("ai_enrichment_jobs")
+            .select("scope_filter,requested_by")
+            .eq("id", job_id)
+            .limit(1)
+            .execute()
+            .data
+            or [{}]
+        )[0]
+        scope_filter = job_meta.get("scope_filter") or {}
+        approved_canary = bool(scope_filter.get("canary"))
+        source_key = str(scope_filter.get("source_key") or "")
+        if billable_count > 20 and source_key == "moret_real_estate":
+            # Observed Moret Terra canary average (5/5 @ USD 0.1165).
+            observed_avg = 0.0233
+        elif billable_count > 20 and source_key == "remax_curacao":
+            observed_avg = 0.035
+        elif billable_count > 20:
+            observed_avg = 0.035
+        elif approved_canary and source_key == "moret_real_estate":
+            observed_avg = 0.0233
+        elif approved_canary and source_key == "remax_curacao":
+            observed_avg = 0.035
+        elif approved_canary:
+            observed_avg = 0.03956
+        else:
+            observed_avg = None
         if observed_avg is not None:
             gate_cost = round(observed_avg * billable_count * 1.25, 4)
         else:

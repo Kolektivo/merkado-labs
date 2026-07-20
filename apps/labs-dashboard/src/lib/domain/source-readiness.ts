@@ -76,14 +76,15 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
   {
     sourceKey: "moret_real_estate",
     displayName: "Moret Real Estate",
-    adapterVersion: "0.1.1",
-    readiness: "partial",
-    listingCountExpected: 5,
-    catalogStatus: "bounded_sample",
-    currentIssue: "Only a five-listing sample is proven; the full catalog is not ready.",
-    primaryAction: "Continue setup",
+    adapterVersion: "0.2.0",
+    readiness: "ready",
+    listingCountExpected: 71,
+    catalogStatus: "complete",
+    currentIssue:
+      "First complete catalog established (71). Terra-v3 initial backfill complete (71/71). Normal Refresh & enrich remains new/changed only. Manual/unscheduled.",
+    primaryAction: "Refresh & enrich",
     blockerKind: null,
-    allowsFullRefresh: false,
+    allowsFullRefresh: true,
   },
   {
     sourceKey: "monumentenzorg_curacao",
@@ -91,10 +92,11 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     adapterVersion: "0.1.1",
     readiness: "blocked",
     listingCountExpected: null,
-    catalogStatus: "blocked",
-    currentIssue: "The website connection is unavailable. An official feed or partner access is needed.",
+    catalogStatus: "reconnaissance_required",
+    currentIssue:
+      "Reconnaissance required. Official public pages are reachable again; completeness must be reverified.",
     primaryAction: "Blocked",
-    blockerKind: "ssl_dns_failure",
+    blockerKind: "access_unavailable",
     allowsFullRefresh: false,
   },
   {
@@ -103,10 +105,11 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     adapterVersion: "0.1.1",
     readiness: "blocked",
     listingCountExpected: null,
-    catalogStatus: "blocked",
-    currentIssue: "The website blocks automated access. An approved data feed is needed.",
+    catalogStatus: "access_route_under_investigation",
+    currentIssue:
+      "Access route under investigation. Official/network inventory exists but automated access still requires an approved public route/feed.",
     primaryAction: "Blocked",
-    blockerKind: "waf_restriction",
+    blockerKind: "access_unavailable",
     allowsFullRefresh: false,
   },
 ];

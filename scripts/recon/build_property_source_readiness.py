@@ -170,23 +170,37 @@ def main() -> int:
                 "Prepare compact-schema cost preflight before any Terra batch",
             ]
         elif key == "moret_real_estate":
-            catalog_completeness = "partial_sample_5"
-            safest_next = "Finish Moret catalog/parser before any larger import"
+            catalog_completeness = "complete_activated_71"
+            safest_next = (
+                "Normal refresh = new/changed only; next source track = "
+                "Monumentenzorg reconnaissance"
+            )
             known_gaps = [
-                "Pagination/catalog completeness unverified",
-                "Local adapter changes in progress — do not overwrite",
-                "Price selector reliability needs confirmation",
+                "Terra-v3 initial backfill complete (71/71)",
+                "Manual/unscheduled only",
             ]
         elif key == "monumentenzorg_curacao":
-            blocked_reason = "Blocked / fixture-only; no live scrape approved"
-            catalog_completeness = "blocked_fixture"
-            safest_next = "Obtain official feed/export/API evidence before adapter work"
-            known_gaps = ["SSL/WAF/access controls — do not bypass"]
+            blocked_reason = (
+                "Reconnaissance required. Official public pages are reachable again; "
+                "completeness must be reverified."
+            )
+            catalog_completeness = "reconnaissance_required"
+            safest_next = (
+                "Reconnaissance task: reverify public catalog completeness "
+                "(do not scrape until approved)"
+            )
+            known_gaps = ["Not Ready", "Completeness must be reverified"]
         elif key == "sothebys_curacao":
-            blocked_reason = "Blocked / skeleton adapter; no live scrape approved"
-            catalog_completeness = "blocked_skeleton"
-            safest_next = "Obtain official feed/export/API evidence before adapter work"
-            known_gaps = ["Access controls — do not bypass"]
+            blocked_reason = (
+                "Access route under investigation. Official/network inventory exists but "
+                "automated access still requires an approved public route/feed."
+            )
+            catalog_completeness = "access_route_under_investigation"
+            safest_next = (
+                "Access-route reconnaissance: confirm approved public route/feed "
+                "(no WAF bypass)"
+            )
+            known_gaps = ["Not Ready", "No approved automated access route yet"]
 
         if not adapter:
             known_gaps.append("Adapter file not found in repository")

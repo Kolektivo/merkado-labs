@@ -58,7 +58,8 @@ export const HARVEST_JOBS: HarvestJob[] = [
     workflowPath: null,
     pipeline: ["Reconnaissance", "Feed/sitemap/API check", "No browser automation"],
     status: "planned",
-    notes: "HTTP 202/WAF on robots/search/sitemap (2026-07-17). No browser automation.",
+    notes:
+      "Access route under investigation. Official/network inventory exists but automated access still requires an approved public route/feed. Not Ready. No browser automation.",
   },
   {
     id: "moret-manual",
@@ -70,13 +71,15 @@ export const HARVEST_JOBS: HarvestJob[] = [
     runner: "Local Python (merkado_labs.scrapers.adapters.moret_real_estate)",
     workflowPath: null,
     pipeline: [
-      "WPEstate index discovery",
-      "Canonicalize bilingual URLs",
-      "Deterministic parse + fixtures",
-      "Bounded Labs import",
+      "WPEstate /properties/ pagination discovery (rel=next + page/N)",
+      "Prefer Dutch canonical URLs; WPML EN mirrors are aliases",
+      "Deterministic detail parse (post ID, price_area, status, fields)",
+      "Complete-catalog offline import establishes baseline",
+      "Lifecycle absence only after successful complete catalog",
     ],
     status: "manual",
-    notes: "v0.1. Bounded 5-listing Labs import 2026-07-17. Expand after price_area QA.",
+    notes:
+      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (71), offline import 66 insert / 5 update, public eligible 71, Terra-v3 initial backfill complete (71/71). Normal refresh = new/changed only. Scheduling remains disabled.",
   },
   {
     id: "monumentenzorg-planned",
@@ -85,11 +88,12 @@ export const HARVEST_JOBS: HarvestJob[] = [
     schedule: "Not scheduled",
     cron: null,
     timezone: "UTC",
-    runner: "Fixture parser only (live blocked)",
+    runner: "Fixture parser only (reconnaissance required)",
     workflowPath: null,
     pipeline: ["Confirm listing scope", "ANG/XCG handling", "Fixtures", "Parser"],
     status: "planned",
-    notes: "SSL expired on monumentenzorg.cw; alt DNS failed. Partner access needed.",
+    notes:
+      "Reconnaissance required. Official public pages are reachable again; completeness must be reverified. Not Ready.",
   },
 ];
 
