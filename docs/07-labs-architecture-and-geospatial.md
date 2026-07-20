@@ -123,6 +123,36 @@ Rejected proposals never appear in the attention queue.
   other projects) cannot be reconstructed from Labs data alone; see
   `data/processed/ai_usage_reconciliation.md` for the gap analysis.
 
+### Public-effective data contract (Browse / Passport)
+
+Public product values come from, in order:
+
+1. Explicit source facts
+2. Safe deterministic normalized values
+3. Effective map / neighbourhood values
+4. Automatically applied, evidence-grounded AI attributes (`auto_apply` only)
+
+Raw AI proposals, rejected / needs-attention suggestions, confidence scores,
+evidence snippets, prompt/schema/policy metadata, internal IDs, checksums,
+token usage, AI costs, and private HTML must never appear on `/browse`.
+
+**Public attribute allowlist:** pool (+ subtype when known), furnished,
+parking, parking spaces, garage, gated community, air conditioning, garden,
+terrace, balcony, sea view, solar panels, generator, water heater, security,
+appliances, accessibility, pet suitability.
+
+**Effective neighbourhood priority** (one final value; never generic Curaçao):
+
+1. Specific valid source neighbourhood → provenance `From source`
+2. Valid point-in-polygon map neighbourhood → `Matched from map`
+3. High-confidence grounded AI candidate only when source/map cannot provide
+   one → `Extracted from listing text`
+4. Otherwise unavailable
+
+Migration `20260720140000_public_property_listings_effective.sql` replaces the
+public view with this projection (owner security definer; SELECT-only grants).
+Apply only after review — not part of automatic deploy.
+
 ### Security model (Labs read access)
 
 - Anon/authenticated: **SELECT only** on `public_property_listings` (and neighbourhoods).
@@ -130,7 +160,8 @@ Rejected proposals never appear in the attention queue.
   AI tables, search/agent/match tables, or raw evidence.
 - Labs dashboard internal queries use server-side service-role client.
 - Public view uses `security_invoker=false` so the projection is readable without
-  granting underlying table SELECT.
+  granting underlying table SELECT. The effective view joins AI proposals as
+  owner and projects only public-safe JSON fields.
 - Internal pages redirect to `/login` unless the signed, httpOnly Labs admin
   session cookie is valid. Admin APIs accept the cookie only after login; the
   shared secret is not accepted repeatedly by normal API calls.

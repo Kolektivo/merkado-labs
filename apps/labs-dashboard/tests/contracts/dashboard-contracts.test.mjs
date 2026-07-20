@@ -10,10 +10,25 @@ test("public listing queries use only the safe view and anon client", () => {
   const publicQueries = source("src/lib/data/public-listings.ts");
   assert.match(publicQueries, /createReadOnlySupabaseClient/);
   assert.match(publicQueries, /\.from\("public_property_listings"\)/);
+  assert.match(publicQueries, /effective_neighbourhood|PUBLIC_SELECT_BASIC/);
+  assert.match(publicQueries, /normalizePublicAttributes|publicAttributes/);
   assert.doesNotMatch(
     publicQueries,
-    /createLabsAdminClient|\.from\("property_listings"\)/,
+    /createLabsAdminClient|\.from\("property_listings"\)|\.from\("ai_enrichment_proposals"\)/,
   );
+});
+
+test("public browse and passport use effective public fields without AI internals", () => {
+  const browse = source("src/app/browse/page.tsx");
+  const passport = source("src/app/browse/[id]/page.tsx");
+  assert.match(browse, /effectiveNeighbourhood/);
+  assert.match(browse, /minPrice/);
+  assert.match(browse, /benchmarkPriceXcg/);
+  assert.match(passport, /Property features/);
+  assert.match(passport, /Source description/);
+  assert.match(passport, /effectiveSummary|Concise listing summary/);
+  assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
+  assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
 });
 
 test("internal routes use one signed-cookie proxy gate", () => {
@@ -140,4 +155,25 @@ test("prototype and server-only configuration boundaries stay explicit", () => {
   assert.match(admin, /import "server-only"/);
   assert.match(config, /csaefdkpwukshtouyixg/);
   assert.doesNotMatch(admin, /NEXT_PUBLIC_SUPABASE_SERVICE|NEXT_PUBLIC_SUPABASE_SECRET/);
+});
+
+test("public-effective migration projects allowlisted fields only", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../../../supabase/migrations/20260720140000_public_property_listings_effective.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /effective_neighbourhood/);
+  assert.match(migration, /public_attributes/);
+  assert.match(migration, /grant select on table public\.public_property_listings/);
+  assert.match(migration, /revoke all on table public\.public_property_listings/);
+  assert.match(migration, /security_invoker = false/);
+  assert.match(migration, /listing_enrichment_v3/);
+  assert.match(migration, /distinct on \(pl\.id\)/);
+  assert.match(migration, /distinct on \(canon_key\)/);
+  assert.doesNotMatch(migration, /supporting_evidence/);
+  assert.doesNotMatch(migration, /token_usage/);
+  assert.doesNotMatch(migration, /cost_usd/);
 });

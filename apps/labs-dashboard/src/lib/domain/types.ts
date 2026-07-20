@@ -157,6 +157,23 @@ export type PropertyListing = {
   coordinateQuality: CoordinateQuality;
 };
 
+export type PublicAttributeValueType = "boolean" | "number" | "text" | "enum";
+
+/** Consumer-safe attribute shown on Browse / Passport (no confidence/evidence). */
+export type PublicListingAttribute = {
+  key: string;
+  displayLabel: string;
+  value: boolean | number | string;
+  valueType: PublicAttributeValueType;
+  subtype?: string | null;
+};
+
+export type PublicNeighbourhoodProvenance =
+  | "source"
+  | "map"
+  | "ai_extracted"
+  | "unavailable";
+
 export type PublicPropertyListing = {
   id: string;
   externalId: string;
@@ -184,6 +201,16 @@ export type PublicPropertyListing = {
   sourceListedAt: string | null;
   sourceKey: string;
   sourceDisplayName: string;
+  /** Final neighbourhood for cards and Passport; null when unavailable. */
+  effectiveNeighbourhood: string | null;
+  effectiveNeighbourhoodProvenance: PublicNeighbourhoodProvenance;
+  effectiveNeighbourhoodProvenanceLabel: string | null;
+  /** Source property type, else auto-applied AI fill when present. */
+  effectivePropertyType: string | null;
+  /** Allowlisted auto-applied effective attributes only. */
+  publicAttributes: PublicListingAttribute[];
+  /** Auto-applied concise summary when available; never replaces source description. */
+  effectiveSummary: string | null;
 };
 
 export type EnrichmentComparisonStatus =

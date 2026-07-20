@@ -41,7 +41,10 @@ Internal routes redirect to `/login`. Enter the local `LABS_ADMIN_SECRET` once.
 The server creates a signed, httpOnly 12-hour cookie. Use Settings to sign out.
 
 The public Browse/Passport preview does not use this cookie. It reads only the
-safe `public_property_listings` view.
+safe `public_property_listings` view (publishable Labs key). That view projects
+**final effective values** — neighbourhood, property type, and allowlisted
+auto-applied attributes — never raw AI proposals, evidence, confidence, tokens,
+or costs. The preview remains Labs-only and is not live on merkado.cw.
 
 ## Main pages
 

@@ -257,6 +257,13 @@ Admin/server only:
 - Dashboard ops mutations use a shared `LABS_ADMIN_SECRET` (not per-user Auth).
 - Publishable-key reads still see full `property_listings` inventory (Labs OS).
 - Public-safe projection is `public_property_listings` / app `/browse`.
+- The public view exposes **effective** consumer fields only:
+  `effective_neighbourhood` (+ provenance label), `effective_property_type`,
+  `public_attributes` (allowlisted `auto_applied` values), optional
+  `effective_summary`, XCG primary price, original price/currency, beds/baths/
+  areas, listing type, images, source description, first/last seen, source
+  attribution. It never exposes raw proposals, evidence, confidence, tokens,
+  costs, checksums, or private HTML.
 - Service-role credentials are server-only; never `NEXT_PUBLIC_*`.
 
 Enable RLS on every table in an exposed schema.

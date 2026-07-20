@@ -74,6 +74,9 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   expect(response?.status()).toBe(200);
   await expect(page.getByText("Experimental Labs prototype", { exact: true })).toBeVisible();
   await expect(page.getByText("RE/MAX", { exact: true }).first()).toBeVisible();
+  await expect(page.getByLabel("Buy or rent")).toBeVisible();
+  await expect(page.getByLabel("Neighbourhood")).toBeVisible();
+  await expect(page.getByLabel("Min price (XCG)")).toBeVisible();
   await expect(page.locator('a[href^="/browse/"]')).toHaveCount(205);
   await expectNoHorizontalOverflow(page, "/browse");
 
@@ -83,6 +86,8 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   expect(detailResponse?.status()).toBe(200);
   await expect(page.getByText("Experimental Labs Passport preview")).toBeVisible();
   await expect(page.getByText("Technical evidence metadata")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Source" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open original listing/i })).toBeVisible();
   await expectNoHorizontalOverflow(page, detailHref!);
   expect(errors).toEqual([]);
 });

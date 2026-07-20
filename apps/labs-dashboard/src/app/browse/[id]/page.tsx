@@ -9,19 +9,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceDisplay } from "@/components/price-display";
-import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { getPublicListingById } from "@/lib/data/public-listings";
+import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  groupPublicAttributes,
+  publicAttributeChipLabel,
+} from "@/lib/domain/public-attributes";
 import { formatDateTime, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+const FILTER_KEYS = [
+  "type",
+  "source",
+  "neighbourhood",
+  "propertyType",
+  "bedrooms",
+  "minPrice",
+  "maxPrice",
+  "furnished",
+  "gated_community",
+  "parking",
+  "air_conditioning",
+] as const;
+
 function browseBackHref(
   params: Record<string, string | string[] | undefined>,
 ) {
   const query = new URLSearchParams();
-  for (const key of ["type", "source", "bedrooms", "minPrice", "maxPrice"]) {
+  for (const key of FILTER_KEYS) {
     const raw = params[key];
     const value = Array.isArray(raw) ? raw[0] : raw;
     if (value) query.set(key, value);
@@ -49,13 +67,17 @@ export default async function PublicListingPage({
   const listing = await getPublicListingById((await params).id);
   if (!listing) notFound();
   const backHref = browseBackHref(await searchParams);
+  const featureGroups = groupPublicAttributes(listing.publicAttributes);
+  const propertyType =
+    listing.effectivePropertyType ?? listing.propertyType ?? null;
   const missingOptional = [
     listing.bedrooms == null,
     listing.bathrooms == null,
     listing.floorAreaM2 == null,
   ].filter(Boolean).length;
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 overflow-x-hidden">
       <Button variant="ghost" asChild>
         <Link href={backHref}>Back to browse</Link>
       </Button>
@@ -67,6 +89,7 @@ export default async function PublicListingPage({
           projection and is not proof of ownership, value, or sale.
         </AlertDescription>
       </Alert>
+
       <Card className="overflow-hidden py-0">
         <div className="relative h-72 bg-muted">
           {listing.primaryImageUrl ? (
@@ -82,9 +105,12 @@ export default async function PublicListingPage({
           ) : null}
         </div>
         <CardContent className="space-y-4 p-6">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge>{titleCase(listing.listingType)}</Badge>
             <Badge variant="outline">{listing.sourceDisplayName}</Badge>
+            {propertyType ? (
+              <Badge variant="secondary">{titleCase(propertyType)}</Badge>
+            ) : null}
           </div>
           <h1 className="text-2xl font-semibold">
             {listing.title ?? `Property ${listing.externalId}`}
@@ -98,6 +124,17 @@ export default async function PublicListingPage({
             size="lg"
           />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {listing.effectiveNeighbourhood ? (
+              <span className="min-w-0 max-w-full truncate">
+                {listing.effectiveNeighbourhood}
+                {listing.effectiveNeighbourhoodProvenanceLabel ? (
+                  <span className="text-xs">
+                    {" "}
+                    · {listing.effectiveNeighbourhoodProvenanceLabel}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
             {listing.bedrooms != null ? (
               <span>{listing.bedrooms} bedrooms</span>
             ) : null}
@@ -105,7 +142,13 @@ export default async function PublicListingPage({
               <span>{listing.bathrooms} bathrooms</span>
             ) : null}
             {listing.floorAreaM2 != null ? (
-              <span>{listing.floorAreaM2} m²</span>
+              <span>{listing.floorAreaM2} m² floor</span>
+            ) : null}
+            {listing.lotAreaValue != null ? (
+              <span>
+                {listing.lotAreaValue}
+                {listing.lotAreaUnit ? ` ${listing.lotAreaUnit}` : ""} lot
+              </span>
             ) : null}
           </div>
           {missingOptional > 0 ? (
@@ -117,36 +160,86 @@ export default async function PublicListingPage({
           ) : null}
         </CardContent>
       </Card>
+
+      {featureGroups.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Property features</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {featureGroups.map((group) => (
+              <section key={group.id} aria-labelledby={`features-${group.id}`}>
+                <h2
+                  id={`features-${group.id}`}
+                  className="text-sm font-medium"
+                >
+                  {group.title}
+                </h2>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {group.attributes.map((attr) => (
+                    <li key={attr.key}>
+                      <Badge variant="secondary">
+                        {publicAttributeChipLabel(attr)}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
-          <CardTitle>Property Passport preview</CardTitle>
+          <CardTitle>About this property</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {listing.effectiveSummary ? (
+            <section>
+              <h2 className="text-sm font-medium">Concise listing summary</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {listing.effectiveSummary}
+              </p>
+            </section>
+          ) : null}
           <section>
-            <h2 className="font-medium">Source data</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h2 className="text-sm font-medium">Source description</h2>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
               {listing.description ?? "Source description is not available."}
             </p>
           </section>
-          <section>
-            <h2 className="font-medium">Public activity summary</h2>
-            <div className="mt-2 space-y-2 text-sm text-muted-foreground">
-              <p>
-                First detected by Merkado:{" "}
-                {formatDateTime(listing.firstSeenAt)}
-              </p>
-              <p>
-                Last detected by Merkado:{" "}
-                {formatDateTime(listing.lastSeenAt)}
-              </p>
-              {listing.sourceListedAt ? (
-                <p>
-                  Source listing date:{" "}
-                  {formatDateTime(listing.sourceListedAt)}
-                </p>
-              ) : null}
-            </div>
-          </section>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Property activity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            First detected by Merkado: {formatDateTime(listing.firstSeenAt)}
+          </p>
+          <p>
+            Last detected by Merkado: {formatDateTime(listing.lastSeenAt)}
+          </p>
+          {listing.sourceListedAt ? (
+            <p>
+              Source listing date: {formatDateTime(listing.sourceListedAt)}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Source</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Listed by {listing.sourceDisplayName}
+            {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
+          </p>
           <Button asChild>
             <a
               href={listing.originalRealtorUrl ?? listing.sourceUrl}

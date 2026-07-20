@@ -25,8 +25,12 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     "parking": re.compile(r"\bparking\b|\bgarage\b|\bcarport\b", re.I),
     "garage": re.compile(r"\bgarage\b", re.I),
     "gated_community": re.compile(
-        r"\bgated(\s+(community|resort|complex))?\b|\bsecure\s+community\b"
-        r"|\bbeveiligd(e)?\s+terrein\b|\bafgesloten\s+terrein\b",
+        r"\bgated(\s+(community|resort|complex))?\b"
+        r"|\bsecure\s+community\b"
+        r"|\bsurrounding\s+gate\b"
+        r"|\bsecured\s+with\s+a\s+(surrounding\s+)?gate\b"
+        r"|\bbeveiligd(e)?\s+terrein\b"
+        r"|\bafgesloten\s+terrein\b",
         re.I,
     ),
     "air_conditioning": re.compile(
@@ -313,6 +317,16 @@ def ground_evidence(
 
     if exact and synonym_hit is False:
         # Exact snippet exists but key synonym absent — likely mismatched claim.
+        # For gated_community, resort/marketing copy without a gate synonym is
+        # rejected as noise rather than queued for attention.
+        if key == "gated_community":
+            return EvidenceGrounding(
+                ok_for_auto_apply=False,
+                ok_for_attention=False,
+                reason="gated_without_gate_synonym_rejected",
+                normalization_warning=warning,
+                normalized_snippet=norm_snippet,
+            )
         return EvidenceGrounding(
             ok_for_auto_apply=False,
             ok_for_attention=True,
