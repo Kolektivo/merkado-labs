@@ -54,12 +54,17 @@ export const HARVEST_JOBS: HarvestJob[] = [
     schedule: "Not scheduled",
     cron: null,
     timezone: "UTC",
-    runner: "Skeleton / recon only",
+    runner: "Skeleton / recon only (v0.1.2)",
     workflowPath: null,
-    pipeline: ["Reconnaissance", "Feed/sitemap/API check", "No browser automation"],
+    pipeline: [
+      "Reconnaissance (2026-07-20 BLOCKED)",
+      "Affiliate TLS + network WAF check",
+      "Official feed / partner API required",
+      "No browser automation",
+    ],
     status: "planned",
     notes:
-      "Access route under investigation. Official/network inventory exists but automated access still requires an approved public route/feed. Not Ready. No browser automation.",
+      "BLOCKED 2026-07-20: affiliate TLS expired/mismatched; sothebysrealty.com routes HTTP 202 WAF; app.sir.com office shell has no catalog. Not Ready. Next: official affiliate feed/export or Anywhere partner API with written approval. No WAF bypass.",
   },
   {
     id: "moret-manual",

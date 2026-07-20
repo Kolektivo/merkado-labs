@@ -304,6 +304,9 @@ def test_monumentenzorg_ready_and_sothebys_blocked() -> None:
     sot = resolve_source_readiness("sothebys_curacao")
     assert mon.readiness == "ready"
     assert sot.readiness == "blocked"
+    assert sot.adapter_version == "0.1.2"
+    assert sot.blocker_kind == "waf_restriction"
+    assert sot.catalog_status == "access_route_under_investigation"
     assert mon.primary_action == "Refresh & enrich"
     assert sot.primary_action == "Blocked"
     assert mon.allows_full_refresh is True
@@ -314,8 +317,9 @@ def test_monumentenzorg_ready_and_sothebys_blocked() -> None:
     assert sot.catalog_status == "access_route_under_investigation"
     assert "5" in (mon.current_issue or "")
     assert "backfill" in (mon.current_issue or "").lower()
-    assert "Access route under investigation" in (sot.current_issue or "")
-    assert "approved public route" in (sot.current_issue or "").lower()
+    assert "BLOCKED" in (sot.current_issue or "")
+    assert "HTTP 202" in (sot.current_issue or "")
+    assert "partner feed/api" in (sot.current_issue or "").lower()
 
 
 def test_remax_ready_after_v041_activation() -> None:

@@ -43,7 +43,9 @@ test("run-all ready filter excludes partial and blocked sources", () => {
   // Ready sources include KW, RE/MAX, Moret, and Monumentenzorg; blocked remain excluded.
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
-  assert.match(readiness, /Access route under investigation/);
+  assert.match(readiness, /access_route_under_investigation/);
+  assert.match(readiness, /BLOCKED \(2026-07-20 recon\)/);
+  assert.match(readiness, /blockerKind: "waf_restriction"/);
   assert.match(
     readiness,
     /sourceKey: "monumentenzorg_curacao"[\s\S]*?readiness: "ready"/,

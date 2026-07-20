@@ -102,14 +102,14 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
   {
     sourceKey: "sothebys_curacao",
     displayName: "Sotheby's International Realty",
-    adapterVersion: "0.1.1",
+    adapterVersion: "0.1.2",
     readiness: "blocked",
     listingCountExpected: null,
     catalogStatus: "access_route_under_investigation",
     currentIssue:
-      "Access route under investigation. Official/network inventory exists but automated access still requires an approved public route/feed.",
+      "BLOCKED (2026-07-20 recon): affiliate TLS expired/mismatched; www.sothebysrealty.com inventory/office/robots/sitemap return HTTP 202 WAF/challenge; app.sir.com/curacaosir is an office shell without catalog HTML. Approved public route or partner feed/API still required.",
     primaryAction: "Blocked",
-    blockerKind: "access_unavailable",
+    blockerKind: "waf_restriction",
     allowsFullRefresh: false,
   },
 ];

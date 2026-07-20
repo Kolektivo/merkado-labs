@@ -18,11 +18,14 @@ from tests.fixtures.monumentenzorg_html import DETAIL_VILLA_MARIA
 def test_sothebys_adapter_exposes_identity_and_fails_safely() -> None:
     adapter = SothebysCuracaoAdapter()
     assert adapter.source_key == "sothebys_curacao"
+    assert adapter.version == "0.1.2"
     record, snapshots = adapter.run_bounded(
         listing_urls=[], cache_dir=Path("data/raw/test"), dry_run=True, max_items=1
     )
     assert record.outcome == SourceRunOutcome.FAILURE
     assert snapshots == []
+    assert record.metadata.get("complete_catalog") is False
+    assert record.metadata.get("recon", {}).get("verdict") == "BLOCKED"
 
 
 def test_sothebys_parser_is_explicitly_unimplemented() -> None:
