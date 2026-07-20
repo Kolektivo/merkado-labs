@@ -2,6 +2,14 @@
 
 **Purpose:** Canonical source strategy and adapter rules for the property MVP.
 
+## Automation foundation (Labs only)
+
+Automatic daily refresh at 06:00 Curaçao is the intended default for the four
+Ready sources. The foundation workflow is currently `workflow_dispatch` only:
+the documented `0 10 * * *` UTC cron is **not enabled** and automatic refresh
+shows **Off** until a separate cron PR. Daily AI limits are USD 2, USD 25 per
+month, and 25 changed listings per run. Sotheby's is blocked and excluded.
+
 ## 1. Approved sources
 
 | Source key | Display name | Status |

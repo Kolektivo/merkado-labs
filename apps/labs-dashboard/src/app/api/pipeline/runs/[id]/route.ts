@@ -9,6 +9,10 @@ import {
   cancelQueuedPipelineRun,
   requestStopPipelineRun,
 } from "@/lib/pipeline/enqueue";
+import {
+  assertPipelinePostAllowed,
+  PipelineRequestGuardError,
+} from "@/lib/pipeline/request-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +41,7 @@ export async function GET(_request: Request, context: { params: Params }) {
 
 export async function POST(request: Request, context: { params: Params }) {
   try {
+    assertPipelinePostAllowed(request);
     assertLabsAdminSession(request);
     const { id } = await context.params;
     const body = (await request.json().catch(() => null)) as {
@@ -52,6 +57,9 @@ export async function POST(request: Request, context: { params: Params }) {
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
+    if (error instanceof PipelineRequestGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof AdminAuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

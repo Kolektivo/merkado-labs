@@ -7,11 +7,12 @@ import {
   readySourceKeys,
   type SourceReadinessConfig,
 } from "@/lib/domain/source-readiness";
+import { dispatchPropertyPipelineWorkflow } from "@/lib/pipeline/dispatch-github";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { LABS_PROJECT_REF, getSupabaseConfig } from "@/lib/supabase/config";
 
-/** Hard approved ceiling for a single manual Refresh & enrich run. */
-export const PIPELINE_AI_COST_CEILING_USD = 0.75;
+/** Default daily AI budget; the Python worker also enforces monthly/listing limits. */
+export const PIPELINE_AI_COST_CEILING_USD = 2;
 
 const STAGES = [
   "preflight",
@@ -43,13 +44,12 @@ export function assertCanEnqueueFullRefresh(sourceKey: string): SourceReadinessC
 }
 
 export function filterRunAllReady(sourceKeys?: string[]): string[] {
-  const candidates = sourceKeys?.length
-    ? sourceKeys
-    : SOURCE_READINESS.map((item) => item.sourceKey);
-  return candidates.filter((key) => {
-    const info = configFor(key);
-    return info.readiness === "ready" && info.allowsFullRefresh;
-  });
+  const candidates = new Set(
+    sourceKeys?.length
+      ? sourceKeys
+      : SOURCE_READINESS.map((item) => item.sourceKey),
+  );
+  return readySourceKeys().filter((key) => candidates.has(key));
 }
 
 export type EnqueueInput = {
@@ -57,6 +57,7 @@ export type EnqueueInput = {
   triggerMode: "single_source" | "run_all_ready" | "resume" | "retry_items";
   expectedAiListingCount?: number;
   requestedBy?: string;
+  triggerType?: "scheduled" | "manual" | "local" | "dry_run";
 };
 
 /**
@@ -68,10 +69,15 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
     throw new Error("Production project is forbidden");
   }
 
+  const requestedKeys = input.sourceKeys.map((key) => key.trim()).filter(Boolean);
+  if (input.triggerMode !== "run_all_ready") {
+    for (const key of requestedKeys) assertCanEnqueueFullRefresh(key);
+  }
+  const requested = new Set(requestedKeys);
   let keys =
     input.triggerMode === "run_all_ready"
-      ? filterRunAllReady(input.sourceKeys)
-      : input.sourceKeys.map((key) => key.trim()).filter(Boolean);
+      ? filterRunAllReady(requestedKeys)
+      : readySourceKeys().filter((key) => requested.has(key));
 
   if (input.triggerMode === "run_all_ready" && keys.length === 0) {
     throw new Error("No ready sources available for Run all ready sources");
@@ -79,10 +85,6 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
   if (keys.length === 0) {
     throw new Error("At least one source_key is required");
   }
-  if (input.triggerMode !== "run_all_ready") {
-    for (const key of keys) assertCanEnqueueFullRefresh(key);
-  }
-
   // Defensive: never enqueue partial/blocked even if caller bypasses UI.
   keys = keys.filter((key) => {
     const info = configFor(key);
@@ -134,6 +136,7 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
     generated_at: new Date().toISOString(),
     project_ref: LABS_PROJECT_REF,
     trigger_mode: input.triggerMode,
+    trigger_type: input.triggerType ?? "manual",
     sources_included: sourcesIncluded,
     expected_request_scope: "manual_refresh_and_enrich",
     import_will_occur: sourcesIncluded.some((item) => item.import_will_occur),
@@ -143,7 +146,14 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
       "Missing/removed transitions only when a source completes a full successful catalog. Partial or failed catalogs never mark absence.",
     cost_disclaimer:
       "Estimated from recorded token usage and configured model pricing.",
-    schedule: "manual_only",
+    schedule: "off",
+    schedule_metadata: {
+      automatic_refresh: "Off",
+      intended_local_time: "06:00",
+      timezone: "America/Curacao",
+      documented_cron_utc: "0 10 * * *",
+      enabled: false,
+    },
     ready_source_keys: readySourceKeys(),
   };
 
@@ -152,7 +162,10 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
     .insert({
       correlation_id: correlationId,
       trigger_mode: input.triggerMode,
+      trigger_type: input.triggerType ?? "manual",
       status: "queued",
+      dispatch_status: "pending",
+      automatic_refresh_enabled: false,
       requested_by: input.requestedBy ?? "labs_admin",
       source_keys: keys,
       preflight,
@@ -206,12 +219,46 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
   });
   if (eventError) throw new Error(eventError.message);
 
+  let dispatchStatus: "dispatched" | "failed" = "dispatched";
+  let message = "Queued and dispatched to the Labs workflow";
+  try {
+    const dispatch = await dispatchPropertyPipelineWorkflow({
+      pipelineRunId: String(inserted.id),
+      sourceKeys: keys,
+      dryRun: input.triggerType === "dry_run",
+    });
+    await client
+      .from("property_pipeline_runs")
+      .update({
+        dispatch_status: dispatch.dispatchStatus,
+        github_workflow_ref: dispatch.workflowRef,
+      })
+      .eq("id", inserted.id);
+  } catch (dispatchError) {
+    dispatchStatus = "failed";
+    message = "Queued — GitHub dispatch failed; safe to retry dispatch";
+    const detail =
+      dispatchError instanceof Error ? dispatchError.message : "Unknown dispatch error";
+    await client
+      .from("property_pipeline_runs")
+      .update({ dispatch_status: "failed" })
+      .eq("id", inserted.id);
+    await client.from("property_pipeline_events").insert({
+      pipeline_run_id: inserted.id,
+      correlation_id: correlationId,
+      event_type: "dispatch_failed",
+      message,
+      details: { error: detail },
+    });
+  }
+
   return {
     id: String(inserted.id),
     correlationId,
     status: "queued",
     sourceKeys: keys,
-    message: "Queued — waiting for worker",
+    message,
+    dispatchStatus,
     preflight,
   };
 }

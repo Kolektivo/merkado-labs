@@ -1,4 +1,4 @@
-"""Manual property pipeline worker (unscheduled; one run at a time)."""
+"""Queue compatibility worker delegating execution to the Labs orchestrator."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from merkado_labs.enrichment.jobs import (
 )
 from merkado_labs.enrichment.pricing import calculate_usage_cost_usd
 from merkado_labs.normalization.ecb_rates import EcbEurRateProvider
+from merkado_labs.pipeline.budgets import PROPERTY_AI_DAILY_BUDGET_USD
 from merkado_labs.pipeline.readiness import (
     PIPELINE_STAGES,
     resolve_source_readiness,
@@ -35,8 +36,8 @@ from merkado_labs.scrapers.kw_import_preview import (
     assert_labs_project_ref,
 )
 
-# Approved hard ceiling for a single manual Refresh & enrich run.
-PIPELINE_AI_COST_CEILING_USD = 0.75
+# The orchestrator additionally enforces the monthly and listing-count budgets.
+PIPELINE_AI_COST_CEILING_USD = float(PROPERTY_AI_DAILY_BUDGET_USD)
 # Pause before paid AI if checksum selection unexpectedly invalidates many rows.
 MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION = 10
 MAX_MISSING_REMOVALS_BEFORE_STOP = 5
@@ -134,6 +135,7 @@ def _listing_rows_for_source(client: Any, source_key: str) -> list[dict[str, Any
             "source_neighbourhood_text,original_price,original_currency,"
             "latitude,longitude,amenities,enrichment_status,"
             "enrichment_last_input_checksum,"
+            "enrichment_last_change_checksum,"
             "neighbourhood_assignment_status,neighbourhood_assignment_method,"
             "neighbourhood_assignment_confidence,inferred_neighbourhood_id,"
             "property_source_id,public_eligible,"
@@ -749,13 +751,27 @@ def process_pipeline_run(
     run: dict[str, Any],
     execute_live: bool = False,
 ) -> dict[str, Any]:
-    """Execute one claimed run. Sources finish sequentially; no schedules.
+    """Execute one claimed run through the source-neutral orchestrator.
 
     execute_live defaults to False so claim/process never surprise-launches a
     full catalog crawl or paid AI batch. Pass True only for intentional ops.
-    For Keller Williams, execute_live runs the proven v0.3.0 catalog adapter.
+    The workflow-dispatch CLI opts into live execution explicitly.
     """
 
+    from merkado_labs.pipeline.orchestrator import run_property_pipeline
+
+    return run_property_pipeline(
+        client,
+        trigger_type=str(run.get("trigger_type") or "manual"),
+        source_keys=list(run.get("source_keys") or []),
+        pipeline_run_id=str(run["id"]),
+        dry_run=bool(run.get("trigger_type") == "dry_run"),
+        requested_by=str(run.get("requested_by") or "compatibility_worker"),
+        execute_live=execute_live,
+    )
+
+    # Legacy implementation retained below temporarily for helper compatibility;
+    # orchestration now returns above and all source live paths use adapters.py.
     ref = assert_labs_project_ref()
     if ref != LABS_PROJECT_REF:
         raise PermissionError("Labs project only")

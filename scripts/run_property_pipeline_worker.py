@@ -1,6 +1,7 @@
-"""Claim and process one queued manual Property Data Operations run.
+"""Deprecated compatibility wrapper for one queued Property Data Operations run.
 
-Never scheduled. Safe default does not launch live catalog crawls or paid AI.
+Use ``scripts/run_property_pipeline.py`` for new local and GitHub executions.
+Safe default does not launch live catalog crawls or paid AI.
 
 Examples:
   python scripts/run_property_pipeline_worker.py --once
@@ -27,6 +28,10 @@ from merkado_labs.scrapers.kw_import_preview import (  # noqa: E402
 
 
 def main() -> int:
+    print(
+        "DEPRECATED: use scripts/run_property_pipeline.py; delegating to orchestrator.",
+        file=sys.stderr,
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--once",

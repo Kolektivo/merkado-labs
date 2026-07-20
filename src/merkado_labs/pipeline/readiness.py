@@ -1,9 +1,11 @@
-"""Source readiness for Data Operations (manual pipelines only)."""
+"""Source readiness for Labs Data Operations and the automation foundation."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
+
+from merkado_labs.pipeline.sources import READY_SOURCE_ORDER
 
 ReadinessVerdict = Literal["ready", "partial", "blocked"]
 
@@ -50,7 +52,10 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         blocker_kind=None,
         allows_full_refresh=True,
         allows_lifecycle_absence=True,
-        notes="Full catalog imported; Terra-enriched; manual/unscheduled.",
+        notes=(
+            "Full catalog imported and Terra-enriched. Automatic daily refresh is "
+            "the intended default once enabled; foundation remains workflow_dispatch only."
+        ),
     ),
     "remax_curacao": SourceReadiness(
         source_key="remax_curacao",
@@ -63,7 +68,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.4.1 active (220 listings; coordinates 199/220; "
             "map neighbourhood 193 inferred / 6 outside polygons). "
             "Terra-v3 initial backfill complete (220/220). "
-            "Manual/unscheduled. Normal Refresh & enrich bills new/changed only; "
+            "Daily automation is intended but not enabled. Normal Refresh & enrich "
+            "bills new/changed only; "
             "any future full re-enrichment still requires separate approval."
         ),
         primary_action="Refresh & enrich",
@@ -74,7 +80,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.4.1 deterministic import applied (offline, manual). "
             "Coordinate coverage 199/220; point-in-polygon 193; Terra-v3 "
             "initial backfill complete (220/220). Normal Refresh & enrich "
-            "bills new/changed only."
+            "bills new/changed only. Foundation remains workflow_dispatch only."
         ),
     ),
     "moret_real_estate": SourceReadiness(
@@ -87,7 +93,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "First complete catalog established (71). Terra-v3 initial backfill "
             "complete (71/71). Normal Refresh & enrich remains new/changed only. "
-            "Manual/unscheduled."
+            "Daily automation is intended but not enabled."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -97,7 +103,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.2.0 activated 2026-07-20: offline complete import 66 insert / "
             "5 update; public eligible 71; Terra-v3 initial backfill complete "
             "(canary + remaining 66; cumulative ~USD 1.94). "
-            "Normal Refresh & enrich bills new/changed only."
+            "Normal Refresh & enrich bills new/changed only. Foundation remains "
+            "workflow_dispatch only."
         ),
     ),
     "monumentenzorg_curacao": SourceReadiness(
@@ -110,7 +117,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "First complete catalog established (5). Terra-v3 initial backfill "
             "complete (5/5). Coordinates 0/5 (source has none). Normal Refresh & "
-            "enrich remains new/changed only. Manual/unscheduled."
+            "enrich remains new/changed only. Daily automation is intended but not enabled."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -121,7 +128,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "public eligible 2; Terra-v3 initial backfill complete "
             "(canary 2 + remaining 3; cumulative ~USD 0.06). "
             "Heritage /our_property/ CPT remains out of scope. "
-            "Normal Refresh & enrich bills new/changed only."
+            "Normal Refresh & enrich bills new/changed only. Foundation remains "
+            "workflow_dispatch only."
         ),
     ),
     "sothebys_curacao": SourceReadiness(
@@ -159,9 +167,10 @@ def resolve_source_readiness(source_key: str) -> SourceReadiness:
 
 def ready_source_keys() -> list[str]:
     return [
-        item.source_key
-        for item in SOURCE_READINESS.values()
-        if item.readiness == "ready" and item.allows_full_refresh
+        key
+        for key in READY_SOURCE_ORDER
+        if SOURCE_READINESS[key].readiness == "ready"
+        and SOURCE_READINESS[key].allows_full_refresh
     ]
 
 
@@ -182,13 +191,14 @@ def assert_can_enqueue_full_refresh(source_key: str) -> SourceReadiness:
 def filter_run_all_ready(source_keys: list[str] | None = None) -> list[str]:
     """Exclude partial and blocked sources automatically."""
 
-    candidates = source_keys or list(SOURCE_READINESS.keys())
+    candidates = source_keys or list(READY_SOURCE_ORDER)
     ready = []
     for key in candidates:
         info = resolve_source_readiness(key)
         if info.readiness == "ready" and info.allows_full_refresh:
             ready.append(key)
-    return ready
+    requested = set(ready)
+    return [key for key in READY_SOURCE_ORDER if key in requested]
 
 
 def assert_labs_project_ref(project_ref: str) -> str:

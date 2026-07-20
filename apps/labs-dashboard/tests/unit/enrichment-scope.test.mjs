@@ -33,9 +33,10 @@ test("enrichment scope metadata is exactly one v4 value each", () => {
   assert.doesNotMatch(scope, /enrichment_policy_v1/);
 });
 
-test("pipeline enqueue stores approved USD 0.75 AI ceiling", () => {
+test("pipeline enqueue stores approved daily AI budget ceiling", () => {
   const enqueue = source("src/lib/pipeline/enqueue.ts");
-  assert.match(enqueue, /PIPELINE_AI_COST_CEILING_USD = 0\.75/);
+  assert.match(enqueue, /PIPELINE_AI_COST_CEILING_USD = 2/);
   assert.match(enqueue, /estimated_ceiling_usd: ceiling/);
+  assert.match(enqueue, /dispatchPropertyPipelineWorkflow/);
   assert.doesNotMatch(enqueue, /expectedAi \* 1800/);
 });

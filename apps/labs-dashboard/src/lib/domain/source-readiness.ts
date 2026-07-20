@@ -19,6 +19,13 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   "verification",
 ];
 
+export const READY_SOURCE_ORDER = [
+  "monumentenzorg_curacao",
+  "moret_real_estate",
+  "keller_williams_curacao",
+  "remax_curacao",
+] as const;
+
 export const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
   preflight: "Checking source",
   scraping: "Fetching listings",
@@ -68,7 +75,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 220,
     catalogStatus: "complete",
     currentIssue:
-      "Adapter v0.4.1 active (220 listings; coordinates 199/220). Terra-v3 initial backfill complete (220/220). Normal Refresh & enrich remains new/changed only. Manual/unscheduled. Any future full re-enrichment still requires separate approval.",
+      "Adapter v0.4.1 active (220 listings; coordinates 199/220). Terra-v3 initial backfill complete (220/220). Daily automation is intended but not enabled; foundation is workflow_dispatch only. Normal Refresh & enrich remains new/changed only.",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
@@ -81,7 +88,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 71,
     catalogStatus: "complete",
     currentIssue:
-      "First complete catalog established (71). Terra-v3 initial backfill complete (71/71). Normal Refresh & enrich remains new/changed only. Manual/unscheduled.",
+      "First complete catalog established (71). Terra-v3 initial backfill complete (71/71). Daily automation is intended but not enabled; foundation is workflow_dispatch only.",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
@@ -94,7 +101,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 5,
     catalogStatus: "complete",
     currentIssue:
-      "First complete catalog established (5). Terra-v3 initial backfill complete (5/5). Coordinates 0/5. Normal Refresh & enrich remains new/changed only. Manual/unscheduled.",
+      "First complete catalog established (5). Terra-v3 initial backfill complete (5/5). Coordinates 0/5. Daily automation is intended but not enabled; foundation is workflow_dispatch only.",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
@@ -117,9 +124,12 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
 export function readySourceKeys(
   configs: SourceReadinessConfig[] = SOURCE_READINESS,
 ): string[] {
-  return configs
-    .filter((item) => item.readiness === "ready" && item.allowsFullRefresh)
-    .map((item) => item.sourceKey);
+  const ready = new Set(
+    configs
+      .filter((item) => item.readiness === "ready" && item.allowsFullRefresh)
+      .map((item) => item.sourceKey),
+  );
+  return READY_SOURCE_ORDER.filter((key) => ready.has(key));
 }
 
 export function blockerLabel(

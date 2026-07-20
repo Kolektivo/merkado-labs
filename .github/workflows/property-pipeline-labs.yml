@@ -1,0 +1,100 @@
+name: Property pipeline (Labs)
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger_type:
+        description: Pipeline trigger provenance (scheduled reserved for later cron PR)
+        required: true
+        type: choice
+        options:
+          - manual
+          - dry_run
+          - local
+          - scheduled
+        default: manual
+      pipeline_run_id:
+        description: Existing queued pipeline run ID
+        required: false
+        type: string
+      source_keys:
+        description: Comma-separated ready source keys (blank runs all Ready sources in order)
+        required: false
+        type: string
+      dry_run:
+        description: Scrape and validate without writes or paid AI
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merkado-property-pipeline-labs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run Labs property pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: labs
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PROJECT_REF: csaefdkpwukshtouyixg
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PROPERTY_AI_DAILY_BUDGET_USD: "2.00"
+      PROPERTY_AI_MONTHLY_BUDGET_USD: "25.00"
+      MAX_LISTINGS_PER_DAILY_RUN: "25"
+      PROPERTY_AI_MAX_LISTINGS_PER_DAILY_RUN: "25"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project
+        run: python -m pip install -e .
+
+      - name: Guard Labs project identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${SUPABASE_PROJECT_REF}" != "csaefdkpwukshtouyixg" ]]; then
+            echo "Refusing non-Labs project ref" >&2
+            exit 1
+          fi
+          if [[ "${SUPABASE_URL}" == *"jkrfyvukhhsapoivntms"* ]]; then
+            echo "Production Supabase URL is forbidden" >&2
+            exit 1
+          fi
+          if [[ "${SUPABASE_URL}" != *"csaefdkpwukshtouyixg"* ]]; then
+            echo "Supabase URL must target Labs project" >&2
+            exit 1
+          fi
+
+      - name: Run requested sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          trigger="${{ inputs.trigger_type }}"
+          dry="${{ inputs.dry_run }}"
+          if [[ "${dry}" == "true" ]]; then
+            trigger="dry_run"
+          fi
+          args=(--once --execute-live --trigger-type "${trigger}")
+          if [[ -n "${{ inputs.pipeline_run_id }}" ]]; then
+            args+=(--pipeline-run-id "${{ inputs.pipeline_run_id }}")
+          fi
+          if [[ -n "${{ inputs.source_keys }}" ]]; then
+            args+=(--source-keys "${{ inputs.source_keys }}")
+          fi
+          if [[ "${dry}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          python scripts/run_property_pipeline.py "${args[@]}"

@@ -105,6 +105,76 @@ def test_buitenterras_palapa_auto_applies() -> None:
     assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
 
 
+def test_patio_porch_veranda_auto_apply_as_terrace() -> None:
+    for evidence in (
+        "step out onto a sprawling covered patio",
+        "Large covered porch",
+        "Step outside onto the expansive covered veranda",
+        "een royaal privéterras van circa 30 m²",
+    ):
+        decision = decide_field(
+            key="terrace",
+            proposed_value=True,
+            confidence=0.96,
+            evidence_snippet=evidence,
+            source_text=f"Bright apartment. {evidence}. Quiet street.",
+        )
+        assert decision.final_status == AutoApplyStatus.AUTO_APPLIED, evidence
+
+
+def test_source_terrace_false_wins_over_ai_true() -> None:
+    evidence = "sunny patio shared with neighbors"
+    decision = decide_field(
+        key="terrace",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet=evidence,
+        source_values={"terrace": False},
+        source_text=f"Apartment details. {evidence}.",
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert ReasonCode.SOURCE_TERRACE_FALSE_WINS in decision.reasons
+
+
+def test_specific_source_property_type_rejects_ai_quietly() -> None:
+    evidence = "This modern villa has been recently completed"
+    decision = decide_field(
+        key="property_type",
+        proposed_value="villa",
+        confidence=0.99,
+        evidence_snippet=evidence,
+        source_values={"property_type": "house"},
+        source_text=evidence,
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert ReasonCode.PROPERTY_TYPE_SOURCE_WINS_QUIET in decision.reasons
+
+
+def test_negated_amenity_true_rejects_quietly() -> None:
+    decision = decide_field(
+        key="pool",
+        proposed_value=True,
+        confidence=0.95,
+        evidence_snippet="charming townhouse with a pool",
+        source_text="Charming townhouse, no pool, walking distance to the marina.",
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert ReasonCode.SOURCE_NEGATION_REJECTS_TRUE in decision.reasons
+
+
+def test_negated_amenity_false_auto_applies() -> None:
+    evidence = "no hot water"
+    decision = decide_field(
+        key="water_heater",
+        proposed_value=False,
+        confidence=0.95,
+        evidence_snippet=evidence,
+        source_text=f"Compact studio with {evidence} and shared laundry.",
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    assert decision.resulting_effective is False
+
+
 def test_woning_property_type_from_dutch_evidence() -> None:
     evidence = "Moderne familiewoning in Brakkeput Abou met airconditioning"
     decision = decide_field(

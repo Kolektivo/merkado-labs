@@ -5,6 +5,10 @@ import {
   assertLabsAdminSession,
 } from "@/lib/admin/auth";
 import { enqueuePipelineRun } from "@/lib/pipeline/enqueue";
+import {
+  assertPipelinePostAllowed,
+  PipelineRequestGuardError,
+} from "@/lib/pipeline/request-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +18,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
+    assertPipelinePostAllowed(request);
     assertLabsAdminSession(request);
     const body = (await request.json().catch(() => null)) as {
       sourceKeys?: string[];
@@ -38,15 +43,18 @@ export async function POST(request: Request) {
       triggerMode,
       expectedAiListingCount: body.expectedAiListingCount ?? 0,
       requestedBy: "labs_admin",
+      triggerType: "manual",
     });
 
     return NextResponse.json({
       ok: true,
       run: result,
-      workerHint:
-        "Queued — waiting for worker. Run: python scripts/run_property_pipeline_worker.py --once",
+      workerHint: "Queued for the Labs workflow_dispatch automation.",
     });
   } catch (error) {
+    if (error instanceof PipelineRequestGuardError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof AdminAuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

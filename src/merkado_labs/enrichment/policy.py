@@ -84,9 +84,13 @@ class ReasonCode:
     NARRATIVE_INVENTS_PROTECTED_CLAIM = "narrative_invents_protected_claim"
     PROPERTY_TYPE_EQUIVALENT = "property_type_equivalent"
     PROPERTY_TYPE_REFINES_GENERIC_SOURCE = "property_type_refines_generic_source"
+    PROPERTY_TYPE_SOURCE_WINS_QUIET = "property_type_source_wins_quiet"
     SUBJECTIVE_ACCESSIBILITY_REJECTED = "subjective_accessibility_rejected"
     SUBJECTIVE_MARKETING_REJECTED = "subjective_marketing_rejected"
     CONFIDENCE_BELOW_AUTO_APPLY_REJECTED = "confidence_below_auto_apply_rejected"
+    SOURCE_NEGATION_CONFIRMS_FALSE = "source_negation_confirms_false"
+    SOURCE_NEGATION_REJECTS_TRUE = "source_negation_rejects_true"
+    SOURCE_TERRACE_FALSE_WINS = "source_terrace_false_wins"
 
 
 # Configurable thresholds — not magic numbers sprinkled in call sites.
@@ -687,7 +691,43 @@ def decide_field(
                 resulting_effective=previous_effective,
                 display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
             )
-        if grounding.ok_for_attention and not grounding.ok_for_auto_apply:
+        # Source negation of an amenity: True proposals lose quietly; False
+        # proposals are confirmed absence and may auto-apply.
+        negation_confirms_false = (
+            grounding.reason == "negation_conflict_with_source" and coerced is False
+        )
+        if grounding.reason == "negation_conflict_with_source" and coerced is True:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.NONE,
+                reasons=tuple(
+                    [
+                        ReasonCode.SOURCE_NEGATION_REJECTS_TRUE,
+                        grounding.reason,
+                        *reasons,
+                    ]
+                ),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
+        if (
+            grounding.ok_for_attention
+            and not grounding.ok_for_auto_apply
+            and not negation_confirms_false
+        ):
             return FieldDecision(
                 key=normalized_key,
                 proposed_value=coerced,
@@ -706,6 +746,8 @@ def decide_field(
                 resulting_effective=previous_effective,
                 display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
             )
+        if negation_confirms_false:
+            reasons.append(ReasonCode.SOURCE_NEGATION_CONFIRMS_FALSE)
         reasons.append(grounding.reason)
 
     if normalized_key == "neighbourhood_candidate":
@@ -807,6 +849,33 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
+    # Direct structured source terrace=false always beats AI terrace=true.
+    if normalized_key == "terrace" and coerced is True:
+        structured_terrace = source_values.get("terrace")
+        if structured_terrace is False or str(structured_terrace).strip().lower() in {
+            "false",
+            "0",
+            "no",
+        }:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.NONE,
+                reasons=(ReasonCode.SOURCE_TERRACE_FALSE_WINS,),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+
     conflict = _source_conflict(normalized_key, coerced, source_values)
     if conflict is not None:
         status = (
@@ -814,8 +883,24 @@ def decide_field(
             if conflict == ConflictStatus.FORBIDDEN
             else AutoApplyStatus.NEEDS_ATTENTION
         )
-        if normalized_key == "neighbourhood_candidate" and is_generic_neighbourhood(str(coerced)):
+        reason_codes: tuple[str, ...] = (conflict.value,)
+        # Specific structured source property_type wins quietly over a
+        # conflicting AI proposal. Review is reserved for genuine dual-source
+        # factual conflicts, not lower-priority AI disagreement alone.
+        if (
+            normalized_key == "property_type"
+            and conflict == ConflictStatus.SOURCE_CONFLICT
+        ):
             status = AutoApplyStatus.REJECTED
+            reason_codes = (
+                ReasonCode.PROPERTY_TYPE_SOURCE_WINS_QUIET,
+                conflict.value,
+            )
+        if normalized_key == "neighbourhood_candidate" and is_generic_neighbourhood(
+            str(coerced)
+        ):
+            status = AutoApplyStatus.REJECTED
+            reason_codes = (ReasonCode.GENERIC_NEIGHBOURHOOD,)
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -829,12 +914,7 @@ def decide_field(
             model_recommended_action=model_recommended_action,
             final_status=status,
             conflict_status=conflict,
-            reasons=(
-                (ReasonCode.GENERIC_NEIGHBOURHOOD,)
-                if normalized_key == "neighbourhood_candidate"
-                and is_generic_neighbourhood(str(coerced))
-                else (conflict.value,)
-            ),
+            reasons=reason_codes,
             previous_effective=previous_effective,
             resulting_effective=previous_effective,
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
