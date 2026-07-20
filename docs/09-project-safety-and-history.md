@@ -72,6 +72,115 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
+### July 17, 2026 - KW retry batch, Terra completion, and AI cost observability
+
+- Retried the 24 KW listings that had truncated under
+  `max_output_tokens=2500` using the compact prompt/schema/policy **v3**
+  (`listing_enrichment_v3` / `listing_enrichment_schema_v3` /
+  `enrichment_policy_v3`): **24/24 succeeded**, 0 failed, cost **USD 0.7054**.
+- KW now has **84/84** successful latest-proposal Terra runs across the
+  84-listing catalog (81 public eligible; 0 failed; 0 never enriched).
+  Policy outcomes on the latest successful proposals: 235 auto-applied
+  fields, 77 needs-attention fields, 1039 rejected fields.
+- Cost (`data/processed/kw_activation_final_report.md`): latest-proposal
+  total **USD 3.1266**; gross (all DB Terra proposals) **USD 4.1463**;
+  retained-result **USD 3.1266**; wasted/deferred **USD 1.0197**; avg per
+  successful listing **USD 0.037221**; per auto-applied field **USD 0.013305**.
+  Protected-source checksum unchanged; 0 duplicate proposal keys.
+- `data/processed/ai_usage_reconciliation.md` documents where AI usage is
+  stored (proposal/job token_usage, run_audit, local progress JSON) and why
+  different reconstruction methods produce different totals; exact OpenAI
+  invoice totals cannot be reconstructed from Labs data alone (reconstructed
+  gross from recorded attempts ~USD 9.15 vs. a user-observed ~USD 5 OpenAI
+  usage figure — the gap may include non-Terra models, unmatched transport
+  retries, or account-wide usage outside this activation's scope).
+- Added `/enrichment` cost & usage panel (gross vs. retained-result vs.
+  wasted AI spend, token totals, structured-output failure rate, true
+  attention rate) and a model-efficiency table grouped by model + prompt +
+  schema version, labelling historical combinations as not directly
+  comparable to the current one.
+- Published `data/processed/property_source_readiness.md` (read-only audit;
+  no scrapes, imports, or AI calls). Recommended next track: **RE/MAX
+  enrichment preparation** (cost preflight, selection, compact v3 schema) —
+  RE/MAX already has a complete 220-listing manual catalog with strong
+  field coverage; Moret still needs catalog/parser completion before any
+  larger import or AI.
+- KW remains **manual and unscheduled**. No production access, deploy,
+  commit, or push.
+
+### July 20, 2026 - RE/MAX Terra enrichment preparation
+
+- Verified Labs RE/MAX state on `csaefdkpwukshtouyixg`: 220 listings, stable IDs/URLs, 119 public eligible, 208 XCG benchmarks, 29 historical gpt-4.1-mini v1 proposals (obsolete for v3).
+- Catalog completeness proven from last successful complete run (2026-07-17) + checksum `54f8e094…9177` + local cache; live website not revalidated.
+- Parser v0.4.1: coordinates from `google.maps.LatLng`, listing agent, agent-image gallery filter; local cache reparse only (no import/DB listing writes).
+- Produced field/neighbourhood/currency/quality/AI-history/attribute/canary/cost reports under `data/processed/remax_*`.
+- Selected five Terra canary IDs; recommended ceiling USD 1.00. No OpenAI calls, no live scrapes, no imports, no commit/push.
+- RE/MAX remains **manual and unscheduled**.
+
+### July 20, 2026 - RE/MAX five-listing Terra canary
+
+- Ran approved canary on `hs2467`, `hr1013`, `hr2165`, `hs2941`, `hr1393` with `gpt-5.6-terra` + prompt/schema/policy v3; ceiling USD 1.00.
+- Outcome: **4/5** `needs_review` successes; **1/5** `hs2467` `invalid_output` (hit configured `max_output_tokens=2500` with 1552 reasoning tokens).
+- Exact recorded cost **USD 0.1644** (12,724 in / 8,839 out / 2,712 reasoning). Auto-applied 8 fields; 9 needs-attention; 56 rejected (mostly duplicates of source amenities / protected fields).
+- Hardened skip logic so historical v1 proposals never block Terra v3; only identical model+prompt+schema+checksum terminal attempts skip.
+- Protected source price/currency/type/beds/baths/coords/public eligibility unchanged. Timeline: 5 started / 4 completed / 1 failed.
+- Verdict: **needs prompt/config repair first** (raise max output to 3500) before remaining-215; v0.4.1 coordinate import still optional/pending. No full batch, no import, no commit/push.
+- RE/MAX remains **manual and unscheduled**.
+
+### July 20, 2026 - RE/MAX remaining Terra-v3 initial backfill
+
+- One-time GPT-5.6 Terra backfill for remaining RE/MAX listings without a matching
+  successful Terra-v3 proposal for the current semantic checksum
+  (`csaefdkpwukshtouyixg` only). Selection **211** (excluded **9** identical
+  checksums). Job `remax_remaining_terra_backfill`: **211/211** processed,
+  **0** failed; gross ≈ **USD 6.67** under USD 10 ceiling; max output tokens 3500.
+- Coverage: **220/220** RE/MAX listings now have current Terra-v3
+  (`listing_enrichment_v3` / `listing_enrichment_schema_v3` /
+  `enrichment_policy_v3`). Protected source facts unchanged. Idempotency dry-run
+  on all 220: **0** billable, USD 0. No retry batch executed.
+- Normal Refresh & enrich remains new/changed only; initial backfill stays a
+  separate approved action. No live RE/MAX scrape/import/refresh, schedules,
+  migrations, deploy, commit, or push. RE/MAX remains **manual and unscheduled**.
+  Next source-development track: **Moret**.
+
+### July 20, 2026 - RE/MAX v0.4.1 activation + five-listing semantic refresh
+
+- Offline-imported verified `remax_v041_reparsed_catalog.json` into Labs only
+  (`csaefdkpwukshtouyixg`): **220** updates / **0** inserts; **199** coordinates;
+  **193** PIP / **6** outside polygons / **21** still missing; public eligible **119**;
+  **0** missing/removed lifecycle events; no evidence upload; no live scrape.
+- Re-enriched exactly five semantic-change IDs (`hr2165`, `hr2185`, `hs3061`,
+  `hs3103`, `hs3104`) with `gpt-5.6-terra` v3; gross AI ≈ **USD 0.27** under
+  USD 0.75 ceiling (includes one repair rerun after map-hydration / skip fix).
+- Idempotency: five skipped unchanged, zero OpenAI calls, USD 0.
+- Initial Terra backfill completed later the same day (see above). RE/MAX remains
+  **manual and unscheduled**.
+
+### July 20, 2026 - RE/MAX v0.4.1 Data Operations preflight
+
+- Read-only Labs + local cache reparse: 220 IDs, checksum match, **199** recoverable coordinates; Labs still 0/220 coords (imported adapter still v0.4.0).
+- Geospatial preview (no writes): 193 map-inferred, 6 outside polygons, 21 still missing; effective neighbourhood changes 5 (generic source → map).
+- Lifecycle/public eligibility stable; 0 missing/removed from local reparse.
+- Semantic AI checksum: **5** billable after import (legacy would flip 220); initial ~215 Terra backfill separate from Refresh & enrich.
+- Added RE/MAX `--preview-import` / `--import-from-file`; ran preview only. Verdict: **Import v0.4.1 first**. No DB writes, live HTTP, OpenAI, enqueue, worker, commit, or push.
+- RE/MAX remains **manual and unscheduled**.
+
+### July 17, 2026 - Keller Williams complete catalog + Terra activation
+
+- Offline-imported the verified KW Stage-3 catalog into Labs only
+  (`csaefdkpwukshtouyixg`): **84** listings; 81 public eligible / 3 excluded.
+- Activated GPT-5.6 Terra enrichment with automatic evidence-backed application:
+  5-listing canary, then remaining batch; total Terra spend about **USD 3.44**
+  (under the USD 5 remaining-batch ceiling).
+- Hardened evidence grounding (Unicode/HTML/whitespace normalization; reject
+  terra/terrain false friends; non-canonical `terrasses` → needs attention).
+- Batch runner: selection-file only for >5 listings, batch-size 1, cost ceiling,
+  resume skips unchanged checksums (including prior failures unless forced).
+- 24 listings remain retry candidates after structured-output truncation at
+  `max_output_tokens=2500` (retry file written; not executed).
+- KW remains **manual and unscheduled**. No production access, deploy, commit,
+  or push. No RE/MAX or Moret enrichment in this activation.
+
 ### July 17, 2026 - Property Labs dashboard cleanup
 
 - Fixed local data loading: Next.js app-local env loading did not include the

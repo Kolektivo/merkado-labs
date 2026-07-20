@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { FlaskConical, Search } from "lucide-react";
+import { Building2, FlaskConical, Search } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { PageHeader } from "@/components/page-header";
+import { PriceDisplay } from "@/components/price-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { getPublicListings } from "@/lib/data/public-listings";
-import { formatCurrency, titleCase } from "@/lib/format";
+import { titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Public browse" };
@@ -34,6 +37,12 @@ export default async function BrowsePage({
   const bedrooms = Number(one(params, "bedrooms")) || 0;
   const min = Number(one(params, "minPrice")) || 0;
   const max = Number(one(params, "maxPrice")) || Number.POSITIVE_INFINITY;
+  const detailParams = new URLSearchParams();
+  for (const key of ["type", "source", "bedrooms", "minPrice", "maxPrice"]) {
+    const value = one(params, key);
+    if (value) detailParams.set(key, value);
+  }
+  const detailQuery = detailParams.toString();
   let publicListings;
   try {
     publicListings = await getPublicListings();
@@ -55,8 +64,8 @@ export default async function BrowsePage({
     (!type || listing.listingType === type) &&
     (!source || listing.sourceKey === source) &&
     (!bedrooms || (listing.bedrooms ?? 0) >= bedrooms) &&
-    (listing.originalPrice ?? 0) >= min &&
-    (listing.originalPrice ?? Number.POSITIVE_INFINITY) <= max,
+    (listing.benchmarkPriceXcg ?? 0) >= min &&
+    (listing.benchmarkPriceXcg ?? Number.POSITIVE_INFINITY) <= max,
   );
   return (
     <div className="space-y-6">
@@ -73,7 +82,11 @@ export default async function BrowsePage({
           listings — private evidence and AI suggestions are left out.
         </AlertDescription>
       </Alert>
-      <form className="grid items-end gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-5">
+      <form
+        method="get"
+        action="/browse"
+        className="grid items-end gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-5"
+      >
         <div className="min-w-0">
           <label
             htmlFor="browse-type"
@@ -114,7 +127,7 @@ export default async function BrowsePage({
             htmlFor="browse-min-price"
             className="mb-1.5 block text-xs font-medium text-muted-foreground"
           >
-            Min price
+            Min price (XCG)
           </label>
           <input
             id="browse-min-price"
@@ -131,7 +144,7 @@ export default async function BrowsePage({
             htmlFor="browse-max-price"
             className="mb-1.5 block text-xs font-medium text-muted-foreground"
           >
-            Max price
+            Max price (XCG)
           </label>
           <input
             id="browse-max-price"
@@ -143,9 +156,9 @@ export default async function BrowsePage({
             className="h-9 w-full rounded-md border bg-background px-3 text-sm"
           />
         </div>
-        <button className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <Button type="submit">
           Apply filters
-        </button>
+        </Button>
         {source ? <input type="hidden" name="source" value={source} /> : null}
       </form>
       <p className="text-sm text-muted-foreground">
@@ -155,7 +168,14 @@ export default async function BrowsePage({
       </p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {listings.map((listing, index) => (
-          <Link key={listing.id} href={`/browse/${listing.id}`}>
+          <Link
+            key={listing.id}
+            href={
+              detailQuery
+                ? `/browse/${listing.id}?${detailQuery}`
+                : `/browse/${listing.id}`
+            }
+          >
             <Card className="h-full overflow-hidden py-0">
               <div className="relative h-44 bg-muted">
                 {listing.primaryImageUrl ? (
@@ -168,7 +188,12 @@ export default async function BrowsePage({
                     priority={index === 0}
                     unoptimized
                   />
-                ) : null}
+                ) : (
+                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                    <Building2 className="size-8" aria-hidden />
+                    <span className="sr-only">No property image available</span>
+                  </div>
+                )}
               </div>
               <CardContent className="space-y-2 p-4">
                 <div className="flex gap-2">
@@ -178,14 +203,19 @@ export default async function BrowsePage({
                 <h2 className="font-medium">
                   {listing.title ?? `Property ${listing.externalId}`}
                 </h2>
-                <p className="font-mono font-semibold">
-                  {formatCurrency(
-                    listing.originalPrice,
-                    listing.originalCurrency,
-                  )}
-                </p>
+                <PriceDisplay
+                  model={buildPriceDisplay({
+                    originalPrice: listing.originalPrice,
+                    originalCurrency: listing.originalCurrency,
+                    benchmarkPriceXcg: listing.benchmarkPriceXcg,
+                  })}
+                  size="sm"
+                />
                 <p className="text-sm text-muted-foreground">
-                  Curaçao · {listing.bedrooms ?? "—"} beds
+                  Curaçao
+                  {listing.bedrooms != null
+                    ? ` · ${listing.bedrooms} bedrooms`
+                    : ""}
                 </p>
               </CardContent>
             </Card>
@@ -194,7 +224,11 @@ export default async function BrowsePage({
       </div>
       {!listings.length ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          <p>No listings match these filters.</p>
+          <p>
+            {publicListings.length
+              ? "No listings match these filters."
+              : "No public-ready listings are available yet."}
+          </p>
           <Link
             href="/browse"
             className="mt-2 inline-block font-medium text-foreground underline underline-offset-2"

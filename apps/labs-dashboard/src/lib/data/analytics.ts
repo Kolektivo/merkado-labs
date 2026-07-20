@@ -60,6 +60,8 @@ export function parseListingFilters(
     coordinateQuality: value("coordQuality"),
     assignmentStatus: value("assignment"),
     publicEligible: value("publicEligible"),
+    exclusionReason: value("exclusion"),
+    priceAvailability: value("priceAvailability"),
     sort: allowedSorts.includes(requestedSort) ? requestedSort : "recent",
     page: Math.max(1, Math.floor(number("page") ?? 1)),
   };
@@ -75,6 +77,7 @@ function matchesSharedFilters(
     listingType: string | null;
     currency: string | null;
     currentPrice: number | null;
+    originalPrice?: number | null;
     coordinateQuality: string;
     neighbourhoodAssignmentStatus: string;
     originalRealtorName?: string | null;
@@ -87,6 +90,7 @@ function matchesSharedFilters(
     firstObservedRentedAt?: string | null;
     firstObservedUnderContractAt?: string | null;
     publicEligible?: boolean;
+    publicExclusionReason?: string | null;
     sourceKey?: string | null;
   },
   filters: ListingFilters,
@@ -130,13 +134,7 @@ function matchesSharedFilters(
   const matchesEnrichment =
     !filters.enrichmentStatus || enrichment === filters.enrichmentStatus;
   const matchesLifecycle =
-    !filters.lifecycle ||
-    (filters.lifecycle === "sold" &&
-      (listing.status === "sold" || Boolean(listing.firstObservedSoldAt))) ||
-    (filters.lifecycle === "rented" && Boolean(listing.firstObservedRentedAt)) ||
-    (filters.lifecycle === "under_contract" &&
-      Boolean(listing.firstObservedUnderContractAt)) ||
-    (filters.lifecycle === "active" && listing.status === "active");
+    !filters.lifecycle || listing.status === filters.lifecycle;
   const canApplyPrice =
     filters.minPrice === null && filters.maxPrice === null
       ? true
@@ -159,6 +157,14 @@ function matchesSharedFilters(
     !filters.publicEligible ||
     (filters.publicEligible === "eligible" && listing.publicEligible === true) ||
     (filters.publicEligible === "excluded" && listing.publicEligible === false);
+  const matchesExclusionReason =
+    !filters.exclusionReason ||
+    listing.publicExclusionReason === filters.exclusionReason;
+  const usablePrice = listing.originalPrice ?? listing.currentPrice ?? 0;
+  const matchesPriceAvailability =
+    !filters.priceAvailability ||
+    (filters.priceAvailability === "missing" && usablePrice <= 0) ||
+    (filters.priceAvailability === "available" && usablePrice > 0);
 
   return (
     matchesQuery &&
@@ -175,8 +181,10 @@ function matchesSharedFilters(
     matchesMin &&
     matchesMax &&
     matchesCoordQuality &&
-    matchesAssignment
-    && matchesPublicEligible
+    matchesAssignment &&
+    matchesPublicEligible &&
+    matchesExclusionReason &&
+    matchesPriceAvailability
   );
 }
 
@@ -190,6 +198,8 @@ export function filterAndSortListings(
       filters,
     ),
   );
+  const sortPrice = (listing: PropertyListing) =>
+    filters.currency ? listing.currentPrice : listing.benchmarkPriceXcg;
 
   return filtered.sort((a, b) => {
     if (filters.sort === "oldest") {
@@ -197,14 +207,14 @@ export function filterAndSortListings(
     }
     if (filters.sort === "price-asc") {
       return (
-        (a.currentPrice ?? Number.POSITIVE_INFINITY) -
-        (b.currentPrice ?? Number.POSITIVE_INFINITY)
+        (sortPrice(a) ?? Number.POSITIVE_INFINITY) -
+        (sortPrice(b) ?? Number.POSITIVE_INFINITY)
       );
     }
     if (filters.sort === "price-desc") {
       return (
-        (b.currentPrice ?? Number.NEGATIVE_INFINITY) -
-        (a.currentPrice ?? Number.NEGATIVE_INFINITY)
+        (sortPrice(b) ?? Number.NEGATIVE_INFINITY) -
+        (sortPrice(a) ?? Number.NEGATIVE_INFINITY)
       );
     }
     if (filters.sort === "title") {
@@ -288,6 +298,13 @@ export function listingFilterOptions(listings: PropertyListing[]) {
         ),
       ),
     ).sort((a, b) => a.localeCompare(b)),
+    exclusionReasons: Array.from(
+      new Set(
+        listings
+          .filter((item) => !item.publicEligible)
+          .map((item) => item.publicExclusionReason ?? "not_classified"),
+      ),
+    ).sort(),
     coordinateQualities: Array.from(
       new Set(listings.map((item) => item.coordinateQuality)),
     )

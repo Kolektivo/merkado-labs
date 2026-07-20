@@ -34,7 +34,7 @@ from merkado_labs.scrapers.robots import USER_AGENT
 
 SOURCE_KEY = "moret_real_estate"
 ADAPTER_NAME = SOURCE_KEY
-ADAPTER_VERSION = "0.1.0"
+ADAPTER_VERSION = "0.1.1"
 RAW_EVIDENCE_BUCKET = "listing-raw-evidence"
 DOMAINS = frozenset({"moretrealestate.com", "www.moretrealestate.com"})
 BASE_URL = "https://moretrealestate.com"
@@ -80,10 +80,24 @@ DESC_RE = re.compile(
     r"(?P<body>.*?)</div>",
     re.I | re.S,
 )
-IMAGE_RE = re.compile(
-    r'(?:src|data-src)=["\'](?P<src>https?://(?:www\.)?moretrealestate\.com/wp-content/uploads/[^"\']+)["\']',
+# Gallery full-size links (prettyPhoto); href/rel order varies in WPEstate markup.
+GALLERY_HREF_RE = re.compile(
+    r"<a\s[^>]*?\bhref=[\"'](?P<url>https?://(?:www\.)?moretrealestate\.com"
+    r"/wp-content/uploads/[^\"']+)[\"'][^>]*?\brel=[\"']prettyPhoto"
+    r"|<a\s[^>]*?\brel=[\"']prettyPhoto[^\"']*[\"'][^>]*?\bhref=[\"']"
+    r"(?P<url2>https?://(?:www\.)?moretrealestate\.com/wp-content/uploads/[^\"']+)[\"']",
     re.I,
 )
+OG_IMAGE_RE = re.compile(
+    r'<meta\s[^>]*\bproperty=["\']og:image["\'][^>]*\bcontent=["\']'
+    r'(?P<url>https?://(?:www\.)?moretrealestate\.com/wp-content/uploads/[^"\']+)["\']'
+    r'|<meta\s[^>]*\bcontent=["\']'
+    r'(?P<url2>https?://(?:www\.)?moretrealestate\.com/wp-content/uploads/[^"\']+)["\']'
+    r'[^>]*\bproperty=["\']og:image["\']',
+    re.I,
+)
+WP_SIZE_SUFFIX_RE = re.compile(r"-\d{2,4}x\d{2,4}(?=\.[A-Za-z0-9]+$)")
+LOGO_NAME_RE = re.compile(r"(?:^|[-_/])logo(?:[-_.]|$)|favicon", re.I)
 TAG_RE = re.compile(r"<[^>]+>")
 WS_RE = re.compile(r"\s+")
 VANAF_RE = re.compile(r"\bvanaf\b|\bfrom\b", re.I)
@@ -91,6 +105,44 @@ VANAF_RE = re.compile(r"\bvanaf\b|\bfrom\b", re.I)
 
 def _text(value: str) -> str:
     return WS_RE.sub(" ", html_to_preserved_text(value)).strip()
+
+
+def _canonical_upload_url(url: str) -> str:
+    """Strip WordPress resized suffixes (-835x540) toward the full upload URL."""
+    parsed = urlparse(url)
+    path = WP_SIZE_SUFFIX_RE.sub("", parsed.path)
+    return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
+
+
+def _is_site_chrome_image(url: str) -> bool:
+    filename = urlparse(url).path.rsplit("/", 1)[-1]
+    return bool(LOGO_NAME_RE.search(filename))
+
+
+def extract_listing_images(html: str) -> tuple[str, ...]:
+    """Prefer prettyPhoto gallery hrefs; fall back to og:image. Skip logos."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def _add(raw: str | None) -> None:
+        if not raw or _is_site_chrome_image(raw):
+            return
+        canonical = _canonical_upload_url(raw)
+        if canonical in seen:
+            return
+        seen.add(canonical)
+        ordered.append(canonical)
+
+    for match in GALLERY_HREF_RE.finditer(html):
+        _add(match.group("url") or match.group("url2"))
+
+    if not ordered:
+        for match in OG_IMAGE_RE.finditer(html):
+            _add(match.group("url") or match.group("url2"))
+            if ordered:
+                break
+
+    return tuple(ordered)
 
 
 def canonicalize_detail_url(href: str, *, base: str = BASE_URL) -> str | None:
@@ -216,7 +268,9 @@ class MoretRealEstateAdapter(DirectSourceAdapter):
         description = _text(desc_m.group("body")) if desc_m else None
         if not description:
             warnings.append("missing_description")
-        images = tuple(dict.fromkeys(m.group("src") for m in IMAGE_RE.finditer(html)))
+        images = extract_listing_images(html)
+        if not images:
+            warnings.append("missing_images")
         neighbourhood = None
         slug = urlparse(canonical).path.strip("/").split("/")[-1]
         if slug:

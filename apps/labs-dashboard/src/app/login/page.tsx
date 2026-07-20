@@ -20,7 +20,8 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const requested = Array.isArray(params.next) ? params.next[0] : params.next;
-  const returnTo = requested?.startsWith("/") ? requested : "/";
+  const returnTo =
+    requested && /^\/(?!\/)/.test(requested) ? requested : "/";
   const hasSession = await hasLabsAdminSession();
   if (hasSession) redirect(returnTo);
 

@@ -51,8 +51,13 @@ safe `public_property_listings` view.
   evidence metadata, and lifecycle history.
 - **Sources** — source maturity and inventory. Open a source for run history,
   data quality, and manual adapter configuration.
-- **Enrichment** — review existing AI proposals beside source listings. AI
-  execution is disabled; proposals never overwrite source facts.
+- **Enrichment** — audit AI cost/usage (gross vs. retained-result vs. wasted
+  spend, token totals, model-efficiency comparison across model/prompt/
+  schema versions) and review existing AI proposals beside source listings.
+  Review is exception-based: high-confidence evidenced fields auto-apply;
+  only conflicts, weak evidence, or new-attribute taxonomy need attention,
+  and unsupported/noisy proposals never reach the queue. AI execution is
+  disabled; proposals never overwrite source facts.
 - **Quality** — eligibility, lifecycle states, missing fields, evidence
   availability, and location quality.
 - **Settings** — safe configuration health, admin session, disabled schedules,
@@ -68,8 +73,10 @@ or removed. Every source remains manual and unscheduled.
 
 Current maturity:
 
-- RE/MAX: working complete manual adapter.
-- Keller Williams: partial adapter; incomplete pagination.
+- RE/MAX: working complete manual adapter (220 listings); adapter v0.4.1 active (coordinates 199/220); GPT-5.6 Terra-v3 initial backfill complete (220/220); Data Ops Refresh & enrich still bills new/changed only (initial backfill was a separate one-time approval).
+- Keller Williams: complete 84-listing catalog via offline import (the
+  live-crawl adapter still has incomplete pagination); GPT-5.6 Terra AI
+  enrichment activated — 84/84 successful proposals, manual/unscheduled.
 - Moret: partial five-listing sample.
 - Monumentenzorg: blocked live source; fixture parser only.
 - Sotheby's: blocked by WAF; skeleton/recon only.

@@ -1,6 +1,9 @@
 """Manual RE/MAX Curaçao adapter runner.
 
 Scheduling is intentionally not enabled. Default mode is dry-run (no DB writes).
+
+``--preview-import`` reconciles a local complete catalog against Labs with
+read-only SELECTs only (no website requests, writes, uploads, or events).
 """
 
 from __future__ import annotations
@@ -28,6 +31,10 @@ from merkado_labs.scrapers.import_pipeline import import_snapshots  # noqa: E402
 from merkado_labs.scrapers.import_simulation import (  # noqa: E402
     project_test_rate_recalculations,
     simulate_import,
+)
+from merkado_labs.scrapers.remax_import_preview import (  # noqa: E402
+    import_remax_catalog_from_file,
+    run_remax_import_preview,
 )
 
 
@@ -278,7 +285,98 @@ def main() -> int:
         default=None,
         help="Optional path to write the full JSON report.",
     )
+    parser.add_argument(
+        "--preview-import",
+        action="store_true",
+        help=(
+            "Read-only import reconciliation against Labs from a local catalog JSON. "
+            "No website requests, DB writes, storage uploads, or events."
+        ),
+    )
+    parser.add_argument(
+        "--import-from-file",
+        action="store_true",
+        help=(
+            "Import verified v0.4.1 catalog JSON using local cache HTML only. "
+            "No live website requests. Requires --import-db."
+        ),
+    )
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("data/processed/remax_v041_reparsed_catalog.json"),
+        help="Local catalog JSON for --preview-import / --import-from-file",
+    )
+    parser.add_argument(
+        "--no-evidence-upload",
+        dest="upload_evidence",
+        action="store_false",
+        help="Skip raw HTML evidence upload during --import-from-file (default).",
+    )
+    parser.add_argument(
+        "--evidence-upload",
+        dest="upload_evidence",
+        action="store_true",
+        help="Upload raw HTML evidence during --import-from-file.",
+    )
+    parser.set_defaults(upload_evidence=False)
     args = parser.parse_args()
+
+    if args.preview_import:
+        if (
+            args.import_db
+            or args.live_fetch
+            or args.discover
+            or args.import_from_file
+            or args.urls
+        ):
+            parser.error(
+                "--preview-import cannot be combined with import/live/discover modes"
+            )
+        print("READ-ONLY IMPORT PREVIEW")
+        result = run_remax_import_preview(input_path=args.input, write_reports=True)
+        payload = result.as_dict()
+        output = json.dumps(payload, indent=2, default=str)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(output, encoding="utf-8")
+        print(output)
+        print(
+            "READ-ONLY IMPORT PREVIEW complete: "
+            f"insert={result.inserts} update={result.updates} "
+            f"no_change={result.no_change} absent={result.absent_from_catalog} "
+            f"failed={result.failed}"
+        )
+        return 1 if result.failed else 0
+
+    if args.import_from_file:
+        if not args.import_db:
+            parser.error("--import-from-file requires --import-db")
+        if args.live_fetch or args.discover or args.urls:
+            parser.error(
+                "--import-from-file cannot be combined with live/discover/URL modes"
+            )
+        print("OFFLINE IMPORT FROM VERIFIED ARTIFACT")
+        upload_evidence = args.upload_evidence
+        payload = import_remax_catalog_from_file(
+            input_path=args.input,
+            cache_dir=args.cache_dir,
+            upload_evidence=upload_evidence,
+        )
+        output = json.dumps(payload, indent=2, default=str)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(output, encoding="utf-8")
+        print(output)
+        imported = payload.get("import") or {}
+        print(
+            "OFFLINE IMPORT complete: "
+            f"imported={imported.get('imported_count')} "
+            f"updated={imported.get('updated_count')} "
+            f"observations={imported.get('observation_count')} "
+            f"events={imported.get('event_count')}"
+        )
+        return 0
 
     if not args.urls and not args.discover:
         args.discover = True

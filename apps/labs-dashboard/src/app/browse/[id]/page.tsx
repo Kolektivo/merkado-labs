@@ -8,11 +8,28 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PriceDisplay } from "@/components/price-display";
+import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { getPublicListingById } from "@/lib/data/public-listings";
-import { formatCurrency, formatDateTime, titleCase } from "@/lib/format";
+import { formatDateTime, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function browseBackHref(
+  params: Record<string, string | string[] | undefined>,
+) {
+  const query = new URLSearchParams();
+  for (const key of ["type", "source", "bedrooms", "minPrice", "maxPrice"]) {
+    const raw = params[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value) query.set(key, value);
+  }
+  const search = query.toString();
+  return search ? `/browse?${search}` : "/browse";
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -22,13 +39,25 @@ export async function generateMetadata({
   return { title: listing?.title ?? "Property" };
 }
 
-export default async function PublicListingPage({ params }: { params: Params }) {
+export default async function PublicListingPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const listing = await getPublicListingById((await params).id);
   if (!listing) notFound();
+  const backHref = browseBackHref(await searchParams);
+  const missingOptional = [
+    listing.bedrooms == null,
+    listing.bathrooms == null,
+    listing.floorAreaM2 == null,
+  ].filter(Boolean).length;
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Button variant="ghost" asChild>
-        <Link href="/browse">Back to browse</Link>
+        <Link href={backHref}>Back to browse</Link>
       </Button>
       <Alert>
         <FlaskConical className="size-4" />
@@ -60,24 +89,32 @@ export default async function PublicListingPage({ params }: { params: Params }) 
           <h1 className="text-2xl font-semibold">
             {listing.title ?? `Property ${listing.externalId}`}
           </h1>
-          <p className="font-mono text-2xl font-semibold">
-            {formatCurrency(
-              listing.originalPrice,
-              listing.originalCurrency,
-            )}
-          </p>
-          {listing.benchmarkPriceXcg !== null ? (
-            <p className="text-sm text-muted-foreground">
-              XCG equivalent:{" "}
-              {formatCurrency(listing.benchmarkPriceXcg, "XCG")}. Indicative
-              equivalent based on known information.
+          <PriceDisplay
+            model={buildPriceDisplay({
+              originalPrice: listing.originalPrice,
+              originalCurrency: listing.originalCurrency,
+              benchmarkPriceXcg: listing.benchmarkPriceXcg,
+            })}
+            size="lg"
+          />
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {listing.bedrooms != null ? (
+              <span>{listing.bedrooms} bedrooms</span>
+            ) : null}
+            {listing.bathrooms != null ? (
+              <span>{listing.bathrooms} bathrooms</span>
+            ) : null}
+            {listing.floorAreaM2 != null ? (
+              <span>{listing.floorAreaM2} m²</span>
+            ) : null}
+          </div>
+          {missingOptional > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {missingOptional} optional property{" "}
+              {missingOptional === 1 ? "detail was" : "details were"} not
+              provided by this source.
             </p>
           ) : null}
-          <p className="text-sm text-muted-foreground">
-            {listing.bedrooms ?? "—"} bedrooms ·{" "}
-            {listing.bathrooms ?? "—"} bathrooms ·{" "}
-            {listing.floorAreaM2 ?? "—"} m²
-          </p>
         </CardContent>
       </Card>
       <Card>
@@ -117,6 +154,7 @@ export default async function PublicListingPage({ params }: { params: Params }) 
               rel="noreferrer"
             >
               Open original listing
+              <span className="sr-only"> (opens in new tab)</span>
             </a>
           </Button>
         </CardContent>

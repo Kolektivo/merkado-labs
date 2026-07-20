@@ -7,7 +7,8 @@ import {
   getPropertySources,
   getSourceRuns,
 } from "@/lib/data/queries";
-import { createLabsAdminClient } from "@/lib/supabase/admin";
+import { getRetainedAttentionListingCount } from "@/lib/data/enrichment";
+import { getLatestPipelineRuns } from "@/lib/data/operations";
 
 export type OverviewWarning = {
   sourceKey: string;
@@ -16,20 +17,14 @@ export type OverviewWarning = {
 };
 
 export const getOverviewData = cache(async () => {
-  const [listings, sources, runs] = await Promise.all([
+  const [listings, sources, runs, pipelineRuns, attentionListingCount] =
+    await Promise.all([
     getAllListings(),
     getPropertySources(),
     getSourceRuns(),
+    getLatestPipelineRuns(8),
+    getRetainedAttentionListingCount(),
   ]);
-  const client = createLabsAdminClient();
-  const { count: proposalCount, error: proposalError } = await client
-    .from("ai_enrichment_proposals")
-    .select("id", { count: "exact", head: true })
-    .eq("review_status", "unreviewed");
-
-  if (proposalError) {
-    throw new Error(`Unable to load AI review count: ${proposalError.message}`);
-  }
 
   const latestRunBySource = new Map<string, (typeof runs)[number]>();
   for (const run of runs) {
@@ -79,7 +74,20 @@ export const getOverviewData = cache(async () => {
     ).length,
     activeInventory: listings.filter((listing) => listing.status === "active")
       .length,
-    proposalsNeedingReview: proposalCount ?? 0,
+    listingsNeedingAttention: attentionListingCount,
+    healthySourceCount: sourceSummaries.filter(
+      (source) => source.latestRun?.outcome === "success",
+    ).length,
+    activePipelineCount: pipelineRuns.filter((run) =>
+      ["queued", "running", "stopping"].includes(run.status),
+    ).length,
+    failedPipelineCount: pipelineRuns.filter((run) => run.status === "failed")
+      .length,
+    recentPipelineRuns: pipelineRuns.filter((run) =>
+      ["completed", "completed_with_errors", "failed", "cancelled"].includes(
+        run.status,
+      ),
+    ),
     sourceSummaries,
     warnings,
   };

@@ -1,0 +1,131 @@
+/**
+ * XCG-primary price display model for listing detail, browse cards, and the
+ * listing table. Canonical rules come from
+ * `docs/06-currency-and-pricing-rules.md`:
+ *
+ * - Primary: XCG benchmark, prefixed `Cg`.
+ * - Secondary: original source amount when its currency differs from
+ *   XCG/ANG/NAf (ANG/NAf are 1:1 with XCG, so they are not "different").
+ * - Disclaimer for any converted amount: "Indicative equivalent based on
+ *   known information."
+ * - Sold listings additionally show: "Last known listing price. The actual
+ *   sale price may differ."
+ * - If an original price exists but no XCG benchmark is available, show the
+ *   original with "XCG equivalent currently unavailable" instead of a
+ *   fabricated conversion.
+ */
+
+const INDICATIVE_DISCLAIMER =
+  "Indicative equivalent based on known information.";
+const SOLD_DISCLAIMER =
+  "Last known listing price. The actual sale price may differ.";
+const BENCHMARK_UNAVAILABLE_LABEL = "XCG equivalent currently unavailable";
+
+/** ANG / NAf are 1:1 with XCG — not treated as a "different" currency. */
+const XCG_EQUIVALENT_CURRENCIES = new Set(["XCG", "ANG", "NAF"]);
+
+export type PriceDisplayModel = {
+  primaryLabel: string;
+  primaryAmount: number | null;
+  primaryCurrency: "XCG" | null;
+  secondaryLabel: string | null;
+  disclaimer: string | null;
+  soldDisclaimer: string | null;
+  benchmarkUnavailable: boolean;
+  /** Null excludes the listing from mixed-currency sort. */
+  sortKeyXcg: number | null;
+};
+
+function isSoldStatus(listingStatus?: string | null, isSold?: boolean) {
+  return Boolean(isSold) || (listingStatus ?? "").toLowerCase() === "sold";
+}
+
+export function formatXcgPrimary(amount: number): string {
+  try {
+    return new Intl.NumberFormat("en-CW", {
+      style: "currency",
+      currency: "XCG",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `Cg ${new Intl.NumberFormat("en").format(Math.round(amount))}`;
+  }
+}
+
+export function formatOriginalPrice(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en-CW", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${new Intl.NumberFormat("en").format(amount)}`;
+  }
+}
+
+export function buildPriceDisplay(input: {
+  originalPrice: number | null;
+  originalCurrency: string | null;
+  benchmarkPriceXcg: number | null;
+  listingStatus?: string | null;
+  isSold?: boolean;
+}): PriceDisplayModel {
+  const sold = isSoldStatus(input.listingStatus, input.isSold);
+  const soldDisclaimer = sold ? SOLD_DISCLAIMER : null;
+
+  const hasOriginal =
+    input.originalPrice !== null &&
+    input.originalPrice !== undefined &&
+    Boolean(input.originalCurrency);
+  const hasBenchmark =
+    input.benchmarkPriceXcg !== null && input.benchmarkPriceXcg !== undefined;
+
+  const originalCurrencyCode = (input.originalCurrency ?? "").toUpperCase();
+  const originalDiffersFromXcg =
+    hasOriginal && !XCG_EQUIVALENT_CURRENCIES.has(originalCurrencyCode);
+
+  if (hasBenchmark) {
+    const secondaryLabel =
+      hasOriginal && originalDiffersFromXcg
+        ? formatOriginalPrice(
+            input.originalPrice as number,
+            input.originalCurrency as string,
+          )
+        : null;
+    return {
+      primaryLabel: "Cg",
+      primaryAmount: input.benchmarkPriceXcg as number,
+      primaryCurrency: "XCG",
+      secondaryLabel,
+      disclaimer: INDICATIVE_DISCLAIMER,
+      soldDisclaimer,
+      benchmarkUnavailable: false,
+      sortKeyXcg: input.benchmarkPriceXcg as number,
+    };
+  }
+
+  if (hasOriginal) {
+    return {
+      primaryLabel: input.originalCurrency as string,
+      primaryAmount: input.originalPrice as number,
+      primaryCurrency: null,
+      secondaryLabel: null,
+      disclaimer: BENCHMARK_UNAVAILABLE_LABEL,
+      soldDisclaimer,
+      benchmarkUnavailable: true,
+      sortKeyXcg: null,
+    };
+  }
+
+  return {
+    primaryLabel: "Cg",
+    primaryAmount: null,
+    primaryCurrency: "XCG",
+    secondaryLabel: null,
+    disclaimer: null,
+    soldDisclaimer,
+    benchmarkUnavailable: true,
+    sortKeyXcg: null,
+  };
+}

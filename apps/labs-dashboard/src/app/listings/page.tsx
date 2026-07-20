@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Building2, List, MapPinned, SearchX } from "lucide-react";
 
@@ -21,13 +22,13 @@ import {
 } from "@/components/ui/empty";
 import {
   filterAndSortListings,
-  filterMapMarkers,
   listingFilterOptions,
   parseListingFilters,
 } from "@/lib/data/analytics";
 import { getAllListings, getMapListingMarkers } from "@/lib/data/queries";
 import { formatNumber } from "@/lib/format";
 import { getMapBasemapConfig } from "@/lib/geo/basemap";
+import { listingsHref } from "@/lib/listings-url";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Listings" };
@@ -35,6 +36,20 @@ export const metadata: Metadata = { title: "Listings" };
 type SearchParams = Promise<
   Record<string, string | string[] | undefined>
 >;
+
+function listingDetailContext(
+  params: Record<string, string | string[] | undefined>,
+  filters: ReturnType<typeof parseListingFilters>,
+) {
+  const rawFrom = Array.isArray(params.from) ? params.from[0] : params.from;
+  const from =
+    rawFrom === "quality" || rawFrom === "sources" ? rawFrom : undefined;
+  return {
+    from,
+    fromId: from === "sources" ? filters.source || undefined : undefined,
+    returnTo: listingsHref(params),
+  };
+}
 
 export default async function ListingsPage({
   searchParams,
@@ -68,18 +83,49 @@ export default async function ListingsPage({
 
   const filters = parseListingFilters(params);
   const filtered = filterAndSortListings(listings, filters);
-  const filteredMarkers = filterMapMarkers(markers, filters);
+  const filteredIds = new Set(filtered.map((listing) => listing.id));
+  const filteredMarkers = markers.filter((marker) => filteredIds.has(marker.id));
   const pageSize = 25;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Math.min(filters.page, totalPages);
+  if (page !== filters.page) {
+    redirect(
+      listingsHref(params, {
+        page: page === 1 ? null : String(page),
+      }),
+    );
+  }
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
   const options = listingFilterOptions(listings);
+  const detailContext = listingDetailContext(params, filters);
+  const hasActiveFilters = Boolean(
+    filters.query ||
+      filters.source ||
+      filters.neighbourhood ||
+      filters.listingType ||
+      filters.currency ||
+      filters.realtor ||
+      filters.amenity ||
+      filters.attribution ||
+      filters.enrichmentStatus ||
+      filters.lifecycle ||
+      filters.minPrice !== null ||
+      filters.maxPrice !== null ||
+      filters.coordinateQuality ||
+      filters.assignmentStatus ||
+      filters.publicEligible ||
+      filters.exclusionReason ||
+      filters.priceAvailability,
+  );
+  const listHref = listingsHref(params, { view: null, page: null });
+  const mapHref = listingsHref(params, { view: "map", page: null });
+  const visibleCount = view === "map" ? filteredMarkers.length : filtered.length;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Listings"
-        description="Search properties collected from approved realtor websites. Use the ? icons on filters for plain-language explanations."
+        description="Find a property, narrow the inventory, or focus on listings that need attention."
         icon={Building2}
       />
       <Suspense>
@@ -89,18 +135,24 @@ export default async function ListingsPage({
         <p className="text-sm text-muted-foreground">
           Showing{" "}
           <span className="font-medium text-foreground">
-            {formatNumber(filtered.length)}
+            {formatNumber(visibleCount)}
           </span>{" "}
-          of {formatNumber(listings.length)} listings
+          {view === "map"
+            ? `mapped properties · ${formatNumber(listings.length)} total`
+            : `of ${formatNumber(listings.length)} properties`}
         </p>
-        <div className="inline-flex rounded-lg border p-0.5">
+        <div
+          role="group"
+          aria-label="Listings view"
+          className="inline-flex rounded-lg border p-0.5"
+        >
           <Button
             variant={view === "list" ? "secondary" : "ghost"}
             size="sm"
             asChild
           >
-            <Link href="/listings" aria-current={view === "list" ? "page" : undefined}>
-              <List className="size-4" />
+            <Link href={listHref} aria-current={view === "list" ? "page" : undefined}>
+              <List data-icon="inline-start" />
               List
             </Link>
           </Button>
@@ -110,10 +162,10 @@ export default async function ListingsPage({
             asChild
           >
             <Link
-              href="/listings?view=map"
+              href={mapHref}
               aria-current={view === "map" ? "page" : undefined}
             >
-              <MapPinned className="size-4" />
+              <MapPinned data-icon="inline-start" />
               Map
             </Link>
           </Button>
@@ -125,20 +177,31 @@ export default async function ListingsPage({
             markers={filteredMarkers}
             styleUrl={getMapBasemapConfig().styleUrl}
             attribution={getMapBasemapConfig().attribution}
+            detailContext={detailContext}
           />
         ) : (
           <Card>
-            <CardContent className="py-8 text-sm text-muted-foreground">
-              No listings with usable Curaçao coordinates match these filters.
+            <CardContent className="space-y-3 py-8">
+              <p className="text-sm text-muted-foreground">
+                No listings with usable Curaçao coordinates match these filters.
+              </p>
+              {hasActiveFilters ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/listings?view=map">Clear filters</Link>
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         )
       ) : (
-      <Card className="gap-0 py-0">
+      <Card className="gap-0 overflow-hidden py-0">
         {pageRows.length ? (
           <>
             <CardContent className="px-0">
-              <ListingTable listings={pageRows} />
+              <ListingTable
+                listings={pageRows}
+                detailContext={detailContext}
+              />
             </CardContent>
             <Pagination page={page} totalPages={totalPages} params={params} />
           </>
@@ -161,9 +224,15 @@ export default async function ListingsPage({
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Button variant="outline" asChild>
-                  <Link href="/listings">Clear filters</Link>
-                </Button>
+                {listings.length === 0 ? (
+                  <Button variant="outline" asChild>
+                    <Link href="/sources">Open sources</Link>
+                  </Button>
+                ) : hasActiveFilters ? (
+                  <Button variant="outline" asChild>
+                    <Link href="/listings">Clear filters</Link>
+                  </Button>
+                ) : null}
               </EmptyContent>
             </Empty>
           </CardContent>

@@ -1,20 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  Eye,
-  History,
-  ImageOff,
-  MoreHorizontal,
-  Rows3,
-} from "lucide-react";
+import { ArrowUpRight, ImageOff, MoreHorizontal, Rows3 } from "lucide-react";
 
-import { HelpTip } from "@/components/help-tip";
+import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
+import { PriceDisplay } from "@/components/price-display";
+import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -28,240 +24,303 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { listingDetailHref } from "@/lib/breadcrumbs";
+import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
+import { buildPriceDisplay } from "@/lib/domain/price-display";
 import type { PropertyListing } from "@/lib/domain/types";
+import { formatDate, titleCase } from "@/lib/format";
 import {
-  formatCurrency,
-  formatDate,
-  titleCase,
-} from "@/lib/format";
-import { TIPS } from "@/lib/ui-labels";
+  enrichmentStatusLabel,
+  enrichmentStatusTone,
+  lifecycleLabel,
+  lifecycleTone,
+} from "@/lib/ui-labels";
 
-function HeadWithTip({
-  children,
-  tip,
-  tipLabel,
-  className,
+type DetailContext = {
+  from?: string;
+  fromId?: string;
+  returnTo?: string;
+};
+
+function ListingActions({
+  listing,
+  detailHref,
+  title,
 }: {
-  children: React.ReactNode;
-  tip: string;
-  tipLabel: string;
-  className?: string;
+  listing: PropertyListing;
+  detailHref: string;
+  title: string;
 }) {
   return (
-    <TableHead className={className}>
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <HelpTip label={tipLabel}>{tip}</HelpTip>
-      </span>
-    </TableHead>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${title}`}>
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel>Listing actions</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href={detailHref}>
+              <Rows3 />
+              View property
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <a
+              href={listing.originalRealtorUrl ?? listing.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ArrowUpRight />
+              Open original ad
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ListingImage({
+  listing,
+  title,
+  priority,
+}: {
+  listing: PropertyListing;
+  title: string;
+  priority?: boolean;
+}) {
+  return (
+    <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-muted md:h-12 md:w-20">
+      {listing.primaryImageUrl ? (
+        <Image
+          src={listing.primaryImageUrl}
+          alt=""
+          fill
+          className="object-cover"
+          sizes="80px"
+          priority={priority}
+          unoptimized
+        />
+      ) : (
+        <span className="flex size-full items-center justify-center text-muted-foreground">
+          <ImageOff className="size-4" aria-hidden />
+          <span className="sr-only">No image for {title}</span>
+        </span>
+      )}
+    </div>
   );
 }
 
 export function ListingTable({
   listings,
+  detailContext,
 }: {
   listings: PropertyListing[];
+  detailContext?: DetailContext;
 }) {
   return (
-    <div className="min-w-0 overflow-x-auto">
-      <Table className="min-w-[720px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="min-w-[220px] sm:min-w-[280px]">
-              Listing
-            </TableHead>
-            <TableHead>Original realtor</TableHead>
-            <TableHead>Neighbourhood</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <HeadWithTip
-              tip={TIPS.completeness.tip}
-              tipLabel={TIPS.completeness.label}
-            >
-              Completeness
-            </HeadWithTip>
-            <HeadWithTip tip={TIPS.timesSeen.tip} tipLabel={TIPS.timesSeen.label}>
-              Activity
-            </HeadWithTip>
-            <HeadWithTip tip={TIPS.observed.tip} tipLabel={TIPS.observed.label}>
-              Last seen
-            </HeadWithTip>
-            <TableHead className="w-12">
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {listings.map((listing, index) => {
-            const title = listing.title ?? `Listing ${listing.externalId}`;
-
-            return (
-              <TableRow key={listing.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
+    <>
+      <div
+        className="divide-y md:hidden"
+        data-testid="listing-mobile-results"
+      >
+        {listings.map((listing, index) => {
+          const title = listing.title ?? "Untitled property";
+          const detailHref = listingDetailHref(listing.id, detailContext);
+          const effective = resolveEffectiveNeighbourhood({
+            sourceName: listing.neighbourhood?.name ?? null,
+            mapName: listing.inferredNeighbourhood?.name ?? null,
+          });
+          return (
+            <article key={listing.id} className="flex flex-col gap-3 p-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <Link href={detailHref} aria-label={`Open ${title}`}>
+                  <ListingImage listing={listing} title={title} priority={index === 0} />
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <Link
-                      href={`/listings/${listing.id}`}
-                      className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border bg-muted"
-                      aria-label={`View ${title}`}
+                      href={detailHref}
+                      className="line-clamp-2 font-medium leading-snug hover:underline"
                     >
-                      {listing.primaryImageUrl ? (
-                        <Image
-                          src={listing.primaryImageUrl}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                          priority={index === 0}
-                          unoptimized
-                        />
-                      ) : (
-                        <span className="flex size-full items-center justify-center text-muted-foreground">
-                          <ImageOff className="size-4" aria-hidden />
-                        </span>
-                      )}
+                      {title}
                     </Link>
-                    <div className="min-w-0">
-                      <Link
-                        href={`/listings/${listing.id}`}
-                        className="font-medium hover:text-primary hover:underline"
-                      >
-                        {title}
-                      </Link>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        #{listing.externalId}
-                      </p>
-                    </div>
+                    <ListingActions
+                      listing={listing}
+                      detailHref={detailHref}
+                      title={title}
+                    />
                   </div>
-                </TableCell>
-                <TableCell className="min-w-[160px]">
-                  <div className="space-y-1">
-                    <p className="text-sm">
-                      {listing.originalRealtorName ?? "Realtor not listed"}
-                    </p>
-                    {listing.originalRealtorDomain ? (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {listing.originalRealtorDomain}
-                      </p>
-                    ) : null}
-                    {listing.unresolvedConflictCount > 0 ? (
-                      <Badge variant="outline">Needs review</Badge>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell className="min-w-[180px]">
-                  <div className="space-y-1">
-                    <p className="whitespace-nowrap text-sm">
-                      {listing.neighbourhood?.name ?? "Not specified"}
-                    </p>
-                    {listing.inferredNeighbourhood ? (
-                      <p className="text-xs text-muted-foreground">
-                        From map: {listing.inferredNeighbourhood.name}
-                      </p>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">
-                    {titleCase(listing.listingType)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-right font-mono font-medium">
-                  {formatCurrency(listing.currentPrice, listing.currency)}
-                </TableCell>
-                <TableCell>
-                  {listing.dataCompletenessScore !== null ? (
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-1.5 w-14 overflow-hidden rounded-full bg-muted"
-                        role="presentation"
-                      >
-                        <div
-                          className={
-                            listing.dataCompletenessScore >= 70
-                              ? "h-full rounded-full bg-emerald-500"
-                              : listing.dataCompletenessScore >= 40
-                                ? "h-full rounded-full bg-amber-500"
-                                : "h-full rounded-full bg-red-500"
-                          }
-                          style={{
-                            width: `${Math.min(100, Math.max(0, listing.dataCompletenessScore))}%`,
-                          }}
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {listing.source.name}
+                  </p>
+                </div>
+              </div>
+              <PriceDisplay
+                model={buildPriceDisplay({
+                  originalPrice: listing.originalPrice ?? listing.currentPrice,
+                  originalCurrency: listing.originalCurrency ?? listing.currency,
+                  benchmarkPriceXcg: listing.benchmarkPriceXcg,
+                  listingStatus: listing.status,
+                })}
+                size="sm"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{titleCase(listing.listingType)}</Badge>
+                <StatusBadge tone={lifecycleTone(listing.status)}>
+                  {lifecycleLabel(listing.status)}
+                </StatusBadge>
+                {listing.unresolvedConflictCount > 0 ? (
+                  <StatusBadge tone="warning">Needs attention</StatusBadge>
+                ) : (
+                  <StatusBadge
+                    tone={enrichmentStatusTone(
+                      listing.enrichmentStatus ?? "not_run",
+                    )}
+                  >
+                    {enrichmentStatusLabel(listing.enrichmentStatus ?? "not_run")}
+                  </StatusBadge>
+                )}
+              </div>
+              <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  <span className="truncate">
+                    {effective.name ?? "Neighbourhood not specified"}
+                  </span>
+                  <EffectiveNeighbourhoodBadge effective={effective} />
+                </span>
+                <span className="shrink-0">Updated {formatDate(listing.lastSeenAt)}</span>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div
+        className="hidden min-w-0 overflow-x-auto md:block"
+        data-testid="listing-desktop-results"
+      >
+        <Table className="min-w-[980px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="min-w-[280px]">Property</TableHead>
+              <TableHead className="text-right">XCG price</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Neighbourhood</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead>Latest refresh</TableHead>
+              <TableHead className="w-12">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {listings.map((listing, index) => {
+              const title = listing.title ?? "Untitled property";
+              const detailHref = listingDetailHref(listing.id, detailContext);
+              const effective = resolveEffectiveNeighbourhood({
+                sourceName: listing.neighbourhood?.name ?? null,
+                mapName: listing.inferredNeighbourhood?.name ?? null,
+              });
+              return (
+                <TableRow key={listing.id}>
+                  <TableCell>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Link href={detailHref} aria-label={`Open ${title}`}>
+                        <ListingImage
+                          listing={listing}
+                          title={title}
+                          priority={index === 0}
                         />
-                      </div>
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {listing.dataCompletenessScore}%
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Eye className="size-3.5" aria-hidden />
-                      Seen {listing.observationCount}×
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <History className="size-3.5" aria-hidden />
-                      {listing.priceObservationCount} price
-                      {listing.priceObservationCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {formatDate(listing.lastSeenAt)}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Actions for ${title}`}
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DropdownMenuLabel>Listing actions</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/listings/${listing.id}`}>
-                          <Rows3 className="size-4" />
-                          View details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <a
-                          href={listing.originalRealtorUrl ?? listing.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                      </Link>
+                      <div className="min-w-0">
+                        <Link
+                          href={detailHref}
+                          className="line-clamp-2 font-medium hover:underline"
                         >
-                          <ArrowUpRight className="size-4" />
-                          Open original ad
-                        </a>
-                      </DropdownMenuItem>
-                      {listing.originalRealtorUrl ? (
-                        <DropdownMenuItem asChild>
-                          <a
-                            href={listing.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <ArrowUpRight className="size-4" />
-                            Open other listing page
-                          </a>
-                        </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                          {title}
+                        </Link>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {titleCase(listing.propertyType)}
+                        </p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-right">
+                    <PriceDisplay
+                      model={buildPriceDisplay({
+                        originalPrice:
+                          listing.originalPrice ?? listing.currentPrice,
+                        originalCurrency:
+                          listing.originalCurrency ?? listing.currency,
+                        benchmarkPriceXcg: listing.benchmarkPriceXcg,
+                        listingStatus: listing.status,
+                      })}
+                      size="sm"
+                      align="end"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {titleCase(listing.listingType)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="min-w-[170px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm">
+                        {effective.name ?? "Not specified"}
+                      </span>
+                      <EffectiveNeighbourhoodBadge effective={effective} />
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-40 truncate text-sm">
+                    {listing.source.name}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={lifecycleTone(listing.status)}>
+                      {lifecycleLabel(listing.status)}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    {listing.unresolvedConflictCount > 0 ? (
+                      <StatusBadge tone="warning">Needs attention</StatusBadge>
+                    ) : (
+                      <StatusBadge
+                        tone={enrichmentStatusTone(
+                          listing.enrichmentStatus ?? "not_run",
+                        )}
+                      >
+                        {enrichmentStatusLabel(
+                          listing.enrichmentStatus ?? "not_run",
+                        )}
+                      </StatusBadge>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    {formatDate(listing.lastSeenAt)}
+                  </TableCell>
+                  <TableCell>
+                    <ListingActions
+                      listing={listing}
+                      detailHref={detailHref}
+                      title={title}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

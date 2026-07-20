@@ -8,6 +8,7 @@ from merkado_labs.scrapers.adapters.moret_real_estate import (
     MoretRealEstateAdapter,
     canonicalize_detail_url,
     extract_detail_links,
+    extract_listing_images,
 )
 from tests.fixtures.moret_html import (
     DETAIL_NO_PRICE,
@@ -42,6 +43,21 @@ def test_parse_xcg_active() -> None:
     assert snap.original_price.amount == 750000
     assert snap.bedrooms == 3
     assert snap.bathrooms == 2
+    assert snap.primary_image_url == (
+        "https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-hero.jpg"
+    )
+    assert snap.image_urls == (
+        "https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-hero.jpg",
+        "https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-pool.jpg",
+    )
+    assert all("Logo" not in url for url in snap.image_urls)
+    assert all("related-other" not in url for url in snap.image_urls)
+
+
+def test_extract_images_skips_logo_prefers_gallery() -> None:
+    images = extract_listing_images(DETAIL_XCG_ACTIVE)
+    assert images[0].endswith("salinja-villa-hero.jpg")
+    assert "Logo.png" not in "".join(images)
 
 
 def test_vanaf_price_warning() -> None:
@@ -78,3 +94,7 @@ def test_sample_detail_fixture_if_present() -> None:
     )
     assert snap.title
     assert snap.external_id.startswith("post-")
+    assert snap.primary_image_url
+    assert "Logo" not in (snap.primary_image_url or "")
+    assert len(snap.image_urls) >= 2
+    assert all("Logo" not in url for url in snap.image_urls)

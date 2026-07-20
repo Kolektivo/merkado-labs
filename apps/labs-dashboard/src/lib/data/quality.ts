@@ -36,7 +36,10 @@ export const getQualitySummary = cache(async () => {
     missingEvidenceChecksum: listings.filter(
       (listing) => !listing.sourceDescriptionChecksum,
     ).length,
-    unresolvedConflicts: listings.reduce(
+    unresolvedConflicts: listings.filter(
+      (listing) => listing.unresolvedConflictCount > 0,
+    ).length,
+    unresolvedConflictRows: listings.reduce(
       (sum, listing) => sum + listing.unresolvedConflictCount,
       0,
     ),

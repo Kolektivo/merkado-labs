@@ -31,9 +31,15 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
   const [busy, setBusy] = useState(false);
 
   async function submit(form: HTMLFormElement) {
+    const fields = new FormData(form);
+    const minPrice = Number(fields.get("minPrice")) || null;
+    const maxPrice = Number(fields.get("maxPrice")) || null;
+    if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+      setError("Minimum budget cannot be greater than maximum budget.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    const fields = new FormData(form);
     try {
       const response = await fetch("/api/search-requests", {
         method: "POST",
@@ -68,8 +74,9 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
       <CardHeader>
         <CardTitle>New draft request</CardTitle>
         <CardDescription>
-          Fill in what you know — every field except the name is optional. You
-          land on the match report right after creating it.
+          Fill in what you know — every field except the name is optional. After
+          creating, you can confirm the draft for Merkado Agent testing. Match
+          scores are not generated automatically.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -80,6 +87,7 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
             void submit(event.currentTarget);
           }}
         >
+          <fieldset disabled={busy} className="contents">
           <div className="min-w-0">
             <FieldLabel htmlFor="sr-title">Request name</FieldLabel>
             <Input
@@ -181,6 +189,7 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
               customers.
             </p>
           </div>
+          </fieldset>
         </form>
       </CardContent>
     </Card>

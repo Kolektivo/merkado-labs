@@ -27,8 +27,10 @@ export type EnrichmentPreview = {
   force: boolean;
 };
 
-const PROMPT_VERSION = "listing_enrichment_v1";
-const SCHEMA_VERSION = "listing_enrichment_schema_v1";
+/** Exactly one production Labs enrichment scope value for each dimension. */
+export const PROMPT_VERSION = "listing_enrichment_v3";
+export const SCHEMA_VERSION = "listing_enrichment_schema_v3";
+export const POLICY_VERSION = "enrichment_policy_v3";
 
 export function enrichmentModel(): string {
   const model = process.env.OPENAI_ENRICHMENT_MODEL?.trim();
@@ -45,6 +47,7 @@ export function enrichmentMeta() {
     model: enrichmentModel(),
     promptVersion: PROMPT_VERSION,
     schemaVersion: SCHEMA_VERSION,
+    policyVersion: POLICY_VERSION,
   };
 }
 

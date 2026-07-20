@@ -86,6 +86,7 @@ const LISTING_SELECT = [
   "street",
   "house_number",
   "resort",
+  "source_neighbourhood_text",
   "amenities",
   "data_completeness_score",
   "status",
@@ -371,6 +372,9 @@ function normalizeListing(
         ? String(source.adapter_status)
         : null,
     },
+    sourceNeighbourhoodText: row.source_neighbourhood_text
+      ? String(row.source_neighbourhood_text)
+      : null,
     neighbourhood,
     inferredNeighbourhood,
     neighbourhoodAssignmentStatus: normalizeAssignmentStatus(
@@ -691,6 +695,7 @@ export const getSourceRuns = cache(async (): Promise<SourceRunSummary[]> => {
         "excluded_no_price_count",
         "warning_count",
         "error_count",
+        "metadata",
       ].join(","),
     )
     .order("started_at", { ascending: false })
@@ -702,6 +707,21 @@ export const getSourceRuns = cache(async (): Promise<SourceRunSummary[]> => {
 
   return (data ?? []).map((row) => {
     const record = row as unknown as Record<string, unknown>;
+    const metadata =
+      record.metadata && typeof record.metadata === "object"
+        ? (record.metadata as Record<string, unknown>)
+        : {};
+    const completeCatalog =
+      typeof metadata.complete_catalog === "boolean"
+        ? metadata.complete_catalog
+        : null;
+    const duplicateRaw = metadata.duplicate_external_ids;
+    const duplicateCount =
+      typeof duplicateRaw === "number"
+        ? duplicateRaw
+        : duplicateRaw != null
+          ? Number(duplicateRaw)
+          : null;
     return {
       id: String(record.id),
       sourceKey: String(record.source_key),
@@ -717,6 +737,11 @@ export const getSourceRuns = cache(async (): Promise<SourceRunSummary[]> => {
       excludedNoPriceCount: Number(record.excluded_no_price_count ?? 0),
       warningCount: Number(record.warning_count ?? 0),
       errorCount: Number(record.error_count ?? 0),
+      completeCatalog,
+      duplicateCount:
+        duplicateCount != null && Number.isFinite(duplicateCount)
+          ? duplicateCount
+          : null,
     };
   });
 });
@@ -803,35 +828,67 @@ export const getEnrichmentObservations = cache(
   },
 );
 
+function mapAiEnrichmentProposal(row: Record<string, unknown>): AiEnrichmentProposal {
+  return {
+    id: String(row.id),
+    propertyListingId: String(row.property_listing_id),
+    enrichmentJobId: row.enrichment_job_id
+      ? String(row.enrichment_job_id)
+      : null,
+    model: String(row.model),
+    promptVersion: String(row.prompt_version),
+    schemaVersion: String(row.schema_version),
+    inputChecksum: String(row.input_checksum),
+    status: String(row.status),
+    proposal:
+      row.proposal && typeof row.proposal === "object"
+        ? (row.proposal as Record<string, unknown>)
+        : {},
+    confidence: optionalNumber(row.confidence),
+    supportingEvidence: row.supporting_evidence,
+    warnings: row.warnings,
+    tokenUsage: row.token_usage,
+    apiRequestId: row.api_request_id ? String(row.api_request_id) : null,
+    errorMessage: row.error_message ? String(row.error_message) : null,
+    generatedAt: String(row.generated_at),
+    reviewStatus: (row.review_status
+      ? String(row.review_status)
+      : "unreviewed") as AiEnrichmentProposal["reviewStatus"],
+    reviewNotes: row.review_notes ? String(row.review_notes) : null,
+    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
+    reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
+  };
+}
+
+const AI_PROPOSAL_SELECT = [
+  "id",
+  "property_listing_id",
+  "enrichment_job_id",
+  "model",
+  "prompt_version",
+  "schema_version",
+  "input_checksum",
+  "status",
+  "proposal",
+  "confidence",
+  "supporting_evidence",
+  "warnings",
+  "token_usage",
+  "api_request_id",
+  "error_message",
+  "generated_at",
+  "review_status",
+  "review_notes",
+  "reviewed_at",
+  "reviewed_by",
+].join(",");
+
 export const getLatestAiEnrichmentProposal = cache(
   async (listingId: string): Promise<AiEnrichmentProposal | null> => {
     const client = createLabsAdminClient();
     const { data, error } = await client
       .from("ai_enrichment_proposals")
-      .select(
-        [
-          "id",
-          "property_listing_id",
-          "enrichment_job_id",
-          "model",
-          "prompt_version",
-          "schema_version",
-          "input_checksum",
-          "status",
-          "proposal",
-          "confidence",
-          "supporting_evidence",
-          "warnings",
-          "token_usage",
-          "api_request_id",
-          "error_message",
-          "generated_at",
-          "review_status",
-          "review_notes",
-          "reviewed_at",
-          "reviewed_by",
-        ].join(","),
-      )
+      .select(AI_PROPOSAL_SELECT)
       .eq("property_listing_id", listingId)
       .order("generated_at", { ascending: false })
       .limit(1)
@@ -842,37 +899,27 @@ export const getLatestAiEnrichmentProposal = cache(
     }
     if (!data) return null;
 
-    const row = data as unknown as Record<string, unknown>;
+    return mapAiEnrichmentProposal(data as unknown as Record<string, unknown>);
+  },
+);
 
-    return {
-      id: String(row.id),
-      propertyListingId: String(row.property_listing_id),
-      enrichmentJobId: row.enrichment_job_id
-        ? String(row.enrichment_job_id)
-        : null,
-      model: String(row.model),
-      promptVersion: String(row.prompt_version),
-      schemaVersion: String(row.schema_version),
-      inputChecksum: String(row.input_checksum),
-      status: String(row.status),
-      proposal:
-        row.proposal && typeof row.proposal === "object"
-          ? (row.proposal as Record<string, unknown>)
-          : {},
-      confidence: optionalNumber(row.confidence),
-      supportingEvidence: row.supporting_evidence,
-      warnings: row.warnings,
-      tokenUsage: row.token_usage,
-      apiRequestId: row.api_request_id ? String(row.api_request_id) : null,
-      errorMessage: row.error_message ? String(row.error_message) : null,
-      generatedAt: String(row.generated_at),
-      reviewStatus: (row.review_status
-        ? String(row.review_status)
-        : "unreviewed") as AiEnrichmentProposal["reviewStatus"],
-      reviewNotes: row.review_notes ? String(row.review_notes) : null,
-      reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
-      reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
-    };
+export const getAiEnrichmentProposalsForListing = cache(
+  async (listingId: string, limit = 12): Promise<AiEnrichmentProposal[]> => {
+    const client = createLabsAdminClient();
+    const { data, error } = await client
+      .from("ai_enrichment_proposals")
+      .select(AI_PROPOSAL_SELECT)
+      .eq("property_listing_id", listingId)
+      .order("generated_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw publicReadError("Unable to load AI enrichment history", error.message);
+    }
+
+    return (data ?? []).map((row) =>
+      mapAiEnrichmentProposal(row as unknown as Record<string, unknown>),
+    );
   },
 );
 

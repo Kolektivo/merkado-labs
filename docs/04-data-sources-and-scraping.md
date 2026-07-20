@@ -6,15 +6,15 @@
 
 | Source key | Display name | Status |
 |---|---|---|
-| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.1; 40 listings imported (manual) |
+| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.0; 84-listing complete catalog; 84/84 successful Terra v3 proposals (manual/unscheduled) |
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED][RISK] HTTP 202/WAF; skeleton only |
-| `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220; unscheduled) |
+| `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
 | `moret_real_estate` | Moret Real Estate | [LABS][WIP] v0.1 WPEstate; 5 bounded listings |
 | `monumentenzorg_curacao` | Monumentenzorg Curaçao | [RISK] SSL expired / DNS fail; fixture parser only |
 
 Confirm the exact domain, listing index, detail paths, robots rules, and terms note before implementing each adapter.
 
-### RE/MAX Curaçao (`remax_curacao`) — confirmed 2026-07-16
+### RE/MAX Curaçao (`remax_curacao`) — verified 2026-07-20 (v0.4.1 Data Ops preflight)
 
 | Item | Value |
 |---|---|
@@ -26,12 +26,15 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | External ID | Lowercase `hs####` / `hr####` / `lo####` / `co####` from URL path |
 | Robots | `robots.txt` allows listing paths; only `/page_commercialcontact.php` disallowed |
 | Rendering | Server-rendered HTML with labelled tables + `itemprop=price` microdata; images on `cdn.remax-abc.com` |
-| Catalog size (complete import 2026-07-16) | 220 listings (164 sale + 56 rent); 12 index pages; `complete_catalog` true |
+| Catalog size | **220** listings (164 sale + 56 rent); 12 index pages; latest complete success 2026-07-17; checksum `54f8e094…9177`; Labs matches (125 active / 59 sold / 36 inactive; 119 public eligible) |
 | Currency UI | Site switcher EUR / USD / XCG (NAF path); explicit symbols/codes in price node |
-| Coordinates | Absent from detail HTML for this catalog (0/220); do not invent; map shows "No map pin" |
+| Currency | 208/220 priced EUR with ECB XCG benchmarks; 12 no-price; original amounts preserved; XCG-primary shared display |
+| Coordinates | Source HTML uses `new google.maps.LatLng(lat,lng)` on **199/220** pages. Adapter **v0.4.1** imported offline into Labs (**199/220**; 21 remain without coordinates). Do not invent coordinates. |
+| Listing agent | `[itemprop=employee]` extracted in v0.4.1 (`raw_payload.listing_agent`); agent headshots excluded from gallery |
+| Bathrooms / year / project | Full/half bathroom derivation, `year_built`, project/resort labels in v0.4.1 (observation/raw payload) |
 | Listing dates | Not published on detail pages observed (0/220 `source_listed_at`) |
 | Rate limit | Use robots crawl-delay when present; otherwise ≥1.5–2s between live requests |
-| Adapter | `src/merkado_labs/scrapers/adapters/remax_curacao.py` **v0.4**; CLI `scripts/adapters/run_remax_curacao.py` |
+| Adapter | `src/merkado_labs/scrapers/adapters/remax_curacao.py` **v0.4.1**; CLI `scripts/adapters/run_remax_curacao.py` (`--preview-import` / `--import-from-file`) |
 | Description extraction | Full `p.description-text` + `#description` body (v0.3.x incorrectly used meta description only) |
 | Raw evidence | Private Storage bucket `listing-raw-evidence`; observation metadata + cleaned text in DB |
 | First complete Labs import | 2026-07-16T19:21:43Z–19:29:41Z UTC; outcome `success`; run `3bf72218-914e-49f9-a577-cdf6ca76e500` |
@@ -41,10 +44,16 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Status mix | 125 active (105 sale / 20 rent), 59 sold, 36 inactive/rented; 29 under-contract stay `active` with explicit `source_listing_status` |
 | First-observed status events | Backfilled 2026-07-17: 59 `source_marked_sold`, 36 `source_marked_rented`, 29 `source_marked_under_contract` (earliest Merkado observation; not transaction dates) |
 | Idempotency | Immediate re-import 2026-07-16T19:37–19:45Z: imported 0, updated 220, no new price/first_seen/benchmark events |
-| Scheduling | Remains **off** — manual only |
-| AI enrichment | Foundation live; validated on 5 listings 2026-07-17; do not bulk-run all 220 without review |
+| Scheduling | Remains **off** — manual only / unscheduled |
+| Historical AI | 29 proposals on **gpt-4.1-mini** + prompt/schema **v1** (2026-07-17); obsolete for Terra v3 |
+| Terra v3 canary (2026-07-20) | Five IDs (`hs2467`, `hr1013`, `hr2165`, `hs2941`, `hr1393`); **5/5** `needs_review` after `hs2467` retry; model `gpt-5.6-terra` |
+| v0.4.1 preflight (2026-07-20) | Artifact integrity ok. Geospatial preview: **193** inferred / **6** outside polygons / **21** no coords; effective neighbourhood changes **5**. Lifecycle/public stable. Legacy AI checksum would flip **220**; semantic billable **5**. See `data/processed/remax_v041_*` + `remax_pipeline_preflight.*`. |
+| AI / refresh policy | Normal `Refresh & enrich` = new/changed only (ceiling USD 0.75). Initial Terra backfill was a separately approved one-time action (ceiling USD 10; completed 2026-07-20). Coordinate-only import must not rebill all 220. |
+| Terra-v3 initial backfill | Selection **211** + **9** already current; job `remax_remaining_terra_backfill` **211/211** succeeded; gross ≈ **USD 6.67**; coverage **220/220**; see `data/processed/remax_activation_final_report.*` |
+| Verdict | **v0.4.1 active** + Terra-v3 initial backfill **complete**; remains manual/unscheduled |
+| Next gated action | Optional live Refresh & enrich (new/changed only). Next source-development track: **Moret** — not auto-started |
 
-### Keller Williams Curaçao (`keller_williams_curacao`) — [WIP] 2026-07-17
+### Keller Williams Curaçao (`keller_williams_curacao`) — [LABS] 2026-07-17
 
 | Item | Value |
 |---|---|
@@ -53,13 +62,22 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | External ID | Trailing slug token (`JC-0027`, `ID-008`, `UJ32`, …) |
 | Robots | `Crawl-Delay: 20` — sequential detail only; no parallel |
 | Price UI | USD primary with EUR/XCG equivalents; European thousands (`.` ) |
-| Adapter | `keller_williams_curacao.py` **v0.1**; CLI `scripts/adapters/run_keller_williams_curacao.py` |
-| Labs import | 2026-07-17: discovered/parsed 40, imported 36 + 4 prior = **40** listings |
-| Run class | All KW runs to date are **partial** (`max_items` / incomplete catalog). Never treat as complete success. |
-| False-removal repair | 35 listings wrongly marked `removed` by two `max_items=5` runs mislabeled `success`; restored 2026-07-17 (`kw_bounded_run_false_removal_v1`) |
-| Current mix | 39 `active` + 1 `unknown` (Under Contract source status); 0 removed |
-| Evidence | Private Storage HTML backfilled for all 40 |
-| Scheduling | **Off** — manual only |
+| Adapter | `keller_williams_curacao.py` **v0.3.0**; CLI `scripts/adapters/run_keller_williams_curacao.py` |
+| Complete catalog import | Offline import from verified Stage-3 artifact (`--import-from-file`); **84** listings; no live website crawl for that import |
+| Public eligibility | 81 public eligible / 3 excluded (no-price / ineligible) |
+| Coordinates | Present for 82/84; missing only `RL-42`, `RL-44` |
+| False-removal repair (earlier) | 35 listings wrongly marked `removed` by bounded runs; restored 2026-07-17 |
+| AI enrichment | **GPT-5.6 Terra** (`OPENAI_ENRICHMENT_MODEL=gpt-5.6-terra`) with automatic policy application; prompt/schema/policy **v3** (`listing_enrichment_v3` / `listing_enrichment_schema_v3` / `enrichment_policy_v3`) |
+| Enrichment architecture | Source facts / AI proposals / effective applied attributes kept as separate layers; evidence must ground in normalized source text |
+| Review model | Exception-based: high-confidence evidenced fields auto-apply; conflicts / weak / variant evidence need attention; unsupported/duplicated/noisy proposals are rejected outright and never reach the attention queue |
+| Cost safeguards | Preflight worst-case uses configured `max_output_tokens`; hard USD ceiling; per-listing persist; resume skips unchanged checksums (including prior failures unless `--force`) |
+| Retry batch (2026-07-17) | 24 listings that truncated at `max_output_tokens=2500` retried on the compact v3 schema: **24/24 succeeded**, cost **USD 0.7054** |
+| Final coverage & cost | **84/84** successful latest-proposal Terra runs (0 failed, 0 never enriched); latest-proposal cost total **USD 3.1266**; gross (all DB Terra proposals) **USD 4.1463**; retained-result **USD 3.1266**; wasted/deferred **USD 1.0197**; policy outcomes 235 auto-applied / 77 needs attention / 1039 rejected fields — see `data/processed/kw_activation_final_report.md` |
+| Timeline | Immutable `ai_enrichment_*` activity events (started/completed/failed/skipped/auto_applied/needs_attention) |
+| Attributes | Flexible metadata bag — not first-class browse filters in this activation |
+| Neighbourhood provenance | Dedicated source location remains source truth; geospatial assignment separate; AI neighbourhood candidates must be evidence-backed; generic `Curaçao` is not a confirmed neighbourhood; coordinates are never AI-generated |
+| Scheduling | **Off** — manual only; AI enrichment also unscheduled |
+| Production claims | Labs research only — no production property marketplace claims |
 
 ### Moret Real Estate (`moret_real_estate`) — [LABS][WIP] 2026-07-17
 
@@ -70,17 +88,29 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | External ID | `post-{wordpress_post_id}` when present |
 | Bilingual | Canonicalize `/en|nl/properties/` → `/properties/` |
 | Price | Prefer `price_area`; flag `vanaf`/from prices; rent inferred when low/“te huur” |
-| Adapter | `moret_real_estate.py` **v0.1**; CLI `scripts/adapters/run_moret_real_estate.py` |
+| Adapter | `moret_real_estate.py` **v0.1.1**; CLI `scripts/adapters/run_moret_real_estate.py` |
+| Images | prettyPhoto gallery `href`s (full-size); `og:image` fallback; skip site logos / related cards |
 | Labs import | Bounded **5** listings + evidence; scheduling off |
 | Notes | Some prices use global fallback — tighten price_area selectors before full catalog |
 
 ### Adapter status — July 2026
 
-- [LABS] **RE/MAX**: complete manual catalog + evidence refresh; AI 25-listing batch done.
-- [LABS] **Keller Williams**: 40 listings imported; Crawl-Delay 20; pagination still incomplete.
+- [LABS] **RE/MAX**: complete manual catalog; **adapter v0.4.1 active** (199/220 coords); Terra-v3 initial backfill complete (**220/220**); remains manual/unscheduled.
+- [LABS] **Keller Williams**: adapter v0.3.0; complete 84-listing catalog imported offline; Terra v3 auto-enrichment activated, 84/84 successful proposals (manual/unscheduled).
 - [LABS][WIP] **Moret**: WPEstate parser + 5 bounded imports; expand after price QA.
 - [RISK] **Monumentenzorg**: SSL certificate expired on `monumentenzorg.cw`; alt DNS failed; fixture-only parser.
 - [PLANNED][RISK] **Sotheby's**: robots/search/sitemap HTTP 202 (WAF); no browser automation.
+
+### Source readiness matrix and next track
+
+`data/processed/property_source_readiness.md` is a read-only audit (no
+scrapes, imports, or AI calls) comparing listings/public-eligible/AI
+proposals/catalog maturity per source. RE/MAX v0.4.1 preflight artifacts are
+in `data/processed/remax_v041_*` and `remax_pipeline_preflight.*`. Next gated
+step (completed): **controlled offline v0.4.1 import** + Terra-v3 initial backfill.
+Normal Refresh & enrich enriches new/changed only; initial backfill was
+separately approved. Moret still needs catalog/parser completion. KW remains
+manual and unscheduled.
 
 ## 2. CHH removal rule
 

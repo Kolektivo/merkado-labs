@@ -27,10 +27,13 @@ test("internal routes use one signed-cookie proxy gate", () => {
 test("normal admin APIs require the session cookie, not repeated secrets", () => {
   for (const path of [
     "src/app/api/search-requests/route.ts",
+    "src/app/api/search-requests/[id]/confirm/route.ts",
     "src/app/api/agent/entitlements/route.ts",
     "src/app/api/enrichment/preview/route.ts",
     "src/app/api/enrichment/jobs/route.ts",
     "src/app/api/enrichment/proposals/[id]/review/route.ts",
+    "src/app/api/pipeline/runs/route.ts",
+    "src/app/api/pipeline/runs/[id]/route.ts",
   ]) {
     const route = source(path);
     assert.match(route, /assertLabsAdminSession/);
@@ -43,6 +46,7 @@ test("navigation exposes only consolidated top-level areas", () => {
   for (const href of [
     "/",
     "/listings",
+    "/data-operations",
     "/sources",
     "/enrichment",
     "/quality",
@@ -73,6 +77,58 @@ test("query errors render an explicit retry state rather than zero", () => {
   assert.match(error, /Database query/);
   assert.match(error, /Try again/);
   assert.doesNotMatch(error, /return 0/);
+});
+
+test("listing breadcrumbs preserve section context from enrichment and match reports", () => {
+  const crumbs = source("src/lib/breadcrumbs.ts");
+  const enrichment = source("src/app/enrichment/page.tsx");
+  const matchReports = source("src/app/match-reports/[requestId]/page.tsx");
+  const listingDetail = source("src/app/listings/[id]/page.tsx");
+  const shell = source("src/components/app-shell.tsx");
+
+  assert.match(crumbs, /from:\s*"enrichment"|enrichment:\s*\{/);
+  assert.match(crumbs, /listingDetailHref/);
+  assert.match(crumbs, /resolveListingBackNav/);
+  assert.match(enrichment, /from:\s*"enrichment"/);
+  assert.match(matchReports, /from:\s*"match-reports"/);
+  assert.match(listingDetail, /resolveListingBackNav/);
+  assert.match(shell, /resolveCrumbs/);
+  assert.match(shell, /useSearchParams/);
+});
+
+test("AI cost math lives in one shared module and never converts to XCG", () => {
+  const cost = source("src/lib/enrichment/cost.ts");
+  assert.match(cost, /export function calculateUsageCostUsd/);
+  assert.match(cost, /export const MODEL_RATES_USD_PER_1M/);
+  assert.match(cost, /"gpt-5\.6-terra":\s*\{\s*input:\s*2\.5,\s*cachedInput:\s*0\.25,\s*output:\s*15/);
+  assert.match(
+    cost,
+    /Estimated from recorded token usage and configured model pricing\./,
+  );
+  assert.doesNotMatch(cost, /benchmarkPriceXcg|formatXcgPrimary|xcg_rate|toXcg/i);
+});
+
+test("enrichment dashboard derives cost, run history, and model efficiency from stored jobs/proposals", () => {
+  const enrichment = source("src/lib/data/enrichment.ts");
+  assert.match(enrichment, /export function buildEnrichmentCostSummary/);
+  assert.match(enrichment, /export function buildModelEfficiencyRows/);
+  assert.match(enrichment, /export function buildEnrichmentRunRows/);
+  assert.match(enrichment, /loadAllAiEnrichmentAttempts/);
+  // No live OpenAI calls from the dashboard.
+  assert.doesNotMatch(enrichment, /openai|OPENAI/);
+
+  const page = source("src/app/enrichment/page.tsx");
+  assert.match(page, /costSummary/);
+  assert.match(page, /runRows/);
+  assert.match(page, /modelEfficiency/);
+  assert.match(page, /not directly comparable/);
+});
+
+test("listing detail surfaces cumulative AI usage and cost alongside changes", () => {
+  const changes = source("src/components/listing-ai-changes.tsx");
+  assert.match(changes, /Cumulative attempts/);
+  assert.match(changes, /Cumulative estimated cost/);
+  assert.match(changes, /Latest run tokens . cost/);
 });
 
 test("prototype and server-only configuration boundaries stay explicit", () => {

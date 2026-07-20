@@ -35,13 +35,14 @@ export async function POST(
         ? body.reviewNotes.trim()
         : null;
     const { id } = await params;
+    const isUnreviewed = reviewStatus === "unreviewed";
     const { data, error } = await createLabsAdminClient()
       .from("ai_enrichment_proposals")
       .update({
         review_status: reviewStatus,
         review_notes: reviewNotes,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: "labs-dashboard-admin",
+        reviewed_at: isUnreviewed ? null : new Date().toISOString(),
+        reviewed_by: isUnreviewed ? null : "labs-dashboard-admin",
       })
       .eq("id", id)
       .select("id,review_status,review_notes,reviewed_at,reviewed_by")

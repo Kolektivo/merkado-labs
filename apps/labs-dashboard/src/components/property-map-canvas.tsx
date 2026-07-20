@@ -207,7 +207,11 @@ export function PropertyMapCanvas({
   }, [markers, ready, zoomRequest]);
 
   return (
-    <div className="relative h-[min(70vh,720px)] w-full min-w-0 overflow-hidden bg-muted/30">
+    <div
+      role="region"
+      aria-label="Property map"
+      className="relative h-[min(70vh,720px)] w-full min-w-0 overflow-hidden bg-muted/30"
+    >
       {!ready && !error ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">
           Loading map…

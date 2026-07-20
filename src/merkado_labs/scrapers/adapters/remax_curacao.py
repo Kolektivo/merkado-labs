@@ -35,7 +35,7 @@ from merkado_labs.scrapers.robots import USER_AGENT, sleep_for_delay
 
 SOURCE_KEY = "remax_curacao"
 ADAPTER_NAME = "remax_curacao"
-ADAPTER_VERSION = "0.4.0"
+ADAPTER_VERSION = "0.4.1"
 RAW_EVIDENCE_BUCKET = "listing-raw-evidence"
 DOMAINS = frozenset({"www.realestate-curacao.com", "realestate-curacao.com"})
 BASE_URL = "https://www.realestate-curacao.com"
@@ -96,9 +96,23 @@ LATLNG_RE = re.compile(
     r'(?:lat(?:itude)?|lng|lon(?:gitude)?)\s*[:=]\s*["\']?(?P<value>-?\d+(?:\.\d+)?)',
     re.IGNORECASE,
 )
+# Explicit Google Maps constructor used on RE/MAX detail pages.
+GOOGLE_LATLNG_RE = re.compile(
+    r"new\s+google\.maps\.LatLng\(\s*(?P<lat>-?\d+(?:\.\d+)?)\s*,\s*(?P<lng>-?\d+(?:\.\d+)?)\s*\)",
+    re.IGNORECASE,
+)
 IMAGE_RE = re.compile(
     r'(?:src|href|data-original|data-thumb)=["\'](?P<src>//cdn\.remax-abc\.com/img/[^"\']+)["\']',
     re.IGNORECASE,
+)
+# Agent headshots share the same CDN; exclude from property galleries.
+AGENT_IMAGE_RE = re.compile(
+    r"cdn\.remax-abc\.com/img/cache/img-\d+",
+    re.IGNORECASE,
+)
+AGENT_EMPLOYEE_RE = re.compile(
+    r'itemprop=["\']employee["\'][^>]*>(?P<body>.*?)</',
+    re.IGNORECASE | re.DOTALL,
 )
 UNDER_CONTRACT_RE = re.compile(
     r'class=["\'][^"\']*detail_image_message[^"\']*["\'][^>]*>\s*Under contract',
@@ -235,6 +249,23 @@ def extract_coordinates(html: str) -> tuple[float | None, float | None, list[str
     """Return explicit coordinates only when both lat and lng appear."""
 
     warnings: list[str] = []
+    # Prefer the Google Maps constructor — the site's primary explicit source.
+    google = GOOGLE_LATLNG_RE.search(html)
+    if google:
+        try:
+            lat = float(google.group("lat"))
+            lng = float(google.group("lng"))
+        except ValueError:
+            warnings.append("coordinates_parse_error")
+        else:
+            if -90.0 <= lat <= 90.0 and -180.0 <= lng <= 180.0:
+                # Guard obvious lat/lng swaps for Curaçao-scale pages.
+                if abs(lat) < 1 and abs(lng) > 10:
+                    warnings.append("coordinates_possible_lat_lng_swap")
+                    return lng, lat, warnings
+                return lat, lng, warnings
+            warnings.append("coordinates_out_of_range")
+
     values: dict[str, float] = {}
     for match in LATLNG_RE.finditer(html):
         token = match.group(0).casefold()
@@ -253,6 +284,25 @@ def extract_coordinates(html: str) -> tuple[float | None, float | None, list[str
     else:
         warnings.append("coordinates_incomplete_in_html")
     return None, None, warnings
+
+
+def extract_listing_agent(html: str) -> FieldProvenance | None:
+    """Extract the on-page listing agent (schema.org employee), when present."""
+
+    match = AGENT_EMPLOYEE_RE.search(html)
+    if not match:
+        return None
+    name = _clean_html_text(match.group("body"))
+    if not name:
+        return None
+    return FieldProvenance(
+        field_name="listing_agent",
+        raw_value=name,
+        normalized_value=name,
+        extraction_method="schema_org_employee",
+        evidence_selector="[itemprop=employee]",
+        evidence_snippet=name[:240],
+    )
 
 
 def parse_number(raw: str) -> int | float | None:
@@ -468,12 +518,18 @@ def extract_price(html: str) -> FieldProvenance | None:
 
 
 def extract_images(html: str) -> list[str]:
+    """Extract property gallery URLs, excluding agent headshots and duplicates."""
+
+    # Strip the agent block so employee photos never enter the gallery.
+    working = AGENT_BLOCK_RE.sub("", html)
     urls: list[str] = []
     seen: set[str] = set()
-    for match in IMAGE_RE.finditer(html):
+    for match in IMAGE_RE.finditer(working):
         src = match.group("src")
         if src.startswith("//"):
             src = "https:" + src
+        if AGENT_IMAGE_RE.search(src):
+            continue
         if src in seen:
             continue
         seen.add(src)
@@ -801,10 +857,25 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
 
         bedrooms = None
         bathrooms = None
+        full_bathrooms = None
+        half_bathrooms = None
         if "bedrooms" in by_name:
             bedrooms = int(by_name["bedrooms"].normalized_value)
         if "bathrooms" in by_name:
             bathrooms = float(by_name["bathrooms"].normalized_value)
+            # RE/MAX publishes a single bathrooms value; derive full/half when
+            # the source uses a .5 fractional convention (e.g. 2.5).
+            full_bathrooms = int(bathrooms)
+            frac = round(bathrooms - full_bathrooms, 2)
+            if frac >= 0.5:
+                half_bathrooms = 1
+            elif frac > 0:
+                warnings.append("bathroom_fraction_nonstandard")
+
+        listing_agent = extract_listing_agent(html)
+        if listing_agent is not None:
+            fields.append(listing_agent)
+            by_name[listing_agent.field_name] = listing_agent
 
         images = extract_images(html)
         if images:
@@ -975,10 +1046,25 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                 "url": listing_url,
                 "realtor_name": REALTOR_NAME,
                 "realtor_domain": REALTOR_DOMAIN,
+                "listing_agent": (
+                    listing_agent.normalized_value if listing_agent is not None else None
+                ),
                 "image_urls": images,
                 "source_neighbourhood_text": area_text,
                 "price_period": price_period,
                 "listing_type": listing_type,
+                "full_bathrooms": full_bathrooms,
+                "half_bathrooms": half_bathrooms,
+                "year_built": (
+                    by_name["year_built"].normalized_value
+                    if "year_built" in by_name
+                    else None
+                ),
+                "project_name": (
+                    by_name["project_name"].normalized_value
+                    if "project_name" in by_name
+                    else None
+                ),
                 "http_status": http_status,
                 "content_type": content_type,
                 "evidence_storage_bucket": RAW_EVIDENCE_BUCKET,
@@ -988,6 +1074,11 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                     len(source_description) if source_description else 0
                 ),
                 "structured_evidence": structured_evidence,
+                "coordinates_source": (
+                    "google_maps_latlng"
+                    if latitude is not None and longitude is not None
+                    else None
+                ),
             },
             raw_sha256=raw_sha256,
             title=title,

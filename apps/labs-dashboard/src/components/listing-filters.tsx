@@ -22,9 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { titleCase } from "@/lib/format";
-import { TIPS } from "@/lib/ui-labels";
+import { exclusionReasonLabel, TIPS } from "@/lib/ui-labels";
 
 type Options = {
   sources?: [string, string][];
@@ -33,6 +41,7 @@ type Options = {
   currencies: string[];
   realtors?: string[];
   amenities?: string[];
+  exclusionReasons?: string[];
   coordinateQualities?: readonly (readonly [string, string])[];
   assignmentStatuses?: readonly (readonly [string, string])[];
 };
@@ -54,6 +63,8 @@ type DraftFilters = {
   coordQuality: string;
   assignment: string;
   publicEligible: string;
+  exclusion: string;
+  priceAvailability: string;
   sort: string;
 };
 
@@ -74,6 +85,8 @@ const DRAFT_KEYS = [
   "coordQuality",
   "assignment",
   "publicEligible",
+  "exclusion",
+  "priceAvailability",
   "sort",
 ] as const;
 
@@ -87,6 +100,8 @@ const ADVANCED_KEYS = [
   "coordQuality",
   "assignment",
   "publicEligible",
+  "exclusion",
+  "priceAvailability",
 ] as const;
 
 function draftFromParams(params: URLSearchParams): DraftFilters {
@@ -179,9 +194,12 @@ export function ListingFilters({
   const [showAdvanced, setShowAdvanced] = useState(
     () => countAdvanced(draftFromParams(searchParams)) > 0,
   );
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const isDirty = draftToQueryString(draft) !== appliedQuery;
-  const hasActiveFilters = appliedQuery.length > 0;
+  const hasActiveFilters = Array.from(searchParams.keys()).some(
+    (key) => key !== "view" && key !== "page",
+  );
   const advancedCount = countAdvanced(draft);
 
   function update(patch: Partial<DraftFilters>) {
@@ -199,20 +217,175 @@ export function ListingFilters({
     event?.preventDefault();
     const query = draftToQueryString(draft);
     router.push(query ? `${basePath}?${query}` : basePath);
+    setMobileFiltersOpen(false);
   }
 
   function clearAll() {
-    setDraft(draftFromParams(new URLSearchParams()));
-    router.push(basePath);
+    const cleared = new URLSearchParams();
+    const view = searchParams.get("view");
+    if (view) cleared.set("view", view);
+    setDraft(draftFromParams(cleared));
+    const query = cleared.toString();
+    router.push(query ? `${basePath}?${query}` : basePath);
   }
 
   return (
-    <Card className="min-w-0">
+    <>
+      <div className="flex flex-col gap-3 md:hidden">
+        <form onSubmit={apply} className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search listings"
+              value={draft.q}
+              onChange={(event) => update({ q: event.target.value })}
+              placeholder="Search listings"
+              className="pl-9"
+            />
+          </div>
+          <Button type="submit" variant="secondary">
+            Search
+          </Button>
+        </form>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {hasActiveFilters
+              ? `${Array.from(searchParams.keys()).filter((key) => !["view", "page"].includes(key)).length} filters active`
+              : "No filters applied"}
+          </p>
+          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button type="button" variant="outline">
+                <SlidersHorizontal data-icon="inline-start" />
+                Filters
+                {hasActiveFilters ? (
+                  <Badge variant="secondary">
+                    {
+                      Array.from(searchParams.keys()).filter(
+                        (key) => !["view", "page"].includes(key),
+                      ).length
+                    }
+                  </Badge>
+                ) : null}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-[min(92vw,420px)] overflow-y-auto"
+            >
+              <SheetHeader>
+                <SheetTitle>Filter listings</SheetTitle>
+                <SheetDescription>
+                  Narrow the results, then apply your choices.
+                </SheetDescription>
+              </SheetHeader>
+              <form onSubmit={apply} className="flex flex-col gap-4 px-4 pb-6">
+                <SelectFilter
+                  label="Website"
+                  value={draft.source}
+                  onChange={(value) => update({ source: value })}
+                  allLabel="All websites"
+                  options={(options.sources ?? []).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                />
+                <SelectFilter
+                  label="Neighbourhood"
+                  value={draft.neighbourhood}
+                  onChange={(value) => update({ neighbourhood: value })}
+                  allLabel="All neighbourhoods"
+                  options={options.neighbourhoods.map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                />
+                <SelectFilter
+                  label="Listing type"
+                  value={draft.type}
+                  onChange={(value) => update({ type: value })}
+                  allLabel="Buy or rent"
+                  options={options.listingTypes.map((type) => ({
+                    value: type,
+                    label: titleCase(type),
+                  }))}
+                />
+                <SelectFilter
+                  label="Market status"
+                  value={draft.lifecycle}
+                  onChange={(value) => update({ lifecycle: value })}
+                  allLabel="Any market status"
+                  options={[
+                    { value: "active", label: "Active" },
+                    { value: "sold", label: "Sold" },
+                    { value: "inactive", label: "Inactive" },
+                    { value: "missing", label: "Missing after latest check" },
+                    { value: "removed", label: "Removed from website" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Public preview"
+                  value={draft.publicEligible}
+                  onChange={(value) => update({ publicEligible: value })}
+                  allLabel="Any visibility"
+                  options={[
+                    { value: "eligible", label: "Visible in public preview" },
+                    { value: "excluded", label: "Hidden from public preview" },
+                  ]}
+                />
+                <SelectFilter
+                  label="AI details"
+                  value={draft.enrichment}
+                  onChange={(value) => update({ enrichment: value })}
+                  allLabel="Any AI status"
+                  options={[
+                    { value: "not_run", label: "Not run" },
+                    { value: "succeeded", label: "Added" },
+                    { value: "skipped_unchanged", label: "No changes — skipped" },
+                    { value: "needs_review", label: "Needs attention" },
+                    { value: "failed", label: "Failed" },
+                  ]}
+                />
+                {showSort ? (
+                  <SelectFilter
+                    label="Sort by"
+                    value={draft.sort || "recent"}
+                    onChange={(value) =>
+                      update({ sort: value === "recent" ? "" : value })
+                    }
+                    allLabel="Most recently seen"
+                    options={[
+                      { value: "oldest", label: "Oldest first" },
+                      { value: "price-asc", label: "Price: low to high" },
+                      { value: "price-desc", label: "Price: high to low" },
+                      { value: "title", label: "Title A–Z" },
+                    ]}
+                  />
+                ) : null}
+                <div className="sticky bottom-0 flex gap-2 border-t bg-background py-4">
+                  <Button type="submit" className="flex-1">
+                    Apply filters
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={clearAll}
+                    disabled={!hasActiveFilters && !isDirty}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </form>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
+      <Card className="hidden min-w-0 md:flex">
       <CardHeader className="pb-3">
         <CardTitle>Find listings</CardTitle>
         <CardDescription>
-          Choose filters, then press Apply. Hover the ? icons for plain-language
-          explanations.
+          Search by property, place, source, or status.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -330,6 +503,7 @@ export function ListingFilters({
               onClick={() => setShowAdvanced((current) => !current)}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               aria-expanded={showAdvanced}
+              aria-controls="listing-advanced-filters"
             >
               <ChevronDown
                 className={cn(
@@ -347,7 +521,10 @@ export function ListingFilters({
             </button>
 
             {showAdvanced ? (
-              <div className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div
+                id="listing-advanced-filters"
+                className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4"
+              >
                 <SelectFilter
                   label="Original realtor"
                   value={draft.realtor}
@@ -378,7 +555,7 @@ export function ListingFilters({
                   options={[
                     { value: "active", label: "Active (still listed)" },
                     { value: "sold", label: "Sold" },
-                    { value: "inactive", label: "Inactive (incl. rented)" },
+                    { value: "inactive", label: "Inactive" },
                     {
                       value: "missing",
                       label: "Missing from latest full check",
@@ -397,6 +574,28 @@ export function ListingFilters({
                   options={[
                     { value: "eligible", label: "OK to show publicly" },
                     { value: "excluded", label: "Hidden from public" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Why hidden"
+                  tip={TIPS.publicEligibility.tip}
+                  tipLabel={TIPS.publicEligibility.label}
+                  value={draft.exclusion}
+                  onChange={(value) => update({ exclusion: value })}
+                  allLabel="Any exclusion reason"
+                  options={(options.exclusionReasons ?? []).map((reason) => ({
+                    value: reason,
+                    label: exclusionReasonLabel(reason),
+                  }))}
+                />
+                <SelectFilter
+                  label="Asking price"
+                  value={draft.priceAvailability}
+                  onChange={(value) => update({ priceAvailability: value })}
+                  allLabel="Any price availability"
+                  options={[
+                    { value: "available", label: "Has a usable price" },
+                    { value: "missing", label: "Missing or unusable price" },
                   ]}
                 />
                 <SelectFilter
@@ -483,6 +682,7 @@ export function ListingFilters({
           </div>
         </form>
       </CardContent>
-    </Card>
+      </Card>
+    </>
   );
 }

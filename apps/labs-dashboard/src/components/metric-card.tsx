@@ -35,14 +35,14 @@ export function MetricCard({
       className={cn(
         "@container/card relative flex h-full min-w-0 flex-col gap-0 py-0",
         href &&
-          "group/metric transition-colors hover:border-primary/40 hover:bg-muted/30",
+          "group/metric transition-colors hover:border-primary/40 hover:bg-muted/30 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring",
       )}
     >
       {href ? (
         <Link
           href={href}
           className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`${label}: ${value}. View details`}
+          aria-label={`${label}: ${value}. ${hint}. View details`}
         />
       ) : null}
       <CardHeader className="pointer-events-none flex-1 pb-4 pt-(--card-spacing)">

@@ -26,7 +26,7 @@ export default function ErrorPage({
         </EmptyMedia>
         <EmptyTitle>Something went wrong</EmptyTitle>
         <EmptyDescription>
-          The read-only dashboard could not complete this request.
+          The internal Labs dashboard could not complete this request.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>

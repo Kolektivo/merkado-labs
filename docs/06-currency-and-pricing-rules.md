@@ -1,7 +1,7 @@
 # 06 - Currency and Pricing Rules
 
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
-**Last updated:** July 16, 2026
+**Last updated:** July 17, 2026
 
 ## 1. Principles
 
@@ -70,3 +70,22 @@ First complete RE/MAX Labs import used ECB observation date **2026-07-16**,
 USD/EUR **1.1467**, derived EUR→XCG **2.052593**, provider `ecb_eur_usd_xcg_peg`.
 Prior `fixed_test` listing benchmarks were recalculated with `benchmark_recalculated`
 events (not `price_changed`). Current dashboard listing values use the ECB provider.
+
+## 6. XCG-primary display (Labs dashboard)
+
+- XCG is the **primary** price wherever a price is displayed — listing
+  detail, browse cards, listing table — formatted with the `Cg` prefix.
+- The original source amount is shown as a **secondary** line only when its
+  currency differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG, so they
+  are not treated as a "different" currency).
+- Price search and filter ranges operate on the **XCG benchmark**, not the
+  original currency; a listing without a valid benchmark is excluded from
+  the mixed-currency sort/filter.
+- If an original price exists but no XCG benchmark is available yet, show
+  the original amount with **"XCG equivalent currently unavailable"**
+  instead of fabricating a conversion.
+- Every converted amount carries the disclaimer: **Indicative equivalent
+  based on known information.**
+- Sold listings additionally show: **Last known listing price. The actual
+  sale price may differ.**
+- Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts`.

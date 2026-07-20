@@ -12,8 +12,12 @@ INDEX_PAGE = """
 """
 
 DETAIL_XCG_ACTIVE = """
-<html><head><title>Salinja Villa Demo | Moret Real Estate</title></head>
+<html><head>
+<title>Salinja Villa Demo | Moret Real Estate</title>
+<meta property="og:image" content="https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-hero.jpg"/>
+</head>
 <body>
+<img src="https://moretrealestate.com/wp-content/uploads/2020/03/Logo.png" alt="logo"/>
 <article data-postid="12345">
 <h1>Salinja Villa Demo</h1>
 <span class="price_area">
@@ -25,10 +29,20 @@ XCG 750.000 <span class="price_label"></span>
 <strong>Badkamers:</strong> 2
 <strong>Woonoppervlakte:</strong> 220 m2
 </div>
+<div id="carousel-listing" class="carouselvertical">
+<a href="https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-hero.jpg" rel="prettyPhoto" class="prettygalery">
+<img src="https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-hero-835x540.jpg"/>
+</a>
+<a href="https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-pool.jpg" title="" rel="prettyPhoto" class="prettygalery">
+<img src="https://moretrealestate.com/wp-content/uploads/2026/07/salinja-villa-pool-835x540.jpg"/>
+</a>
+</div>
+<div class="listing-unit-img-wrapper">
+<img src="https://moretrealestate.com/wp-content/uploads/2026/07/related-other-listing-835x540.jpg"/>
+</div>
 <div class="wpestate_property_description">
 <p>Mooie villa in Salinja met zwembad. Geen cookie banner tekst hier.</p>
 </div>
-<img src="https://moretrealestate.com/wp-content/uploads/demo-villa.jpg" />
 </article>
 </body></html>
 """

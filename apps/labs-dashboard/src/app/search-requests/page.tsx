@@ -27,29 +27,31 @@ export default async function SearchRequestsPage() {
         customers.
       </PrototypeNotice>
       <SearchRequestForm />
-      <Card>
+      <Card className="gap-0 py-0">
         <CardContent className="divide-y px-0">
           {requests.length ? (
             requests.map((request) => (
               <Link
                 key={request.id}
                 href={`/match-reports/${request.id}`}
-                className="flex items-center justify-between gap-3 px-6 py-4 text-sm hover:bg-muted/30"
+                className="flex items-center justify-between gap-3 px-4 py-4 text-sm hover:bg-muted/30 sm:px-6"
               >
-                <span>
-                  <span className="font-medium">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">
                     {request.title ?? "Untitled request"}
                   </span>
                   <span className="block text-xs text-muted-foreground">
                     {formatDateTime(request.updatedAt)}
                   </span>
                 </span>
-                <Badge variant="outline">{titleCase(request.status)}</Badge>
+                <Badge variant="outline" className="shrink-0">
+                  {titleCase(request.status)}
+                </Badge>
               </Link>
             ))
           ) : (
             <p className="px-6 py-8 text-sm text-muted-foreground">
-              No draft requests yet.
+              No search requests yet.
             </p>
           )}
         </CardContent>

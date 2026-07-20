@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:contracts": "node --test tests/contracts/*.test.mjs",
+    "test:unit": "node --test tests/unit/*.test.mjs",
     "test:e2e": "next build && playwright test"
   },
   "dependencies": {

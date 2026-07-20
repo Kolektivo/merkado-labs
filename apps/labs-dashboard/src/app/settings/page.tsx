@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { CheckCircle2, CircleX, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 
 import { LabsAdminLogin } from "@/components/labs-admin-login";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 import { hasLabsAdminSession } from "@/lib/admin/auth";
 import { getConfigurationHealth } from "@/lib/system/health";
 
@@ -14,70 +18,117 @@ export default async function SettingsPage() {
   const hasSession = await hasLabsAdminSession();
   const health = getConfigurationHealth();
   const checks = [
-    ["Supabase configured", health.supabaseConfigured],
-    ["Correct Labs project", health.correctLabsProject],
-    ["Service credentials configured", health.serviceCredentialsConfigured],
-    ["OpenAI configured", health.openAiConfigured],
-    ["Admin authentication configured", health.adminAuthConfigured],
+    ["Database connection", health.supabaseConfigured],
+    ["Labs project boundary", health.correctLabsProject],
+    ["Server credentials", health.serviceCredentialsConfigured],
+    ["AI configuration", health.openAiConfigured],
+    ["Admin access", health.adminAuthConfigured],
   ] as const;
+  const model = process.env.OPENAI_ENRICHMENT_MODEL ?? "gpt-5.6-terra";
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
-        title="Labs settings"
-        description="Admin access, connection health, and the safety rules for this Labs workspace."
+        title="Settings"
+        description="Access, safety boundaries, and read-only system information for Property Labs."
         icon={Settings}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Admin access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LabsAdminLogin hasSession={hasSession} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection health</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2">
-          {checks.map(([label, ok]) => (
-            <div key={label} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
-              {ok ? (
-                <CheckCircle2 className="size-4 text-emerald-600" />
-              ) : (
-                <CircleX className="size-4 text-destructive" />
-              )}
-              <span>{label}: {ok ? "Yes" : "No"}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>How data access works</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            Internal dashboard pages only load after an admin unlock. Public
-            browse shows only the cleaned, public-safe listing view.
+
+      <section aria-labelledby="settings-access-heading">
+        <div className="mb-3">
+          <h2 id="settings-access-heading" className="text-lg font-semibold">
+            Access
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Manage this browser&apos;s internal Labs session.
           </p>
-          <p>
-            Private ad snapshots, import details, AI suggestions, and prototype
-            request data stay internal.
+        </div>
+        <Card>
+          <CardContent>
+            <LabsAdminLogin hasSession={hasSession} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-labelledby="settings-safety-heading">
+        <div className="mb-3">
+          <h2 id="settings-safety-heading" className="text-lg font-semibold">
+            Safety boundaries
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Current operational limits. These settings are not editable here.
           </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Current limits</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Automatic website updates are off. Imports run only when started by hand.</p>
-          <p>Starting new AI jobs is off during cleanup; existing suggestions are review-only.</p>
-          <p>Prototype property pages are Labs experiments, not live on merkado.cw.</p>
-          <p>The allowed database project is <code>csaefdkpwukshtouyixg</code>. Production is forbidden.</p>
-        </CardContent>
-      </Card>
+        </div>
+        <Card className="gap-0 py-0">
+          <CardContent className="divide-y px-0">
+            {[
+              [
+                "Website refreshes",
+                "Manual only",
+                "Nothing runs on a schedule.",
+              ],
+              [
+                "AI enrichment",
+                "Manual only",
+                "New work starts only through an approved Data Operations run.",
+              ],
+              [
+                "Environment",
+                "Labs only",
+                "Production data and configuration are forbidden.",
+              ],
+              [
+                "Public preview",
+                "Experimental",
+                "Prototype pages are not live on merkado.cw.",
+              ],
+              [
+                "AI model",
+                model,
+                "Protected source facts are never overwritten.",
+              ],
+            ].map(([label, value, helper]) => (
+              <div
+                key={label}
+                className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center md:px-5"
+              >
+                <div>
+                  <h3 className="font-medium">{label}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{helper}</p>
+                </div>
+                <StatusBadge tone="neutral">{value}</StatusBadge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <details className="rounded-xl border bg-card p-4">
+        <summary className="cursor-pointer font-medium">
+          System information
+        </summary>
+        <div className="mt-4">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Read-only configuration checks. Values and secrets are never shown.
+          </p>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            {checks.map(([label, ok]) => (
+              <div key={label} className="rounded-lg bg-muted/35 p-3 text-sm">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="mt-1">
+                  <StatusBadge tone={ok ? "success" : "error"}>
+                    {ok ? "Configured" : "Needs setup"}
+                  </StatusBadge>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Allowed Labs project: csaefdkpwukshtouyixg. Service credentials and
+            private source evidence remain server-only.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
