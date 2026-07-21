@@ -4,27 +4,29 @@
 
 ## Automation foundation (Labs only)
 
-**Automatic refresh is Off** — GitHub daily cron remains disabled
-(`AUTOMATIC_REFRESH_ENABLED = true` in Python + TypeScript) after 2026-07-21
-supervised gates; schedule begins when the workflow reaches the default branch.
-Previously Off until activation
-gates pass (post-hash-repair supervised verification and related readiness).
-Intended cron remains `0 10 * * *` UTC = 06:00 America/Curacao via
-`property-pipeline-labs.yml` `schedule`. Manual/`workflow_dispatch` and
-dashboard Data Operations dispatch remain available for the four Ready sources.
-Daily AI limits: USD 2/day, USD 25/month, and 25 changed listings per run.
-Sotheby's is blocked and excluded.
+**Automatic refresh is armed On** (`AUTOMATIC_REFRESH_ENABLED = true` in Python
++ TypeScript) after 2026-07-21 supervised + idempotent gates. GitHub Actions
+schedule `0 10 * * *` UTC = 06:00 America/Curacao in
+`property-pipeline-labs.yml` begins only when that workflow reaches the
+**default branch**. Manual/`workflow_dispatch` and dashboard Data Operations
+dispatch remain available for the four Ready sources. Entrypoint:
+`scripts/run_property_pipeline.py --once --execute-live`. Live scrapes use HTTP
+disk cache under `data/raw/<source_key>/cache` — not frozen
+`data/processed/*` catalogs as scheduled input. Daily AI limits: USD 2/day,
+USD 25/month, and 25 changed listings per run. Over-cap remainder stays
+`budget_deferred`. Sotheby's is blocked and excluded.
 
 **AI enrichment versions (current):** prompt/schema/policy
 `listing_enrichment_v5` / `listing_enrichment_schema_v5` /
 `enrichment_policy_v5`. Scrapers preserve raw source title/description; AI
 generates English public presentation (`display_*`) plus Dutch description
-rows in `listing_display_description_locales`, and never overwrites
-protected facts. One-time English migration (historical, not rerun) was capped
-USD **15** / **320** and was not rerun for bilingual work. One-time Dutch
-description backfill is capped USD **5** / **320** calls
-(`scripts/migrate_dutch_descriptions.py`); unchanged presentation hashes skip
-at zero cost.
+rows in `listing_display_description_locales` (`listing_description_nl_v1`),
+and never overwrites protected facts. One-time English migration
+(`scripts/migrate_english_presentation.py`) **applied** 2026-07-21 for **289**
+listings (~USD **7.83**; not rerun for bilingual work). One-time Dutch
+description backfill (`scripts/migrate_dutch_descriptions.py`) **applied** for
+**285** public listings (~USD **2.42**); unchanged presentation hashes skip at
+zero cost.
 
 Selection uses the shared canonical hash contract
 (`enrichment_input_hash_v1` in `merkado_labs.pipeline.change_hash`). Semantic
@@ -38,11 +40,11 @@ inventory (which continues under listing/cost budgets).
 
 | Source key | Display name | Status |
 |---|---|---|
-| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.1 Ready; Labs inventory 104; pipeline ready / cron Off / dispatch available |
+| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.1 Ready; Labs inventory 104; pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route BLOCKED (2026-07-20 recon); not Ready; excluded from Ready pipelines |
-| `remax_curacao` | RE/MAX | [LABS] v0.4.1 Ready; catalog contract 220; pipeline ready / cron Off / dispatch available |
-| `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 Ready; catalog 71; pipeline ready / cron Off / dispatch available |
-| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [LABS] v0.2.0 Ready; catalog 5; pipeline ready / cron Off / dispatch available |
+| `remax_curacao` | RE/MAX | [LABS] v0.4.1 Ready; catalog contract 220; pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
+| `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 Ready; catalog 71; pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
+| `monumentenzorg_curacao` | Monumentenzorg Curaçao | [LABS] v0.2.0 Ready; catalog 5; pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
 Confirm the exact domain, listing index, detail paths, robots rules, and terms note before implementing each adapter.
 
 ### RE/MAX Curaçao (`remax_curacao`) — verified 2026-07-20 (v0.4.1 Data Ops preflight)
@@ -76,13 +78,13 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Status mix | 125 active (105 sale / 20 rent), 59 sold, 36 inactive/rented; 29 under-contract stay `active` with explicit `source_listing_status` |
 | First-observed status events | Backfilled 2026-07-17: 59 `source_marked_sold`, 36 `source_marked_rented`, 29 `source_marked_under_contract` (earliest Merkado observation; not transaction dates) |
 | Idempotency | Immediate re-import 2026-07-16T19:37–19:45Z: imported 0, updated 220, no new price/first_seen/benchmark events |
-| Scheduling | Pipeline ready / cron Off / dispatch available || Historical AI | 29 proposals on **gpt-4.1-mini** + prompt/schema **v1** (2026-07-17); obsolete for Terra v3 |
+| Scheduling | Pipeline ready / cron On (schedule after default-branch merge) / dispatch available || Historical AI | 29 proposals on **gpt-4.1-mini** + prompt/schema **v1** (2026-07-17); obsolete for Terra v3 |
 | Terra v3 canary (2026-07-20) | Five IDs (`hs2467`, `hr1013`, `hr2165`, `hs2941`, `hr1393`); **5/5** `needs_review` after `hs2467` retry; model `gpt-5.6-terra` |
 | v0.4.1 preflight (2026-07-20) | Artifact integrity ok. Geospatial preview: **193** inferred / **6** outside polygons / **21** no coords; effective neighbourhood changes **5**. Lifecycle/public stable. Legacy AI checksum would flip **220**; semantic billable **5**. See `data/processed/remax_v041_*` + `remax_pipeline_preflight.*`. |
 | AI / refresh policy | Normal `Refresh & enrich` = new/changed only (ceiling USD 0.75). Initial Terra backfill was a separately approved one-time action (ceiling USD 10; completed 2026-07-20). Coordinate-only import must not rebill all 220. |
 | Terra-v3 initial backfill | Selection **211** + **9** already current; job `remax_remaining_terra_backfill` **211/211** succeeded; gross ≈ **USD 6.67**; coverage **220/220**; see `data/processed/remax_activation_final_report.*` |
-| Verdict | **v0.4.1 active** + Terra initial backfill **complete**; pipeline ready / cron Off / dispatch available |
-| Next gated action | Keep cron Off until activation gates pass; Sotheby's remains BLOCKED; normal refresh = new/changed only; English v5 migration still gated |
+| Verdict | **v0.4.1 active** + Terra initial backfill **complete**; pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
+| Next gated action | Schedule fires after default-branch merge; Sotheby's remains BLOCKED; normal refresh = new/changed only; English v5 + Dutch backfills already applied |
 ### Keller Williams Curaçao (`keller_williams_curacao`) — [LABS] 2026-07-17
 
 | Item | Value |
@@ -107,7 +109,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Timeline | Immutable `ai_enrichment_*` activity events (started/completed/failed/skipped/auto_applied/needs_attention) |
 | Attributes | Flexible metadata bag — not first-class browse filters in this activation |
 | Neighbourhood provenance | Dedicated source location remains source truth; geospatial assignment separate; AI neighbourhood candidates must be evidence-backed; generic `Curaçao` is not a confirmed neighbourhood; coordinates are never AI-generated |
-| Scheduling | Pipeline ready / cron Off / dispatch available |
+| Scheduling | Pipeline ready / cron On (schedule after default-branch merge) / dispatch available |
 | Production claims | Labs research only — no production property marketplace claims |
 ### Moret Real Estate (`moret_real_estate`) — [LABS] 2026-07-20
 
@@ -126,7 +128,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Images | prettyPhoto gallery `href`s; `og:image` fallback; skip logos / agent / related cards |
 | Labs import | **Activated 2026-07-20** — offline `--import-from-file` (66 insert / 5 update); first complete baseline; public eligible **71**; coords **71/71**; evidence private `listing-raw-evidence` |
 | AI | Terra-v3 initial backfill **complete**: canary **5/5** (~USD 0.1165) + remaining **66/66** (~USD 1.8259 / ceiling 2.40); coverage **71/71**; cumulative ~USD 1.94; public effective attributes on Browse/Passport |
-| Scheduling | Pipeline ready / cron Off / dispatch available; normal Refresh & enrich = new/changed only |
+| Scheduling | Pipeline ready / cron On (schedule after default-branch merge) / dispatch available; normal Refresh & enrich = new/changed only |
 | Artifact | `data/processed/moret_complete_catalog.json` (`complete_catalog=true`; checksum `386cbe65…`); final report `moret_activation_final_report.*` |
 ### Monumentenzorg Curaçao (`monumentenzorg_curacao`) — [LABS] Ready 2026-07-20 (adapter v0.2.0)
 
@@ -151,15 +153,15 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Labs import | Offline complete import 2026-07-20; source run `8b78353b-ec47-4126-b251-db247fcdcb1a`; checksum `b4dd8d05…` |
 | Public Browse | **2** eligible (Bargestraat 28-D, Villa Maria) |
 | AI enrichment | Terra-v3 initial backfill **5/5** (canary 2 + remaining 3; ~USD 0.06 total) |
-| Scheduling | Pipeline ready / cron Off / dispatch available; Refresh & enrich = new/changed only |
+| Scheduling | Pipeline ready / cron On (schedule after default-branch merge) / dispatch available; Refresh & enrich = new/changed only |
 | Data Ops | **Ready** |
 
 ### Adapter status — July 2026
 
-- [LABS] **RE/MAX**: **adapter v0.4.1** Ready (catalog contract **220**; DB may show 222); 199/220 coords; Terra coverage complete; pipeline ready / cron Off / dispatch available.
-- [LABS] **Keller Williams**: adapter **v0.3.1** Ready; Labs inventory **104** (offline import preview still gates at 84); Terra v5 / policy v5; pipeline ready / cron Off / dispatch available.
-- [LABS] **Moret**: adapter v0.2.0 Ready; catalog 71; Terra coverage complete; pipeline ready / cron Off / dispatch available.
-- [LABS] **Monumentenzorg**: adapter **v0.2.0** Ready; catalog 5; coordinates 0/5; pipeline ready / cron Off / dispatch available.
+- [LABS] **RE/MAX**: **adapter v0.4.1** Ready (catalog contract **220**; DB may show 222); 199/220 coords; Terra coverage complete; pipeline ready / cron On (schedule after default-branch merge) / dispatch available.
+- [LABS] **Keller Williams**: adapter **v0.3.1** Ready; Labs inventory **104** (offline import preview still gates at 84); Terra v5 / policy v5; pipeline ready / cron On (schedule after default-branch merge) / dispatch available.
+- [LABS] **Moret**: adapter v0.2.0 Ready; catalog 71; Terra coverage complete; pipeline ready / cron On (schedule after default-branch merge) / dispatch available.
+- [LABS] **Monumentenzorg**: adapter **v0.2.0** Ready; catalog 5; coordinates 0/5; pipeline ready / cron On (schedule after default-branch merge) / dispatch available.
 - [PLANNED] **Sotheby's**: Access route **BLOCKED** (recon 2026-07-20) — affiliate `curacaosothebysrealty.com` TLS expired/mismatched (HTTP redirects to network office path); `www.sothebysrealty.com` inventory/office/robots/sitemap return HTTP 202 WAF/challenge; `app.sir.com/curacaosir` is an office/app shell without listing catalog HTML. Skeleton adapter **v0.1.2** remains fail-closed. Not Ready; excluded from Ready pipelines. Next: official affiliate feed/export or Anywhere partner API with written approval (no WAF bypass).
 
 ### Source readiness matrix and next track
@@ -167,15 +169,16 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 `data/processed/property_source_readiness.md` is a read-only audit (no
 scrapes, imports, or AI calls) comparing listings/public-eligible/AI
 proposals/catalog maturity per source. Four Ready sources share the Labs
-property pipeline; **daily cron remains Off** until activation gates pass. Next active source task:
+property pipeline; **daily cron is armed On** (schedule after default-branch
+merge). Next active source task:
 **Sotheby's** remains access-route **BLOCKED** (2026-07-20 recon; official
 feed/partner API required). Normal Refresh & enrich enriches new/changed only.
 
-## 2. CHH removal rule
+## 2. CHH removal rule (historical — completed 2026-07-16)
 
 CHH is not a fallback, upstream dependency, or active research workflow.
-
-Remove:
+Removal from the active repository and Labs data was completed 2026-07-16
+(verified local export retained). The following were removed and must stay out:
 
 - scheduled and manually runnable CHH workflows;
 - CHH harvest/import runtime code;
@@ -251,7 +254,7 @@ A failed or partial run must never mass-remove or alter availability state.
 
 ## 6. Recommended build order
 
-1. RE/MAX (complete; pipeline ready / cron Off / dispatch available)
+1. RE/MAX (complete; pipeline ready / cron On (schedule after default-branch merge) / dispatch available)
 2. Keller Williams, Moret, Monumentenzorg (Ready; same scheduling vocabulary)
 3. Sotheby's (BLOCKED — feed/API required before Ready)
 
@@ -264,7 +267,9 @@ For each source:
 5. Run dry mode and review output.
 6. Import into Labs manually.
 7. Compare repeated complete snapshots.
-8. Include in Ready pipeline only after lifecycle safety passes; re-enable daily cron only after explicit approval.
+8. Include in Ready pipeline only after lifecycle safety passes; keep
+   `AUTOMATIC_REFRESH_ENABLED` and default-branch schedule policy aligned with
+   `01-live-product-state.md`.
 
 ## 7. Per-source QA checklist
 
@@ -281,4 +286,4 @@ For each source:
 - Raw snapshot retained
 - Import is idempotent
 - Repeated manual runs reviewed
-- Daily cron remains Off until supervised re-enable approval; dispatch may be available for Ready sources
+- Daily cron armed On after gates; schedule begins on default branch; dispatch available for Ready sources

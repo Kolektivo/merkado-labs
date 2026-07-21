@@ -78,7 +78,8 @@ available. Sotheby's is excluded.
 - Why prior batch used `gpt-4.1-mini`: hardcoded in `run_ai_enrichment_batch25.py` +
   former `DEFAULT_MODEL` / config default before env-only hardening
 - After complete successful scrape: enqueue new/changed only via property pipeline;
-  daily cron remains Off (`AUTOMATIC_REFRESH_ENABLED = false`) until gates pass
+  daily cron armed On (`AUTOMATIC_REFRESH_ENABLED = true`); GHA schedule begins
+  on default branch only
 
 #### Prompt / schema / policy v5 (current)
 
@@ -94,26 +95,32 @@ available. Sotheby's is excluded.
   (`apps/labs-dashboard/src/lib/enrichment/versions.ts`). Public Browse/Passport
   expose English presentation (AI or deterministic fallbacks), SEO/JSON-LD in
   English, stable URLs `/browse/{uuid}`, and `image_urls` galleries.
-- One-time English migration (`scripts/migrate_english_presentation.py`) is
-  capped USD **15** / **320** calls and is **not completed** until a processed
-  report shows `--apply` success (latest preflight `apply=false`, selected
-  **289** — see `labs/PROPERTY_DATA_QUALITY_REPORT.md`).
+- One-time English migration (`scripts/migrate_english_presentation.py`) was
+  **applied** 2026-07-21 for **289** active Ready listings (~USD **7.83** under
+  USD **15** / **320**-call caps). Dutch About-this-property backfill
+  (`scripts/migrate_dutch_descriptions.py`) **applied** for **285** public
+  listings (~USD **2.42**). Unchanged bilingual hashes skip at zero cost. See
+  `labs/PROPERTY_DATA_QUALITY_REPORT.md` and `01-live-product-state.md`.
 - Prior Labs activation (2026-07-20, v4.1): rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
   151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
-  idempotent. Public view / gallery migrations
-  (`public_property_listings_effective`, enrichment quality v4, review_v41
-  galleries, English presentation view) are in Labs and expose `image_urls`.
-  Ready-source galleries were already stored (~12.1k URLs); no lifecycle scrape
-  or image binary copy was required. Live `public_property_listings` count
-  ~**279** (2026-07-21).
+  idempotent. Public view name is `public.public_property_listings` (migration
+  filename `20260720140000_public_property_listings_effective.sql` replaced that
+  view; there is no separate `*_effective` relation). Gallery / English /
+  bilingual view migrations are in Labs and expose `image_urls` +
+  `display_description_nl`. Ready-source galleries were already stored
+  (~12.1k URLs); no lifecycle scrape or image binary copy was required.
 - Quality pass (2026-07-21): prior policy **v4.2** zero-cost rematerialization
   completed to a fixed point (`transitions={}`, `changed=0`; openai_calls=0;
   decision bag 5611→3590 after synonym dedupe). Root-cause fix: immutable
-  proposal inputs + canonical-key dedupe (never FD/audit backfill). Public
-  eligibility unchanged (KW88/Moret71/REMAX118/Monumentenzorg2). Image
-  identity/dedup: RE/MAX fixture 82→42 via `build_gallery`; Labs cleanup
-  removed 5705 duplicate gallery slots. See
+  proposal inputs + canonical-key dedupe (never FD/audit backfill). Historical
+  Phase-0 public eligibility snap was KW88/Moret71/REMAX118/Monumentenzorg2;
+  post-validation snapshot (same day / tip `d2abb557`): public view **286**
+  (KW **88** / Remax **125** / Moret **71** / Monumentenzorg **2**); EN/NL
+  About-this-property on **283**. Image identity/dedup: RE/MAX fixture 82→42
+  via `build_gallery`; Labs cleanup removed 5705 duplicate gallery slots;
+  frontend mirror in `apps/labs-dashboard/src/lib/listing-gallery-urls.ts`;
+  later one confirmed RE/MAX residual cleaned idempotently (`d2abb557`). See
   `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
 - v5 preserves replay parsing for v3/v4 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
@@ -199,9 +206,10 @@ dedup. Labs cleanup (2026-07-21) removed duplicate slots without scraping.
 4. Otherwise unavailable
 
 Migration `20260720140000_public_property_listings_effective.sql` replaces the
-public view with this projection (owner security definer; SELECT-only grants).
-**Applied in Labs**; production merkado.cw property projection remains paused /
-not part of automatic deploy.
+view `public.public_property_listings` with this projection (owner security
+definer; SELECT-only grants). Filename says “effective”; there is no separate
+`public_property_listings_effective` relation. **Applied in Labs**; production
+merkado.cw property projection remains paused / not part of automatic deploy.
 
 ### Security model (Labs read access)
 
@@ -237,7 +245,7 @@ not part of automatic deploy.
 - Initial AI validation: 5 listings succeeded; unchanged rerun skipped (0 tokens)
 - Adapter `0.4.1` (2026-07-20): parse `google.maps.LatLng` (199/220 on cache reparse), listing agent, filter agent headshots; Labs rows not updated (no import this task)
 - Terra v3 five-listing canary executed 2026-07-20 (`gpt-5.6-terra` + v3): **5/5** after `hs2467` retry
-- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron Off / dispatch available; normal Refresh & enrich stays new/changed only
+- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron On (schedule after default-branch merge) / dispatch available; normal Refresh & enrich stays new/changed only
 
 ## 4. Geospatial principles
 
@@ -356,7 +364,7 @@ The dashboard retains views for:
 - activity timeline;
 - coordinate quality and assignment status;
 - safe map filtering by source and lifecycle state;
-- Data Operations dispatch status (cron Off until re-enabled).
+- Data Operations dispatch status (cron On; schedule after default-branch merge).
 
 Sold and removed records may appear in admin/history views, but not active inventory.
 

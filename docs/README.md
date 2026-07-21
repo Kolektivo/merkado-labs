@@ -18,7 +18,7 @@ This folder holds the working context for Merkado Labs property work.
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
 | Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 10 * * *` UTC + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates — begins on default branch only |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**286** `public_property_listings`); English default + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (snapshot 2026-07-21 / `d2abb557`: ~**286** `public_property_listings`, EN/NL ~**283**); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
 | English presentation contract | [LABS] v5 applied: **289** migrated (~USD **7.83**); Dutch backfill **285** (~USD **2.42**); unchanged bilingual hashes skip at zero cost — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
 | RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift); NAF cookie-session for official XCG alts |
@@ -40,20 +40,20 @@ This folder holds the working context for Merkado Labs property work.
 | `06-currency-and-pricing-rules.md` | Original currency + XCG benchmark rules. | Price display or conversion. |
 | `06-property-passport-and-intelligence.md` | Off-chain Passport and intelligence framing. | Product framing. |
 | `07-labs-architecture-and-geospatial.md` | Labs architecture and geospatial assignment. | Neighbourhood / geo work. |
-| `08-execution-plan-and-cursor-prompt.md` | Phased execution plan and agent prompt. | Starting a build pass. |
+| `08-execution-plan-and-cursor-prompt.md` | Historical execution kickoff (Phases 1–5). Current status is in `01` / `09`. | Context only — not the live backlog. |
 | `09-project-safety-and-history.md` | Safety rules, decision history, CHH lessons. | Before writes, cleanup, or deploy talk. |
 | `LABS_DASHBOARD_GUIDE.md` | Labs dashboard ops, routes, env, troubleshooting. | Running or operating the dashboard. |
 | `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |
 | `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
 | `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |
-| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality + English presentation status (v5 contract, migration gates, source-official currency). | After enrichment/policy rematerialization, English migration, or price/geo quality work. |
+| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality + English/Dutch presentation + automation validation (v5 contract, budgets, image dedupe). | After enrichment/policy rematerialization, bilingual work, or price/geo quality work. |
 
-Production reference copies (not Labs build docs):
+Production reference copies (**historical** — not Labs property build docs):
 
 | File | What it covers |
 |---|---|
-| `supabase-architecture.md` | Production v1 car-marketplace Supabase reference |
-| `merkado_n8n_complete_guide_v3.md` | Production v1 n8n scraping/enrichment guide |
+| `supabase-architecture.md` | **Historical** production v1 **car** marketplace Supabase reference — not Labs property schema |
+| `merkado_n8n_complete_guide_v3.md` | **Historical** production v1 **car** n8n scraping/enrichment guide — not Labs property pipeline |
 
 ## Tag legend
 

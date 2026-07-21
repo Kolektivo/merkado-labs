@@ -55,7 +55,9 @@ never raw AI proposals, evidence, confidence, tokens, or costs. English is the
 default public UI language; About this property can toggle English/Nederlands
 client-side without URL changes. Stable URLs are `/browse/{uuid}`. SEO/JSON-LD
 use English presentation + XCG when available. Raw source title/description
-remain preserved. The preview remains Labs-only and is not live on merkado.cw.
+remain preserved. Gallery URLs are deduped at ingestion (`build_gallery`) and
+again in the UI (`listing-gallery-urls.ts`). The preview remains Labs-only and
+is not live on merkado.cw.
 
 ## Main pages
 

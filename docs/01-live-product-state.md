@@ -75,23 +75,24 @@ The isolated Labs project currently has:
   exceptional — genuine conflicts only. Decisions distinguish auto_applied /
   redundant / rejected / needs_attention (v5 field decisions:
   auto_applied **3679** / rejected **386** / redundant **361** /
-  needs_attention **9** across **9** listings). Public listings (**285**)
-  expose English `display_title` / `display_summary` / `display_description`,
-  optional Dutch `display_description_nl`, effective neighbourhood, feature
-  attrs, and image galleries. SEO / JSON-LD use English presentation + XCG
-  when available. Dashboard AI job execution is disabled; pipeline AI runs
-  under budgets (USD 2/day, USD 25/month, 25 listings/run) when the worker
-  executes. One-time English presentation migration **applied** for **289**
-  active Ready listings (~USD **7.83**, under USD **15** / **320**-call caps)
-  and was **not rerun** for bilingual work. Targeted one-time Dutch description
-  backfill **applied** for **285** public listings (~USD **2.42**, under USD
-  **5** / **320**-call caps); post-run selection is zero-billable
-  (`selected_count=0` / `already_complete=285`). Unchanged bilingual hashes
-  skip at zero cost. Future new/changed enrichment generates English
-  presentation then Dutch description in the same job pass (Dutch failure does
-  not remove English). Zero-cost policy rematerialization does not create
-  billable AI work. Labs public-effective + bilingual view migrations exist in
-  repo; production merkado.cw property migration remains **paused**.
+  needs_attention **9** across **9** listings). Public view rows (snapshot
+  2026-07-21 / `d2abb557`: **286**) expose English `display_title` /
+  `display_summary` / `display_description`, optional Dutch
+  `display_description_nl` (EN/NL About coverage **283**), effective
+  neighbourhood, feature attrs, and image galleries. SEO / JSON-LD use English
+  presentation + XCG when available. Dashboard AI job execution is disabled;
+  pipeline AI runs under budgets (USD 2/day, USD 25/month, 25 listings/run)
+  when the worker executes. One-time English presentation migration **applied**
+  for **289** active Ready listings (~USD **7.83**, under USD **15** /
+  **320**-call caps) and was **not rerun** for bilingual work. Targeted
+  one-time Dutch description backfill **applied** for **285** public listings
+  (~USD **2.42**, under USD **5** / **320**-call caps); post-run selection is
+  zero-billable (`selected_count=0` / `already_complete=285`). Unchanged
+  bilingual hashes skip at zero cost. Future new/changed enrichment generates
+  English presentation then Dutch description in the same job pass (Dutch
+  failure does not remove English). Zero-cost policy rematerialization does not
+  create billable AI work. Labs public + bilingual view migrations are applied
+  in Labs; production merkado.cw property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 
@@ -141,8 +142,12 @@ Core MVP rules:
 
 - Production-ready live-crawl adapters for all five sources (KW/Moret/
   Monumentenzorg catalogs were activated from verified offline complete-catalog
-  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED)
-- Re-enabled GitHub daily cron for property pipeline (implemented but still Off until supervised pipeline dry-run + worker activation gates)
+  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED).
+  Shared pipeline scrapes with HTTP disk cache under `data/raw/<source_key>/cache`
+  (`use_cache=True`) — not frozen `data/processed` catalogs as scheduled input.
+- Scheduled GitHub Actions runs for the property pipeline on the **default
+  branch** (code flag and workflow schedule are already On; feature-branch
+  schedules do not fire — see § intro)
 - Production merkado.cw property surface (Labs English Browse preview is ready)
 - Public property browse/detail UI on `merkado.cw` (Labs `/browse` public preview exists)
 - Reliable multi-source property entity resolution

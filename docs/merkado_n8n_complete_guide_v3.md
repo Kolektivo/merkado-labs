@@ -1,12 +1,20 @@
 # Merkado V1 — n8n Scraping & Supabase Complete Guide
 
+> **HISTORICAL / PRODUCTION V1 CARS ONLY.** This guide documents the live
+> merkado.cw **vehicle** marketplace n8n + Supabase stack. It is **not** the
+> Merkado Labs property pipeline, not Labs Supabase (`csaefdkpwukshtouyixg`),
+> and must not be used as ops guidance for property adapters, enrichment v5,
+> or `property-pipeline-labs.yml`. For Labs property work use `docs/01`–`09`
+> and `docs/LABS_DASHBOARD_GUIDE.md`.
+
 **Version:** V3 (updated to match actual deployed workflows)
-**Purpose:** This is the single, complete reference for building and running all n8n workflows for Merkado. It covers what to build, how data flows into Supabase, all rules and constraints, and step-by-step implementation details. Written so an AI agent can follow it end-to-end.
+**Purpose:** Historical complete reference for building and running production
+V1 car-marketplace n8n workflows.
 
 **Project:** Merkado V1 — Car marketplace aggregator for Curaçao.
 **Stack:** Supabase (Postgres + Auth + Storage) + n8n (scraping & automation)
 
-**Current state:**
+**Documented production-V1 state (cars — not Labs property):**
 - Supabase database is fully configured (tables, RLS, triggers all in place)
 - n8n cloud is connected to Supabase with working credentials (service role)
 - The `sources` table is already populated with all target websites

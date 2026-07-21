@@ -32,13 +32,19 @@ Uses the same public-effective read model as Browse:
 - **Property features** — allowlisted auto-applied attributes only, grouped
   as Comfort / Outdoor / Parking and access / Security and utilities /
   Views and location (empty groups hidden).
-- **About this property** — source description always; optional concise
-  listing summary only when auto-applied and clearly labeled (never replaces
-  source text). v4 exposes auto-applied, same-language display blocks
-  (overview, layout, location, highlights, practical details) and image
-  galleries on Labs Browse/Passport. Labs public-effective preview tables and
-  galleries **exist and are applied**; production merkado.cw property projection
-  remains **[PLANNED]** / paused.
+- **About this property** — English AI structured description blocks
+  (`display_description`: overview / layout / location / highlights /
+  practical) by default; optional Dutch blocks via `display_description_nl`
+  (client English/Nederlands toggle when present — not full-site localization).
+  Listing summary (`display_summary`) stays English. Raw source title/
+  description remain under collapsible “Original source …” details.
+  SEO/JSON-LD stay English-canonical (`/browse/{uuid}`). Contract is **v5**
+  (`listing_enrichment_v5` / `enrichment_policy_v5`). Image galleries use
+  ingestion dedupe (`build_gallery`) plus frontend
+  `listing-gallery-urls.ts`. Labs Browse/Passport preview tables and galleries
+  **exist and are applied**; production merkado.cw property projection remains
+  **[PLANNED]** / paused. See `01-live-product-state.md` and
+  `LABS_DASHBOARD_GUIDE.md`.
 - **Property activity** — first seen, last seen, source listing date.
 - **Source** — attribution + original listing link.
 
@@ -270,9 +276,14 @@ The guided flow may involve personal and financial context. Build it with data m
 
 ## 10. Suggested future product entities
 
-Do not add these tables during the current scraper MVP unless explicitly instructed. They describe the likely future model:
+Labs already has preview tables for Search Request / Agent / Match Reports
+(`property_search_requests`, `merkado_agent_entitlements`,
+`listing_match_reports`) — **Labs prototypes only**, not production activation
+on merkado.cw.
 
-- `property_search_requests`
+Do not add the remaining speculative production entities during the current
+scraper MVP unless explicitly instructed:
+
 - `property_search_request_preferences`
 - `merkado_agent_subscriptions`
 - `listing_matches`

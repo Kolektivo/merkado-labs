@@ -156,14 +156,15 @@ These remain part of the public contract (carried into v5 policy):
 ## English presentation migration — status (2026-07-21)
 
 **Status: applied (Labs).** One-time v5 English presentation migration completed
-under the USD 15 / 320-call caps. Daily cron remains **Off** pending supervised
-pipeline dry-run + worker activation gates.
+under the USD 15 / 320-call caps. Superseded same-day by Dutch backfill +
+supervised pipeline validation (see sections below). Earlier “cron Off” wording
+in this report is **historical** for the pre-gate window only.
 
 | Signal | Value |
 |---|---|
 | Prompt / schema / policy | `listing_enrichment_v5` / `listing_enrichment_schema_v5` / `enrichment_policy_v5` |
-| Public product language | English only (Browse / Passport / SEO) |
-| Display fields | `display_title`, `display_summary`, English overview / description |
+| Public product language | English-canonical (Browse titles / summaries / filters / SEO / JSON-LD); About-this-property supports Dutch toggle when `display_description_nl` present |
+| Display fields | `display_title`, `display_summary`, English `display_description`; optional `display_description_nl` |
 | Title convention | `N-Bedroom Type [feature] in Neighbourhood` |
 | Source layer | Scrapers preserve raw title/description; AI never overwrites protected facts |
 | Fallbacks | Deterministic English titles — never blank public title |
@@ -174,10 +175,19 @@ pipeline dry-run + worker activation gates.
 | Selected | **289** active Ready |
 | Result | **288** succeeded + **1** invalid_output retried → succeeded; exact cost **USD 7.79** (+ retries ~USD 0.04) |
 | Post-migration selection | `selected_count=0`, `already_complete_count=289` (zero-cost skip) |
-| Public coverage | **285** public rows with non-null `display_title` / `display_summary` / `display_description` |
+| Public coverage (post-English, pre-bilingual snap) | **285** public rows with non-null English `display_*` |
 | Needs review (v5) | **9** genuine-conflict proposals (exception queue) |
 | Hash repair | Applied then dry-run fixed point (`zero_cost_repairs=0`, `billable_public=0`) |
-| Cron | Still **Off** — supervised Labs pipeline dry-run / worker gates not yet executed |
+
+### Dutch About-this-property backfill (same day)
+
+- Script: `scripts/migrate_dutch_descriptions.py`; prompt `listing_description_nl_v1`
+- Storage: `listing_display_description_locales` (`locale='nl'`) →
+  `public_property_listings.display_description_nl`
+- Applied for **285** public listings (~USD **2.42** under USD **5** / **320**)
+- Post-run selection zero-billable (`selected_count=0` / `already_complete=285`)
+- Future jobs: generate English presentation then Dutch description; Dutch
+  failure must not strip English; unchanged hashes skip at zero cost
 
 ### Currency follow-on (same day)
 
@@ -185,7 +195,20 @@ pipeline dry-run + worker activation gates.
 - KW inline alts refresh: **89** applied, **0** `price_changed` events
 - hr2066: anchor **EUR 664**, official XCG **1350**, `source_official_conversion`; listing is currently **inactive/rented** so not in public browse; English v5 presentation stored on proposal
 - Missing-price recovery: 6 RE/MAX `Starting from` parser fixes recovered + public_eligible; KW/Monumentenzorg remain no-price by source
-- Image residuals (3 removed RE/MAX galleries): proven identity duplicates cleaned via `build_gallery`
+- Image residuals (Phase 3 + follow-on): ingestion `build_gallery` /
+  `scripts/audit_dedupe_listing_images.py`; frontend mirror
+  `apps/labs-dashboard/src/lib/listing-gallery-urls.ts`; tip commit
+  `d2abb557` cleaned one confirmed Remax residual (rerun idempotent)
+
+### Automation validation follow-on (same day / tip `d2abb557`)
+
+- Supervised + idempotent pipeline gates passed for four Ready sources
+- `AUTOMATIC_REFRESH_ENABLED = true`; GHA cron `0 10 * * *` UTC On in
+  workflow; **scheduled execution begins only after merge to the default branch**
+- Snapshot (Labs read-only): total inventory **402**; public view **286**;
+  EN/NL About-this-property on **283**; Remax deferred enrichment remainder
+  **71** under 25 listings/day (do not freeze these as permanent inventory)
+- Budgets: USD 2/day, USD 25/month, 25 listings/run; new/materially-changed only
 
 ## Artifacts / tooling
 
@@ -194,6 +217,8 @@ pipeline dry-run + worker activation gates.
 - Presentation counts: `merkado_labs.scrapers.presentation.dry_run_presentation_counts`
 - English migration: `scripts/migrate_english_presentation.py` →
   `data/processed/english_presentation_migration_report.json`
+- Dutch migration: `scripts/migrate_dutch_descriptions.py`
+- Image dedupe audit: `scripts/audit_dedupe_listing_images.py`
 - Source-official currency refresh:
   `data/processed/source_official_currency_refresh.json`
 
@@ -203,7 +228,7 @@ pipeline dry-run + worker activation gates.
 2. Confirm `needs_attention` stays near **7** unless new proposals arrive.
 3. Re-run zero-cost dry-run periodically; expect `changed=0` at fixed point when policy/inputs unchanged.
 4. Map Quality: track the **28** missing-coord listings separately from neighbourhood filter gaps.
-5. After English `--apply`, track `already_complete_count` / residual selected queue.
+5. Track bilingual `already_complete_count` / residual selected queue and Remax `budget_deferred` remainder.
 6. Spot-check RE/MAX official XCG via NAF session (hr2066 pattern) and KW inline alts.
 7. No unexpected interaction with active `property_pipeline_runs` during apply.
-8. Cron remains Off until explicit activation-gate approval.
+8. After default-branch merge: confirm first scheduled GHA run at `0 10 * * *` UTC.

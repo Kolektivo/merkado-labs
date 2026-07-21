@@ -72,22 +72,32 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
-### July 21, 2026 - Cleanup/stabilization; cron temporarily Off
+### July 21, 2026 - Quality pass, bilingual presentation, automation armed On
 
-- Labs cleanup/stabilization after hash-repair work: property pipeline remains
-  implemented (orchestrator/worker/locks/anomaly/budgets/`change_hash`; scripts
-  `run_property_pipeline.py` / `run_property_pipeline_worker.py`; GHA
-  `property-pipeline-labs.yml` with `workflow_dispatch`).
-- **GitHub daily cron temporarily disabled** (`AUTOMATIC_REFRESH_ENABLED = false`
-  in Python + TypeScript) as a supervised verification gate after hash repair.
-  Intended cron stays `0 10 * * *` UTC = 06:00 America/Curacao. Manual/dashboard
-  Data Operations dispatch still available.
-- Live Labs inventory note: KW **104**, Remax **222**, Moret **71**,
-  Monumentenzorg **5**; `public_property_listings` **279**. Remax adapter catalog
-  contract remains **220** (DB drift to 222 is operational, not a new contract).
-  KW offline import preview still gates at 84; document inventory as 104.
-- AI enrichment v4 / v4.1 current; Labs public-effective + galleries applied;
-  production merkado.cw property migration remains paused. No production deploy.
+- Labs cleanup/stabilization after hash-repair work, then English v5 + Dutch
+  About-this-property, then supervised + idempotent pipeline validation (PR #16
+  tip `d2abb557`).
+- **Earlier same day (historical):** cron temporarily Off
+  (`AUTOMATIC_REFRESH_ENABLED = false`) as a supervised gate after hash repair;
+  public view snap **~279**. Superseded by the validation outcome below.
+- **After supervised + idempotent gates:** `AUTOMATIC_REFRESH_ENABLED = true`
+  (Python + TypeScript). GHA `property-pipeline-labs.yml` schedule
+  `0 10 * * *` UTC = 06:00 America/Curacao is On in the workflow file and
+  **begins only when that workflow reaches the default branch**.
+  Manual/`workflow_dispatch` and Data Operations dispatch available.
+- **Snapshot inventory (Labs read-only, 2026-07-21 / `d2abb557`):** total
+  listings **402** (KW **104** / Remax **222** / Moret **71** /
+  Monumentenzorg **5**); `public_property_listings` **286**; EN/NL
+  About-this-property on **283** public rows. Remax catalog contract remains
+  **220** (DB drift to 222 is operational). KW offline import preview still
+  gates at **84**; live inventory is **104**. Remax deferred enrichment
+  remainder after validation: **71** under the 25-listings/day cap.
+- AI enrichment **v5 / policy v5** current (`listing_enrichment_v5` /
+  `listing_enrichment_schema_v5` / `enrichment_policy_v5`); historical v4 /
+  v4.1 / v4.2 retained. Labs public-effective + galleries + bilingual locales
+  applied; image gallery residual cleanup (one confirmed Remax duplicate)
+  idempotent at `d2abb557`. Production merkado.cw property migration remains
+  paused. No production deploy.
 
 ### July 17, 2026 - KW retry batch, Terra completion, and AI cost observability
 

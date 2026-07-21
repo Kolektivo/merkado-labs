@@ -39,7 +39,9 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
   owner (`security_invoker=false`) so anon can read the projection without table grants
 - `20260720120000_property_pipeline_orchestration.sql` /
   `20260721090000_property_pipeline_automation_foundation.sql` — pipeline locks/runs
-- `20260720140000_public_property_listings_effective.sql` — public-effective view
+- `20260720140000_public_property_listings_effective.sql` — replaces view
+  `public.public_property_listings` (filename says “effective”; there is no
+  separate `public_property_listings_effective` relation)
 - `20260720180000_enrichment_quality_v4_public_effective.sql` — enrichment quality v4
 - `20260720210000_review_v41_and_public_image_galleries.sql` — review_v41 galleries
 - `20260721140000_source_official_currency_and_presentation.sql` — official alts +
@@ -252,11 +254,13 @@ deterministic (`apps/labs-dashboard/src/lib/search/synonyms.ts`).
   `skipped`.
 - v5 can auto-apply grounded neighbourhood gap-fills and English public
   presentation fields. One-time English migration
-  (`scripts/migrate_english_presentation.py`) is capped at USD **15** /
-  **320** calls and was **not completed** as of the latest processed report
-  (`apply=false`, selected **289**). Labs public-effective / gallery /
-  English-presentation view migrations are in repo; production merkado.cw
-  property projection remains **paused**.
+  (`scripts/migrate_english_presentation.py`) was **applied** 2026-07-21 for
+  **289** active Ready listings (~USD **7.83**, under USD **15** / **320**-call
+  caps) and was not rerun for bilingual work. Dutch About-this-property copy
+  lives in `listing_display_description_locales` (`locale='nl'`) and projects
+  as `public_property_listings.display_description_nl`. Labs public-effective /
+  gallery / bilingual view migrations are applied in Labs; production
+  merkado.cw property projection remains **paused**.
 - Never overwrite raw evidence, price, currency, status, dates, coords, address,
   neighbourhood, realtor, source reference, or source title/description
 
