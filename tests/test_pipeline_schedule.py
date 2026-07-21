@@ -46,8 +46,9 @@ def test_workflow_has_daily_cron_and_dispatch() -> None:
     workflow_path = Path(".github/workflows/property-pipeline-labs.yml")
     workflow = workflow_path.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
-    assert "\n  schedule:" in workflow
-    assert 'cron: "0 10 * * *"' in workflow
+    # Cron temporarily disabled pending supervised post-repair verification.
+    assert "\n  schedule:" not in workflow
+    assert "0 10 * * *" in workflow  # documented intended schedule remains
     assert 'trigger="scheduled"' in workflow
     assert "cancel-in-progress: false" in workflow
     assert "github.event_name" in workflow
