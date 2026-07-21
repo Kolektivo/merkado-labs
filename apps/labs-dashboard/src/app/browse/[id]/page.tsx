@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, FlaskConical, MapPin } from "lucide-react";
 
+import { AboutPropertyDescription } from "@/components/about-property-description";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +128,7 @@ export default async function PublicListingPage({
   const propertyType =
     listing.effectivePropertyType ?? listing.propertyType ?? null;
   const displayDescription = listing.displayDescription;
+  const displayDescriptionNl = listing.displayDescriptionNl;
   const displayTitle = resolvePublicDisplayTitle(listing);
   const displaySummary = resolvePublicDisplaySummary(listing);
   const jsonLd = buildPublicListingJsonLd(listing);
@@ -276,52 +278,10 @@ export default async function PublicListingPage({
               </p>
             </section>
           ) : null}
-          {displayDescription ? (
-            <>
-              {displayDescription.overview ? (
-                <section>
-                  <h2 className="text-sm font-medium">Overview</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.overview}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.layout ? (
-                <section>
-                  <h2 className="text-sm font-medium">Layout</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.layout}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.location ? (
-                <section>
-                  <h2 className="text-sm font-medium">Location</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.location}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.highlights.length ? (
-                <section>
-                  <h2 className="text-sm font-medium">Highlights</h2>
-                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {displayDescription.highlights.map((highlight) => (
-                      <li key={highlight}>{highlight}</li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-              {displayDescription.practical ? (
-                <section>
-                  <h2 className="text-sm font-medium">Practical details</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.practical}
-                  </p>
-                </section>
-              ) : null}
-            </>
-          ) : null}
+          <AboutPropertyDescription
+            english={displayDescription}
+            dutch={displayDescriptionNl}
+          />
           <details>
             <summary className="cursor-pointer text-sm font-medium">
               Original source description

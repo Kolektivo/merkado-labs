@@ -43,11 +43,14 @@ The isolated Labs project currently has:
   preview (separate from Prototypes);
 - internal routes protected by the signed Labs admin cookie; public
   Browse/Passport reads `public_property_listings` / public-effective projection;
-- **English is the only public website language** for Browse / Passport / SEO.
-  Stable public URLs are `/browse/{uuid}`. Scrapers keep raw source
-  title/description; AI generates English `display_title` / `display_summary` /
-  description. Deterministic English fallbacks never leave a blank public title.
-  Dutch↔English search synonyms are deterministic (no AI per query).
+- **English is the default public website language** for Browse / Passport /
+  titles, summaries, filters, navigation, and SEO. Stable public URLs are
+  `/browse/{uuid}`. Scrapers keep raw source title/description; AI generates
+  English `display_title` / `display_summary` / description. Deterministic
+  English fallbacks never leave a blank public title. **About this property**
+  additionally supports Dutch (`display_description_nl`) via a compact
+  English/Nederlands toggle — not full-site localization. Dutch↔English search
+  synonyms are deterministic (no AI per query).
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
   **220**; Labs DB may show **222** — operational drift; adapter **v0.4.1**;
   **199/220** coordinates; Terra initial backfill complete; pipeline ready /
@@ -73,16 +76,21 @@ The isolated Labs project currently has:
   auto_applied **3679** / rejected **386** / redundant **361** /
   needs_attention **9** across **9** listings). Public listings (**285**)
   expose English `display_title` / `display_summary` / `display_description`,
-  effective neighbourhood, feature attrs, and image galleries. SEO / JSON-LD
-  use English presentation + XCG when available. Dashboard AI job execution is
-  disabled; pipeline AI runs under budgets (USD 2/day, USD 25/month,
-  25 listings/run) when the worker executes. One-time English presentation
-  migration **applied** for **289** active Ready listings (~USD **7.83**,
-  under USD **15** / **320**-call caps); post-migration selection is
-  zero-billable (`already_complete=289`). Zero-cost policy rematerialization
-  does not create billable AI work. Labs public-effective + English
-  presentation view migrations exist in repo; production merkado.cw property
-  migration remains **paused**.
+  optional Dutch `display_description_nl`, effective neighbourhood, feature
+  attrs, and image galleries. SEO / JSON-LD use English presentation + XCG
+  when available. Dashboard AI job execution is disabled; pipeline AI runs
+  under budgets (USD 2/day, USD 25/month, 25 listings/run) when the worker
+  executes. One-time English presentation migration **applied** for **289**
+  active Ready listings (~USD **7.83**, under USD **15** / **320**-call caps)
+  and was **not rerun** for bilingual work. Targeted one-time Dutch description
+  backfill **applied** for **285** public listings (~USD **2.42**, under USD
+  **5** / **320**-call caps); post-run selection is zero-billable
+  (`selected_count=0` / `already_complete=285`). Unchanged bilingual hashes
+  skip at zero cost. Future new/changed enrichment generates English
+  presentation then Dutch description in the same job pass (Dutch failure does
+  not remove English). Zero-cost policy rematerialization does not create
+  billable AI work. Labs public-effective + bilingual view migrations exist in
+  repo; production merkado.cw property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 

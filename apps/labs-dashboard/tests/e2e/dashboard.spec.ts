@@ -90,6 +90,23 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   // CardTitle is a div (not a heading role); assert source section + original link.
   await expect(page.getByText("Source", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Open original listing/i }).first()).toBeVisible();
+  await expect(page.getByText("About this property", { exact: true })).toBeVisible();
+  // Language toggle appears only when Dutch is available; English is always safe.
+  const nlToggle = page.getByRole("button", { name: /Nederlands/i });
+  if (await nlToggle.count()) {
+    await expect(page.getByRole("button", { name: /English/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /English/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await nlToggle.click();
+    await expect(nlToggle).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: /English/i }).click();
+    await expect(page.getByRole("button", { name: /English/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  }
   await expectNoHorizontalOverflow(page, detailHref!);
   expect(errors).toEqual([]);
 });

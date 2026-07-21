@@ -26,6 +26,7 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(browse, /benchmarkPriceXcg/);
   assert.match(passport, /Property features/);
   assert.match(passport, /Source description/);
+  assert.match(passport, /AboutPropertyDescription/);
   assert.match(passport, /resolvePublicDisplayTitle|displayTitle/);
   assert.match(passport, /resolvePublicDisplaySummary|displaySummary/);
   assert.match(passport, /buildPublicListingJsonLd|application\/ld\+json/);
@@ -214,4 +215,20 @@ test("v5 english presentation migration prefers v5 and exposes display_title", (
   assert.match(migration, /security_invoker = false/);
   assert.doesNotMatch(migration, /supporting_evidence/);
   assert.doesNotMatch(migration, /token_usage/);
+});
+
+test("bilingual migration adds Dutch locales table and display_description_nl", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../../../supabase/migrations/20260721155626_bilingual_display_descriptions.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /listing_display_description_locales/);
+  assert.match(migration, /display_description_nl/);
+  assert.match(migration, /presentation_input_hash/);
+  assert.match(migration, /locale = 'nl'/);
+  assert.match(migration, /security_invoker = false/);
+  assert.doesNotMatch(migration, /supporting_evidence/);
 });

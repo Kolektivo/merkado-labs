@@ -46,6 +46,9 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
   presentation timeline fields
 - `20260721131309_english_presentation_public_effective.sql` — English
   `display_title` / `display_summary` on `public_property_listings` (prefers v5)
+- `20260721155626_bilingual_display_descriptions.sql` — Dutch
+  `listing_display_description_locales` + `display_description_nl` on the
+  public view (English description unchanged; raw source preserved)
 
 Labs public-effective + pipeline migrations above are **applied** (verify with
 `list_migrations` before assuming a new file is live). Production merkado.cw

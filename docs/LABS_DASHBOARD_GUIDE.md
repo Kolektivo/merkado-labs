@@ -48,12 +48,14 @@ The server creates a signed, httpOnly 12-hour cookie. Use Settings to sign out.
 The public Browse/Passport preview does not use this cookie. It reads only the
 safe `public_property_listings` view (publishable Labs key). That view projects
 **final effective values** — English `display_title` / `display_summary` when
-present (else deterministic English fallbacks), neighbourhood, property type,
-allowlisted auto-applied attributes, and image galleries — never raw AI
-proposals, evidence, confidence, tokens, or costs. English is the only public
-product language; stable URLs are `/browse/{uuid}`. SEO/JSON-LD use English
-presentation + XCG when available. The preview remains Labs-only and is not
-live on merkado.cw.
+present (else deterministic English fallbacks), English `display_description`,
+optional Dutch `display_description_nl` for About this property, neighbourhood,
+property type, allowlisted auto-applied attributes, and image galleries —
+never raw AI proposals, evidence, confidence, tokens, or costs. English is the
+default public UI language; About this property can toggle English/Nederlands
+client-side without URL changes. Stable URLs are `/browse/{uuid}`. SEO/JSON-LD
+use English presentation + XCG when available. Raw source title/description
+remain preserved. The preview remains Labs-only and is not live on merkado.cw.
 
 ## Main pages
 

@@ -247,6 +247,11 @@ export type PublicPropertyListing = {
   effectiveSummary: string | null;
   /** Public-safe structured copy for the Passport; source text remains available separately. */
   displayDescription: PublicDisplayDescription | null;
+  /**
+   * Optional Dutch About-this-property description.
+   * English remains canonical for SEO; UI toggles client-side only.
+   */
+  displayDescriptionNl: PublicDisplayDescription | null;
 };
 
 export type EnrichmentComparisonStatus =

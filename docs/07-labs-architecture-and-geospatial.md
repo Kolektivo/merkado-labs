@@ -84,8 +84,9 @@ available. Sotheby's is excluded.
 
 - Current combination: prompt `listing_enrichment_v5`, JSON schema
   `listing_enrichment_schema_v5`, application policy `enrichment_policy_v5`
-  (English-only public presentation: `display_title` / `display_summary` /
-  English overview; scrapers keep raw source title/description; AI never
+  (English-default public presentation: `display_title` / `display_summary` /
+  English overview + optional Dutch `display_description_nl` for About this
+  property; scrapers keep raw source title/description; AI never
   overwrites protected facts; deterministic bilingual Dutch/English evidence;
   curated Blue Bay gated rule; operational UI label **Needs review** for
   current unresolved conflicts only; historical v3/v4 rows stay in advanced

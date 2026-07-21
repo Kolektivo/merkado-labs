@@ -16,10 +16,13 @@ Sotheby's is blocked and excluded.
 **AI enrichment versions (current):** prompt/schema/policy
 `listing_enrichment_v5` / `listing_enrichment_schema_v5` /
 `enrichment_policy_v5`. Scrapers preserve raw source title/description; AI
-generates English public presentation (`display_*`) and never overwrites
-protected facts. One-time English migration is capped USD **15** / **320**
-calls and is **not completed** until a report shows successful `--apply`
-(latest preflight: `apply=false`, selected **289**).
+generates English public presentation (`display_*`) plus Dutch description
+rows in `listing_display_description_locales`, and never overwrites
+protected facts. One-time English migration (historical, not rerun) was capped
+USD **15** / **320** and was not rerun for bilingual work. One-time Dutch
+description backfill is capped USD **5** / **320** calls
+(`scripts/migrate_dutch_descriptions.py`); unchanged presentation hashes skip
+at zero cost.
 
 Selection uses the shared canonical hash contract
 (`enrichment_input_hash_v1` in `merkado_labs.pipeline.change_hash`). Semantic

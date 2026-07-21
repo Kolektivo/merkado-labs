@@ -53,6 +53,47 @@ const PUBLIC_SELECT = [
   "public_attributes",
   "effective_summary",
   "display_description",
+  "display_description_nl",
+].join(",");
+
+/** English presentation without Dutch column (pre-bilingual view). */
+const PUBLIC_SELECT_WITHOUT_NL = [
+  "id",
+  "external_id",
+  "source_url",
+  "original_realtor_url",
+  "listing_type",
+  "source_listing_status",
+  "property_type",
+  "title",
+  "display_title",
+  "display_summary",
+  "original_price",
+  "original_currency",
+  "benchmark_price_xcg",
+  "conversion_method",
+  "conversion_provider",
+  "conversion_rate_at",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
+  "primary_image_url",
+  "image_urls",
+  "description",
+  "first_seen_at",
+  "last_seen_at",
+  "source_listed_at",
+  "source_key",
+  "source_display_name",
+  "effective_neighbourhood",
+  "effective_neighbourhood_provenance",
+  "effective_neighbourhood_provenance_label",
+  "effective_property_type",
+  "public_attributes",
+  "effective_summary",
+  "display_description",
 ].join(",");
 
 /** Effective fields without English presentation columns (pre-v5 view). */
@@ -143,12 +184,16 @@ function publicQueryError(message: string) {
   return new Error(`Public listing query failed: ${message}`);
 }
 
+function isMissingNlColumnError(message: string): boolean {
+  return /display_description_nl/i.test(message);
+}
+
 function isMissingPresentationColumnError(message: string): boolean {
   return /display_title|display_summary/i.test(message);
 }
 
 function isMissingEffectiveColumnError(message: string): boolean {
-  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description|display_title|display_summary|image_urls|column .* does not exist/i.test(
+  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description_nl|display_description|display_title|display_summary|image_urls|column .* does not exist/i.test(
     message,
   );
 }
@@ -293,6 +338,9 @@ export function normalizePublicListing(
       ? String(row.effective_summary).trim() || null
       : null,
     displayDescription: normalizeDisplayDescription(row.display_description),
+    displayDescriptionNl: normalizeDisplayDescription(
+      row.display_description_nl,
+    ),
   };
 }
 
@@ -326,8 +374,22 @@ export const getPublicListings = cache(
       return rows.map(normalizePublicListing);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Fail soft when Dutch column is not applied yet.
+      if (isMissingNlColumnError(message)) {
+        try {
+          const rows = await fetchPublicListingPages(PUBLIC_SELECT_WITHOUT_NL);
+          return rows.map(normalizePublicListing);
+        } catch (nlInner) {
+          const nlMessage =
+            nlInner instanceof Error ? nlInner.message : String(nlInner);
+          if (!isMissingPresentationColumnError(nlMessage)) throw nlInner;
+        }
+      }
       // Fail soft when the v5 view columns are not applied yet.
-      if (isMissingPresentationColumnError(message)) {
+      if (
+        isMissingPresentationColumnError(message) ||
+        isMissingNlColumnError(message)
+      ) {
         try {
           const rows = await fetchPublicListingPages(
             PUBLIC_SELECT_WITHOUT_PRESENTATION,

@@ -1143,6 +1143,54 @@ def process_enrichment_job(
                 elif result.status in {"succeeded", "needs_review"}:
                     succeeded += 1
                     consecutive_infra_failures = 0
+                    # Future path: after a new/changed English enrichment, also
+                    # generate Dutch description. Failed Dutch must not fail the
+                    # English result or remove English presentation.
+                    try:
+                        from merkado_labs.enrichment.nl_description import (
+                            ensure_dutch_description_for_listing,
+                        )
+
+                        proposal_rows = (
+                            client.table("ai_enrichment_proposals")
+                            .select(
+                                "id,proposal,prompt_version,schema_version,status"
+                            )
+                            .eq("property_listing_id", listing_id)
+                            .eq("input_checksum", result.input_checksum)
+                            .in_("status", ["succeeded", "needs_review"])
+                            .order("generated_at", desc=True)
+                            .limit(1)
+                            .execute()
+                            .data
+                            or []
+                        )
+                        if proposal_rows and api_key:
+                            nl_result = ensure_dutch_description_for_listing(
+                                client,
+                                listing_id=listing_id,
+                                proposal_row=proposal_rows[0],
+                                listing_row=row,
+                                api_key=api_key,
+                                model=model_name,
+                                force=False,
+                            )
+                            listing_results[-1]["dutch_status"] = nl_result.status
+                            listing_results[-1]["dutch_cost_usd"] = nl_result.cost_usd
+                            for key in (
+                                "input_tokens",
+                                "cached_input_tokens",
+                                "output_tokens",
+                                "total_tokens",
+                            ):
+                                value = nl_result.token_usage.get(key)
+                                if isinstance(value, int):
+                                    token_totals[key] = (
+                                        int(token_totals.get(key) or 0) + value
+                                    )
+                    except Exception as nl_error:  # noqa: BLE001
+                        listing_results[-1]["dutch_status"] = "failed"
+                        listing_results[-1]["dutch_error"] = type(nl_error).__name__
                 else:
                     failed += 1
                     err = result.error_message or result.status

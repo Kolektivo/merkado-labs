@@ -14,17 +14,17 @@ Active work is **direct-source property ingestion** for Curaçao:
   `change_hash`); daily cron still Off until activation gates pass;
   manual/dashboard dispatch available;
 - AI enrichment **v5 / policy v5** (`listing_enrichment_v5` /
-  `listing_enrichment_schema_v5` / `enrichment_policy_v5`); English-only
-  public presentation (`display_title` / `display_summary` / English
-  description); scrapers preserve raw source title/description; AI never
-  overwrites protected facts; human review exceptional / genuine conflicts
-  only; deterministic Dutch↔English search synonyms; stable URLs
-  `/browse/{uuid}`;
-- one-time English presentation migration **applied** (job `69dff671…` +
-  retries; **289** listings; exact ~USD **7.83**; post-run
-  `selected_count=0` / `already_complete_count=289`); public view **285**
-  with English `display_*`; daily cron still Off pending supervised pipeline
-  gates;
+  `listing_enrichment_schema_v5` / `enrichment_policy_v5`); English-default
+  public UI (`display_title` / `display_summary` / English description) with
+  optional Dutch `display_description_nl` for About this property; scrapers
+  preserve raw source title/description; AI never overwrites protected facts;
+  human review exceptional / genuine conflicts only; deterministic
+  Dutch↔English search synonyms; stable URLs `/browse/{uuid}`;
+- one-time English presentation migration **applied** (historical; **289**
+  listings; ~USD **7.83**; not rerun for bilingual work); targeted Dutch
+  description backfill via `scripts/migrate_dutch_descriptions.py`; public
+  view **285** with English `display_*` + Dutch where generated; daily cron
+  still Off pending supervised pipeline gates;
 - source-official currency: RE/MAX NAF cookie session; KW inline alts;
   official XCG precedence (hr2066 EUR 664 / Cg 1350 via
   `source_official_conversion`; listing currently inactive/rented);
