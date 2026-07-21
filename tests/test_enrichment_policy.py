@@ -283,7 +283,7 @@ def test_evaluate_proposal_idempotent_structure() -> None:
 
 
 def test_policy_version_is_v4() -> None:
-    assert POLICY_VERSION == "enrichment_policy_v4_2"
+    assert POLICY_VERSION == "enrichment_policy_v5"
 
 
 def test_reason_codes_are_stable_machine_readable_strings() -> None:
@@ -572,9 +572,14 @@ def test_synonym_attrs_dedupe_to_one_decision() -> None:
         ],
         source_text="Apartment policy: no pets allowed.",
     )
-    assert len(evaluation.decisions) == 1
+    # First canonical key is evaluated; synonym duplicate is redundant (not rejected).
+    assert len(evaluation.decisions) == 2
     assert evaluation.decisions[0].key == "pet_suitability"
     assert evaluation.decisions[0].final_status == AutoApplyStatus.AUTO_APPLIED
+    assert evaluation.decisions[1].final_status == AutoApplyStatus.REDUNDANT
+    assert AutoApplyStatus.NEEDS_ATTENTION not in {
+        d.final_status for d in evaluation.decisions
+    }
 
 
 def test_has_pool_synonym_normalizes_and_auto_applies() -> None:

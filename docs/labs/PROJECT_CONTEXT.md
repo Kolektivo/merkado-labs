@@ -11,14 +11,28 @@ Active work is **direct-source property ingestion** for Curaçao:
   Monumentenzorg v0.2.0; Sotheby's BLOCKED (excluded from Ready pipelines);
   CHH retired/removed;
 - property pipeline automation (orchestrator/worker/locks/anomaly/budgets/
-  `change_hash`); daily cron temporarily Off; manual/dashboard dispatch available;
-- AI enrichment v4 / policy v4.2 (`listing_enrichment_v4` /
-  `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`); zero-cost
-  policy rematerialization reached fixed point 2026-07-21 (no billable AI;
-  see `PROPERTY_DATA_QUALITY_REPORT.md` for synonym-dedupe root cause,
-  image dedup, source-official currency, presentation timeline, map vs
-  neighbourhood-search gaps);
-- Labs public-effective view + image galleries; Browse public preview;
+  `change_hash`); daily cron still Off until activation gates pass;
+  manual/dashboard dispatch available;
+- AI enrichment **v5 / policy v5** (`listing_enrichment_v5` /
+  `listing_enrichment_schema_v5` / `enrichment_policy_v5`); English-only
+  public presentation (`display_title` / `display_summary` / English
+  description); scrapers preserve raw source title/description; AI never
+  overwrites protected facts; human review exceptional / genuine conflicts
+  only; deterministic Dutch↔English search synonyms; stable URLs
+  `/browse/{uuid}`;
+- one-time English presentation migration **applied** (job `69dff671…` +
+  retries; **289** listings; exact ~USD **7.83**; post-run
+  `selected_count=0` / `already_complete_count=289`); public view **285**
+  with English `display_*`; daily cron still Off pending supervised pipeline
+  gates;
+- source-official currency: RE/MAX NAF cookie session; KW inline alts;
+  official XCG precedence (hr2066 EUR 664 / Cg 1350 via
+  `source_official_conversion`; listing currently inactive/rented);
+- prior v4.2 quality pass retained (zero-cost rematerialization fixed point,
+  image dedup, presentation timeline, map vs neighbourhood-search gaps — see
+  `PROPERTY_DATA_QUALITY_REPORT.md`);
+- Labs public-effective view + image galleries; Browse public preview
+  (English product language);
 - Labs dashboard: ops + Data Operations + Enrichment review + prototypes
   (not read-only);
 - geospatial neighbourhood boundaries and assignment.

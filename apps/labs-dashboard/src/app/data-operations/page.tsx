@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { PipelineRefreshControls } from "@/components/pipeline-refresh-controls";
 import { PipelineRunProgress } from "@/components/pipeline-run-progress";
 import { StatusBadge } from "@/components/status-badge";
+import { SummaryStrip } from "@/components/summary-strip";
 import {
   getLatestPipelineRuns,
   getPipelineRunDetail,
@@ -44,7 +45,7 @@ export default async function DataOperationsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Data operations"
-          description="Labs property refresh automation with a daily 06:00 Curaçao schedule."
+          description="Dispatch and review Labs property refreshes."
           icon={RefreshCw}
         />
         <DataError
@@ -59,8 +60,9 @@ export default async function DataOperationsPage() {
   );
   const activeDetail = active ? await getPipelineRunDetail(active.id) : null;
   const health = getConfigurationHealth();
-  const nextRun = nextScheduledRunUtc();
-  const nextRunLabel = formatDateTime(nextRun.toISOString());
+  const nextRunLabel = AUTOMATIC_REFRESH_ENABLED
+    ? formatDateTime(nextScheduledRunUtc().toISOString())
+    : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -70,44 +72,39 @@ export default async function DataOperationsPage() {
         icon={RefreshCw}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardDescription>Automatic refresh</CardDescription>
-            <CardTitle>{AUTOMATIC_REFRESH_ENABLED ? "On" : "Off"}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Daily cron {DAILY_CRON_UTC} UTC
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Next scheduled run</CardDescription>
-            <CardTitle>06:00 Curaçao</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {nextRunLabel} (10:00 UTC)
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>AI budgets</CardDescription>
-            <CardTitle>USD 2 / day</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            USD 25 monthly
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Daily listing limit</CardDescription>
-            <CardTitle>25 listings</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Budget overflow is deferred
-          </CardContent>
-        </Card>
-      </section>
+      <SummaryStrip
+        className="xl:grid-cols-3"
+        items={[
+          {
+            label: "Automatic refresh",
+            value: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
+            helper: AUTOMATIC_REFRESH_ENABLED
+              ? `Next run ${nextRunLabel} · cron ${DAILY_CRON_UTC} UTC`
+              : "No scheduled runs · intended 06:00 Curaçao when re-enabled",
+            tip: "Automatic refresh is currently off. Only an explicit manual dispatch can start a new refresh.",
+            tipLabel: "automatic refresh",
+            icon: RefreshCw,
+          },
+          {
+            label: "Manual dispatch",
+            value: health.githubDispatchConfigured ? "Ready" : "Setup needed",
+            helper: health.githubDispatchConfigured
+              ? "Run now can dispatch the Labs workflow"
+              : "Server-only GitHub credentials are missing",
+            tip: "Run now starts the approved Labs-only GitHub workflow. It does not deploy the dashboard or access production.",
+            tipLabel: "manual dispatch",
+            icon: RefreshCw,
+          },
+          {
+            label: "AI guardrails",
+            value: "25 / day",
+            helper: "USD 2 / day · USD 25 / month · overflow deferred",
+            tip: "At most 25 changed listings can use AI in a day, subject to the daily and monthly cost limits.",
+            tipLabel: "AI guardrails",
+            icon: RefreshCw,
+          },
+        ]}
+      />
 
       {!health.githubDispatchConfigured ? (
         <div className="rounded-xl border border-dashed px-4 py-4 text-sm">

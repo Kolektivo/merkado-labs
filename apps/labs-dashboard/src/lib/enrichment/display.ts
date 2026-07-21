@@ -2,10 +2,16 @@
  * Listing-detail helpers for source / AI / effective values and change audit.
  */
 
-/** Keep in sync with `lib/enrichment/scope.ts` (that module is server-only). */
-export const CURRENT_PROMPT_VERSION = "listing_enrichment_v4";
-export const CURRENT_SCHEMA_VERSION = "listing_enrichment_schema_v4";
-export const CURRENT_POLICY_VERSION = "enrichment_policy_v4_2";
+import {
+  POLICY_VERSION,
+  PROMPT_VERSION,
+  SCHEMA_VERSION,
+} from "./versions.ts";
+
+/** Alias of shared versions — prefer `lib/enrichment/versions.ts` for bumps. */
+export const CURRENT_PROMPT_VERSION = PROMPT_VERSION;
+export const CURRENT_SCHEMA_VERSION = SCHEMA_VERSION;
+export const CURRENT_POLICY_VERSION = POLICY_VERSION;
 
 export type ProvenanceKind =
   | "source"
@@ -136,7 +142,7 @@ export const REASON_CODE_LABELS: Record<string, string> = {
     "Near the sea/beach only — waterfront not proven",
   furnished_optional_or_negotiable:
     "Furniture is optional or negotiable — not auto-furnished",
-  direct_bilingual_evidence: "Direct Dutch/English source evidence",
+  direct_bilingual_evidence: "Direct bilingual source evidence",
   evidence_span_in_source: "Evidence span found in source text",
   snippet_present_synonym_missing:
     "Snippet present but field synonym missing",
@@ -246,7 +252,7 @@ function isSuccessStatus(status: string): boolean {
 }
 
 /**
- * Prefer the retained current-policy (v4) successful attempt, else newest
+ * Prefer the retained current-policy (v5) successful attempt, else newest
  * successful attempt, else the newest row. Matches enrichment dashboard
  * retained ranking.
  */
@@ -410,4 +416,200 @@ function titleize(value: string): string {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+/** Internal Labs AI coverage categories (ops dashboard). */
+export type AiCoverageCategory =
+  | "ai_current"
+  | "ai_never_run"
+  | "ai_failed"
+  | "ai_stale"
+  | "ai_deferred"
+  | "ai_ran_no_display_description";
+
+export const AI_COVERAGE_LABELS: Record<AiCoverageCategory, string> = {
+  ai_current: "AI current",
+  ai_never_run: "AI never run",
+  ai_failed: "AI failed",
+  ai_stale: "AI stale",
+  ai_deferred: "AI deferred",
+  ai_ran_no_display_description:
+    "AI ran, but no display description was approved",
+};
+
+export const AI_COVERAGE_TIPS: Record<AiCoverageCategory, string> = {
+  ai_current:
+    "Latest successful enrichment matches the current listing input; display description is approved or not required.",
+  ai_never_run: "No successful AI enrichment has been recorded for this listing.",
+  ai_failed: "The latest AI enrichment attempt failed or returned invalid output.",
+  ai_stale:
+    "Source content changed after the last successful enrichment (input checksum drifted).",
+  ai_deferred:
+    "AI was skipped because the daily/pipeline budget was exhausted (budget_deferred).",
+  ai_ran_no_display_description:
+    "AI ran successfully, but no display_description block was auto-applied / projected for public use.",
+};
+
+const DISPLAY_DECISION_KEYS = [
+  "display_overview",
+  "display_layout",
+  "display_outdoor",
+  "display_location",
+  "display_condition",
+] as const;
+
+function hasApprovedDisplayDescription(
+  proposalBody: Record<string, unknown> | null | undefined,
+  publicDisplayDescription?: unknown,
+): boolean {
+  if (
+    publicDisplayDescription &&
+    typeof publicDisplayDescription === "object" &&
+    !Array.isArray(publicDisplayDescription) &&
+    Object.keys(publicDisplayDescription as object).length > 0
+  ) {
+    return true;
+  }
+  if (!proposalBody) return false;
+  const decisions = extractFieldDecisions(proposalBody);
+  return DISPLAY_DECISION_KEYS.some((key) => {
+    const hit = decisions.find((d) => d.key === key);
+    return hit?.status === "auto_applied" && hit.after != null && hit.after !== "";
+  });
+}
+
+/**
+ * Resolve internal AI coverage label from listing + retained proposal signals.
+ * Prefer this over raw enrichment_status for ops dashboards.
+ */
+export function resolveAiCoverage(input: {
+  enrichmentStatus?: string | null;
+  enrichmentLastInputChecksum?: string | null;
+  /** Recomputed semantic input checksum; required for accurate stale detection. */
+  currentInputChecksum?: string | null;
+  proposalStatus?: string | null;
+  proposalInputChecksum?: string | null;
+  pipelineAiResult?: string | null;
+  proposalBody?: Record<string, unknown> | null;
+  publicDisplayDescription?: unknown;
+}): { category: AiCoverageCategory; label: string; tip: string } {
+  const status = (input.enrichmentStatus ?? "not_run").toLowerCase();
+  const propStatus = (input.proposalStatus ?? "").toLowerCase();
+  const pipeAi = (input.pipelineAiResult ?? "").toLowerCase();
+
+  if (pipeAi === "budget_deferred") {
+    return {
+      category: "ai_deferred",
+      label: AI_COVERAGE_LABELS.ai_deferred,
+      tip: AI_COVERAGE_TIPS.ai_deferred,
+    };
+  }
+
+  const failed =
+    status === "failed" ||
+    propStatus === "failed" ||
+    propStatus === "invalid_output";
+  const never =
+    (status === "not_run" ||
+      status === "queued" ||
+      status === "running" ||
+      !status) &&
+    !propStatus;
+
+  if (never) {
+    return {
+      category: "ai_never_run",
+      label: AI_COVERAGE_LABELS.ai_never_run,
+      tip: AI_COVERAGE_TIPS.ai_never_run,
+    };
+  }
+
+  if (
+    failed &&
+    (status === "failed" ||
+      !propStatus ||
+      propStatus === "failed" ||
+      propStatus === "invalid_output")
+  ) {
+    return {
+      category: "ai_failed",
+      label: AI_COVERAGE_LABELS.ai_failed,
+      tip: AI_COVERAGE_TIPS.ai_failed,
+    };
+  }
+
+  const successish =
+    ["succeeded", "needs_review", "skipped_unchanged"].includes(status) ||
+    ["succeeded", "needs_review", "auto_applied", "skipped_unchanged"].includes(
+      propStatus,
+    );
+
+  // Stale only when caller supplies a recomputed current input checksum.
+  const retainedChecksum =
+    input.proposalInputChecksum || input.enrichmentLastInputChecksum || null;
+  if (
+    successish &&
+    input.currentInputChecksum &&
+    retainedChecksum &&
+    input.currentInputChecksum !== retainedChecksum
+  ) {
+    return {
+      category: "ai_stale",
+      label: AI_COVERAGE_LABELS.ai_stale,
+      tip: AI_COVERAGE_TIPS.ai_stale,
+    };
+  }
+
+  if (successish) {
+    if (
+      !hasApprovedDisplayDescription(
+        input.proposalBody,
+        input.publicDisplayDescription,
+      )
+    ) {
+      return {
+        category: "ai_ran_no_display_description",
+        label: AI_COVERAGE_LABELS.ai_ran_no_display_description,
+        tip: AI_COVERAGE_TIPS.ai_ran_no_display_description,
+      };
+    }
+    return {
+      category: "ai_current",
+      label: AI_COVERAGE_LABELS.ai_current,
+      tip: AI_COVERAGE_TIPS.ai_current,
+    };
+  }
+
+  if (failed) {
+    return {
+      category: "ai_failed",
+      label: AI_COVERAGE_LABELS.ai_failed,
+      tip: AI_COVERAGE_TIPS.ai_failed,
+    };
+  }
+
+  return {
+    category: "ai_never_run",
+    label: AI_COVERAGE_LABELS.ai_never_run,
+    tip: AI_COVERAGE_TIPS.ai_never_run,
+  };
+}
+
+/** Tone for AI coverage badges. */
+export function aiCoverageTone(
+  category: AiCoverageCategory,
+): "success" | "warning" | "error" | "info" | "neutral" {
+  switch (category) {
+    case "ai_current":
+      return "success";
+    case "ai_stale":
+    case "ai_deferred":
+    case "ai_ran_no_display_description":
+      return "warning";
+    case "ai_failed":
+      return "error";
+    case "ai_never_run":
+    default:
+      return "neutral";
+  }
 }

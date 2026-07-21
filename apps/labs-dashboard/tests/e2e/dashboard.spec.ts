@@ -72,7 +72,7 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   const errors = captureBrowserErrors(page);
   const response = await page.goto("/browse");
   expect(response?.status()).toBe(200);
-  await expect(page.getByText("Experimental Labs prototype", { exact: true })).toBeVisible();
+  await expect(page.getByText("Labs preview · not live", { exact: true })).toBeVisible();
   await expect(page.getByText("RE/MAX", { exact: true }).first()).toBeVisible();
   await expect(page.getByLabel("Buy or rent")).toBeVisible();
   await expect(page.getByLabel("Neighbourhood")).toBeVisible();
@@ -85,7 +85,7 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   expect(detailHref).toBeTruthy();
   const detailResponse = await page.goto(detailHref!);
   expect(detailResponse?.status()).toBe(200);
-  await expect(page.getByText("Experimental Labs Passport preview")).toBeVisible();
+  await expect(page.getByText("Labs preview · not live")).toBeVisible();
   await expect(page.getByText("Technical evidence metadata")).toHaveCount(0);
   // CardTitle is a div (not a heading role); assert source section + original link.
   await expect(page.getByText("Source", { exact: true })).toBeVisible();
@@ -121,8 +121,16 @@ test("authenticated core routes load real data without browser errors", async ({
   await expect(page.getByText("Public-ready", { exact: true })).toBeVisible();
   await expect(page.getByText("Healthy sources", { exact: true })).toBeVisible();
   await expect(page.getByText("Needs review", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "What is Public-ready?" }).click();
+  await expect(
+    page.getByText(/Active listings with a usable price/),
+  ).toBeVisible();
 
-  await page.goto("/listings");
+  await page.goto("/data-operations");
+  await expect(page.getByText("No scheduled runs")).toBeVisible();
+  await expect(page.getByText("Next scheduled run", { exact: true })).toHaveCount(0);
+
+  await page.goto("/listings?type=rent");
   const detailHref = await page.locator('a[href^="/listings/"]').first().getAttribute("href");
   expect(detailHref).toBeTruthy();
   const detailResponse = await page.goto(detailHref!);
@@ -130,6 +138,9 @@ test("authenticated core routes load real data without browser errors", async ({
   await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Changes & evidence" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Timeline" })).toBeVisible();
+  await expect(page.getByText("Asking rent", { exact: true })).toBeVisible();
+  await expect(page.getByText("Original asking rent", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Rental amount from the source ad/)).toHaveCount(0);
   await expectNoHorizontalOverflow(page, detailHref!);
 
   await page.goto("/settings");
@@ -164,6 +175,7 @@ test("navigation is consolidated and old routes redirect", async ({ page }) => {
     Sources: "/sources",
     "AI enrichment": "/enrichment",
     Settings: "/settings",
+    "Public preview": "/browse",
     Prototypes: "/prototypes",
   };
   for (const [label, href] of Object.entries(expected)) {
@@ -254,6 +266,10 @@ test("responsive listings use the appropriate result view and mobile filters", a
     await expect(
       page.getByRole("heading", { name: "Filter listings" }),
     ).toBeVisible();
+    const filterDialog = page.getByRole("dialog");
+    await expect(filterDialog.getByLabel("Asking price")).toBeVisible();
+    await expect(filterDialog.getByLabel("Realtor info")).toBeVisible();
+    await expect(filterDialog.getByLabel("Neighbourhood search")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(
       page.getByRole("heading", { name: "Filter listings" }),
@@ -262,6 +278,18 @@ test("responsive listings use the appropriate result view and mobile filters", a
     await expect(page.getByTestId("listing-desktop-results")).toBeVisible();
     await expect(page.getByTestId("listing-mobile-results")).toBeHidden();
   }
+
+  await page.goto("/listings?locationGap=missing_neighbourhood&from=quality");
+  let neighbourhoodSearch = page.getByLabel("Neighbourhood search");
+  if (mobile) {
+    await page.getByRole("button", { name: /Filters/ }).click();
+    neighbourhoodSearch = page.getByRole("dialog").getByLabel(
+      "Neighbourhood search",
+    );
+  }
+  await expect(neighbourhoodSearch).toContainText(
+    "Missing from neighbourhood search",
+  );
 });
 
 test("progressive disclosures and enrichment views are keyboard accessible", async ({
@@ -281,11 +309,16 @@ test("progressive disclosures and enrichment views are keyboard accessible", asy
 
   await page.goto("/enrichment");
   await page.getByRole("tab", { name: "Runs" }).click();
+  await expect(page).toHaveURL(/\/enrichment\?view=runs$/, { timeout: 15_000 });
   await expect(page.getByRole("tab", { name: "Runs" })).toHaveAttribute(
-    "data-state",
-    "active",
+    "aria-selected",
+    "true",
   );
   await page.getByRole("tab", { name: "Needs review" }).click();
+  await expect(page).toHaveURL(
+    /\/enrichment\?view=attention&filter=needs_attention$/,
+    { timeout: 15_000 },
+  );
   await expect(
     page.getByRole("heading", { name: "Needs review" }),
   ).toBeVisible();
@@ -302,7 +335,7 @@ test("prototype pages are explicit and AI execution is disabled", async ({ page 
     await page.waitForLoadState("networkidle");
     await expect(
       page
-        .getByText("Experimental Labs prototype — not live on merkado.cw")
+        .getByText("Prototype · not live on merkado.cw")
         .last(),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page, route);

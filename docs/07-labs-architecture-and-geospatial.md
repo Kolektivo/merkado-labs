@@ -45,9 +45,9 @@ DIRECT SOURCE ADAPTER
 ```
 
 Four Ready sources share the Labs property pipeline (orchestrator/worker/locks/
-anomaly/budgets/`change_hash`). **Daily cron is temporarily Off**;
-manual/`workflow_dispatch` and Data Operations dispatch remain available.
-Sotheby's is excluded.
+anomaly/budgets/`change_hash`). **Daily cron remains Off** until activation
+gates pass; manual/`workflow_dispatch` and Data Operations dispatch remain
+available. Sotheby's is excluded.
 
 ### Evidence layers
 
@@ -78,28 +78,35 @@ Sotheby's is excluded.
 - Why prior batch used `gpt-4.1-mini`: hardcoded in `run_ai_enrichment_batch25.py` +
   former `DEFAULT_MODEL` / config default before env-only hardening
 - After complete successful scrape: enqueue new/changed only via property pipeline;
-  daily cron temporarily Off (`AUTOMATIC_REFRESH_ENABLED = false`)
+  daily cron remains Off (`AUTOMATIC_REFRESH_ENABLED = false`) until gates pass
 
-#### Prompt / schema / policy v4
+#### Prompt / schema / policy v5 (current)
 
-- Current combination: prompt `listing_enrichment_v4`, JSON schema
-  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4_2`
-  (deterministic bilingual Dutch/English evidence; curated Blue Bay gated rule;
-  operational UI label **Needs review** for current unresolved conflicts only;
-  historical v3/v4 rows stay in advanced audit). Dashboard
-  `POLICY_VERSION = enrichment_policy_v4_2`. Public Browse/Passport expose
-  `image_urls` galleries with card/detail carousels; adapters already extract
-  full galleries into `property_listings.image_urls`.
-- Labs activation (2026-07-20): policy v4.1 rematerialized on 346 retained v4
+- Current combination: prompt `listing_enrichment_v5`, JSON schema
+  `listing_enrichment_schema_v5`, application policy `enrichment_policy_v5`
+  (English-only public presentation: `display_title` / `display_summary` /
+  English overview; scrapers keep raw source title/description; AI never
+  overwrites protected facts; deterministic bilingual Dutch/English evidence;
+  curated Blue Bay gated rule; operational UI label **Needs review** for
+  current unresolved conflicts only; historical v3/v4 rows stay in advanced
+  audit). Dashboard `POLICY_VERSION = enrichment_policy_v5`
+  (`apps/labs-dashboard/src/lib/enrichment/versions.ts`). Public Browse/Passport
+  expose English presentation (AI or deterministic fallbacks), SEO/JSON-LD in
+  English, stable URLs `/browse/{uuid}`, and `image_urls` galleries.
+- One-time English migration (`scripts/migrate_english_presentation.py`) is
+  capped USD **15** / **320** calls and is **not completed** until a processed
+  report shows `--apply` success (latest preflight `apply=false`, selected
+  **289** — see `labs/PROPERTY_DATA_QUALITY_REPORT.md`).
+- Prior Labs activation (2026-07-20, v4.1): rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
   151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
   idempotent. Public view / gallery migrations
   (`public_property_listings_effective`, enrichment quality v4, review_v41
-  galleries) are **applied** in Labs and expose `image_urls`. Ready-source
-  galleries were already stored (~12.1k URLs); no lifecycle scrape or image
-  binary copy was required. Live `public_property_listings` count ~**279**
-  (2026-07-21).
-- Quality pass (2026-07-21): policy **v4.2** zero-cost rematerialization
+  galleries, English presentation view) are in Labs and expose `image_urls`.
+  Ready-source galleries were already stored (~12.1k URLs); no lifecycle scrape
+  or image binary copy was required. Live `public_property_listings` count
+  ~**279** (2026-07-21).
+- Quality pass (2026-07-21): prior policy **v4.2** zero-cost rematerialization
   completed to a fixed point (`transitions={}`, `changed=0`; openai_calls=0;
   decision bag 5611→3590 after synonym dedupe). Root-cause fix: immutable
   proposal inputs + canonical-key dedupe (never FD/audit backfill). Public
@@ -107,12 +114,12 @@ Sotheby's is excluded.
   identity/dedup: RE/MAX fixture 82→42 via `build_gallery`; Labs cleanup
   removed 5705 duplicate gallery slots. See
   `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
-- v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
+- v5 preserves replay parsing for v3/v4 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
-  neighbourhood gap-fills, and adds source-language display-description blocks.
-- Labs public-effective view prefers retained v4 proposals (fallback v3)
-  and exposes `effective_summary` + `display_description` + `image_urls`
-  (never evidence/tokens/cost).
+  neighbourhood gap-fills, and adds English public presentation fields.
+- Labs public-effective view prefers retained v5 proposals (fallback v4 then v3)
+  and exposes `display_title` / `display_summary` / English description +
+  `image_urls` (never evidence/tokens/cost).
 - Cross-source v4 canary (20 public) + public backfill (254; 253 succeeded)
   completed under the USD 25 hard ceiling (~USD 7.42 total exact). Production
   Merkado migration remains paused.

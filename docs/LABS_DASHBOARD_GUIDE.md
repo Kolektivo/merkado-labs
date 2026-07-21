@@ -47,10 +47,13 @@ The server creates a signed, httpOnly 12-hour cookie. Use Settings to sign out.
 
 The public Browse/Passport preview does not use this cookie. It reads only the
 safe `public_property_listings` view (publishable Labs key). That view projects
-**final effective values** — neighbourhood, property type, allowlisted
-auto-applied attributes, and image galleries — never raw AI proposals, evidence,
-confidence, tokens, or costs. The preview remains Labs-only and is not live on
-merkado.cw.
+**final effective values** — English `display_title` / `display_summary` when
+present (else deterministic English fallbacks), neighbourhood, property type,
+allowlisted auto-applied attributes, and image galleries — never raw AI
+proposals, evidence, confidence, tokens, or costs. English is the only public
+product language; stable URLs are `/browse/{uuid}`. SEO/JSON-LD use English
+presentation + XCG when available. The preview remains Labs-only and is not
+live on merkado.cw.
 
 ## Main pages
 
@@ -63,10 +66,12 @@ merkado.cw.
 - **Enrichment** — audit AI cost/usage (gross vs. retained-result vs. wasted
   spend, token totals, model-efficiency comparison across model/prompt/
   schema versions) and review existing AI proposals beside source listings.
+  Current versions are **v5 / policy v5** (English public presentation).
   Review is exception-based: high-confidence evidenced fields auto-apply;
-  only conflicts, weak evidence, or new-attribute taxonomy need attention,
-  and unsupported/noisy proposals never reach the queue. AI execution is
-  disabled; proposals never overwrite source facts.
+  only genuine conflicts, weak evidence, or new-attribute taxonomy need
+  attention; style/translation choices do not; unsupported/noisy proposals
+  never reach the queue. AI execution is disabled; proposals never overwrite
+  source facts or raw source title/description.
 - **Quality** — eligibility, lifecycle states, missing fields, evidence
   availability, and location quality.
 - **Data operations** — Labs-only property pipeline enqueue/dispatch for the
@@ -74,8 +79,9 @@ merkado.cw.
   are present. Still no production Supabase/Vercel access and no deploy from
   this surface.
 - **Settings** — safe configuration health, admin session, **Automatic refresh
-  Off**, **daily cron temporarily Off** (post-hash-repair gate; intended
-  `0 10 * * *` UTC = 06:00 Curaçao), and environment boundaries.
+  Off**, **daily cron still Off** until activation gates pass (post-hash-repair
+  and related readiness; intended `0 10 * * *` UTC = 06:00 Curaçao), and
+  environment boundaries.
 - **Browse** — under Explore / **Public preview** (Passport-style detail). Not
   only nested under Prototypes.
 - **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
@@ -83,17 +89,22 @@ merkado.cw.
 
 Data Operations can enqueue and dispatch the Labs-only property workflow when
 admin + credentials are configured. **Automatic refresh is Off**: GitHub daily
-cron is temporarily disabled (`AUTOMATIC_REFRESH_ENABLED = false`). Manual Run
-now still uses `workflow_dispatch` when server-only `GITHUB_REPOSITORY` and a
-dedicated fine-grained `GITHUB_TOKEN` are set. The workflow enforces USD 2
-daily / USD 25 monthly / 25-listing AI limits, and excludes blocked Sotheby's.
+cron remains disabled (`AUTOMATIC_REFRESH_ENABLED = false`) until activation
+gates pass. Manual Run now still uses `workflow_dispatch` when server-only
+`GITHUB_REPOSITORY` and a dedicated fine-grained `GITHUB_TOKEN` are set. The
+workflow enforces USD 2 daily / USD 25 monthly / 25-listing AI limits, and
+excludes blocked Sotheby's. One-time English presentation migration
+(`scripts/migrate_english_presentation.py`, caps USD 15 / 320 calls) **applied**
+on Labs for **289** listings (~USD 7.83); public Browse shows English
+`display_*` fields. Cron remains Off until supervised pipeline activation gates
+pass.
 
 ## Understand source runs
 
 `success` is meaningful only for a complete catalog. Bounded, truncated, or
 partially failed runs are `partial` and must never mark absent listings missing
-or removed. Manual dispatch shares the Labs worker path; daily schedule is
-temporarily Off.
+or removed. Manual dispatch shares the Labs worker path; daily schedule remains
+Off until activation gates pass.
 
 Current maturity:
 
@@ -101,7 +112,7 @@ Current maturity:
   pipeline ready / cron Off / dispatch available; Refresh & enrich bills
   new/changed only.
 - Keller Williams: Ready adapter v0.3.1; Labs inventory 104; marketing
-  non-listing URLs excluded; Terra v4 / policy v4.1; pipeline ready / cron Off /
+  non-listing URLs excluded; Terra v5 / policy v5; pipeline ready / cron Off /
   dispatch available.
 - Moret: Ready (adapter v0.2.0; catalog 71; pipeline ready / cron Off /
   dispatch available).

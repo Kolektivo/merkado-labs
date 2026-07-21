@@ -13,7 +13,7 @@ from merkado_labs.enrichment.values import AutoApplyStatus, ConflictStatus
 
 
 def test_policy_version_is_v41() -> None:
-    assert POLICY_VERSION == "enrichment_policy_v4_2"
+    assert POLICY_VERSION == "enrichment_policy_v5"
 
 
 def test_detached_single_family_home_maps_to_house() -> None:

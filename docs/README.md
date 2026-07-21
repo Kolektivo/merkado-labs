@@ -17,14 +17,15 @@ This folder holds the working context for Merkado Labs property work.
 | Labs property schema + RLS | [LABS] Built; AI tables locked from anon; public-effective view applied |
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
-| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash implemented; GHA `workflow_dispatch` available; **daily cron temporarily Off** (`AUTOMATIC_REFRESH_ENABLED = false`) |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**279** `public_property_listings`) |
+| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash implemented; GHA `workflow_dispatch` available; **daily cron still Off** until activation gates pass (`AUTOMATIC_REFRESH_ENABLED = false`) |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**279** `public_property_listings`); English-only public product; stable URLs `/browse/{uuid}` |
+| English presentation contract | [LABS] v5 applied: **289** migrated (exact ~USD **7.79**); public **285** with English `display_title`/`display_summary`/`display_description`; post-run skip **0** billable; cron still Off — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
-| RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift) |
+| RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift); NAF cookie-session for official XCG alts |
 | Moret adapter | [LABS] v0.2.0 Ready; 71 catalog |
 | Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog |
 | Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (excluded from Ready pipelines; feed/API needed) |
-| AI enrichment (v4 / v4.2) | [LABS] Active: `listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`; dashboard AI execution disabled; pipeline AI under budgets when worker runs; 2026-07-21 quality pass **applied to fixed point** (openai_calls=0) — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
+| AI enrichment (v5 / policy v5) | [LABS] Current: `listing_enrichment_v5` / `listing_enrichment_schema_v5` / `enrichment_policy_v5`; English public presentation fields; dashboard AI execution disabled; pipeline AI under budgets when worker runs; prior v4.2 quality pass retained — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 
 ## The files
@@ -45,7 +46,7 @@ This folder holds the working context for Merkado Labs property work.
 | `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |
 | `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
 | `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |
-| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality stabilization (policy v4.2 fixed point, images, currency, timeline, geo gaps). | After enrichment/policy rematerialization or price/geo quality work. |
+| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality + English presentation status (v5 contract, migration gates, source-official currency). | After enrichment/policy rematerialization, English migration, or price/geo quality work. |
 
 Production reference copies (not Labs build docs):
 

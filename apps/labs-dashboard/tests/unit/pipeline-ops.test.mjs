@@ -137,20 +137,34 @@ test("dispatch credential stays server-only", () => {
 
 test("enrichment page has Overview / Runs / Needs review", () => {
   const page = source("src/app/enrichment/page.tsx");
-  assert.match(page, /TabsTrigger value="overview"/);
-  assert.match(page, /TabsTrigger value="runs"/);
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /\/enrichment\?view=overview/);
+  assert.match(page, /\/enrichment\?view=runs/);
   assert.match(page, /Needs review/);
   assert.match(page, /Advanced audit detail/);
   assert.match(page, /COST_ESTIMATE_LABEL/);
 });
 
-test("listing overview hides empty optional fields", () => {
+test("listing detail keeps optional diagnostics out of the primary summary", () => {
   const page = source("src/app/listings/[id]/page.tsx");
-  assert.match(page, /optional detail/);
-  assert.match(page, /not available/);
-  assert.match(page, /from this source/);
+  assert.match(page, /<PriceDisplay model=\{priceDisplay\}/);
+  assert.doesNotMatch(page, /Original asking rent/);
+  assert.doesNotMatch(page, /optional detail/);
   assert.match(page, /listing\.bedrooms != null/);
   assert.match(page, /listing\.resort \?/);
+});
+
+test("quality neighbourhood gaps drill into an actual listings filter", () => {
+  const analytics = source("src/lib/data/analytics.ts");
+  const filters = source("src/components/listing-filters.tsx");
+  const quality = source("src/app/quality/page.tsx");
+  assert.match(analytics, /locationGap: value\("locationGap"\)/);
+  assert.match(analytics, /listingHasNeighbourhoodSearchGap/);
+  assert.match(filters, /Missing from neighbourhood search/);
+  assert.match(
+    quality,
+    /locationGap=missing_neighbourhood&from=quality/,
+  );
 });
 
 test("listing AI changes keep audit detail collapsed", () => {

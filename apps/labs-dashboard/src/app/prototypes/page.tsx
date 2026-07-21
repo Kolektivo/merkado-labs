@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FlaskConical } from "lucide-react";
+import { Eye, FlaskConical } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PrototypeNotice } from "@/components/prototype-notice";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,14 +17,6 @@ import {
 export const metadata: Metadata = { title: "Prototypes" };
 
 const prototypes = [
-  {
-    href: "/browse",
-    title: "Public browse and Passport",
-    description:
-      "Simple preview of listings clean enough to show publicly, plus a limited activity summary.",
-    data: "Real public-safe Labs data",
-    status: "Testing",
-  },
   {
     href: "/search-requests",
     title: "Property Search Request",
@@ -55,17 +48,21 @@ export default function PrototypesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Prototypes"
-        description="Experimental Labs concepts kept separate from the operational dashboard."
+        description="Early research concepts kept separate from operations and Public preview."
         icon={FlaskConical}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href="/browse">
+              <Eye data-icon="inline-start" />
+              Open Public preview
+            </Link>
+          </Button>
+        }
       />
-      <Alert>
-        <FlaskConical />
-        <AlertTitle>Experimental Labs prototypes</AlertTitle>
-        <AlertDescription>
-          Not live on merkado.cw. No subscriptions, billing, customer email, or
-          financial advice are provided.
-        </AlertDescription>
-      </Alert>
+      <PrototypeNotice>
+        No subscriptions, billing, customer email, or financial advice are
+        connected.
+      </PrototypeNotice>
       <div className="grid gap-4 sm:grid-cols-2">
         {prototypes.map((prototype) => (
           <Link key={prototype.href} href={prototype.href}>

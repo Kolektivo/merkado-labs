@@ -111,16 +111,29 @@ source-published alternate currency lines. Precedence for the public XCG figure:
 | Official alternates | Stored on `official_alternate_prices` with provenance **`source_official_conversion`** |
 | Never invent | Do **not** derive `source_official_conversion` from Merkado/ECB rates |
 | Public XCG preference | Prefer official XCG/ANG when available; else Merkado conversion |
-| RE/MAX | Parse “listed in {CUR}” from the disclaimer; capture NAF/XCG selector amounts only when present in stored/fixture evidence. Live EUR pages typically omit the selector amount without a currency-switch (NAF-view) fetch — e.g. listing ~1350 remains blocked without that evidence |
-| KW | First currency code remains the anchor; following EUR/XCG lines are official alternates |
+| RE/MAX | Parse “listed in {CUR}” from the disclaimer. Live EUR pages typically omit the NAF/XCG selector amount — capture via **NAF cookie session** (`GET /currency/NAF/` then re-fetch detail; `remax_naf_session` / `capture_naf_official_alternate`). Do not invent amounts from Merkado/ECB |
+| KW | First currency code remains the anchor; following EUR/XCG **inline** lines are official alternates |
 | Moret | Sidebar widget `data-coef` values are evidence notes only — not Merkado rates |
 | Monumentenzorg | Single currency; no official alts required |
+
+### Confirmed example — RE/MAX `hr2066` (2026-07-21)
+
+Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
+`mode=apply`):
+
+| Field | Value |
+|---|---|
+| Asking anchor | **EUR 664** (unchanged) |
+| Official alternate | **XCG 1350** (`source_official_conversion`, evidence `XCG 1.350 / mo.`, label `remax_naf_session`) |
+| Public XCG benchmark | **Cg 1350** (official precedence over prior ECB ~1358) |
+| Timeline | No `price_changed` / `currency_changed` (official alt backfill is provenance-only) |
 
 ### Event semantics
 
 - `price_changed` — asking **amount** changed
 - `currency_changed` — asking **currency** changed
 - `benchmark_recalculated` — FX/rate/provider context only (anchor unchanged)
+- Official alternate capture/backfill with unchanged anchor ≠ `price_changed`
 - Import pipeline is the sole writer for these three; lifecycle must not duplicate them
   (dual-writer `price_changed` fixed in the 2026-07-21 quality pass)
 - Tiny RE/MAX display jitter (±1) may be flagged `suspected_display_fx_jitter` in presentation metadata; do not delete

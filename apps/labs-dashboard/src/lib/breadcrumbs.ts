@@ -17,14 +17,13 @@ const ROUTE_LABELS: Record<string, string> = {
   "/enrichment": "AI enrichment",
   "/settings": "Settings",
   "/prototypes": "Prototypes",
-  "/browse": "Public browse",
+  "/browse": "Public preview",
   "/search-requests": "Search requests",
   "/what-fits-me": "What Fits Me?",
   "/agent": "Merkado Agent",
 };
 
 const PROTOTYPE_ROOTS = [
-  "/browse",
   "/search-requests",
   "/what-fits-me",
   "/agent",
@@ -52,7 +51,7 @@ const LISTING_FROM_CONTEXTS: Record<
     href: "/search-requests",
     prototypes: true,
   },
-  browse: { label: "Public browse", href: "/browse", prototypes: true },
+  browse: { label: "Public preview", href: "/browse" },
 };
 
 function isIdSegment(segment: string) {
@@ -137,7 +136,7 @@ export function resolveListingBackNav(context: ListingNavContext = {}): {
     case "search-requests":
       return { href: "/search-requests", label: "Back to search requests" };
     case "browse":
-      return { href: "/browse", label: "Back to public browse" };
+      return { href: "/browse", label: "Back to Public preview" };
     default:
       return { href: "/listings", label: "Back to listings" };
   }

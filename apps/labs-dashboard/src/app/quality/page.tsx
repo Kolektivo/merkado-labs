@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getQualitySummary } from "@/lib/data/quality";
 import { formatNumber } from "@/lib/format";
-import { exclusionReasonLabel, lifecycleLabel } from "@/lib/ui-labels";
+import { exclusionReasonLabel, lifecycleLabel, TIPS } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Data quality" };
@@ -138,9 +138,9 @@ export default async function QualityPage() {
       title: "Missing neighbourhood for search",
       count: quality.missingNeighbourhoodSearch,
       impact:
-        "No usable neighbourhood after effective resolve + canonicalize (map polygon when coords exist, otherwise source text). Neighbourhood filter and search cannot place these listings. Source text that only needs alias cleanup is not counted here.",
-      action: "Browse listings",
-      href: "/listings?from=quality",
+        "No usable neighbourhood could be found from either the website or the map pin, so filters and search cannot place these listings.",
+      action: "View search gaps",
+      href: "/listings?locationGap=missing_neighbourhood&from=quality",
     },
   ].filter((issue) => issue.count > 0);
 
@@ -169,6 +169,8 @@ export default async function QualityPage() {
             label: "Public-ready",
             value: formatNumber(quality.publicEligible),
             helper: `of ${formatNumber(quality.totalListings)} listings`,
+            tip: TIPS.publicEligibility.tip,
+            tipLabel: TIPS.publicEligibility.label,
             href: "/listings?publicEligible=eligible&from=quality",
             icon: ShieldAlert,
           },
@@ -178,12 +180,16 @@ export default async function QualityPage() {
               quality.missingPrice + quality.unresolvedConflicts,
             ),
             helper: "Can affect trust or public display",
+            tip: "Listings with no usable asking price or unresolved conflicting information.",
+            tipLabel: "critical issues",
             icon: TriangleAlert,
           },
           {
             label: "Map location gaps",
             value: formatNumber(quality.missingCoordinates),
             helper: "Missing lat/lng — cannot appear on the map",
+            tip: TIPS.missingCoordinates.tip,
+            tipLabel: TIPS.missingCoordinates.label,
             href: "/listings?coordQuality=missing_coords&from=quality",
             icon: Info,
           },
@@ -191,7 +197,9 @@ export default async function QualityPage() {
             label: "Neighbourhood search gaps",
             value: formatNumber(quality.missingNeighbourhoodSearch),
             helper: "No canonical area for filter/search",
-            href: "/listings?from=quality",
+            tip: TIPS.missingNeighbourhoodSearch.tip,
+            tipLabel: TIPS.missingNeighbourhoodSearch.label,
+            href: "/listings?locationGap=missing_neighbourhood&from=quality",
             icon: Info,
           },
         ]}

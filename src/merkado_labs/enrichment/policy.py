@@ -1,17 +1,19 @@
-"""Automatic enrichment application policy (v4.1, exception-based).
+"""Automatic enrichment application policy (v5, exception-based).
 
 The model may recommend auto_apply; the application makes the final decision.
 Human review is exception-based: only genuine unresolved factual conflicts
 reach needs_attention. Confidence-alone gaps, subjective marketing language,
-Dutch/English synonym normalization, and property-type equivalence are handled
-deterministically without creating operational review work.
+Dutch/English synonym normalization, property-type equivalence, and English
+presentation style/wording choices are handled deterministically without
+creating operational review work.
 
 Everything else is either auto-applied (allowed, evidenced, grounded, above
 the field's confidence bar, no conflict, no negation, doesn't overwrite a
-protected source field) or rejected quietly with no operational attention
-required (unsupported, duplicated, forbidden, malformed, noisy, generic
-unhelpful, too-low-confidence, subjective accessibility/marketing, already
-represented by stronger source data, or a partial-word/encoding artifact).
+protected source field) or rejected/redundant quietly with no operational
+attention required (unsupported, duplicated synonyms, forbidden, malformed,
+noisy, generic unhelpful, too-low-confidence, subjective
+accessibility/marketing, already represented by stronger source data, or a
+partial-word/encoding artifact).
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ from merkado_labs.enrichment.values import (
     resolve_effective_value,
 )
 
-POLICY_VERSION = "enrichment_policy_v4_2"
+POLICY_VERSION = "enrichment_policy_v5"
 
 
 class ReasonCode:
@@ -464,6 +466,8 @@ def decide_field(
     corpus = source_text if source_text is not None else _build_source_corpus(source_values)
     narrative_field = normalized_key in {
         "concise_summary",
+        "display_title",
+        "display_summary",
         "display_overview",
         "display_layout",
         "display_location",
@@ -1066,7 +1070,12 @@ def decide_field(
 
     # Below the attention bar there is nothing for a human to usefully
     # decide — reject as too-low-confidence noise instead of queuing it.
-    if confidence is None or confidence < NEEDS_ATTENTION_CONFIDENCE_THRESHOLD:
+    # English presentation/narrative style fields are exempt: wording and
+    # translation never create operational review work.
+    if (
+        not narrative_field
+        and (confidence is None or confidence < NEEDS_ATTENTION_CONFIDENCE_THRESHOLD)
+    ):
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -1092,7 +1101,11 @@ def decide_field(
     auto_apply_threshold = FIELD_AUTO_APPLY_THRESHOLDS.get(
         normalized_key, AUTO_APPLY_CONFIDENCE_THRESHOLD
     )
-    if confidence < auto_apply_threshold and not narrative_field:
+    if (
+        not narrative_field
+        and confidence is not None
+        and confidence < auto_apply_threshold
+    ):
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -1195,9 +1208,10 @@ def evaluate_proposal_attributes(
 ) -> PolicyEvaluation:
     """Evaluate a list of structured attribute proposals from the model.
 
-    At most one decision is produced per canonical attribute key. First-seen
-    proposal wins so synonym duplicates (pets_allowed / pet_suitability) cannot
-    inflate the decision bag or oscillate statuses across rematerializations.
+    First-seen proposal per canonical key is evaluated. Later synonym
+    duplicates (pets_allowed / pet_suitability, gemeubileerd / furnished) are
+    recorded as redundant — never rejected as conflicts and never queued for
+    human review.
     """
 
     previous_effective = previous_effective or {}
@@ -1210,7 +1224,40 @@ def evaluate_proposal_attributes(
         if not key:
             continue
         canonical = normalize_attribute_key(key)
-        if not canonical or canonical in seen_keys:
+        if not canonical:
+            continue
+        if canonical in seen_keys:
+            coerced = _tri_state_to_bool(
+                normalize_proposed_value(canonical, item.get("value"))
+            )
+            evaluation.decisions.append(
+                FieldDecision(
+                    key=canonical,
+                    proposed_value=coerced,
+                    value_type=_infer_value_type(canonical, coerced),
+                    confidence=item.get("confidence"),
+                    evidence_snippet=item.get("evidence_snippet")
+                    or item.get("evidence"),
+                    evidence_source=item.get("evidence_source"),
+                    extraction_reason=item.get("extraction_reason")
+                    or item.get("reason"),
+                    classification=str(
+                        item.get("classification") or "ai_extracted_from_source"
+                    ),
+                    conflict=False,
+                    model_recommended_action=str(
+                        item.get("recommended_action") or "needs_attention"
+                    ),
+                    final_status=AutoApplyStatus.REDUNDANT,
+                    conflict_status=ConflictStatus.NONE,
+                    reasons=(ReasonCode.REDUNDANT_DUPLICATE_PROPOSAL,),
+                    previous_effective=previous_effective.get(canonical),
+                    resulting_effective=previous_effective.get(canonical),
+                    display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                        canonical, canonical.replace("_", " ").title()
+                    ),
+                )
+            )
             continue
         seen_keys.add(canonical)
         decision = decide_field(
@@ -1233,3 +1280,11 @@ def evaluate_proposal_attributes(
         )
         evaluation.decisions.append(decision)
     return evaluation
+
+
+def listing_has_presentation_current(proposal: dict[str, Any] | None) -> bool:
+    """True when English presentation fields are present and auto-applied."""
+
+    from merkado_labs.enrichment.presentation import has_complete_english_presentation
+
+    return has_complete_english_presentation(proposal)

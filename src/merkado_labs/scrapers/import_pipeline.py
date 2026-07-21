@@ -56,6 +56,10 @@ def should_append_price_observation(
     """Decide whether an unchanged re-import should skip price observation rows.
 
     Returns ``(should_append, price_changed, currency_changed)``.
+
+    Official-alternate-only updates (same asking amount + currency) never set
+    ``price_changed``. Use ``scripts/refresh_source_official_currency.py`` for
+    provenance backfills that must not emit ``price_changed`` lifecycle events.
     """
     price_changed = False
     currency_changed = False
@@ -66,6 +70,25 @@ def should_append_price_observation(
     if previous_currency != new_currency:
         currency_changed = True
     return price_changed or currency_changed, price_changed, currency_changed
+
+
+def is_official_alternate_only_update(
+    *,
+    previous_amount: Any,
+    previous_currency: str | None,
+    new_amount: float | None,
+    new_currency: str | None,
+) -> bool:
+    """True when asking money is unchanged (alts/benchmark may still change)."""
+
+    if new_amount is None or new_currency is None:
+        return False
+    if previous_amount is None or previous_currency is None:
+        return False
+    try:
+        return float(previous_amount) == float(new_amount) and previous_currency == new_currency
+    except (TypeError, ValueError):
+        return False
 
 
 def _require_labs() -> None:

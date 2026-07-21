@@ -316,6 +316,22 @@ def test_v4_migration_prefers_v4_and_exposes_display_description() -> None:
     assert "public_property_listings_v3_projection" in sql
 
 
+def test_v5_migration_prefers_v5_and_exposes_english_presentation() -> None:
+    sql = Path(
+        "supabase/migrations/20260721131309_english_presentation_public_effective.sql"
+    ).read_text(encoding="utf-8")
+    assert "listing_enrichment_v5" in sql
+    assert "listing_enrichment_v4" in sql
+    assert "listing_enrichment_v3" in sql
+    assert "display_title" in sql
+    assert "display_summary" in sql
+    assert "display_description" in sql
+    assert "security_invoker = false" in sql
+    assert "supporting_evidence" not in sql
+    assert "token_usage" not in sql
+    assert "grant select on table public.public_property_listings" in sql
+
+
 def test_replay_script_is_bounded_and_openai_free() -> None:
     script = Path("scripts/replay_enrichment_policy.py").read_text(encoding="utf-8")
     assert "--selection-file" in script

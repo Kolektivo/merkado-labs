@@ -34,19 +34,23 @@ export function PriceDisplay({
         : formatOriginalPrice(model.primaryAmount, model.primaryLabel);
 
   const primarySizeClass =
-    size === "lg" ? "text-3xl" : size === "sm" ? "text-sm" : "text-base";
+    size === "lg"
+      ? "text-2xl sm:text-3xl"
+      : size === "sm"
+        ? "text-sm"
+        : "text-base";
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-0.5",
+        "min-w-0 flex flex-col gap-0.5",
         align === "end" && "items-end text-right",
         className,
       )}
     >
       <span
         className={cn(
-          "inline-flex items-center gap-1 font-mono font-semibold tabular-nums",
+          "inline-flex min-w-0 flex-wrap items-center gap-1 font-mono font-semibold tabular-nums",
           primarySizeClass,
         )}
       >

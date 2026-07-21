@@ -144,12 +144,17 @@ test("browse and passport share the public attribute module", () => {
   assert.match(browse, /publicAttributes/);
   assert.match(browse, /benchmarkPriceXcg/);
   assert.match(browse, /selectBrowseAttributeChips/);
+  assert.match(browse, /resolvePublicDisplayTitle/);
+  assert.match(browse, /matchesSynonymSearch/);
   assert.match(passport, /groupPublicAttributes/);
   assert.match(passport, /effectiveNeighbourhoodProvenanceLabel/);
-  assert.match(passport, /effectiveSummary/);
+  assert.match(passport, /resolvePublicDisplayTitle/);
+  assert.match(passport, /resolvePublicDisplaySummary/);
+  assert.match(passport, /application\/ld\+json/);
   assert.match(publicListings, /createReadOnlySupabaseClient/);
   assert.match(publicListings, /public_property_listings/);
   assert.match(publicListings, /display_description/);
+  assert.match(publicListings, /display_title/);
   assert.doesNotMatch(publicListings, /ai_enrichment_proposals/);
   assert.doesNotMatch(browse, /confidence/);
   assert.doesNotMatch(passport, /token_usage|supporting_evidence|field_decisions/);

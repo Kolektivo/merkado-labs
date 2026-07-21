@@ -77,7 +77,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     workflowPath: ".github/workflows/property-pipeline-labs.yml",
     pipeline: [
       "WPEstate /properties/ pagination discovery (rel=next + page/N)",
-      "Prefer Dutch canonical URLs; WPML EN mirrors are aliases",
+      "Prefer canonical source URLs; WPML language mirrors are aliases",
       "Deterministic detail parse (post ID, price_area, status, fields)",
       "Complete-catalog offline import establishes baseline",
       "Lifecycle absence only after successful complete catalog",

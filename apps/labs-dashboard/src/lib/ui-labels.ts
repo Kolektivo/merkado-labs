@@ -10,11 +10,11 @@ type TipEntry = { label: string; tip: string };
 export const TIPS = {
   totalInventory: {
     label: "total inventory",
-    tip: "Every property we currently store from approved realtor websites — including ones that are no longer for sale.",
+    tip: "Every property currently stored from approved realtor websites, including listings that are no longer active.",
   },
   publiclyVisible: {
-    label: "publicly visible",
-    tip: "Listings that are still active, have a usable price, and show which realtor posted them. These are the ones safe enough to show in a public browse experience.",
+    label: "Public-ready",
+    tip: "Active listings with a usable price and clear realtor attribution. These are safe to include in Public preview.",
   },
   sources: {
     label: "sources",
@@ -34,7 +34,7 @@ export const TIPS = {
   },
   enrichmentStatus: {
     label: "AI enrichment status",
-    tip: "Whether AI has enriched this listing. High-confidence evidenced fields apply automatically; only conflicts and weak results need attention. Source facts are never overwritten.",
+    tip: "Internal AI coverage for this listing: current, never run, failed, stale (source changed), deferred (budget), or ran without an approved display description. High-confidence evidenced fields apply automatically; only conflicts need attention. Source facts are never overwritten.",
   },
   lifecycle: {
     label: "listing lifecycle",
@@ -78,7 +78,7 @@ export const TIPS = {
   },
   missingNeighbourhoodSearch: {
     label: "missing neighbourhood for search",
-    tip: "No usable neighbourhood after effective resolve and canonicalize. Affects neighbourhood filter/search. Source text that only needs alias cleanup is not counted.",
+    tip: "No usable neighbourhood could be found from either the website or the map pin, so the listing cannot be placed in neighbourhood filters or search.",
   },
   evidenceChecksum: {
     label: "source evidence",
@@ -132,9 +132,13 @@ export const TIPS = {
     label: "XCG comparison price",
     tip: "An approximate price in Caribbean guilders (XCG) so you can compare listings that were posted in different currencies. The original currency on the ad remains the source of truth — this is not a bank quote or appraisal.",
   },
+  rentalAmount: {
+    label: "rental amount",
+    tip: "This is the asking rent from the source listing, not a sale price. The rental period is shown when the source states it clearly.",
+  },
   adapterStatus: {
     label: "source readiness",
-    tip: "How ready this realtor website is for automatic collection: planned (not built yet), recon (being studied), manual (works but only when started by hand), or active (approved for scheduling).",
+    tip: "How ready this realtor website is for collection: not ready, incomplete, ready for manual runs, or ready for approved scheduling.",
   },
   aggregatorRecord: {
     label: "aggregator record",
@@ -194,13 +198,22 @@ const LIFECYCLE_LABELS: Record<string, string> = {
 };
 
 const ENRICHMENT_STATUS_LABELS: Record<string, string> = {
-  not_run: "Never enriched",
-  queued: "Queued",
-  running: "Running",
-  succeeded: "Enriched",
-  skipped_unchanged: "No changes — AI skipped",
-  failed: "AI enrichment failed",
-  needs_review: "Needs review",
+  // Prefer AI coverage wording on internal Labs surfaces.
+  not_run: "AI never run",
+  queued: "AI never run",
+  running: "AI never run",
+  succeeded: "AI current",
+  skipped_unchanged: "AI current",
+  failed: "AI failed",
+  needs_review: "AI current",
+  // Extended coverage keys (when callers pass resolveAiCoverage categories).
+  ai_current: "AI current",
+  ai_never_run: "AI never run",
+  ai_failed: "AI failed",
+  ai_stale: "AI stale",
+  ai_deferred: "AI deferred",
+  ai_ran_no_display_description:
+    "AI ran, but no display description was approved",
 };
 
 const EXCLUSION_REASON_LABELS: Record<string, string> = {
@@ -354,14 +367,22 @@ export function enrichmentStatusTone(
 ): UiStatusTone {
   switch ((value ?? "").toLowerCase()) {
     case "succeeded":
+    case "skipped_unchanged":
+    case "ai_current":
       return "success";
     case "queued":
     case "running":
       return "info";
     case "needs_review":
+    case "ai_stale":
+    case "ai_deferred":
+    case "ai_ran_no_display_description":
       return "warning";
     case "failed":
+    case "ai_failed":
       return "error";
+    case "not_run":
+    case "ai_never_run":
     default:
       return "neutral";
   }

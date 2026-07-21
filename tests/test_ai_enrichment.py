@@ -274,9 +274,9 @@ def test_skip_unchanged_without_api_call() -> None:
     assert result.proposal is None
 
 
-def test_versions_are_v4() -> None:
-    assert PROMPT_VERSION == "listing_enrichment_v4"
-    assert SCHEMA_VERSION == "listing_enrichment_schema_v4"
+def test_versions_are_v5() -> None:
+    assert PROMPT_VERSION == "listing_enrichment_v5"
+    assert SCHEMA_VERSION == "listing_enrichment_schema_v5"
 
 
 def test_compact_schema_v3_has_no_fixed_key_features_object() -> None:
@@ -287,11 +287,16 @@ def test_compact_schema_v3_has_no_fixed_key_features_object() -> None:
     assert "attributes" in schema["properties"]
     assert schema["properties"]["attributes"]["maxItems"] == 24
     assert schema["properties"]["concise_summary"]["maxLength"] == 280
+    assert "display_title" in schema["properties"]
+    assert "display_summary" in schema["properties"]
+    assert schema["properties"]["display_title"]["maxLength"] == 120
+    assert schema["properties"]["display_summary"]["maxLength"] == 180
     attr_schema = schema["properties"]["attributes"]["items"]
     assert attr_schema["properties"]["evidence_snippet"]["maxLength"] == 180
     # No ai_description duplication and no chain-of-thought-style field.
     assert "ai_description" not in schema["properties"]
     assert "reasoning" not in schema["properties"]
+    assert "English" in enrichment_module.SYSTEM_INSTRUCTIONS
 
 
 def test_compact_proposal_parses_sparse_attributes_only() -> None:

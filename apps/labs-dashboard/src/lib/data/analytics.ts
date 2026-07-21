@@ -13,6 +13,7 @@ import {
   hasMappableCoordinates,
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
+import { matchesSynonymSearch } from "@/lib/search/synonyms";
 
 export function median(values: number[]): number | null {
   if (!values.length) return null;
@@ -60,6 +61,7 @@ export function parseListingFilters(
     maxPrice: number("maxPrice"),
     coordinateQuality: value("coordQuality"),
     assignmentStatus: value("assignment"),
+    locationGap: value("locationGap"),
     publicEligible: value("publicEligible"),
     exclusionReason: value("exclusion"),
     priceAvailability: value("priceAvailability"),
@@ -81,6 +83,8 @@ function matchesSharedFilters(
     originalPrice?: number | null;
     coordinateQuality: string;
     neighbourhoodAssignmentStatus: string;
+    sourceNeighbourhoodText?: string | null;
+    inferredNeighbourhood?: { name: string } | null;
     originalRealtorName?: string | null;
     amenities?: { label: string | null }[];
     attributionMethod?: string | null;
@@ -96,18 +100,26 @@ function matchesSharedFilters(
   },
   filters: ListingFilters,
 ) {
-  const query = filters.query.toLocaleLowerCase();
+  const query = filters.query;
   const neighbourhoodName =
     listing.neighbourhood?.name ?? listing.neighbourhoodName ?? "";
   const inferredName = listing.inferredNeighbourhoodName ?? "";
   const realtorName = listing.originalRealtorName ?? "";
+  // Synonym-aware text match so Dutch queries (e.g. gemeubileerd) hit English copy.
   const matchesQuery =
     !query ||
-    listing.title?.toLocaleLowerCase().includes(query) ||
-    listing.externalId?.toLocaleLowerCase().includes(query) ||
-    neighbourhoodName.toLocaleLowerCase().includes(query) ||
-    inferredName.toLocaleLowerCase().includes(query) ||
-    realtorName.toLocaleLowerCase().includes(query);
+    matchesSynonymSearch(
+      [
+        listing.title,
+        listing.externalId,
+        neighbourhoodName,
+        inferredName,
+        realtorName,
+        listing.listingType,
+        listing.sourceKey,
+      ],
+      query,
+    );
   const matchesNeighbourhood =
     !filters.neighbourhood ||
     listing.neighbourhood?.id === filters.neighbourhood;
@@ -154,6 +166,18 @@ function matchesSharedFilters(
   const matchesAssignment =
     !filters.assignmentStatus ||
     listing.neighbourhoodAssignmentStatus === filters.assignmentStatus;
+  const matchesLocationGap =
+    !filters.locationGap ||
+    (filters.locationGap === "missing_neighbourhood" &&
+      listingHasNeighbourhoodSearchGap({
+        latitude: null,
+        longitude: null,
+        sourceNeighbourhoodText:
+          listing.sourceNeighbourhoodText ?? neighbourhoodName,
+        inferredNeighbourhood:
+          listing.inferredNeighbourhood ??
+          (inferredName ? { name: inferredName } : null),
+      }));
   const matchesPublicEligible =
     !filters.publicEligible ||
     (filters.publicEligible === "eligible" && listing.publicEligible === true) ||
@@ -183,6 +207,7 @@ function matchesSharedFilters(
     matchesMax &&
     matchesCoordQuality &&
     matchesAssignment &&
+    matchesLocationGap &&
     matchesPublicEligible &&
     matchesExclusionReason &&
     matchesPriceAvailability

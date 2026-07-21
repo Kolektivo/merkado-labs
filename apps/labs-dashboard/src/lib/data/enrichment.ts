@@ -20,6 +20,7 @@ import {
   isCurrentPolicyVersions,
   isOperationalAttentionDecision,
 } from "@/lib/enrichment/display";
+import { PROMPT_VERSION, SCHEMA_VERSION } from "@/lib/enrichment/versions";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 /** How many of the most recent proposals to show in the backwards-audit list. */
@@ -303,9 +304,9 @@ const loadAllAiEnrichmentAttempts = cache(async (): Promise<UsageAttempt[]> => {
 
 /**
  * Marks the retained attempt per listing.
- * Prefer current v4 prompt/schema (matches public_property_listings), then
- * newest successful attempt. Historical v3 rows must not drive the
- * operational "Needs review" badge when a newer v4 result exists.
+ * Prefer current v5 prompt/schema (matches public_property_listings), then
+ * newest successful attempt. Historical v3/v4 rows must not drive the
+ * operational "Needs review" badge when a newer v5 result exists.
  */
 function markRetainedAttempts(attempts: UsageAttempt[]): UsageAttempt[] {
   const byListing = new Map<string, UsageAttempt[]>();
@@ -336,13 +337,88 @@ function markRetainedAttempts(attempts: UsageAttempt[]): UsageAttempt[] {
   }));
 }
 
+/**
+ * Overview-only count of listings whose retained current-contract proposal still
+ * has operational needs_attention. Avoids loading the full proposal audit history
+ * (which timeouts after large English-presentation backfills).
+ */
 export const getRetainedAttentionListingCount = cache(async () => {
-  const attempts = await loadAllAiEnrichmentAttempts();
-  return new Set(
-    attempts
-      .filter((attempt) => attempt.retained && attempt.needsAttentionCount > 0)
-      .map((attempt) => attempt.listingId),
-  ).size;
+  const client = createLabsAdminClient();
+  const pageSize = 200;
+  const latestByListing = new Map<
+    string,
+    {
+      generatedAt: string;
+      needsAttention: boolean;
+    }
+  >();
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from("ai_enrichment_proposals")
+      .select(
+        [
+          "property_listing_id",
+          "status",
+          "generated_at",
+          "proposal",
+          "listing:property_listings(source_neighbourhood_text,inferred_neighbourhood_id)",
+        ].join(","),
+      )
+      .eq("prompt_version", PROMPT_VERSION)
+      .eq("schema_version", SCHEMA_VERSION)
+      .order("generated_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(
+        `Unable to load AI enrichment attention counts: ${error.message}`,
+      );
+    }
+
+    const page = (data ?? []) as unknown as Record<string, unknown>[];
+    for (const row of page) {
+      if (!isSuccessStatus(String(row.status))) continue;
+      const listingId = String(row.property_listing_id);
+      if (latestByListing.has(listingId)) continue;
+
+      const listing = oneRelation(
+        row.listing as Record<string, unknown> | Record<string, unknown>[] | null,
+      );
+      const proposalBody =
+        row.proposal && typeof row.proposal === "object" && !Array.isArray(row.proposal)
+          ? (row.proposal as Record<string, unknown>)
+          : {};
+      const decisions = extractFieldDecisions(proposalBody, {
+        model: "overview",
+        generatedAt: String(row.generated_at),
+      });
+      const sourceNeighbourhood = listing?.source_neighbourhood_text
+        ? String(listing.source_neighbourhood_text)
+        : null;
+      const mapNeighbourhood = listing?.inferred_neighbourhood_id
+        ? "map_assigned"
+        : null;
+      const needsAttention = decisions.some((decision) =>
+        isOperationalAttentionDecision(decision, {
+          sourceNeighbourhood,
+          mapNeighbourhood,
+        }),
+      );
+      latestByListing.set(listingId, {
+        generatedAt: String(row.generated_at),
+        needsAttention,
+      });
+    }
+
+    if (page.length < pageSize) break;
+  }
+
+  let count = 0;
+  for (const entry of latestByListing.values()) {
+    if (entry.needsAttention) count += 1;
+  }
+  return count;
 });
 
 function attemptToProposalQueueItem(attempt: UsageAttempt): ProposalQueueItem {

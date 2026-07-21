@@ -42,9 +42,14 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
 - `20260720140000_public_property_listings_effective.sql` — public-effective view
 - `20260720180000_enrichment_quality_v4_public_effective.sql` — enrichment quality v4
 - `20260720210000_review_v41_and_public_image_galleries.sql` — review_v41 galleries
+- `20260721140000_source_official_currency_and_presentation.sql` — official alts +
+  presentation timeline fields
+- `20260721131309_english_presentation_public_effective.sql` — English
+  `display_title` / `display_summary` on `public_property_listings` (prefers v5)
 
-Labs public-effective + pipeline migrations above are **applied**. Production
-merkado.cw property migration remains **paused**.
+Labs public-effective + pipeline migrations above are **applied** (verify with
+`list_migrations` before assuming a new file is live). Production merkado.cw
+property migration remains **paused**.
 
 ### Complete vs partial source runs
 
@@ -193,19 +198,39 @@ Sold/rented timestamps:
   earliest Merkado observation detecting that status
 - UI wording: **First observed as sold/rented by Merkado** — never “transaction date” or “closing date”
 
+### Source vs presentation layers
+
+Keep these layers separate:
+
+| Layer | Contents | Mutability |
+|---|---|---|
+| Source facts | Scraped title, description, price, currency, beds/baths, status, coords, URL, external ID | Immutable facts; scrapers preserve raw text |
+| Official alternates | Source-published alt currencies (`official_alternate_prices`) | Import/refresh only; not AI |
+| AI proposals | Enrichment proposal JSON (v5 English presentation + attributes) | Append/new checksums; never overwrite source columns |
+| Public presentation | `display_title`, `display_summary`, English overview / `display_description` | Effective projection; AI when present, else deterministic English fallbacks |
+
+English is the only public website language. Stable URLs are `/browse/{uuid}`.
+Fallbacks must never blank a public title. Search synonyms Dutch↔English are
+deterministic (`apps/labs-dashboard/src/lib/search/synonyms.ts`).
+
 ### AI enrichment tables
 
 - `ai_enrichment_jobs` — manual job progress (queued → running → completed*)
 - `ai_enrichment_proposals` — model/prompt/schema/input-checksum keyed proposals
-  (current foundation uses **v4**: `listing_enrichment_v4` /
-  `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`; v3 JSON remains
-  replayable). Dashboard `POLICY_VERSION` matches
-  (`apps/labs-dashboard/src/lib/enrichment/scope.ts`).
-- Review is **exception-based**: only conflicts, weak/ambiguous evidence, or
-  new-attribute taxonomy reach `needs_attention`; unsupported, duplicated,
-  noisy proposals are rejected; already-represented source/map values are
-  `redundant` and never enter the attention queue. Decision rows carry
-  **reason codes** (humanized in the enrichment UI).
+  (current foundation uses **v5**: `listing_enrichment_v5` /
+  `listing_enrichment_schema_v5` / `enrichment_policy_v5`; v3/v4 JSON remains
+  replayable). Dashboard versions match
+  (`apps/labs-dashboard/src/lib/enrichment/versions.ts`).
+- Required v5 English presentation fields: `display_title`, `display_summary`,
+  `display_overview` (plus optional layout/location/highlights/practical blocks).
+  Title convention: `N-Bedroom Type [optional evidenced feature] in Neighbourhood`
+  (e.g. `3-Bedroom Villa with Pool in Jan Thiel`).
+- Review is **exception-based / exceptional**: only genuine conflicts,
+  weak/ambiguous evidence, or new-attribute taxonomy reach `needs_attention`;
+  style/wording/translation choices do not require human review; unsupported,
+  duplicated, noisy proposals are rejected; already-represented source/map
+  values are `redundant` and never enter the attention queue. Decision rows
+  carry **reason codes** (humanized in the enrichment UI).
 - Evidence matching is **bilingual** (Dutch/English synonyms and spans), e.g.
   `uitzicht op zee` → sea view, `gemeubileerde` → furnished, `aan zee` →
   waterfront when provenance rules allow. Policy alone does **not** create
@@ -216,16 +241,21 @@ Sold/rented timestamps:
   `property_pipeline_runs` is active. Inputs must be **immutable proposal
   fields only** (features/attributes/neighbourhood/resort_or_gated) with
   **canonical-key** dedupe — never feed materialized field_decisions/audit
-  back as proposal inputs (synonym churn). Corrective apply reached fixed
-  point 2026-07-21 (`transitions={}`, `changed=0`); see
+  back as proposal inputs (synonym churn). Prior v4.2 corrective apply reached
+  fixed point 2026-07-21 (`transitions={}`, `changed=0`); see
   `labs/PROPERTY_DATA_QUALITY_REPORT.md`.
 - Decision statuses: `auto_applied` / `redundant` (same-value or already
   represented) / `needs_attention` (current conflicts only) / `rejected` /
   `skipped`.
-- v4 can auto-apply grounded neighbourhood gap-fills and public display
-  description blocks. Labs public-effective / gallery migrations are **applied**;
-  production merkado.cw property projection remains **paused**.
-- Never overwrite raw evidence, price, currency, status, dates, coords, address, neighbourhood, realtor, or source reference
+- v5 can auto-apply grounded neighbourhood gap-fills and English public
+  presentation fields. One-time English migration
+  (`scripts/migrate_english_presentation.py`) is capped at USD **15** /
+  **320** calls and was **not completed** as of the latest processed report
+  (`apply=false`, selected **289**). Labs public-effective / gallery /
+  English-presentation view migrations are in repo; production merkado.cw
+  property projection remains **paused**.
+- Never overwrite raw evidence, price, currency, status, dates, coords, address,
+  neighbourhood, realtor, source reference, or source title/description
 
 ### Source / effective / enriched precedence
 
@@ -234,7 +264,8 @@ Public and dashboard **effective** values resolve in this order (stronger wins):
 1. Explicit source facts (never overwritten by AI)
 2. Safe deterministic normalization (currency, aliases, synonym keys)
 3. Effective map / neighbourhood (point-in-polygon when source is missing/generic)
-4. Automatically applied, evidence-grounded AI attributes (`auto_applied` only)
+4. Automatically applied, evidence-grounded AI attributes and English
+   presentation (`auto_applied` only; else English fallbacks)
 
 Rejected / needs-attention proposals, confidence, evidence snippets, tokens,
 costs, and private HTML never appear on `/browse`.
@@ -260,6 +291,12 @@ Each event should store:
 
 Import pipeline is the sole writer for these three. Dual-writer duplication of
 `price_changed` was fixed in the 2026-07-21 quality pass.
+
+**Official alternate backfill ≠ `price_changed`.** Capturing or refreshing a
+source-official alternate currency (e.g. RE/MAX NAF-session XCG) while the
+asking anchor is unchanged must not emit `price_changed` or `currency_changed`.
+It is provenance/benchmark preference only (see `06` and
+`data/processed/source_official_currency_refresh.json` for hr2066).
 
 ### Presentation timeline (Phase 5)
 
@@ -342,12 +379,14 @@ Admin/server only:
 - Publishable-key reads still see full `property_listings` inventory (Labs OS).
 - Public-safe projection is `public_property_listings` / app `/browse`.
 - The public view exposes **effective** consumer fields only:
+  English `display_title` / `display_summary` (v5 when present),
   `effective_neighbourhood` (+ provenance label), `effective_property_type`,
   `public_attributes` (allowlisted `auto_applied` values, including waterfront),
-  optional `effective_summary`, XCG primary price, original price/currency,
-  beds/baths/areas, listing type, images, source description, first/last seen,
-  source attribution. It never exposes raw proposals, evidence, confidence,
-  tokens, costs, checksums, or private HTML.
+  English display description / overview, XCG primary price, original
+  price/currency, beds/baths/areas, listing type, images, first/last seen,
+  source attribution. Raw source title/description remain available for admin
+  / provenance, not as primary public copy. It never exposes raw proposals,
+  evidence, confidence, tokens, costs, checksums, or private HTML.
 - Service-role credentials are server-only; never `NEXT_PUBLIC_*`.
 
 Enable RLS on every table in an exposed schema.

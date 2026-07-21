@@ -61,6 +61,18 @@ def test_listing_reference_and_price_from_html() -> None:
     assert price.normalized_value["amount"] == "480232"
 
 
+def test_extract_price_strips_starting_from_prefix() -> None:
+    html = '<p itemprop="price">Starting from EUR 553 / mo.</p>'
+    price = extract_price(html)
+    assert price is not None
+    assert price.normalized_value == {"amount": "553", "currency": "EUR"}
+    html2 = '<p itemprop="price">start from EUR 804.306</p>'
+    price2 = extract_price(html2)
+    assert price2 is not None
+    assert price2.normalized_value["amount"] == "804306"
+    assert price2.normalized_value["currency"] == "EUR"
+
+
 def test_parse_fixture_listing_is_public_priced() -> None:
     html = FIXTURE.read_text(encoding="utf-8")
     adapter = RemaxCuracaoAdapter()

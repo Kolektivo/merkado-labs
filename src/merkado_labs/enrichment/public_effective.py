@@ -67,6 +67,9 @@ PUBLIC_DISPLAY_DESCRIPTION_KEYS: tuple[str, ...] = (
     "display_practical",
 )
 
+PUBLIC_DISPLAY_TITLE_KEY = "display_title"
+PUBLIC_DISPLAY_SUMMARY_KEY = "display_summary"
+
 
 def _coerce_public_value(raw: Any) -> tuple[Any, str] | None:
     if raw is None or raw == "" or raw == "unknown":
@@ -157,6 +160,40 @@ def public_ai_neighbourhood_candidate(proposal: dict[str, Any] | None) -> str | 
     return best[1] if best else None
 
 
+def _auto_applied_field(proposal: dict[str, Any] | None, key: str) -> Any:
+    if not proposal:
+        return None
+    for item in proposal.get("field_decisions") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("key") or "") != key:
+            continue
+        if item.get("final_status") != "auto_applied":
+            continue
+        value = item.get("resulting_effective", item.get("proposed_value"))
+        if value not in (None, "", []):
+            return value
+    return None
+
+
+def project_public_display_title(proposal: dict[str, Any] | None) -> str | None:
+    """Return auto-applied English display_title when present."""
+
+    value = _auto_applied_field(proposal, PUBLIC_DISPLAY_TITLE_KEY)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def project_public_display_summary(proposal: dict[str, Any] | None) -> str | None:
+    """Return auto-applied English display_summary when present."""
+
+    value = _auto_applied_field(proposal, PUBLIC_DISPLAY_SUMMARY_KEY)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
 def project_public_display_description(proposal: dict[str, Any] | None) -> dict[str, Any] | None:
     """Return only auto-applied, public display-description blocks."""
 
@@ -168,6 +205,13 @@ def project_public_display_description(proposal: dict[str, Any] | None) -> dict[
         if isinstance(item, dict) and item.get("final_status") == "auto_applied"
     }
     out: dict[str, Any] = {}
+    # Public presentation layer is English; keep language marker for consumers.
+    if project_public_display_title(proposal) or project_public_display_summary(proposal):
+        out["language"] = "en"
+    else:
+        source_lang = proposal.get("source_language")
+        if isinstance(source_lang, str) and source_lang.strip():
+            out["language"] = source_lang.strip()
     for key in PUBLIC_DISPLAY_DESCRIPTION_KEYS:
         decision = decisions.get(key)
         if not decision:

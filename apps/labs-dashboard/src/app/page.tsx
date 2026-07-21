@@ -27,6 +27,7 @@ import {
   jobStatusTone,
   runOutcomeLabel,
   runOutcomeTone,
+  TIPS,
 } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +82,8 @@ export default async function Home() {
               label: "All listings",
               value: formatNumber(overview.totalInventory),
               helper: `${formatNumber(overview.activeInventory)} currently active`,
+              tip: TIPS.totalInventory.tip,
+              tipLabel: TIPS.totalInventory.label,
               href: "/listings",
               icon: Building2,
             },
@@ -88,6 +91,8 @@ export default async function Home() {
               label: "Public-ready",
               value: formatNumber(overview.publicEligibleInventory),
               helper: "Active, priced, and attributed",
+              tip: TIPS.publiclyVisible.tip,
+              tipLabel: TIPS.publiclyVisible.label,
               href: "/listings?publicEligible=eligible",
               icon: Eye,
             },
@@ -98,6 +103,8 @@ export default async function Home() {
                 overview.activePipelineCount > 0
                   ? `${overview.activePipelineCount} refresh running`
                   : "No refresh is running",
+              tip: TIPS.sources.tip,
+              tipLabel: TIPS.sources.label,
               href: "/sources",
               icon: Radio,
             },
@@ -105,6 +112,8 @@ export default async function Home() {
               label: "Needs review",
               value: formatNumber(issueCount),
               helper: issueCount ? "Prioritized below" : "No meaningful issues",
+              tip: "Source warnings, failed refreshes, and current AI conflicts that may need a person.",
+              tipLabel: "Needs review",
               href: issueCount ? "#needs-attention" : undefined,
               icon: AlertTriangle,
             },

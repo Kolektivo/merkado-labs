@@ -202,7 +202,18 @@ export type PublicPropertyListing = {
   listingType: string | null;
   sourceListingStatus: string | null;
   propertyType: string | null;
+  /** Raw source title — keep for provenance; prefer displayTitle in public UI. */
   title: string | null;
+  /**
+   * English public title when the view exposes it (v5 migration).
+   * Use resolvePublicDisplayTitle() for cards/SEO — never blank.
+   */
+  displayTitle: string | null;
+  /**
+   * English public summary when the view exposes it (v5 migration).
+   * Prefer over raw Dutch source description as primary copy.
+   */
+  displaySummary: string | null;
   originalPrice: number | null;
   originalCurrency: string | null;
   benchmarkPriceXcg: number | null;
@@ -217,6 +228,7 @@ export type PublicPropertyListing = {
   primaryImageUrl: string | null;
   /** Ordered public gallery URLs; primary is usually index 0. */
   imageUrls: string[];
+  /** Raw source description — collapsed under “Original source description”. */
   description: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
@@ -433,6 +445,7 @@ export type ListingFilters = {
   maxPrice: number | null;
   coordinateQuality: string;
   assignmentStatus: string;
+  locationGap: string;
   publicEligible: string;
   exclusionReason: string;
   priceAvailability: string;

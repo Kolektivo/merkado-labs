@@ -1,10 +1,12 @@
 # Property data quality pass — Labs report
 
-**Date:** 2026-07-21 (completed stabilization)  
+**Date:** 2026-07-21 (stabilization complete; English migration + currency follow-on)  
 **Branch:** `fix/property-data-quality-pass`  
 **Labs project only:** `csaefdkpwukshtouyixg`  
-**Policy version:** `enrichment_policy_v4_2`  
-(Prompt/schema remain `listing_enrichment_v4` / `listing_enrichment_schema_v4`.)
+**Current policy version:** `enrichment_policy_v5`  
+**Current prompt/schema:** `listing_enrichment_v5` / `listing_enrichment_schema_v5`  
+(Earlier same-day stabilization used `enrichment_policy_v4_2` with
+`listing_enrichment_v4` / `listing_enrichment_schema_v4` — retained below.)
 
 No secrets, service-role keys, raw HTML, or private proposal payloads are included here.
 
@@ -104,11 +106,17 @@ No image binary copy or scrape required.
 - Model: `source_official_conversion` for source-published alternate currencies
 - Prefer official ANG/XCG for the public XCG figure when present; else Merkado conversion
 - Never invent `source_official_conversion` from a Merkado/ECB rate
-- **RE/MAX listing ~1350 blocker:** official NAF/XCG amount not in stored EUR-page evidence without a NAF-view fetch (out of scope this pass)
+- **RE/MAX NAF session (follow-on):** live EUR pages omit NAF/XCG selector amounts;
+  capture via `/currency/NAF/` cookie session then detail re-fetch
+- **Confirmed applied example — `hr2066`:** asking **EUR 664** retained; official
+  alternate **XCG 1350**; public benchmark **Cg 1350**; no `price_changed`
+  (`data/processed/source_official_currency_refresh.json`, `mode=apply`)
+- **KW:** inline EUR/XCG lines after the asking currency are official alts
 
 ### Timeline / events
 
 - Dual-writer `price_changed` duplication fixed (import pipeline sole writer for price/currency/benchmark events)
+- Official alternate backfill ≠ `price_changed` when asking anchor unchanged
 - Presentation timeline filters rate-only, enrichment-only, and policy rematerialization noise at read-time (events retained)
 - Timeline dry-run sample: **1000** events → **557** visible default, **443** suppressed
 
@@ -135,7 +143,7 @@ Rules:
 
 ## Earlier policy gains (still in force)
 
-These remain part of `enrichment_policy_v4_2` and the public contract:
+These remain part of the public contract (carried into v5 policy):
 
 - Dutch/English bilingual evidence (`uitzicht op zee`, `gemeubileerde`, waterfront provenance rules)
 - Blue Bay curated gated-community rule
@@ -143,11 +151,51 @@ These remain part of `enrichment_policy_v4_2` and the public contract:
 - Neighbourhood display aliases (code + dashboard)
 - Indicative price tip/icon for true foreign→XCG; MapPin on location affordances
 
+---
+
+## English presentation migration — status (2026-07-21)
+
+**Status: applied (Labs).** One-time v5 English presentation migration completed
+under the USD 15 / 320-call caps. Daily cron remains **Off** pending supervised
+pipeline dry-run + worker activation gates.
+
+| Signal | Value |
+|---|---|
+| Prompt / schema / policy | `listing_enrichment_v5` / `listing_enrichment_schema_v5` / `enrichment_policy_v5` |
+| Public product language | English only (Browse / Passport / SEO) |
+| Display fields | `display_title`, `display_summary`, English overview / description |
+| Title convention | `N-Bedroom Type [feature] in Neighbourhood` |
+| Source layer | Scrapers preserve raw title/description; AI never overwrites protected facts |
+| Fallbacks | Deterministic English titles — never blank public title |
+| Search | Dutch↔English synonyms, deterministic (no AI per query) |
+| Stable URLs | `/browse/{uuid}` |
+| Human review | Exceptional — genuine conflicts only |
+| Migration job | `69dff671-9e6e-46e3-b6a0-8293b1028df5` (+ hs3095 retry `2328b2b0…`) |
+| Selected | **289** active Ready |
+| Result | **288** succeeded + **1** invalid_output retried → succeeded; exact cost **USD 7.79** (+ retries ~USD 0.04) |
+| Post-migration selection | `selected_count=0`, `already_complete_count=289` (zero-cost skip) |
+| Public coverage | **285** public rows with non-null `display_title` / `display_summary` / `display_description` |
+| Needs review (v5) | **9** genuine-conflict proposals (exception queue) |
+| Hash repair | Applied then dry-run fixed point (`zero_cost_repairs=0`, `billable_public=0`) |
+| Cron | Still **Off** — supervised Labs pipeline dry-run / worker gates not yet executed |
+
+### Currency follow-on (same day)
+
+- RE/MAX NAF session refresh: **206** applied, **0** `price_changed` events
+- KW inline alts refresh: **89** applied, **0** `price_changed` events
+- hr2066: anchor **EUR 664**, official XCG **1350**, `source_official_conversion`; listing is currently **inactive/rented** so not in public browse; English v5 presentation stored on proposal
+- Missing-price recovery: 6 RE/MAX `Starting from` parser fixes recovered + public_eligible; KW/Monumentenzorg remain no-price by source
+- Image residuals (3 removed RE/MAX galleries): proven identity duplicates cleaned via `build_gallery`
+
 ## Artifacts / tooling
 
 - Zero-cost reeval: `scripts/reeval_stored_proposals_zero_cost.py`
 - Dry-run artifact (pre-fixed-point history): `data/processed/zero_cost_policy_reeval_dry_run.json`
 - Presentation counts: `merkado_labs.scrapers.presentation.dry_run_presentation_counts`
+- English migration: `scripts/migrate_english_presentation.py` →
+  `data/processed/english_presentation_migration_report.json`
+- Source-official currency refresh:
+  `data/processed/source_official_currency_refresh.json`
 
 ## Recommended monitoring
 
@@ -155,5 +203,7 @@ These remain part of `enrichment_policy_v4_2` and the public contract:
 2. Confirm `needs_attention` stays near **7** unless new proposals arrive.
 3. Re-run zero-cost dry-run periodically; expect `changed=0` at fixed point when policy/inputs unchanged.
 4. Map Quality: track the **28** missing-coord listings separately from neighbourhood filter gaps.
-5. RE/MAX official NAF capture remains blocked without NAF-view fetch evidence.
-6. No unexpected interaction with active `property_pipeline_runs` during apply.
+5. After English `--apply`, track `already_complete_count` / residual selected queue.
+6. Spot-check RE/MAX official XCG via NAF session (hr2066 pattern) and KW inline alts.
+7. No unexpected interaction with active `property_pipeline_runs` during apply.
+8. Cron remains Off until explicit activation-gate approval.

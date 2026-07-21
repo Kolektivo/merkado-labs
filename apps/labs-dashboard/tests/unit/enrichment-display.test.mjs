@@ -11,6 +11,7 @@ import {
   isOperationalAttentionDecision,
   latestEffectiveDecisions,
   reasonDisplays,
+  resolveAiCoverage,
   selectRetainedProposal,
 } from "../../src/lib/enrichment/display.ts";
 
@@ -84,7 +85,7 @@ test("latestEffectiveDecisions collapses duplicate keys to last occurrence", () 
   assert.equal(collapsed[0].status, "rejected");
 });
 
-test("selectRetainedProposal prefers current v4 policy over newer obsolete run", () => {
+test("selectRetainedProposal prefers current policy over newer obsolete run", () => {
   const selected = selectRetainedProposal([
     {
       id: "new-v3",
@@ -94,15 +95,15 @@ test("selectRetainedProposal prefers current v4 policy over newer obsolete run",
       schemaVersion: "listing_enrichment_schema_v3",
     },
     {
-      id: "old-v4",
+      id: "current-v5",
       status: "needs_review",
       generatedAt: "2026-07-19T12:00:00Z",
       promptVersion: CURRENT_PROMPT_VERSION,
       schemaVersion: CURRENT_SCHEMA_VERSION,
     },
   ]);
-  assert.equal(selected?.id, "old-v4");
-  assert.equal(CURRENT_POLICY_VERSION, "enrichment_policy_v4_2");
+  assert.equal(selected?.id, "current-v5");
+  assert.equal(CURRENT_POLICY_VERSION, "enrichment_policy_v5");
   assert.equal(
     isCurrentPolicyVersions(CURRENT_PROMPT_VERSION, CURRENT_SCHEMA_VERSION),
     true,
@@ -163,5 +164,57 @@ test("skipped decisions are not operational attention", () => {
       reasons: [],
     }),
     false,
+  );
+});
+
+test("resolveAiCoverage labels never-run, failed, stale, and no display", () => {
+  assert.equal(
+    resolveAiCoverage({ enrichmentStatus: "not_run" }).label,
+    "AI never run",
+  );
+  assert.equal(
+    resolveAiCoverage({
+      enrichmentStatus: "failed",
+      proposalStatus: "invalid_output",
+    }).label,
+    "AI failed",
+  );
+  assert.equal(
+    resolveAiCoverage({
+      enrichmentStatus: "succeeded",
+      proposalStatus: "succeeded",
+      proposalInputChecksum: "abc",
+      currentInputChecksum: "def",
+      proposalBody: {
+        field_decisions: [
+          {
+            key: "display_overview",
+            final_status: "auto_applied",
+            proposed_value: "Nice villa",
+          },
+        ],
+      },
+    }).label,
+    "AI stale",
+  );
+  assert.equal(
+    resolveAiCoverage({
+      enrichmentStatus: "succeeded",
+      proposalStatus: "succeeded",
+      proposalBody: { field_decisions: [] },
+    }).label,
+    "AI ran, but no display description was approved",
+  );
+  assert.equal(
+    resolveAiCoverage({
+      enrichmentStatus: "succeeded",
+      proposalStatus: "succeeded",
+      publicDisplayDescription: { overview: "Nice villa" },
+    }).label,
+    "AI current",
+  );
+  assert.equal(
+    resolveAiCoverage({ pipelineAiResult: "budget_deferred" }).label,
+    "AI deferred",
   );
 });

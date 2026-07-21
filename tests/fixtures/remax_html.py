@@ -33,8 +33,8 @@ DETAIL_EUR_ACTIVE = """
 <tr><td>Pool:</td><td>Yes</td></tr>
 <tr><td>Furnished:</td><td>No</td></tr>
 </table>
-<img src="//cdn.remax-abc.com/img/cache/1-aaa-600x400.jpg" />
-<img src="//cdn.remax-abc.com/img/cache/2-bbb-600x400.jpg" />
+<a rel="objectimages" href="//cdn.remax-abc.com/img/cache/1-aaa-600x400.jpg">one</a>
+<a rel="objectimages" href="//cdn.remax-abc.com/img/cache/2-bbb-600x400.jpg">two</a>
 </div>
 </body></html>
 """
@@ -159,6 +159,72 @@ This specific object is listed in EUR.
 </i></small>
 <!-- remax-currency-evidence currency=XCG amount=1350 -->
 <span data-remax-official-currency="XCG" data-remax-official-amount="1350">XCG 1.350</span>
+</div>
+</body></html>
+"""
+
+# Live-shaped default EUR view for hr2066 (no synthetic hooks; listed-in XCG).
+# Probe: default EUR 664; NAF session yields XCG 1350.
+DETAIL_HR2066_EUR_DEFAULT = """
+<html><head>
+<title>Marie Pampoen Cozy Furnished House</title>
+</head><body>
+<div itemscope itemtype="http://schema.org/Product">
+<h1 itemprop="name">Marie Pampoen Cozy Furnished House</h1>
+<p class="area">Marie Pampoen Curacao</p>
+<p itemprop="price" class="price">&euro; 664 / mo.</p>
+<table>
+<tr><td>Bedrooms:</td><td>2</td></tr>
+<tr><td>Bathrooms:</td><td>1</td></tr>
+</table>
+<ul class="dropdown">
+<li class='active'><a href="/currency/EUR/">EUR</a></li>
+<li><a href="/currency/USD/">USD</a></li>
+<li><a href="/currency/NAF/">XCG</a></li>
+</ul>
+<small><i>
+This specific object is listed in XCG.
+</i></small>
+</div>
+</body></html>
+"""
+
+# NAF cookie-session view of the same listing (active NAF, XCG display).
+DETAIL_HR2066_NAF_VIEW = """
+<html><head>
+<title>Marie Pampoen Cozy Furnished House</title>
+</head><body>
+<div itemscope itemtype="http://schema.org/Product">
+<h1 itemprop="name">Marie Pampoen Cozy Furnished House</h1>
+<p class="area">Marie Pampoen Curacao</p>
+<p itemprop="price" class="price">XCG 1.350 / mo.</p>
+<table>
+<tr><td>Bedrooms:</td><td>2</td></tr>
+<tr><td>Bathrooms:</td><td>1</td></tr>
+</table>
+<ul class="dropdown">
+<li><a href="/currency/EUR/">EUR</a></li>
+<li><a href="/currency/USD/">USD</a></li>
+<li class='active'><a href="/currency/NAF/">XCG</a></li>
+</ul>
+<small><i>
+This specific object is listed in XCG.
+</i></small>
+<span>Reference hr2066</span>
+</div>
+</body></html>
+"""
+
+# Wrong listing after NAF switch (verification must fail).
+DETAIL_HR2066_NAF_WRONG_LISTING = """
+<html><body>
+<div itemscope itemtype="http://schema.org/Product">
+<h1 itemprop="name">Different Home</h1>
+<p itemprop="price" class="price">XCG 9.999 / mo.</p>
+<ul class="dropdown">
+<li class='active'><a href="/currency/NAF/">XCG</a></li>
+</ul>
+<span>Reference hr9999</span>
 </div>
 </body></html>
 """

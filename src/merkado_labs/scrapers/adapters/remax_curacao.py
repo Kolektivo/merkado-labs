@@ -533,10 +533,11 @@ def extract_price(html: str) -> FieldProvenance | None:
         currency = "USD"
     elif "xcg" in lowered or "ang" in lowered or "naf" in lowered:
         currency = "XCG" if "xcg" in lowered else "ANG"
-    # Strip period suffixes and leading "From" so amounts like
-    # "€ 2.709 / mo." and "From € 1.379 / mo." parse cleanly.
+    # Strip period suffixes and leading "From" / "Starting from" / "start from"
+    # so amounts like "€ 2.709 / mo.", "From € 1.379 / mo.", and
+    # "Starting from EUR 553 / mo." parse cleanly.
     amount_text = re.sub(
-        r"(?i)^\s*from\s+",
+        r"(?i)^\s*(?:start(?:ing)?\s+)?from\s+",
         "",
         raw,
     )
@@ -571,12 +572,13 @@ def extract_listed_in_currency(html: str) -> str | None:
 
 
 def extract_official_alternate_prices(html: str) -> list[OfficialAlternatePrice]:
-    """Capture source-official alternate currency amounts from stored evidence.
+    """Capture source-official alternate currency amounts from page evidence.
 
     Live RE/MAX EUR pages typically omit the NAF/XCG selector amount; those
-    amounts appear only after a currency switch. Without a second fetch (out of
-    scope here), capture from synthetic fixture hooks / stored multi-currency
-    evidence markers only — never invent from Merkado/ECB rates.
+    amounts appear after a ``/currency/NAF/`` cookie-session switch (see
+    ``remax_naf_session.capture_naf_official_alternate``) or from synthetic
+    fixture / stored multi-currency evidence markers. Never invent from
+    Merkado/ECB rates.
     """
 
     found: list[OfficialAlternatePrice] = []
@@ -627,12 +629,35 @@ def extract_official_alternate_prices(html: str) -> list[OfficialAlternatePrice]
     return found
 
 
+def merge_official_alternates(
+    *groups: Sequence[OfficialAlternatePrice] | None,
+) -> list[OfficialAlternatePrice]:
+    """Deduplicate official alternates by currency+amount, preserving order."""
+
+    found: list[OfficialAlternatePrice] = []
+    seen: set[str] = set()
+    for group in groups:
+        if not group:
+            continue
+        for alt in group:
+            currency = normalize_currency_code(alt.currency)
+            if currency is None or alt.amount is None or alt.amount <= 0:
+                continue
+            key = f"{currency}|{alt.amount}"
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(alt)
+    return found
+
+
 def resolve_remax_asking_and_alternates(
     html: str,
     *,
     display_money_currency: str | None,
     display_amount: Decimal | None,
     display_evidence: str | None,
+    extra_official_alternates: Sequence[OfficialAlternatePrice] | None = None,
 ) -> tuple[
     Decimal | None,
     str | None,
@@ -643,14 +668,18 @@ def resolve_remax_asking_and_alternates(
 
     - Anchor prefers the listed-in currency amount when that amount is known.
     - Official XCG/ANG selector amounts are captured as alternates when present
-      in stored/fixture evidence (never Merkado-inferred).
+      in page evidence, NAF session capture, or fixture hooks (never Merkado-
+      inferred).
     - When listed-in differs from display and the listed-in amount is unknown,
       keep the display amount as provisional original and warn.
     """
 
     warnings: list[str] = []
     listed_in = extract_listed_in_currency(html)
-    alts = extract_official_alternate_prices(html)
+    alts = merge_official_alternates(
+        extract_official_alternate_prices(html),
+        extra_official_alternates,
+    )
     display_currency = normalize_currency_code(display_money_currency)
 
     # If an official alternate matches listed-in and display differs, prefer it
@@ -966,9 +995,13 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
         observed_at: datetime | None = None,
         http_status: int | None = None,
         content_type: str | None = "text/html",
+        extra_official_alternates: Sequence[OfficialAlternatePrice] | None = None,
+        extra_warnings: Sequence[str] | None = None,
     ) -> AdapterListingSnapshot:
         observed = observed_at or datetime.now(UTC)
         warnings: list[str] = []
+        if extra_warnings:
+            warnings.extend(extra_warnings)
         parser_errors: list[str] = []
         fields = extract_labelled_rows(html)
         by_name = {field.field_name: field for field in fields}
@@ -1014,6 +1047,7 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                     display_money_currency=display_currency,
                     display_amount=display_amount,
                     display_evidence=price_field.evidence_snippet,
+                    extra_official_alternates=extra_official_alternates,
                 )
             )
             warnings.extend(price_warnings)
@@ -1025,7 +1059,10 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
             if money is None:
                 warnings.append("price_present_but_unusable")
         else:
-            official_alternates = extract_official_alternate_prices(html)
+            official_alternates = merge_official_alternates(
+                extract_official_alternate_prices(html),
+                extra_official_alternates,
+            )
             warnings.append("no_price_extracted")
 
         floor_area_m2 = None
@@ -1241,9 +1278,8 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                 "under_contract": under_contract,
                 "url_status_hint": status_hint_from_url(listing_url),
             },
-            # Live EUR pages omit NAF/XCG selector amounts; capturing ~1350 for
-            # hr2066 requires stored NAF-view HTML or a currency-switch fetch
-            # (out of scope for this pass — see fixture DETAIL_EUR_OFFICIAL_XCG).
+            # Live EUR pages omit NAF/XCG selector amounts unless NAF session
+            # capture succeeded (or synthetic fixture hooks are present).
             "currency_capture_limitation": (
                 None
                 if any(
@@ -1251,6 +1287,15 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                     for alt in official_alternates
                 )
                 else "remax_selector_amount_absent_without_currency_switch_fetch"
+            ),
+            "naf_session_capture": (
+                "applied"
+                if extra_official_alternates
+                and any(
+                    getattr(alt, "source_label", None) == "remax_naf_session"
+                    for alt in extra_official_alternates
+                )
+                else None
             ),
         }
 
@@ -1336,6 +1381,68 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
             parser_errors=tuple(parser_errors),
         )
 
+    def fetch_and_parse_listing(
+        self,
+        listing_url: str,
+        *,
+        cache_dir: Path,
+        use_cache: bool = True,
+        honor_delay: bool = True,
+        capture_naf_session: bool = True,
+    ) -> AdapterListingSnapshot | None:
+        """Fetch one listing HTML and parse, optionally capturing NAF/XCG alt.
+
+        Image URLs are parsed from the default (anchor) HTML only — the NAF
+        session re-fetch is currency-only and does not refresh galleries.
+        """
+
+        from merkado_labs.scrapers.adapters.remax_naf_session import (
+            capture_naf_official_alternate,
+            has_official_xcg_alternate,
+        )
+
+        url = canonicalize_detail_url(listing_url) or listing_url
+        robots = self.evaluate_robots(url)
+        if robots.can_fetch is not True:
+            return None
+        if honor_delay:
+            sleep_for_delay(robots)
+        try:
+            fetched = fetch_url(
+                url,
+                cache_dir=cache_dir,
+                user_agent=USER_AGENT,
+                use_cache=use_cache,
+            )
+        except FetchError:
+            return None
+        html = fetched.body.decode("utf-8", errors="replace")
+        expected_id = external_id_from_url(url)
+        extras: list[OfficialAlternatePrice] = []
+        extra_warnings: list[str] = []
+        if capture_naf_session and not has_official_xcg_alternate(
+            extract_official_alternate_prices(html)
+        ):
+            naf = capture_naf_official_alternate(
+                url,
+                expected_external_id=expected_id,
+                default_html=html,
+                honor_delay=honor_delay,
+            )
+            if naf.alternate is not None:
+                extras.append(naf.alternate)
+            elif not naf.skipped:
+                extra_warnings.extend(naf.warnings or ("naf_session_capture_failed",))
+        return self.parse_listing_html(
+            html,
+            listing_url=url,
+            raw_sha256=fetched.sha256,
+            http_status=fetched.status,
+            content_type=fetched.content_type or "text/html",
+            extra_official_alternates=extras or None,
+            extra_warnings=extra_warnings or None,
+        )
+
     def run_bounded(
         self,
         *,
@@ -1348,6 +1455,7 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
         use_cache: bool = True,
         honor_delay: bool = True,
         discover: bool = False,
+        capture_naf_session: bool = True,
     ) -> tuple[SourceRunRecord, list[AdapterListingSnapshot]]:
         started = datetime.now(UTC)
         snapshots: list[AdapterListingSnapshot] = []
@@ -1377,30 +1485,16 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
             discovery_meta["complete_catalog"] = False
             urls = urls[:max_items]
         for url in urls:
-            robots = self.evaluate_robots(url)
-            if robots.can_fetch is not True:
-                errors += 1
-                continue
-            if honor_delay:
-                sleep_for_delay(robots)
-            try:
-                fetched = fetch_url(
-                    url,
-                    cache_dir=cache_dir,
-                    user_agent=USER_AGENT,
-                    use_cache=use_cache,
-                )
-            except FetchError:
-                errors += 1
-                continue
-            html = fetched.body.decode("utf-8", errors="replace")
-            snapshot = self.parse_listing_html(
-                html,
-                listing_url=url,
-                raw_sha256=fetched.sha256,
-                http_status=fetched.status,
-                content_type=fetched.content_type or "text/html",
+            snapshot = self.fetch_and_parse_listing(
+                url,
+                cache_dir=cache_dir,
+                use_cache=use_cache,
+                honor_delay=honor_delay,
+                capture_naf_session=capture_naf_session,
             )
+            if snapshot is None:
+                errors += 1
+                continue
             warnings += len(snapshot.warnings)
             if not snapshot.has_positive_price:
                 excluded_no_price += 1

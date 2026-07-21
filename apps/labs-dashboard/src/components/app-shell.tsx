@@ -28,7 +28,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -158,17 +157,6 @@ function AppSidebar() {
         </nav>
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex flex-col gap-1.5 px-3 py-2.5 group-data-[collapsible=icon]:hidden">
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="size-1.5 rounded-full bg-neutral-300" />
-            merkado-labs sandbox
-          </div>
-          <p className="text-[11px] leading-4 text-sidebar-foreground/55">
-            Safe experiment data only. Original scrape files stay private.
-          </p>
-        </div>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
@@ -225,9 +213,10 @@ function SiteHeader() {
       <Suspense fallback={<SiteHeaderBreadcrumbsFallback />}>
         <SiteHeaderBreadcrumbs />
       </Suspense>
-      <div className="ml-auto hidden shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
+      <div className="ml-auto flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
         <span className="size-1.5 rounded-full bg-neutral-500" />
-        <span>Labs only · manual operations</span>
+        <span className="hidden sm:inline">Labs sandbox · manual operations</span>
+        <span className="sr-only sm:hidden">Labs sandbox</span>
       </div>
     </header>
   );
