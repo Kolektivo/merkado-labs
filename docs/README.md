@@ -2,7 +2,7 @@
 
 This folder holds the working context for Merkado Labs property work.
 
-**Last updated:** July 20, 2026  
+**Last updated:** July 21, 2026  
 **Active set:** `01`–`09` below. Older numbered docs were replaced by this set.
 
 ## Labs build status (this repository)
@@ -14,16 +14,17 @@ This folder holds the working context for Merkado Labs property work.
 | Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
 | CHH harvest / importer / workflow | Removed from active repo |
 | CHH Labs rows | Deleted 2026-07-16; verified local export retained |
-| Labs property schema + RLS | [LABS] Built; AI tables locked from anon; effective public view |
+| Labs property schema + RLS | [LABS] Built; AI tables locked from anon; public-effective view applied |
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
-| Labs dashboard | [LABS][WIP] Ops + browse + Search Request / Agent previews |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (**273** public-eligible) |
-| Keller Williams adapter | [LABS] v0.3.1 Ready; marketing non-listings excluded; Terra v4 |
-| RE/MAX adapter | [LABS] v0.4.1 Ready; 220 catalog / 119 public / Terra 220/220 |
-| Moret adapter | [LABS] v0.2.0 Ready; 71 catalog / 71 public / Terra 71/71 |
-| Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog / 2 public / Terra 5/5 |
-| Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (not Ready; feed/API needed) |
-| AI enrichment (Terra-v3) | [LABS] Initial backfills complete for all Ready sources |
+| Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
+| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash implemented; GHA `workflow_dispatch` available; **daily cron temporarily Off** (`AUTOMATIC_REFRESH_ENABLED = false`) |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**279** `public_property_listings`) |
+| Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
+| RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift) |
+| Moret adapter | [LABS] v0.2.0 Ready; 71 catalog |
+| Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog |
+| Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (excluded from Ready pipelines; feed/API needed) |
+| AI enrichment (v4 / v4.1) | [LABS] Active: `listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`; dashboard AI execution disabled; pipeline AI under budgets when worker runs |
 | Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 
 ## The files
@@ -40,6 +41,7 @@ This folder holds the working context for Merkado Labs property work.
 | `07-labs-architecture-and-geospatial.md` | Labs architecture and geospatial assignment. | Neighbourhood / geo work. |
 | `08-execution-plan-and-cursor-prompt.md` | Phased execution plan and agent prompt. | Starting a build pass. |
 | `09-project-safety-and-history.md` | Safety rules, decision history, CHH lessons. | Before writes, cleanup, or deploy talk. |
+| `LABS_DASHBOARD_GUIDE.md` | Labs dashboard ops, routes, env, troubleshooting. | Running or operating the dashboard. |
 | `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |
 | `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
 | `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |

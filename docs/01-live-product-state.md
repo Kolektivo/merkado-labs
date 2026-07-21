@@ -1,13 +1,17 @@
 # 01 - Merkado Live Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 20, 2026
+**Last updated:** July 21, 2026
 
 **Labs automation foundation:** the four Ready property sources share a Labs-only
-orchestration path with source locks, anomaly gates, and AI budgets. Automatic
-daily refresh runs at 06:00 Curaçao (`0 10 * * *` UTC) via GitHub Actions
-schedule; manual/dashboard dispatch remains available. Sotheby's remains blocked
-and excluded. This does not change production or deploy anything.
+orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
+`run_property_pipeline.py` / `run_property_pipeline_worker.py` and GHA
+`property-pipeline-labs.yml`. **Automatic daily cron is temporarily Off**
+(`AUTOMATIC_REFRESH_ENABLED = false`) pending post-hash-repair supervised
+verification; intended schedule remains `0 10 * * *` UTC = 06:00 America/Curacao.
+Manual/`workflow_dispatch` and dashboard Data Operations dispatch remain available.
+Sotheby's remains blocked and excluded. This does not change production or deploy
+anything.
 
 ## 1. Production today `[LIVE]`
 
@@ -32,52 +36,47 @@ The isolated Labs project currently has:
 - AI enrichment jobs/proposals with Labs human review fields (service-role only);
 - Property Search Request / Agent entitlement / Match Report preview tables;
 - geospatial neighbourhood boundaries and assignment;
-- Labs dashboard with ops pages, public browse preview, Search Request / What Fits Me / Agent previews;
+- Labs dashboard with ops pages, **Data Operations**, Browse as **public preview**,
+  Enrichment review, Search Request / What Fits Me / Agent prototypes;
 - cleaned internal dashboard navigation: Overview, Listings, Sources,
-  Enrichment, Quality, Settings, and one clearly separated Prototypes area;
+  Enrichment, Quality, Data Operations, Settings; Browse under Explore/Public
+  preview (separate from Prototypes);
 - internal routes protected by the signed Labs admin cookie; public
-  Browse/Passport reads only `public_property_listings`;
-- RE/MAX Curaçao as the first end-to-end direct-source adapter (**220** listings;
-  adapter **v0.4.1** active; **199/220** coordinates; **119** public eligible;
-  GPT-5.6 Terra prompt/schema/policy **v3** initial backfill complete —
-  **220/220** successful Terra-v3 results; batch job
-  `remax_remaining_terra_backfill` 211/211 under USD 10; remains manual and
-  unscheduled; normal Refresh & enrich stays new/changed only);
-- Keller Williams complete catalog: **84 listings** (offline-imported from a
-  verified Stage-3 artifact; 81 public eligible / 3 excluded); Crawl-Delay
-  20 sequential, still unscheduled. Earlier bounded/partial adapter runs had
-  falsely marked 35 KW listings `removed` on 2026-07-17; restored from last
-  valid pre-absence status without deleting immutable events.
-- Moret Real Estate adapter **v0.2.0**: first complete catalog activated in Labs
-  (**71** listings; offline import 66 insert / 5 update; public eligible 71;
-  coordinates 71/71; GPT-5.6 Terra-v3 initial backfill complete — **71/71**
-  successful current results; canary ~USD 0.1165 + remaining 66 at ~USD 1.8259
-  under USD 2.40; cumulative ~USD 1.94; manual/unscheduled; normal Refresh &
-  enrich remains new/changed only);
-- AI enrichment quality **v4** is active in Labs across KW, RE/MAX, Moret, and
+  Browse/Passport reads `public_property_listings` / public-effective projection;
+- RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
+  **220**; Labs DB may show **222** — operational drift; adapter **v0.4.1**;
+  **199/220** coordinates; Terra initial backfill complete; pipeline ready /
+  cron Off / dispatch available; normal Refresh & enrich = new/changed only);
+- Keller Williams: Labs inventory **104** listings (offline import artifact still
+  gates at **84** in import preview). Crawl-Delay 20 sequential. Earlier
+  bounded/partial adapter runs had falsely marked 35 KW listings `removed` on
+  2026-07-17; restored from last valid pre-absence status without deleting
+  immutable events. Pipeline ready / cron Off / dispatch available.
+- Moret Real Estate adapter **v0.2.0**: **71** listings; coordinates 71/71;
+  Terra coverage complete; pipeline ready / cron Off / dispatch available;
+  Refresh & enrich = new/changed only;
+- AI enrichment **v4 / v4.1** is current in Labs across KW, RE/MAX, Moret, and
   Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
   `listing_enrichment_v4` / `listing_enrichment_schema_v4` /
-  `enrichment_policy_v4_1` (Labs rematerialized 2026-07-20; AI cost USD 0.00)
-  with v3/v4 history retained. Decisions distinguish
-  accepted / redundant / rejected / needs_attention. Public listings (273)
-  expose effective neighbourhood, feature attrs, `effective_summary`, and
-  same-language `display_description` (100% overview coverage after
-  deterministic fallback). Cross-source canary 20 @ ~USD 0.61 + public
-  backfill 253/254 @ ~USD 6.81 (total ~USD 7.42; hard ceiling USD 25).
-  Review rate on non-redundant proposals stays near ~4%. Exception-based
-  review only; enrichment remains manual and unscheduled. Production
-  migration remains paused.
+  `enrichment_policy_v4_1` with v3/v4 history retained. Decisions distinguish
+  accepted / redundant / rejected / needs_attention. Public listings (~**279**)
+  expose effective neighbourhood, feature attrs, `effective_summary`,
+  same-language `display_description`, and image galleries. Dashboard AI job
+  execution is disabled; pipeline AI runs under budgets (USD 2/day, USD 25/month,
+  25 listings/run) when the worker executes. Exception-based review only.
+  Labs public-effective migrations are **applied**; production merkado.cw
+  property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
-after a verified rollback export. RE/MAX and KW remain manual and unscheduled.
-Moret Terra-v3 initial backfill is complete; Moret remains manual/unscheduled
-with Refresh & enrich = new/changed only. Monumentenzorg adapter **v0.2.0** is Ready
-(5 imported, 2 public-eligible, Terra-v3 5/5, coordinates 0/5, manual/unscheduled).
-Next active source task: **Sotheby's** remains access-route **BLOCKED** after
-2026-07-20 recon (not Ready; official feed/partner API required).
+after a verified rollback export. Monumentenzorg adapter **v0.2.0** is Ready
+(5 imported, coordinates 0/5; pipeline ready / cron Off / dispatch available).
+Live Labs inventory (2026-07-21): KW **104**, Remax **222**, Moret **71**,
+Monumentenzorg **5**; `public_property_listings` **279**. Next active source
+task: **Sotheby's** remains access-route **BLOCKED** after 2026-07-20 recon
+(not Ready; excluded from Ready pipelines; official feed/partner API required).
 
 ## 3. Current property MVP direction `[WIP]`
 
@@ -111,8 +110,8 @@ Core MVP rules:
 - Production-ready live-crawl adapters for all five sources (KW/Moret/
   Monumentenzorg catalogs were activated from verified offline complete-catalog
   artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED)
-- Direct-source scheduled ingestion
-- Public property browse/detail UI on `merkado.cw` (Labs `/browse` preview exists)
+- Re-enabled GitHub daily cron for property pipeline (implemented but temporarily Off)
+- Public property browse/detail UI on `merkado.cw` (Labs `/browse` public preview exists)
 - Reliable multi-source property entity resolution
 - Confirmed sale prices
 - Automated valuation or sold-probability models

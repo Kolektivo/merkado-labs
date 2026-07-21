@@ -45,7 +45,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         display_name="Keller Williams Curaçao",
         adapter_version="0.3.1",
         readiness="ready",
-        listing_count_expected=84,
+        listing_count_expected=104,
         catalog_status="complete",
         current_issue=None,
         primary_action="Refresh & enrich",
@@ -53,8 +53,10 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         allows_full_refresh=True,
         allows_lifecycle_absence=True,
         notes=(
-            "Full catalog imported and Terra-enriched. Automatic daily refresh "
-            "enabled at 06:00 Curaçao (cron 0 10 * * * UTC)."
+            "Full catalog imported and Terra-enriched (104). Pipeline path ready; "
+            "GitHub daily cron temporarily disabled pending supervised "
+            "post-hash-repair verification. Manual/dashboard dispatch available. "
+            "Intended cron 0 10 * * * UTC (06:00 Curaçao)."
         ),
     ),
     "remax_curacao": SourceReadiness(
@@ -65,22 +67,22 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         listing_count_expected=220,
         catalog_status="complete",
         current_issue=(
-            "Adapter v0.4.1 active (220 listings; coordinates 199/220; "
+            "Adapter v0.4.1 active (catalog contract 220; coordinates 199/220; "
             "map neighbourhood 193 inferred / 6 outside polygons). "
             "Terra-v3 initial backfill complete (220/220). "
-            "Daily automation enabled at 06:00 Curaçao. Normal Refresh & enrich "
-            "bills new/changed only; "
-            "any future full re-enrichment still requires separate approval."
+            "Pipeline ready; GitHub daily cron temporarily Off. Normal Refresh & "
+            "enrich bills new/changed only; any future full re-enrichment still "
+            "requires separate approval."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
         allows_full_refresh=True,
         allows_lifecycle_absence=True,
         notes=(
-            "Adapter v0.4.1 deterministic import applied (offline, manual). "
+            "Adapter v0.4.1 deterministic import applied. "
             "Coordinate coverage 199/220; point-in-polygon 193; Terra-v3 "
             "initial backfill complete (220/220). Normal Refresh & enrich "
-            "bills new/changed only. Daily cron 0 10 * * * UTC enabled."
+            "bills new/changed only. Intended cron 0 10 * * * UTC; currently Off."
         ),
     ),
     "moret_real_estate": SourceReadiness(
@@ -93,7 +95,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "First complete catalog established (71). Terra-v3 initial backfill "
             "complete (71/71). Normal Refresh & enrich remains new/changed only. "
-            "Daily automation enabled at 06:00 Curaçao."
+            "Pipeline ready; GitHub daily cron temporarily Off."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -103,7 +105,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.2.0 activated 2026-07-20: offline complete import 66 insert / "
             "5 update; public eligible 71; Terra-v3 initial backfill complete "
             "(canary + remaining 66; cumulative ~USD 1.94). "
-            "Normal Refresh & enrich bills new/changed only. Daily cron enabled."
+            "Normal Refresh & enrich bills new/changed only. Intended cron Off until "
+            "supervised re-enable."
         ),
     ),
     "monumentenzorg_curacao": SourceReadiness(
@@ -116,7 +119,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "First complete catalog established (5). Terra-v3 initial backfill "
             "complete (5/5). Coordinates 0/5 (source has none). Normal Refresh & "
-            "enrich remains new/changed only. Daily automation enabled at 06:00 Curaçao."
+            "enrich remains new/changed only. Pipeline ready; GitHub daily cron "
+            "temporarily Off."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -127,7 +131,8 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "public eligible 2; Terra-v3 initial backfill complete "
             "(canary 2 + remaining 3; cumulative ~USD 0.06). "
             "Heritage /our_property/ CPT remains out of scope. "
-            "Normal Refresh & enrich bills new/changed only. Daily cron enabled."
+            "Normal Refresh & enrich bills new/changed only. Intended cron Off until "
+            "supervised re-enable."
         ),
     ),
     "sothebys_curacao": SourceReadiness(

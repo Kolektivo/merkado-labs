@@ -12,7 +12,6 @@ from merkado_labs.scrapers.kw_import_preview import assert_labs_project_ref
 from merkado_labs.scrapers.remax_import_preview import (
     EXPECTED_ADAPTER_VERSION,
     EXPECTED_CATALOG_CHECKSUM,
-    EXPECTED_LISTING_COUNT,
     catalog_is_complete,
     ensure_v041_catalog_metadata,
     field_change_detail,

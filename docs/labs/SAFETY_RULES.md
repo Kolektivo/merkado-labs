@@ -1,5 +1,8 @@
 # Merkado Labs Safety Rules
 
+Product/architecture source of truth: `docs/README.md` (`docs/01`–`09`).
+Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
+
 The live Merkado system must remain completely untouched.
 
 The only allowed Supabase target is the standalone Labs project:
@@ -55,6 +58,7 @@ logs, reports, or source control.
 
 Do not commit, push, deploy, or promote experiments automatically.
 
-Do not introduce browser automation, AI frameworks, vector databases, or additional
-knowledge-graph technology without an explicit task. Keep work focused on Curaçao marketplace
-experiments.
+Do not add a new frontend surface, browser automation, AI framework, vector
+database, or knowledge-graph technology without an explicit task. The existing
+Labs dashboard and Terra enrichment path are already approved in this repository.
+Keep work focused on Curaçao marketplace experiments.

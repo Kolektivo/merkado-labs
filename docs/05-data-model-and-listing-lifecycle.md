@@ -19,11 +19,11 @@ Existing concepts include:
 - ingestion quarantine;
 - neighbourhoods and geospatial assignment;
 - experimental market signals and contract assessments;
-- read-only dashboard.
+- Labs dashboard (ops + Data Operations + Browse + Enrichment review — not read-only).
 
 Inspect actual migrations before finalizing column names. Use forward-only additive changes.
 
-Applied forward migrations for the direct-source MVP foundation:
+Applied forward migrations for the direct-source MVP foundation (Labs only):
 
 - `20260716180000_direct_source_foundation.sql`
 - `20260716180100_seed_approved_property_sources.sql`
@@ -37,6 +37,14 @@ Applied forward migrations for the direct-source MVP foundation:
   internal property tables; eligibility backfill; public view SELECT-only
 - `20260717161000_public_listings_view_security_definer.sql` — public view runs as
   owner (`security_invoker=false`) so anon can read the projection without table grants
+- `20260720120000_property_pipeline_orchestration.sql` /
+  `20260721090000_property_pipeline_automation_foundation.sql` — pipeline locks/runs
+- `20260720140000_public_property_listings_effective.sql` — public-effective view
+- `20260720180000_enrichment_quality_v4_public_effective.sql` — enrichment quality v4
+- `20260720210000_review_v41_and_public_image_galleries.sql` — review_v41 galleries
+
+Labs public-effective + pipeline migrations above are **applied**. Production
+merkado.cw property migration remains **paused**.
 
 ### Complete vs partial source runs
 
@@ -195,8 +203,8 @@ Sold/rented timestamps:
   `redundant` and never
   enter the attention queue
 - v4 can auto-apply grounded neighbourhood gap-fills and public display
-  description blocks. The public-effective migration is forward-only and
-  remains unapplied pending review.
+  description blocks. Labs public-effective / gallery migrations are **applied**;
+  production merkado.cw property projection remains **paused**.
 - Never overwrite raw evidence, price, currency, status, dates, coords, address, neighbourhood, realtor, or source reference
 
 Each event should store:

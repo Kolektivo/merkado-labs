@@ -26,6 +26,11 @@ Required:
 - `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
 - `LABS_ADMIN_SECRET`
 
+Optional (Data Operations → GitHub `workflow_dispatch`):
+
+- `GITHUB_REPOSITORY`
+- fine-grained `GITHUB_TOKEN` (server-only)
+
 Never expose server credentials through `NEXT_PUBLIC_*`.
 
 ## Navigation
@@ -33,11 +38,12 @@ Never expose server credentials through `NEXT_PUBLIC_*`.
 - `/` — Overview
 - `/listings` and `/listings/[id]` — internal inventory and evidence
 - `/sources` and `/sources/[sourceKey]` — source health and runs
-- `/enrichment` — existing AI proposal review; execution disabled
+- `/enrichment` — existing AI proposal review; **AI execution disabled**
 - `/quality` — eligibility, lifecycle, fields, evidence, geography
-- `/settings` — configuration and session health
+- `/data-operations` — Labs property pipeline enqueue/dispatch
+- `/settings` — configuration and session health (Automatic refresh Off)
+- `/browse` and `/browse/[id]` — public-safe Labs **public preview**
 - `/prototypes` — clearly separated experimental concepts
-- `/browse` and `/browse/[id]` — public-safe Labs prototype
 
 Legacy duplicate routes redirect into the consolidated areas.
 

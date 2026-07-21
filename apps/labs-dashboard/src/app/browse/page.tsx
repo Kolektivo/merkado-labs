@@ -3,10 +3,7 @@ import Link from "next/link";
 import { FlaskConical, Search } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
-import {
-  ListingImageGallery,
-  resolveListingGalleryUrls,
-} from "@/components/listing-image-gallery";
+import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { PageHeader } from "@/components/page-header";
 import { PriceDisplay } from "@/components/price-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicListings } from "@/lib/data/public-listings";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
+import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import {
   listingHasPublicAttribute,
   PUBLIC_ATTRIBUTE_DISPLAY_LABELS,

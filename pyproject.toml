@@ -12,7 +12,6 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
-    "streamlit",
     "supabase",
 ]
 

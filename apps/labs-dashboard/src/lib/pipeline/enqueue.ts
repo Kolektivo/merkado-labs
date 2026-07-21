@@ -8,6 +8,7 @@ import {
   type SourceReadinessConfig,
 } from "@/lib/domain/source-readiness";
 import { dispatchPropertyPipelineWorkflow } from "@/lib/pipeline/dispatch-github";
+import { AUTOMATIC_REFRESH_ENABLED, DAILY_CRON_UTC } from "@/lib/pipeline/schedule";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { LABS_PROJECT_REF, getSupabaseConfig } from "@/lib/supabase/config";
 
@@ -146,13 +147,13 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
       "Missing/removed transitions only when a source completes a full successful catalog. Partial or failed catalogs never mark absence.",
     cost_disclaimer:
       "Estimated from recorded token usage and configured model pricing.",
-    schedule: "on",
+    schedule: AUTOMATIC_REFRESH_ENABLED ? "on" : "off",
     schedule_metadata: {
-      automatic_refresh: "On",
+      automatic_refresh: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
       intended_local_time: "06:00",
       timezone: "America/Curacao",
-      documented_cron_utc: "0 10 * * *",
-      enabled: true,
+      documented_cron_utc: DAILY_CRON_UTC,
+      enabled: AUTOMATIC_REFRESH_ENABLED,
     },
     ready_source_keys: readySourceKeys(),
   };
@@ -165,7 +166,7 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
       trigger_type: input.triggerType ?? "manual",
       status: "queued",
       dispatch_status: "pending",
-      automatic_refresh_enabled: true,
+      automatic_refresh_enabled: AUTOMATIC_REFRESH_ENABLED,
       requested_by: input.requestedBy ?? "labs_admin",
       source_keys: keys,
       preflight,

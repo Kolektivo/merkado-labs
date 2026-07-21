@@ -27,12 +27,15 @@ def test_ready_order_and_schedule_metadata() -> None:
     ]
     assert CURACAO_TZ == "America/Curacao"
     assert DAILY_CRON_UTC == "0 10 * * *"
-    assert AUTOMATIC_REFRESH_ENABLED is True
-    meta = schedule_metadata(enabled=True)
-    assert meta["automatic_refresh"] == "On"
-    assert meta["enabled"] is True
+    assert AUTOMATIC_REFRESH_ENABLED is False
+    meta = schedule_metadata()
+    assert meta["automatic_refresh"] == "Off"
+    assert meta["enabled"] is False
     assert meta["documented_cron_utc"] == "0 10 * * *"
     assert "sothebys_curacao" in meta["excluded_sources"]
+    meta_on = schedule_metadata(enabled=True)
+    assert meta_on["automatic_refresh"] == "On"
+    assert meta_on["enabled"] is True
 
 
 def test_next_scheduled_run_is_next_1000_utc() -> None:

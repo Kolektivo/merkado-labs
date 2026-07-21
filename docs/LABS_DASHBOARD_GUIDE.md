@@ -31,6 +31,11 @@ Optional AI review configuration:
 - `OPENAI_API_KEY`
 - `OPENAI_ENRICHMENT_MODEL`
 
+Optional GitHub dispatch (Data Operations → Run now):
+
+- `GITHUB_REPOSITORY`
+- fine-grained `GITHUB_TOKEN` (server-only)
+
 All credentials must target Labs project `csaefdkpwukshtouyixg`. Never use the
 production project. Secret values are server-only and must remain in ignored
 environment files.
@@ -42,9 +47,10 @@ The server creates a signed, httpOnly 12-hour cookie. Use Settings to sign out.
 
 The public Browse/Passport preview does not use this cookie. It reads only the
 safe `public_property_listings` view (publishable Labs key). That view projects
-**final effective values** — neighbourhood, property type, and allowlisted
-auto-applied attributes — never raw AI proposals, evidence, confidence, tokens,
-or costs. The preview remains Labs-only and is not live on merkado.cw.
+**final effective values** — neighbourhood, property type, allowlisted
+auto-applied attributes, and image galleries — never raw AI proposals, evidence,
+confidence, tokens, or costs. The preview remains Labs-only and is not live on
+merkado.cw.
 
 ## Main pages
 
@@ -63,31 +69,47 @@ or costs. The preview remains Labs-only and is not live on merkado.cw.
   disabled; proposals never overwrite source facts.
 - **Quality** — eligibility, lifecycle states, missing fields, evidence
   availability, and location quality.
-- **Settings** — safe configuration health, admin session, disabled schedules,
-  and environment boundaries.
-- **Prototypes** — Browse/Passport, Search Request, What Fits Me?, Agent, and
-  Match Reports. These are explicitly experimental.
+- **Data operations** — Labs-only property pipeline enqueue/dispatch for the
+  four Ready sources. Approved Labs path when admin session + server credentials
+  are present. Still no production Supabase/Vercel access and no deploy from
+  this surface.
+- **Settings** — safe configuration health, admin session, **Automatic refresh
+  Off**, **daily cron temporarily Off** (post-hash-repair gate; intended
+  `0 10 * * *` UTC = 06:00 Curaçao), and environment boundaries.
+- **Browse** — under Explore / **Public preview** (Passport-style detail). Not
+  only nested under Prototypes.
+- **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
+  These are explicitly experimental.
 
-Data Operations can enqueue and dispatch the Labs-only property workflow.
-Automatic refresh is **On**: daily cron `0 10 * * *` UTC (06:00 Curaçao) for
-the four Ready sources. Manual Run now still uses `workflow_dispatch` when
-server-only `GITHUB_REPOSITORY` and a dedicated fine-grained `GITHUB_TOKEN`
-are configured. The workflow enforces USD 2 daily / USD 25 monthly / 25-listing
-AI limits, and excludes blocked Sotheby's.
+Data Operations can enqueue and dispatch the Labs-only property workflow when
+admin + credentials are configured. **Automatic refresh is Off**: GitHub daily
+cron is temporarily disabled (`AUTOMATIC_REFRESH_ENABLED = false`). Manual Run
+now still uses `workflow_dispatch` when server-only `GITHUB_REPOSITORY` and a
+dedicated fine-grained `GITHUB_TOKEN` are set. The workflow enforces USD 2
+daily / USD 25 monthly / 25-listing AI limits, and excludes blocked Sotheby's.
 
 ## Understand source runs
 
 `success` is meaningful only for a complete catalog. Bounded, truncated, or
 partially failed runs are `partial` and must never mark absent listings missing
-or removed. Daily schedule and manual dispatch share the same Labs worker path.
+or removed. Manual dispatch shares the Labs worker path; daily schedule is
+temporarily Off.
 
 Current maturity:
 
-- RE/MAX: Ready adapter v0.4.1; Terra-v3 initial backfill complete; daily cron + Refresh & enrich bill new/changed only.
-- Keller Williams: Ready adapter v0.3.1; marketing non-listing URLs excluded; Terra enrichment active; included in daily cron.
-- Moret: Ready (adapter v0.2.0; catalog 71; Terra-v3 71/71; daily cron).
-- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; 2 public-eligible; Terra-v3 5/5; daily cron).
-- Sotheby's: Access route BLOCKED (2026-07-20 recon — affiliate TLS broken; network HTTP 202 WAF; app.sir.com office shell has no catalog). Official feed/partner API required. Not Ready.
+- RE/MAX: Ready adapter v0.4.1; catalog contract 220; Terra coverage complete;
+  pipeline ready / cron Off / dispatch available; Refresh & enrich bills
+  new/changed only.
+- Keller Williams: Ready adapter v0.3.1; Labs inventory 104; marketing
+  non-listing URLs excluded; Terra v4 / policy v4.1; pipeline ready / cron Off /
+  dispatch available.
+- Moret: Ready (adapter v0.2.0; catalog 71; pipeline ready / cron Off /
+  dispatch available).
+- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; pipeline ready / cron Off /
+  dispatch available).
+- Sotheby's: Access route BLOCKED (2026-07-20 recon — affiliate TLS broken;
+  network HTTP 202 WAF; app.sir.com office shell has no catalog). Official
+  feed/partner API required. Not Ready; excluded from Ready pipelines.
 
 ## Troubleshoot database loading
 
@@ -104,7 +126,7 @@ Current maturity:
 - source adapters or listing imports;
 - complete-run lifecycle updates;
 - AI enrichment jobs;
-- schedules or workflows;
+- schedules or workflows (including re-enabling cron);
 - destructive SQL or database resets;
 - production Supabase or Vercel operations;
 - deployments or pushes.

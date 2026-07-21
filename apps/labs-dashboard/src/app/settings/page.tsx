@@ -32,7 +32,7 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Settings"
-        description="Access, safety boundaries, and read-only system information for Property Labs."
+        description="Access, safety boundaries, and system information for Property Labs."
         icon={Settings}
       />
 
@@ -66,13 +66,13 @@ export default async function SettingsPage() {
             {[
               [
                 "Website refreshes",
-                "Daily + manual",
-                "Cron at 06:00 Curaçao for the four Ready sources; Run now when dispatch credentials are set.",
+                "Manual dispatch (cron Off)",
+                "Pipeline ready for the four Ready sources. GitHub daily cron temporarily disabled; Run now when dispatch credentials are set. Intended cron 06:00 Curaçao.",
               ],
               [
                 "AI enrichment",
-                "Daily + manual",
-                "New/changed listings only, within USD 2/day and USD 25/month.",
+                "Via pipeline / review UI",
+                "New/changed listings only under USD 2/day and USD 25/month when a pipeline run executes. Dashboard AI job execution stays disabled.",
               ],
               [
                 "Environment",

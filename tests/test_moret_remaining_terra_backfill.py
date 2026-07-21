@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from merkado_labs.enrichment.jobs import has_identical_enrichment_attempt
 from merkado_labs.enrichment.neighbourhood import resolve_effective_neighbourhood
 
@@ -24,6 +26,7 @@ IDEM = ROOT / "data/processed/moret_backfill_idempotency_check.json"
 FINAL = ROOT / "data/processed/moret_activation_final_report.json"
 PUBLIC = ROOT / "data/processed/moret_public_effective_backfill_smoke.json"
 INPUT_Q = ROOT / "data/processed/moret_backfill_input_quality.json"
+QUALITY = ROOT / "data/processed/moret_backfill_quality_audit.json"
 
 CANARY = {
     "post-75682",
@@ -33,7 +36,10 @@ CANARY = {
     "post-74710",
 }
 
+_ARTIFACT_REASON = "Local gitignored data/processed backfill artifact missing"
 
+
+@pytest.mark.skipif(not SELECTION.exists(), reason=_ARTIFACT_REASON)
 def test_selection_excludes_five_successful_canaries() -> None:
     payload = json.loads(SELECTION.read_text(encoding="utf-8"))
     assert payload["source_key"] == "moret_real_estate"
@@ -69,6 +75,7 @@ def test_runner_enforces_source_key_batch_size_ceiling_and_canary_block() -> Non
     assert "should_skip_unchanged_enrichment" in jobs
 
 
+@pytest.mark.skipif(not COST.exists(), reason=_ARTIFACT_REASON)
 def test_cost_preflight_under_usd_2_40_ceiling() -> None:
     payload = json.loads(COST.read_text(encoding="utf-8"))
     cost = payload.get("cost") or payload
@@ -79,6 +86,7 @@ def test_cost_preflight_under_usd_2_40_ceiling() -> None:
     assert payload.get("max_output_tokens") == 3500
 
 
+@pytest.mark.skipif(not PROTECTED_BEFORE.exists(), reason=_ARTIFACT_REASON)
 def test_protected_moret_fields_baseline_covers_from_price_and_rent_period() -> None:
     payload = json.loads(PROTECTED_BEFORE.read_text(encoding="utf-8"))
     assert payload["listing_count"] == 71
@@ -90,6 +98,7 @@ def test_protected_moret_fields_baseline_covers_from_price_and_rent_period() -> 
     assert "bedrooms" in fields
 
 
+@pytest.mark.skipif(not PROTECTED_AFTER.exists(), reason=_ARTIFACT_REASON)
 def test_protected_fields_unchanged_after_backfill() -> None:
     after = json.loads(PROTECTED_AFTER.read_text(encoding="utf-8"))
     assert after["unchanged"] is True
@@ -97,6 +106,7 @@ def test_protected_fields_unchanged_after_backfill() -> None:
     assert after["listing_count"] == 71
 
 
+@pytest.mark.skipif(not SELECTION.exists(), reason=_ARTIFACT_REASON)
 def test_from_price_and_rent_period_preserved_in_selection_metadata() -> None:
     sel = json.loads(SELECTION.read_text(encoding="utf-8"))
     from_price = [i for i in sel["listings"] if i.get("from_price")]
@@ -107,23 +117,22 @@ def test_from_price_and_rent_period_preserved_in_selection_metadata() -> None:
         assert "price_period" in item
 
 
+@pytest.mark.skipif(not INPUT_Q.exists(), reason=_ARTIFACT_REASON)
 def test_sparse_inputs_policy_documented() -> None:
     payload = json.loads(INPUT_Q.read_text(encoding="utf-8"))
     assert "sparse" in (payload.get("sparse_ok_policy") or "").lower()
     assert "invent" in (payload.get("sparse_ok_policy") or "").lower()
 
 
+@pytest.mark.skipif(not QUALITY.exists(), reason=_ARTIFACT_REASON)
 def test_attention_is_exception_based_in_policy_notes() -> None:
-    quality = json.loads(
-        (ROOT / "data/processed/moret_backfill_quality_audit.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    quality = json.loads(QUALITY.read_text(encoding="utf-8"))
     notes = " ".join(quality.get("policy_notes") or []).lower()
     assert "confidence alone" in notes
     assert "attention" in notes
 
 
+@pytest.mark.skipif(not PUBLIC.exists(), reason=_ARTIFACT_REASON)
 def test_public_allowlist_and_needs_attention_exclusion() -> None:
     payload = json.loads(PUBLIC.read_text(encoding="utf-8"))
     assert payload["moret_public_count"] == 71
@@ -131,8 +140,8 @@ def test_public_allowlist_and_needs_attention_exclusion() -> None:
     assert not payload.get("forbidden_public_leaks")
 
 
+@pytest.mark.skipif(not RESULT.exists(), reason=_ARTIFACT_REASON)
 def test_batch_result_within_budget_and_source() -> None:
-    assert RESULT.exists()
     payload = json.loads(RESULT.read_text(encoding="utf-8"))
     result = payload["result"]
     assert result["processed"] == 66
@@ -142,6 +151,7 @@ def test_batch_result_within_budget_and_source() -> None:
     assert payload["preflight"]["project_ref"] == "csaefdkpwukshtouyixg"
 
 
+@pytest.mark.skipif(not IDEM.exists(), reason=_ARTIFACT_REASON)
 def test_zero_cost_idempotency_all_71() -> None:
     payload = json.loads(IDEM.read_text(encoding="utf-8"))
     assert payload["mode"] == "dry_run_skip_check"
@@ -189,6 +199,7 @@ def test_map_over_ai_neighbourhood_priority() -> None:
     assert eff.name == "Jan Thiel"
 
 
+@pytest.mark.skipif(not FINAL.exists(), reason=_ARTIFACT_REASON)
 def test_final_report_marks_manual_and_coverage() -> None:
     payload = json.loads(FINAL.read_text(encoding="utf-8"))
     assert payload["manual_unscheduled"] is True

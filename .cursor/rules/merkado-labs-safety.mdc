@@ -6,6 +6,7 @@ alwaysApply: true
 # Merkado Labs Safety
 
 - This repository is the experimental Merkado Labs workspace for Curaçao marketplace research.
+- Product/architecture source of truth: `docs/README.md` (`docs/01`–`09`); dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
 - Supabase operations may target only Labs project reference `csaefdkpwukshtouyixg`.
 - Project reference `jkrfyvukhhsapoivntms` is production and is strictly forbidden.
 - Never access or copy production data, users, schemas, secrets, credentials, or configuration.
@@ -15,6 +16,7 @@ alwaysApply: true
 - Use service-role credentials only in local backend scripts; never commit, print, or expose them.
 - Preserve scraped source data in raw form before normalization.
 - Do not deploy to Vercel from this repository unless explicitly instructed.
-- Do not introduce a frontend, browser automation, AI frameworks, vector databases, or
-  knowledge-graph technology without an explicit task.
+- Do not add a new frontend surface, browser automation, AI framework, vector database, or
+  knowledge-graph technology without an explicit task. The existing Labs dashboard and Terra
+  enrichment path are already approved in this repository.
 - Stay focused on Curaçao marketplace experiments and the requested scope.

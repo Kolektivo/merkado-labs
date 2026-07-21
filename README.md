@@ -8,13 +8,21 @@ automatically.
 
 - **Property foundation** in Labs Supabase (`csaefdkpwukshtouyixg`): listings,
   sources, neighbourhoods, observations, quarantine, market signals, source-run
-  health, and listing activity events.
-- **Direct-source adapters** under `src/merkado_labs/scrapers/` — RE/MAX is the
-  first manual/bounded adapter. The former aggregator workflow is retired.
+  health, listing activity events, and public-effective browse projection.
+- **Four Ready adapters** under `src/merkado_labs/scrapers/`: Keller Williams
+  v0.3.1, RE/MAX v0.4.1, Moret v0.2.0, Monumentenzorg v0.2.0. Sotheby's is
+  BLOCKED and excluded from Ready pipelines. CHH is retired/removed.
+- **Property pipeline** (orchestrator/worker/locks/anomaly/budgets/`change_hash`)
+  with Data Operations dispatch; **GitHub daily cron temporarily disabled**
+  (`AUTOMATIC_REFRESH_ENABLED = false`). Manual/`workflow_dispatch` still available.
+- **AI enrichment** v4 / v4.1 active under pipeline budgets; dashboard AI
+  execution disabled.
 - **Geospatial layer**: PostGIS neighbourhood boundaries and assignment.
-- **Read-only Labs dashboard** (`apps/labs-dashboard`) for inspection.
+- **Labs dashboard** (`apps/labs-dashboard`): ops + Data Operations + Browse
+  public preview + Enrichment review + prototypes — **not** read-only.
 
-Property MVP docs `docs/01`–`09` are the current source of truth.
+Property MVP docs `docs/01`–`09` and `docs/LABS_DASHBOARD_GUIDE.md` are the
+current source of truth. Start at `docs/README.md`.
 
 ## Local setup (Python)
 
@@ -68,3 +76,4 @@ npm run build
 ## Docs
 
 Start at `docs/README.md`. Labs safety notes live under `docs/labs/`.
+Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.

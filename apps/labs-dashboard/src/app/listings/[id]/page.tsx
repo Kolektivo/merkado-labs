@@ -19,10 +19,7 @@ import {
 import { DataError } from "@/components/data-error";
 import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
 import { HelpTip } from "@/components/help-tip";
-import {
-  ListingImageGallery,
-  resolveListingGalleryUrls,
-} from "@/components/listing-image-gallery";
+import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { ListingAiChanges } from "@/components/listing-ai-changes";
@@ -36,6 +33,7 @@ import {
   formatOriginalPrice,
   formatXcgPrimary,
 } from "@/lib/domain/price-display";
+import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -371,7 +369,8 @@ export default async function ListingDetailPage({
             altBase={listing.title ?? `Listing ${listing.externalId}`}
             variant="detail"
             priority
-            aspectClassName="relative min-h-64 bg-muted xl:min-h-[430px]"
+            className="h-full"
+            aspectClassName="relative aspect-[4/3] bg-muted sm:aspect-[16/10] xl:h-full xl:min-h-[500px] xl:aspect-auto"
           />
           <div className="flex min-w-0 flex-col justify-between gap-6 p-5 md:p-7">
             <div className="flex flex-col gap-4">

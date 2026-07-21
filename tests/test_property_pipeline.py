@@ -354,7 +354,7 @@ def test_preflight_stores_approved_ceiling() -> None:
         source_keys=["keller_williams_curacao"],
         trigger_mode="single_source",
         project_ref=LABS_PROJECT_REF,
-        expected_ai_listing_count=84,
+        expected_ai_listing_count=104,
     )
     assert preflight["estimated_ai_ceiling_usd"] == 2
     assert preflight["schedule"] == "on"

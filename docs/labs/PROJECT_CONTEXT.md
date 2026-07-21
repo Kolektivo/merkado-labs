@@ -7,17 +7,21 @@ completely separate experimental workspace.
 
 Active work is **direct-source property ingestion** for Curaçao:
 
-- approved sources: Keller Williams, Sotheby's, RE/MAX, Moret, Monumentenzorg;
-- source-neutral adapters under `src/merkado_labs/scrapers/`;
-- Labs Supabase property foundation, source-run health, and activity events;
-- geospatial neighbourhood boundaries and assignment;
-- a read-only Next.js Labs dashboard for inspection.
+- four Ready adapters: Keller Williams v0.3.1, RE/MAX v0.4.1, Moret v0.2.0,
+  Monumentenzorg v0.2.0; Sotheby's BLOCKED (excluded from Ready pipelines);
+  CHH retired/removed;
+- property pipeline automation (orchestrator/worker/locks/anomaly/budgets/
+  `change_hash`); daily cron temporarily Off; manual/dashboard dispatch available;
+- AI enrichment v4 / v4.1 (`listing_enrichment_v4` /
+  `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`);
+- Labs public-effective view + image galleries; Browse public preview;
+- Labs dashboard: ops + Data Operations + Enrichment review + prototypes
+  (not read-only);
+- geospatial neighbourhood boundaries and assignment.
 
 The CaribbeanHouseHunt aggregator workflow is retired and removed from the active
 repository. CHH-derived Labs rows were deleted on 2026-07-16. The verified local
-rollback export remains under `data/processed/chh_cleanup_export/`. RE/MAX Curaçao
-is the first direct-source adapter; the first complete manual Labs catalog import
-completed on 2026-07-16 and remains unscheduled.
+rollback export remains under `data/processed/chh_cleanup_export/`.
 
 ## What is built in this repository `[LABS]`
 
@@ -25,12 +29,13 @@ completed on 2026-07-16 and remains unscheduled.
 |---|---|
 | Property schema + RLS migrations | `supabase/migrations/` |
 | Direct-source adapters | `src/merkado_labs/scrapers/` |
+| Property pipeline | `src/merkado_labs/pipeline/`, `scripts/run_property_pipeline*.py` |
 | Currency + eligibility helpers | `src/merkado_labs/normalization/` |
 | Cleanup verification tooling (historical) | `scripts/cleanup/` |
 | Geospatial import/assignment scripts | `scripts/geo/` |
-| Read-only Labs dashboard | `apps/labs-dashboard/` |
+| Labs dashboard (ops + browse + Data Ops) | `apps/labs-dashboard/` |
 
-Canonical docs: `docs/01`–`09`.
+Canonical docs: `docs/01`–`09` and `docs/LABS_DASHBOARD_GUIDE.md`.
 
 ## Labs Supabase project
 

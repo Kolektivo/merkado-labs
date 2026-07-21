@@ -72,6 +72,23 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
+### July 21, 2026 - Cleanup/stabilization; cron temporarily Off
+
+- Labs cleanup/stabilization after hash-repair work: property pipeline remains
+  implemented (orchestrator/worker/locks/anomaly/budgets/`change_hash`; scripts
+  `run_property_pipeline.py` / `run_property_pipeline_worker.py`; GHA
+  `property-pipeline-labs.yml` with `workflow_dispatch`).
+- **GitHub daily cron temporarily disabled** (`AUTOMATIC_REFRESH_ENABLED = false`
+  in Python + TypeScript) as a supervised verification gate after hash repair.
+  Intended cron stays `0 10 * * *` UTC = 06:00 America/Curacao. Manual/dashboard
+  Data Operations dispatch still available.
+- Live Labs inventory note: KW **104**, Remax **222**, Moret **71**,
+  Monumentenzorg **5**; `public_property_listings` **279**. Remax adapter catalog
+  contract remains **220** (DB drift to 222 is operational, not a new contract).
+  KW offline import preview still gates at 84; document inventory as 104.
+- AI enrichment v4 / v4.1 current; Labs public-effective + galleries applied;
+  production merkado.cw property migration remains paused. No production deploy.
+
 ### July 17, 2026 - KW retry batch, Terra completion, and AI cost observability
 
 - Retried the 24 KW listings that had truncated under

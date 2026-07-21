@@ -1,5 +1,8 @@
 # Experiment log
 
+> **Archive:** This file is historical. Current Labs ops and inventory live in
+> `docs/01-live-product-state.md` and `docs/09-project-safety-and-history.md`.
+
 Living log of Labs experiments. Newest first.
 
 > **Note (2026-07-16):** CaribbeanHouseHunt is retired. Experiment trees,

@@ -7,7 +7,9 @@ from zoneinfo import ZoneInfo
 
 from merkado_labs.pipeline.sources import CURACAO_TZ, DAILY_CRON_UTC
 
-AUTOMATIC_REFRESH_ENABLED = True
+# Matches GitHub Actions: schedule temporarily disabled pending supervised
+# post-hash-repair verification. Intended cron remains DAILY_CRON_UTC.
+AUTOMATIC_REFRESH_ENABLED = False
 SCHEDULE_CRON_UTC = DAILY_CRON_UTC  # 10:00 UTC == 06:00 America/Curacao
 
 

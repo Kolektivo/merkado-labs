@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FlaskConical } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FlaskConical } from "lucide-react";
 
-import {
-  ListingImageGallery,
-  resolveListingGalleryUrls,
-} from "@/components/listing-image-gallery";
+import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceDisplay } from "@/components/price-display";
 import { getPublicListingById } from "@/lib/data/public-listings";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
+import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import {
   groupPublicAttributes,
   publicAttributeChipLabel,
@@ -81,11 +79,27 @@ export default async function PublicListingPage({
   ].filter(Boolean).length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 overflow-x-hidden">
-      <Button variant="ghost" asChild>
-        <Link href={backHref}>Back to browse</Link>
-      </Button>
-      <Alert>
+    <div className="mx-auto max-w-5xl space-y-6 overflow-x-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button variant="ghost" asChild>
+          <Link href={backHref}>
+            <ArrowLeft data-icon="inline-start" />
+            Back to browse
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <a
+            href={listing.originalRealtorUrl ?? listing.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open original listing
+            <ArrowUpRight data-icon="inline-end" />
+            <span className="sr-only"> (opens in new tab)</span>
+          </a>
+        </Button>
+      </div>
+      <Alert className="border-primary/20 bg-primary/[0.03]">
         <FlaskConical className="size-4" />
         <AlertTitle>Experimental Labs Passport preview</AlertTitle>
         <AlertDescription>
@@ -104,7 +118,7 @@ export default async function PublicListingPage({
           variant="detail"
           priority
         />
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-5 p-5 md:p-7">
           <div className="flex flex-wrap gap-2">
             <Badge>{titleCase(listing.listingType)}</Badge>
             <Badge variant="outline">{listing.sourceDisplayName}</Badge>
@@ -112,7 +126,7 @@ export default async function PublicListingPage({
               <Badge variant="secondary">{titleCase(propertyType)}</Badge>
             ) : null}
           </div>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {listing.title ?? `Property ${listing.externalId}`}
           </h1>
           <PriceDisplay

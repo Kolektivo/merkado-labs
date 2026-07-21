@@ -12,11 +12,15 @@ prototypes only — not live on merkado.cw and not activation-complete.
 
 Remaining activation gates: Sotheby's access route **BLOCKED** (2026-07-20 recon;
 not Ready — official affiliate feed/export or Anywhere partner API with written
-approval required). KW, RE/MAX, Moret, and Monumentenzorg catalogs have complete
-Terra-v3 coverage and remain manual/unscheduled.
-Scheduled runs off until QA; AI proposals reviewed under the exception-based v3
-policy (high-confidence evidenced fields auto-apply; manual attention only for
-conflicts, weak evidence, or new-attribute taxonomy); public RLS verified.
+approval required; excluded from Ready pipelines). Four Ready adapters (KW,
+RE/MAX, Moret, Monumentenzorg) share the Labs property pipeline; **daily cron is
+temporarily Off** (`AUTOMATIC_REFRESH_ENABLED = false`) pending supervised
+verification after hash repair; manual/`workflow_dispatch` and dashboard Data
+Operations dispatch remain available. AI proposals use exception-based **v4 /
+v4.1** policy (high-confidence evidenced fields auto-apply; manual attention
+only for conflicts, weak evidence, or new-attribute taxonomy). Labs prototypes
+(Search Request / What Fits Me / Agent / Match Reports) exist in the dashboard;
+production activation on merkado.cw remains out of scope.
 
 ## 2. MVP deliverables
 
@@ -66,7 +70,7 @@ conflicts, weak evidence, or new-attribute taxonomy); public RLS verified.
 | Avoided claim | Correct description |
 |---|---|
 | Property marketplace is live | Property is Labs/WIP; cars are live |
-| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg) are manual/unscheduled; Sotheby's remains BLOCKED |
+| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron Off / dispatch available; Sotheby's remains BLOCKED |
 | Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
 | Sold price is known | Last known asking price may be known; sale price is not confirmed |
 | Removed means sold | Removed means absent from the source after confirmation |

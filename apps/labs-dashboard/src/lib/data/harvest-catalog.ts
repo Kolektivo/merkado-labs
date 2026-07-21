@@ -2,7 +2,7 @@ import type { HarvestJob } from "@/lib/domain/types";
 
 /**
  * Direct-source adapter jobs for merkado-labs.
- * Scheduling stays disabled until each adapter passes QA.
+ * Pipeline + workflow_dispatch exist; GitHub daily cron is temporarily Off.
  * Keep in sync with docs/04 and src/merkado_labs/scrapers/.
  */
 export const HARVEST_JOBS: HarvestJob[] = [
@@ -10,11 +10,11 @@ export const HARVEST_JOBS: HarvestJob[] = [
     id: "remax-curacao-manual",
     name: "RE/MAX Curaçao manual adapter",
     sourceName: "RE/MAX",
-    schedule: "Manual only",
-    cron: null,
-    timezone: "UTC",
+    schedule: "Pipeline / manual dispatch",
+    cron: "0 10 * * * (intended; cron temporarily Off)",
+    timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.remax_curacao)",
-    workflowPath: null,
+    workflowPath: ".github/workflows/property-pipeline-labs.yml",
     pipeline: [
       "Discover listing URLs from sale/rent index pagination",
       "Bounded HTTPS fetch of listing detail pages",
@@ -25,27 +25,27 @@ export const HARVEST_JOBS: HarvestJob[] = [
     ],
     status: "manual",
     notes:
-      "Complete manual catalog imported (v0.4.1). 220 listings; 119 public eligible; coordinates 199/220; Terra-v3 initial backfill complete (220/220). Scheduling remains disabled.",
+      "Complete catalog imported (v0.4.1). Catalog contract 220; Terra-v3 initial backfill complete (220/220). Refresh via Data Operations / workflow_dispatch; GitHub daily cron temporarily Off.",
   },
   {
     id: "keller-williams-manual",
     name: "Keller Williams Curaçao manual adapter",
     sourceName: "Keller Williams Curaçao",
-    schedule: "Manual only",
-    cron: null,
-    timezone: "UTC",
+    schedule: "Pipeline / manual dispatch",
+    cron: "0 10 * * * (intended; cron temporarily Off)",
+    timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.keller_williams_curacao)",
-    workflowPath: null,
+    workflowPath: ".github/workflows/property-pipeline-labs.yml",
     pipeline: [
       "Approved-section catalog discovery (sale/rent categories)",
       "Full-catalog sequential detail dry-run (Crawl-Delay 20, robots once/host)",
       "Exclude /silent-listings; reject off-domain URLs",
       "Complete-catalog success only when discovery + detail gates pass",
-      "Dry-run before Labs import; unscheduled",
+      "Dry-run before Labs import; pipeline dispatch available",
     ],
     status: "manual",
     notes:
-      "Adapter v0.3. Full catalog imported 2026-07-17 from verified Stage-3 artifact (84 listings: 52 sale + 32 rent, 3 no-price). Offline cache import; no live crawl. Crawl-Delay 20, sequential, manual/unscheduled. Partial runs never mark missing/removed.",
+      "Adapter v0.3.1. Labs catalog 104 listings. Crawl-Delay 20, sequential. Refresh via Data Operations / workflow_dispatch; GitHub daily cron temporarily Off. Partial runs never mark missing/removed.",
   },
   {
     id: "sothebys-planned",
@@ -70,11 +70,11 @@ export const HARVEST_JOBS: HarvestJob[] = [
     id: "moret-manual",
     name: "Moret Real Estate manual adapter",
     sourceName: "Moret Real Estate",
-    schedule: "Manual only",
-    cron: null,
-    timezone: "UTC",
+    schedule: "Pipeline / manual dispatch",
+    cron: "0 10 * * * (intended; cron temporarily Off)",
+    timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.moret_real_estate)",
-    workflowPath: null,
+    workflowPath: ".github/workflows/property-pipeline-labs.yml",
     pipeline: [
       "WPEstate /properties/ pagination discovery (rel=next + page/N)",
       "Prefer Dutch canonical URLs; WPML EN mirrors are aliases",
@@ -84,17 +84,17 @@ export const HARVEST_JOBS: HarvestJob[] = [
     ],
     status: "manual",
     notes:
-      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (71), offline import 66 insert / 5 update, public eligible 71, Terra-v3 initial backfill complete (71/71). Normal refresh = new/changed only. Scheduling remains disabled.",
+      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (71), public eligible 71, Terra-v3 initial backfill complete (71/71). Normal refresh = new/changed only. GitHub daily cron temporarily Off.",
   },
   {
     id: "monumentenzorg-manual",
     name: "Monumentenzorg Curaçao manual adapter",
     sourceName: "Monumentenzorg Curaçao",
-    schedule: "Manual only",
-    cron: null,
-    timezone: "UTC",
+    schedule: "Pipeline / manual dispatch",
+    cron: "0 10 * * * (intended; cron temporarily Off)",
+    timezone: "America/Curacao",
     runner: "scripts/adapters/run_monumentenzorg_curacao.py",
-    workflowPath: null,
+    workflowPath: ".github/workflows/property-pipeline-labs.yml",
     pipeline: [
       "estate_property /properties/ discovery",
       "estate_property-sitemap.xml cross-check",
@@ -104,7 +104,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     ],
     status: "manual",
     notes:
-      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (5), public eligible 2, coordinates 0/5, Terra-v3 initial backfill complete (5/5). Heritage /our_property/ out of scope. Scheduling remains disabled.",
+      "Adapter v0.2.0 activated 2026-07-20: first complete catalog (5), public eligible 2, coordinates 0/5, Terra-v3 initial backfill complete (5/5). Heritage /our_property/ out of scope. GitHub daily cron temporarily Off.",
   },
 ];
 
