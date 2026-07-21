@@ -21,14 +21,23 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+for path in (str(SRC), str(ROOT)):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(ROOT / ".env")
 
 from merkado_labs.enrichment import (  # noqa: E402
     compute_input_checksum,
     compute_legacy_input_checksum,
 )
-from merkado_labs.enrichment.jobs import listing_to_enrichment_input  # noqa: E402
+from merkado_labs.enrichment.jobs import (  # noqa: E402
+    listing_to_enrichment_input,
+    should_skip_unchanged_enrichment,
+)
 from merkado_labs.pipeline.change_hash import (  # noqa: E402
     compute_enrichment_input_hash,
 )
@@ -116,29 +125,18 @@ def main() -> int:
             row["source_key"] = source_key
             if not row.get("public_eligible"):
                 continue
+            # Selection parity: do not hydrate map names here. Pipeline billable
+            # selection also skips hydrate so checksums stay comparable.
             enrichment_input = listing_to_enrichment_input(row)
             semantic = compute_input_checksum(enrichment_input)
             legacy = compute_legacy_input_checksum(enrichment_input)
             contract = compute_enrichment_input_hash(row)
-            priors = (
-                client.table("ai_enrichment_proposals")
-                .select("id,input_checksum,prompt_version,schema_version,status")
-                .eq("property_listing_id", row["id"])
-                .eq("model", "gpt-5.6-terra")
-                .in_("status", ["succeeded", "needs_review", "skipped_unchanged"])
-                .execute()
-                .data
-                or []
+            skip = should_skip_unchanged_enrichment(
+                client, row=row, model="gpt-5.6-terra"
             )
-            prior_checksums = {
-                str(item.get("input_checksum") or "")
-                for item in priors
-                if item.get("input_checksum")
-            }
-            matches = semantic in prior_checksums or legacy in prior_checksums
             needs_input = row.get("enrichment_last_input_checksum") != semantic
             needs_change = row.get("enrichment_last_change_checksum") != contract
-            if matches and (needs_input or needs_change):
+            if skip and (needs_input or needs_change):
                 repaired += 1
                 report["repaired"].append(  # type: ignore[union-attr]
                     {
@@ -147,8 +145,10 @@ def main() -> int:
                         "listing_id": row["id"],
                         "old_input": row.get("enrichment_last_input_checksum"),
                         "new_input": semantic,
+                        "legacy_input": legacy,
                         "old_change": row.get("enrichment_last_change_checksum"),
                         "new_change": contract,
+                        "classification": "zero_cost_hash_repair",
                     }
                 )
                 if args.apply:
@@ -158,15 +158,15 @@ def main() -> int:
                             "enrichment_last_change_checksum": contract,
                         }
                     ).eq("id", row["id"]).execute()
-            elif not matches:
+            elif not skip:
                 billable += 1
                 report["billable_remaining"].append(  # type: ignore[union-attr]
                     {
                         "source_key": source_key,
                         "external_id": row.get("external_id"),
                         "listing_id": row["id"],
-                        "has_prior_terra": bool(priors),
                         "public_eligible": True,
+                        "enrichment_status": row.get("enrichment_status"),
                     }
                 )
         report["counts"][source_key] = {  # type: ignore[index]
