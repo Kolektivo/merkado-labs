@@ -7,9 +7,10 @@ from zoneinfo import ZoneInfo
 
 from merkado_labs.pipeline.sources import CURACAO_TZ, DAILY_CRON_UTC
 
-# Matches GitHub Actions: schedule temporarily disabled pending supervised
-# post-hash-repair verification. Intended cron remains DAILY_CRON_UTC.
-AUTOMATIC_REFRESH_ENABLED = False
+# Labs daily automation enabled after supervised + idempotent gates passed
+# (2026-07-21). Scheduled execution begins only when the workflow reaches the
+# default branch.
+AUTOMATIC_REFRESH_ENABLED = True
 SCHEDULE_CRON_UTC = DAILY_CRON_UTC  # 10:00 UTC == 06:00 America/Curacao
 
 

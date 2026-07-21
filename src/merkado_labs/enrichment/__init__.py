@@ -665,13 +665,74 @@ def _legacy_checksum_content(enrichment_input: EnrichmentInput) -> dict[str, Any
     return content
 
 
+# Money fields stay in the model payload (protected_known_fields) for context
+# but must not alone invalidate checksums / rebill copy.
+_CHECKSUM_EXCLUDED_PROTECTED_KEYS = frozenset(
+    {
+        "original_price",
+        "original_currency",
+        "latitude",
+        "longitude",
+    }
+)
+
+
 def semantic_checksum_content(enrichment_input: EnrichmentInput) -> dict[str, Any]:
     """Listing content that should trigger paid AI when it changes.
 
     Excludes operational parser/import fields (coordinate presence alone,
     geospatial assignment metadata, parser warnings). Includes effective
     neighbourhood name/provenance when map/AI fills a location gap so a
-    genuine location-tier change still reruns AI.
+    genuine location-tier change still reruns AI. Asking currency/price and
+    coordinates in ``protected_known_fields`` are excluded so currency-only /
+    coordinate-only updates do not rebill copy.
+    """
+
+    payload = build_enrichment_input_payload(enrichment_input)
+    content = {
+        key: value
+        for key, value in payload.items()
+        if key
+        not in {
+            "prompt_version",
+            "schema_version",
+            *_CHECKSUM_EXCLUDED_TOP_LEVEL,
+            "effective_neighbourhood",
+        }
+    }
+    det = content.get("deterministic_fields")
+    if isinstance(det, dict):
+        content["deterministic_fields"] = {
+            key: value
+            for key, value in det.items()
+            if key not in _CHECKSUM_EXCLUDED_DET_KEYS
+            and key != "effective_neighbourhood"
+        }
+    protected = content.get("protected_known_fields")
+    if isinstance(protected, dict):
+        content["protected_known_fields"] = {
+            key: value
+            for key, value in protected.items()
+            if key not in _CHECKSUM_EXCLUDED_PROTECTED_KEYS
+        }
+    eff = (enrichment_input.deterministic_fields or {}).get("effective_neighbourhood")
+    if isinstance(eff, dict):
+        provenance = str(eff.get("provenance") or "")
+        # Source-tier effective neighbourhood is already covered by
+        # source_neighbourhood_text; only map/AI gap-fill is additive.
+        if provenance in {"map", "ai_extracted"} and eff.get("name"):
+            content["effective_neighbourhood"] = {
+                "name": eff.get("name"),
+                "provenance": provenance,
+            }
+    return content
+
+
+def compute_prior_compatible_input_checksum(enrichment_input: EnrichmentInput) -> str:
+    """Checksum matching pre-fix semantic content (money still in protected fields).
+
+    Used only as an alternate skip key so unchanged listings enriched before
+    money was excluded from the semantic checksum remain zero-cost.
     """
 
     payload = build_enrichment_input_payload(enrichment_input)
@@ -697,14 +758,13 @@ def semantic_checksum_content(enrichment_input: EnrichmentInput) -> dict[str, An
     eff = (enrichment_input.deterministic_fields or {}).get("effective_neighbourhood")
     if isinstance(eff, dict):
         provenance = str(eff.get("provenance") or "")
-        # Source-tier effective neighbourhood is already covered by
-        # source_neighbourhood_text; only map/AI gap-fill is additive.
         if provenance in {"map", "ai_extracted"} and eff.get("name"):
             content["effective_neighbourhood"] = {
                 "name": eff.get("name"),
                 "provenance": provenance,
             }
-    return content
+    canonical = json.dumps(content, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def compute_legacy_input_checksum(enrichment_input: EnrichmentInput) -> str:

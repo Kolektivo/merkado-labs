@@ -6,10 +6,10 @@
 **Labs automation foundation:** the four Ready property sources share a Labs-only
 orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
 `run_property_pipeline.py` / `run_property_pipeline_worker.py` and GHA
-`property-pipeline-labs.yml`. **Automatic daily cron remains Off**
-(`AUTOMATIC_REFRESH_ENABLED = false`) until activation gates pass (post-hash-repair
-supervised verification and related readiness checks); intended schedule remains
-`0 10 * * *` UTC = 06:00 America/Curacao. Manual/`workflow_dispatch` and dashboard
+`property-pipeline-labs.yml`. **Automatic daily cron is On**
+(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
+gates; schedule `0 10 * * *` UTC = 06:00 America/Curacao begins only when this
+workflow reaches the default branch. Manual/`workflow_dispatch` and dashboard
 Data Operations dispatch remain available. Sotheby's remains blocked and excluded.
 This does not change production or deploy anything.
 
@@ -54,15 +54,16 @@ The isolated Labs project currently has:
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
   **220**; Labs DB may show **222** — operational drift; adapter **v0.4.1**;
   **199/220** coordinates; Terra initial backfill complete; pipeline ready /
-  cron Off / dispatch available; normal Refresh & enrich = new/changed only);
-- Keller Williams: Labs inventory **104** listings (offline import artifact still
-  gates at **84** in import preview). Crawl-Delay 20 sequential. Earlier
+  cron On / dispatch available; normal Refresh & enrich = new/changed only);
+- Keller Williams: Labs inventory **104** listings; live complete catalogs
+  discover ~**102** (offline import preview still gates the historical **84**
+  artifact only — not a scheduled input). Crawl-Delay 20 sequential. Earlier
   bounded/partial adapter runs had falsely marked 35 KW listings `removed` on
   2026-07-17; restored from last valid pre-absence status without deleting
-  immutable events. Pipeline ready / cron Off / dispatch available.
+  immutable events. Pipeline ready / cron On / dispatch available.
 - Moret Real Estate adapter **v0.2.0**: **71** listings; coordinates 71/71;
-  Terra coverage complete; pipeline ready / cron Off / dispatch available;
-  Refresh & enrich = new/changed only;
+  Terra coverage complete; pipeline ready / cron On / dispatch available;
+  Refresh & enrich = new/changed only; live Dutch `/properties/` catalog;
 - AI enrichment **v5 / policy v5** is current in Labs across KW, RE/MAX, Moret,
   and Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
   `listing_enrichment_v5` / `listing_enrichment_schema_v5` /
@@ -97,12 +98,17 @@ The isolated Labs project currently has:
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
 after a verified rollback export. Monumentenzorg adapter **v0.2.0** is Ready
-(5 imported, coordinates 0/5; pipeline ready / cron Off / dispatch available).
-Live Labs inventory (2026-07-21): KW **104**, Remax **222**, Moret **71**,
-Monumentenzorg **5**; `public_property_listings` **285** (KW **88** / Remax
-**124** / Moret **71** / Monumentenzorg **2**). Next active source task:
-**Sotheby's** remains access-route **BLOCKED** after 2026-07-20 recon
-(not Ready; excluded from Ready pipelines; official feed/partner API required).
+(5 imported, coordinates 0/5; pipeline ready / cron On / dispatch available).
+Live Labs inventory (post supervised automation gates 2026-07-21): KW **104**,
+Remax **222** (live complete discover **220**; two IDs removed via two-absence
+rule), Moret **71**, Monumentenzorg **5**; `public_property_listings` **286**
+(KW **88** / Remax **125** / Moret **71** / Monumentenzorg **2**) with EN/NL
+About-this-property on **283** (3 newly public Remax deferred under the 25/day
+AI cap). Supervised run `e34eb779-…` spent ~USD **0.96** on **25** Remax
+new/changed; idempotent rerun spent **USD 0** (budget-deferred remainder **71**).
+Next active source task: **Sotheby's** remains access-route **BLOCKED** after
+2026-07-20 recon (not Ready; excluded from Ready pipelines; official
+feed/partner API required).
 
 ## 3. Current property MVP direction `[WIP]`
 

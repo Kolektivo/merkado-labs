@@ -23,7 +23,9 @@ def evaluate_catalog_anomaly(
     prior_count: int,
     discovered_count: int,
     *,
-    decrease_threshold: float = 0.20,
+    # 15% catches the obsolete KW 84-vs-~104 stale-cache false complete;
+    # still allows small day-to-day listing churn.
+    decrease_threshold: float = 0.15,
     increase_threshold: float = 0.50,
 ) -> CatalogAnomaly:
     """Flag material catalog changes before absence lifecycle processing."""

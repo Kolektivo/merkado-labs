@@ -27,6 +27,7 @@ from merkado_labs.pipeline.readiness import LABS_PROJECT_REF
 from merkado_labs.pipeline.sources import CACHE_DIRS, ordered_ready_keys
 from merkado_labs.pipeline.store import (
     append_event,
+    claim_started_at_for_run,
     enqueue_pipeline_run,
     update_stage,
 )
@@ -60,11 +61,12 @@ def _claim_run(client: Any, run: dict[str, Any], requested_by: str) -> dict[str,
     if run.get("status") != "queued":
         raise RuntimeError(f"Pipeline run is not queued: {run.get('status')}")
     owner = f"{socket.gethostname()}:{requested_by}"
+    claim_now = _now()
     payload = {
         "status": "running",
         "locked_by": owner,
-        "locked_at": _now(),
-        "started_at": run.get("started_at") or _now(),
+        "locked_at": claim_now,
+        "started_at": claim_started_at_for_run(run, now=claim_now),
     }
     if os.getenv("GITHUB_RUN_ID"):
         payload.update(
@@ -448,6 +450,7 @@ def run_property_pipeline(
                         run=run,
                         source_key=source_key,
                         execute_live=not is_dry_run,
+                        listing_ids=billable,
                     )
                     if decision.reason and str(decision.reason).startswith(
                         "partial_budget:"

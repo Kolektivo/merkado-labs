@@ -922,6 +922,9 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                 url = first_url if page == 1 else page_template.format(page=page)
                 robots = self.evaluate_robots(url)
                 if robots.can_fetch is not True:
+                    # Fail closed: mid-pagination robots/fetch failures must not
+                    # advertise a complete catalog (would enable false absences).
+                    truncated = True
                     index_evidence.append(
                         {"url": url, "error": "robots_disallow", "section": section}
                     )
@@ -936,6 +939,7 @@ class RemaxCuracaoAdapter(DirectSourceAdapter):
                         use_cache=use_cache,
                     )
                 except FetchError as error:
+                    truncated = True
                     index_evidence.append(
                         {"url": url, "error": str(error), "section": section, "page": page}
                     )

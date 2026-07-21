@@ -21,6 +21,7 @@ from merkado_labs.enrichment import (
     EnrichmentResult,
     compute_input_checksum,
     compute_legacy_input_checksum,
+    compute_prior_compatible_input_checksum,
     enrich_listing,
     has_complete_english_presentation,
     requires_english_presentation_migration,
@@ -247,6 +248,9 @@ def should_skip_unchanged_enrichment(
     enrichment_input = listing_to_enrichment_input(row)
     checksum = compute_input_checksum(enrichment_input)
     legacy = compute_legacy_input_checksum(enrichment_input)
+    # Pre-fix semantic checksum (money still inside protected_known_fields).
+    prior_compatible = compute_prior_compatible_input_checksum(enrichment_input)
+    skip_alternates = [legacy, prior_compatible]
 
     # Coordinate/currency/operational-only deltas are zero-cost only when a
     # complete English presentation already exists. Incomplete / pre-v5
@@ -259,7 +263,7 @@ def should_skip_unchanged_enrichment(
             input_checksum=checksum,
             prompt_version=prompt_version,
             schema_version=schema_version,
-            alternate_checksums=[legacy],
+            alternate_checksums=skip_alternates,
             match_any_prompt_schema=True,
         )
         if ops_match is None:
@@ -280,7 +284,7 @@ def should_skip_unchanged_enrichment(
         input_checksum=checksum,
         prompt_version=prompt_version,
         schema_version=schema_version,
-        alternate_checksums=[legacy],
+        alternate_checksums=skip_alternates,
     )
     if current_match is not None:
         proposal = current_match.get("proposal")
@@ -297,7 +301,7 @@ def should_skip_unchanged_enrichment(
         input_checksum=checksum,
         prompt_version=prompt_version,
         schema_version=schema_version,
-        alternate_checksums=[legacy],
+        alternate_checksums=skip_alternates,
         match_any_prompt_schema=True,
     )
     if any_match is not None:

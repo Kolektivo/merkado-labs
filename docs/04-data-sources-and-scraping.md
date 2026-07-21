@@ -5,7 +5,9 @@
 ## Automation foundation (Labs only)
 
 **Automatic refresh is Off** — GitHub daily cron remains disabled
-(`AUTOMATIC_REFRESH_ENABLED = false` in Python + TypeScript) until activation
+(`AUTOMATIC_REFRESH_ENABLED = true` in Python + TypeScript) after 2026-07-21
+supervised gates; schedule begins when the workflow reaches the default branch.
+Previously Off until activation
 gates pass (post-hash-repair supervised verification and related readiness).
 Intended cron remains `0 10 * * *` UTC = 06:00 America/Curacao via
 `property-pipeline-labs.yml` `schedule`. Manual/`workflow_dispatch` and

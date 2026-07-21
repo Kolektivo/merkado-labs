@@ -17,9 +17,9 @@ This folder holds the working context for Merkado Labs property work.
 | Labs property schema + RLS | [LABS] Built; AI tables locked from anon; public-effective view applied |
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
-| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash implemented; GHA `workflow_dispatch` available; **daily cron still Off** until activation gates pass (`AUTOMATIC_REFRESH_ENABLED = false`) |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**279** `public_property_listings`); English-only public product; stable URLs `/browse/{uuid}` |
-| English presentation contract | [LABS] v5 applied: **289** migrated (exact ~USD **7.79**); public **285** with English `display_title`/`display_summary`/`display_description`; post-run skip **0** billable; cron still Off — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
+| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 10 * * *` UTC + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates — begins on default branch only |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (~**286** `public_property_listings`); English default + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
+| English presentation contract | [LABS] v5 applied: **289** migrated (~USD **7.83**); Dutch backfill **285** (~USD **2.42**); unchanged bilingual hashes skip at zero cost — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
 | RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift); NAF cookie-session for official XCG alts |
 | Moret adapter | [LABS] v0.2.0 Ready; 71 catalog |

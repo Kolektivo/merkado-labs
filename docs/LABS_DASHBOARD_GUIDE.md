@@ -81,45 +81,39 @@ remain preserved. The preview remains Labs-only and is not live on merkado.cw.
   are present. Still no production Supabase/Vercel access and no deploy from
   this surface.
 - **Settings** — safe configuration health, admin session, **Automatic refresh
-  Off**, **daily cron still Off** until activation gates pass (post-hash-repair
-  and related readiness; intended `0 10 * * *` UTC = 06:00 Curaçao), and
-  environment boundaries.
+  On**, daily cron `0 10 * * *` UTC = 06:00 Curaçao (begins when the Labs
+  workflow reaches the default branch), and environment boundaries.
 - **Browse** — under Explore / **Public preview** (Passport-style detail). Not
   only nested under Prototypes.
 - **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
   These are explicitly experimental.
 
 Data Operations can enqueue and dispatch the Labs-only property workflow when
-admin + credentials are configured. **Automatic refresh is Off**: GitHub daily
-cron remains disabled (`AUTOMATIC_REFRESH_ENABLED = false`) until activation
-gates pass. Manual Run now still uses `workflow_dispatch` when server-only
-`GITHUB_REPOSITORY` and a dedicated fine-grained `GITHUB_TOKEN` are set. The
-workflow enforces USD 2 daily / USD 25 monthly / 25-listing AI limits, and
-excludes blocked Sotheby's. One-time English presentation migration
-(`scripts/migrate_english_presentation.py`, caps USD 15 / 320 calls) **applied**
-on Labs for **289** listings (~USD 7.83); public Browse shows English
-`display_*` fields. Cron remains Off until supervised pipeline activation gates
-pass.
+admin + credentials are configured. **Automatic refresh is On**
+(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
+gates; GHA schedule `0 10 * * *` UTC begins only on the default branch. Manual
+Run still uses `workflow_dispatch` when server-only `GITHUB_REPOSITORY` and a
+dedicated fine-grained `GITHUB_TOKEN` are set. The workflow enforces USD 2
+daily / USD 25 monthly / 25-listing AI limits, and excludes blocked Sotheby's.
+One-time English presentation migration **applied** for **289** listings
+(~USD 7.83); Dutch description backfill **applied** for **285** (~USD 2.42);
+unchanged bilingual hashes skip at zero cost.
 
 ## Understand source runs
 
 `success` is meaningful only for a complete catalog. Bounded, truncated, or
 partially failed runs are `partial` and must never mark absent listings missing
-or removed. Manual dispatch shares the Labs worker path; daily schedule remains
-Off until activation gates pass.
+or removed. Manual dispatch and daily schedule share the Labs orchestrator path.
 
 Current maturity:
 
-- RE/MAX: Ready adapter v0.4.1; catalog contract 220; Terra coverage complete;
-  pipeline ready / cron Off / dispatch available; Refresh & enrich bills
-  new/changed only.
-- Keller Williams: Ready adapter v0.3.1; Labs inventory 104; marketing
-  non-listing URLs excluded; Terra v5 / policy v5; pipeline ready / cron Off /
-  dispatch available.
-- Moret: Ready (adapter v0.2.0; catalog 71; pipeline ready / cron Off /
-  dispatch available).
-- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; pipeline ready / cron Off /
-  dispatch available).
+- RE/MAX: Ready adapter v0.4.1; catalog contract 220 (Labs may show 222; live
+  discover ~220); Terra coverage complete; pipeline ready / cron On; Refresh &
+  enrich bills new/changed only.
+- Keller Williams: Ready adapter v0.3.1; Labs inventory 104; live discover ~102;
+  marketing non-listing URLs excluded; Terra v5 / policy v5; cron On.
+- Moret: Ready (adapter v0.2.0; live Dutch catalog 71; cron On).
+- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; cron On).
 - Sotheby's: Access route BLOCKED (2026-07-20 recon — affiliate TLS broken;
   network HTTP 202 WAF; app.sir.com office shell has no catalog). Official
   feed/partner API required. Not Ready; excluded from Ready pipelines.

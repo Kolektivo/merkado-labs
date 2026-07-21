@@ -587,3 +587,264 @@ def test_source_lock_stale_recovery() -> None:
         client, source_key="remax_curacao", pipeline_run_id="new"
     )
     assert client.tables["property_pipeline_source_locks"] == []
+
+
+def test_ai_stage_honors_approved_listing_ids_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Budget-approved listing_ids must hard-cap paid enrichment execution."""
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.assert_labs_project_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    client = _FakeClient()
+    run = {
+        "id": "run-ai-cap",
+        "correlation_id": "corr-ai-cap",
+        "status": "running",
+        "source_keys": ["keller_williams_curacao"],
+        "progress": {},
+    }
+    for stage in PIPELINE_STAGES:
+        client.tables["property_pipeline_source_stages"].append(
+            {
+                "pipeline_run_id": "run-ai-cap",
+                "correlation_id": "corr-ai-cap",
+                "source_key": "keller_williams_curacao",
+                "stage": stage,
+                "status": "waiting",
+            }
+        )
+    fake_rows = [
+        {
+            "id": f"listing-{i}",
+            "external_id": f"EXT{i}",
+            "title": f"Listing {i}",
+            "public_eligible": True,
+            "enrichment_status": "not_run",
+        }
+        for i in range(11)
+    ]
+    all_ids = [row["id"] for row in fake_rows]
+    approved = all_ids[:3]
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.resolve_property_source",
+        lambda _c, key: {"id": "src-kw", "source_key": key},
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._listing_rows_for_source",
+        lambda *_a, **_k: fake_rows,
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._billable_enrichment_ids",
+        lambda *_a, **_k: list(all_ids),
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._classify_billable_selection",
+        lambda *_a, **_k: {
+            "new_listings": list(approved),
+            "content_changed": [],
+            "unexpected": [],
+            "legitimate": list(approved),
+        },
+    )
+
+    def _create_job(*_a: Any, listing_ids: list[str] | None = None, **_k: Any) -> str:
+        captured["listing_ids"] = list(listing_ids or [])
+        return "job-capped"
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.create_enrichment_job",
+        _create_job,
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.process_enrichment_job",
+        lambda *_a, **_k: {
+            "results": [],
+            "token_usage": {"input_tokens": 0, "output_tokens": 0},
+        },
+    )
+    from merkado_labs.pipeline.worker import _run_ai_stage
+
+    result = _run_ai_stage(
+        client,
+        run=run,
+        source_key="keller_williams_curacao",
+        execute_live=True,
+        listing_ids=approved,
+    )
+    assert result["billable"] == 3
+    assert captured["listing_ids"] == approved
+
+
+def test_overlapping_active_run_rejected() -> None:
+    from merkado_labs.pipeline.locks import assert_no_overlapping_active_run
+
+    client = _FakeClient()
+    client.tables["property_pipeline_runs"] = [
+        {
+            "id": "run-active",
+            "status": "running",
+            "source_keys": ["remax_curacao", "moret_real_estate"],
+        }
+    ]
+    with pytest.raises(RuntimeError, match="Active pipeline run"):
+        assert_no_overlapping_active_run(
+            client, ["remax_curacao", "keller_williams_curacao"]
+        )
+
+
+def test_claim_started_at_clamps_local_clock_skew() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from merkado_labs.pipeline.store import claim_started_at_for_run
+
+    created = datetime(2026, 7, 21, 17, 29, 4, tzinfo=UTC)
+    lagging = created - timedelta(milliseconds=700)
+    assert (
+        claim_started_at_for_run(
+            {"created_at": created.isoformat()},
+            now=lagging.isoformat(),
+        )
+        == created.isoformat()
+    )
+    later = created + timedelta(seconds=1)
+    assert (
+        claim_started_at_for_run(
+            {"created_at": created.isoformat()},
+            now=later.isoformat(),
+        )
+        == later.isoformat()
+    )
+
+
+def test_orchestrator_isolates_source_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One source raising must not block the remaining Ready sources."""
+
+    from merkado_labs.pipeline import orchestrator as orch
+    from merkado_labs.pipeline.orchestrator import run_property_pipeline
+    from merkado_labs.scrapers.contracts import SourceRunOutcome, SourceRunRecord
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.store.assert_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.assert_labs_project_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._run_preflight_stage",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(orch, "assert_no_overlapping_active_run", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        orch,
+        "acquire_source_lock",
+        lambda *_a, **_k: True,
+    )
+    monkeypatch.setattr(orch, "release_source_lock", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        orch,
+        "load_budget_usage",
+        lambda *_a, **_k: type(
+            "U",
+            (),
+            {
+                "daily_cost_usd": 0,
+                "monthly_cost_usd": 0,
+                "daily_listings_count": 0,
+                "monthly_listings_count": 0,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        orch,
+        "decide_ai_budget",
+        lambda **_k: type(
+            "D",
+            (),
+            {
+                "allowed": True,
+                "approved_listings": 0,
+                "reason": None,
+                "status": "up_to_date",
+            },
+        )(),
+    )
+
+    client = _FakeClient()
+
+    def fake_scrape(source_key: str, *_a: Any, **_k: Any):
+        if source_key == "moret_real_estate":
+            raise TimeoutError("simulated source timeout")
+        started = datetime(2026, 7, 21, tzinfo=UTC)
+        record = SourceRunRecord(
+            source_key=source_key,
+            adapter_name=source_key,
+            adapter_version="0.0.0",
+            started_at=started,
+            completed_at=started,
+            outcome=SourceRunOutcome.SUCCESS,
+            discovered_count=0,
+            parsed_count=0,
+            excluded_no_price_count=0,
+            warning_count=0,
+            error_count=0,
+            snapshot_checksum="a" * 64,
+            notes="fixture",
+            metadata={"complete_catalog": True},
+        )
+        return record, [], {"request_metrics": {}}
+
+    monkeypatch.setattr(orch, "scrape_source", fake_scrape)
+    monkeypatch.setattr(
+        orch,
+        "import_snapshots",
+        lambda *_a, **_k: type(
+            "I",
+            (),
+            {
+                "imported_count": 0,
+                "updated_count": 0,
+                "dry_run": True,
+                "source_run_id": "src-run-1",
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._listing_rows_for_source",
+        lambda *_a, **_k: [],
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._billable_enrichment_ids",
+        lambda *_a, **_k: [],
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._run_ai_stage",
+        lambda *_a, **_k: {"status": "up_to_date", "billable": 0},
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.resolve_property_source",
+        lambda _c, key: {"id": f"src-{key}", "source_key": key},
+    )
+
+    result = run_property_pipeline(
+        client,
+        trigger_type="dry_run",
+        source_keys=["monumentenzorg_curacao", "moret_real_estate"],
+        dry_run=True,
+        execute_live=True,
+        requested_by="test",
+    )
+    assert result["status"] == "completed_with_errors"
+    summary = result.get("run_summary") or {}
+    sources = summary.get("sources") or {}
+    assert sources["moret_real_estate"]["status"] == "failed"
+    assert sources["monumentenzorg_curacao"]["status"] == "completed"

@@ -24,6 +24,31 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def claim_started_at_for_run(run: dict[str, Any], *, now: str | None = None) -> str:
+    """Pick started_at that satisfies CHECK (started_at >= created_at).
+
+    Local worker clocks can lag the database ``created_at`` default by a few
+    hundred milliseconds; clamping prevents claim updates from failing.
+    """
+
+    if run.get("started_at"):
+        return str(run["started_at"])
+    stamp = now or _now()
+    created = run.get("created_at")
+    if not created:
+        return stamp
+    try:
+        created_dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+        now_dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return stamp
+    if created_dt.tzinfo is None:
+        created_dt = created_dt.replace(tzinfo=UTC)
+    if now_dt.tzinfo is None:
+        now_dt = now_dt.replace(tzinfo=UTC)
+    return str(created) if now_dt < created_dt else stamp
+
+
 def append_event(
     client: Any,
     *,

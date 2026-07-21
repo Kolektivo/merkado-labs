@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 from merkado_labs.normalization.currency import FixedEurRateProvider, to_benchmark_xcg
 from merkado_labs.normalization.eligibility import evaluate_public_eligibility
 from merkado_labs.scrapers.adapters.remax_curacao import (
@@ -303,3 +305,63 @@ def test_sale_and_rent_external_ids_do_not_collide() -> None:
     assert external_id_from_url(sale) == "hs2957"
     assert external_id_from_url(rent) == "hr2957"
     assert external_id_from_url(sale) != external_id_from_url(rent)
+
+
+def test_discover_index_fetch_error_marks_incomplete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Index FetchError mid-pagination must fail closed (no complete_catalog)."""
+
+    from merkado_labs.scrapers.http_cache import CachedFetch, FetchError
+    from merkado_labs.scrapers.robots import RobotsDecision
+
+    adapter = RemaxCuracaoAdapter()
+    monkeypatch.setattr(
+        adapter,
+        "evaluate_robots",
+        lambda _url: RobotsDecision(
+            domain="www.realestate-curacao.com",
+            robots_url="https://www.realestate-curacao.com/robots.txt",
+            fetch_status="ok",
+            can_fetch=True,
+            crawl_delay_seconds=None,
+            notes="test",
+        ),
+    )
+
+    calls = {"n": 0}
+
+    def fake_fetch(url: str, **_kwargs: object) -> CachedFetch:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            body = INDEX_PAGE_SALE.encode("utf-8")
+            return CachedFetch(
+                url=url,
+                status=200,
+                content_type="text/html",
+                body=body,
+                sha256=hashlib.sha256(body).hexdigest(),
+                elapsed_ms=1.0,
+                from_cache=False,
+                cache_path=None,
+            )
+        raise FetchError("simulated index timeout")
+
+    monkeypatch.setattr(
+        "merkado_labs.scrapers.adapters.remax_curacao.fetch_url",
+        fake_fetch,
+    )
+
+    discovered, meta = adapter.discover_listing_urls(
+        cache_dir=tmp_path,
+        sections=("sale",),
+        honor_delay=False,
+        use_cache=False,
+    )
+    assert len(discovered) >= 1
+    assert meta["truncated"] is True
+    assert meta["complete_catalog"] is False
+    assert any(
+        isinstance(row.get("error"), str) and "timeout" in row["error"]
+        for row in meta["index_evidence"]
+    )

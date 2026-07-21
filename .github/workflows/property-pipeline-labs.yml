@@ -1,8 +1,10 @@
 name: Property pipeline (Labs)
 
 on:
-  # Temporary: schedule disabled until post-hash-repair supervised run passes.
-  # Intended cron remains 0 10 * * * (10:00 UTC / 06:00 America/Curacao).
+  # 10:00 UTC = 06:00 America/Curacao. Begins only after this workflow reaches
+  # the default branch (Labs-only; no production / deploy / Sotheby's / CHH).
+  schedule:
+    - cron: "0 10 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:

@@ -1415,7 +1415,9 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
         html_by_url: dict[str, str] | None = None,
         detail_html_by_url: dict[str, str] | None = None,
         prior_catalog_count: int | None = None,
-        suspicious_shrink_ratio: float = 0.5,
+        # Align with pipeline anomaly (~15% decrease): discovered must stay at
+        # or above 85% of the prior Labs inventory or completeness fails closed.
+        suspicious_shrink_ratio: float = 0.85,
     ) -> tuple[SourceRunRecord, list[AdapterListingSnapshot], CatalogDiscoveryResult]:
         """Full approved-section catalog path with fail-closed completeness."""
 

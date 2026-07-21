@@ -40,7 +40,7 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     readiness,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(readiness, /GitHub daily cron temporarily Off/);
+  assert.match(readiness, /GitHub daily cron On/);
   assert.match(readiness, /listingCountExpected: 104/);
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
@@ -104,7 +104,7 @@ test("data operations page shows schedule flag and budgets", () => {
   assert.match(page, /GitHub workflow/);
   assert.match(page, /Manual Run now dispatch needs setup/);
   const schedule = source("src/lib/pipeline/schedule.ts");
-  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = false/);
+  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = true/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");

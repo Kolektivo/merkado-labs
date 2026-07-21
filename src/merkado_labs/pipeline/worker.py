@@ -69,14 +69,17 @@ def claim_next_queued_run(client: Any, *, worker_id: str | None = None) -> dict[
     if not queued:
         return None
     run = queued[0]
+    from merkado_labs.pipeline.store import claim_started_at_for_run
+
+    claim_now = _now()
     claimed = (
         client.table("property_pipeline_runs")
         .update(
             {
                 "status": "running",
                 "locked_by": wid,
-                "locked_at": _now(),
-                "started_at": _now(),
+                "locked_at": claim_now,
+                "started_at": claim_started_at_for_run(run, now=claim_now),
                 "progress": {
                     **(run.get("progress") or {}),
                     "message": "Worker claimed run",
@@ -122,8 +125,11 @@ def _listing_rows_for_source(client: Any, source_key: str) -> list[dict[str, Any
 
     A narrower select previously omitted ``source_url`` / nested source_key and
     falsely invalidated all KW checksums (84 billable). Keep this in lockstep
-    with ``process_enrichment_job`` preview selects.
+    with ``process_enrichment_job`` preview selects, including map-neighbourhood
+    name hydration (required for checksum parity with Terra proposals).
     """
+
+    from merkado_labs.enrichment.jobs import hydrate_map_neighbourhood_names
 
     source = resolve_property_source(client, source_key)
     rows = (
@@ -152,6 +158,9 @@ def _listing_rows_for_source(client: Any, source_key: str) -> list[dict[str, Any
             row["source_key"] = ps["source_key"]
         else:
             row["source_key"] = source_key
+    rows = hydrate_map_neighbourhood_names(client, rows)
+    for row in rows:
+        row.setdefault("source_key", source_key)
     return rows
 
 
@@ -189,6 +198,7 @@ def _classify_billable_selection(
     from merkado_labs.enrichment import (
         compute_input_checksum,
         compute_legacy_input_checksum,
+        compute_prior_compatible_input_checksum,
     )
     from merkado_labs.enrichment.jobs import listing_to_enrichment_input
 
@@ -204,6 +214,7 @@ def _classify_billable_selection(
         enrichment_input = listing_to_enrichment_input(row)
         checksum = compute_input_checksum(enrichment_input)
         legacy = compute_legacy_input_checksum(enrichment_input)
+        prior_compatible = compute_prior_compatible_input_checksum(enrichment_input)
         priors = (
             client.table("ai_enrichment_proposals")
             .select("id,input_checksum,status")
@@ -220,7 +231,11 @@ def _classify_billable_selection(
         prior_checksums = {
             str(item.get("input_checksum") or "") for item in priors if item.get("input_checksum")
         }
-        if checksum in prior_checksums or legacy in prior_checksums:
+        if (
+            checksum in prior_checksums
+            or legacy in prior_checksums
+            or prior_compatible in prior_checksums
+        ):
             unexpected.append(lid)
         else:
             content_changed.append(lid)
@@ -623,6 +638,7 @@ def _run_ai_stage(
     source_key: str,
     execute_live: bool,
     model: str = "gpt-5.6-terra",
+    listing_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     update_stage(
         client,
@@ -636,7 +652,13 @@ def _run_ai_stage(
     rows = _listing_rows_for_source(client, source_key)
     for row in rows:
         row["source_key"] = source_key
-    billable = _billable_enrichment_ids(client, rows, model=model)
+    computed = _billable_enrichment_ids(client, rows, model=model)
+    if listing_ids is not None:
+        # Preserve caller order (budget-approved prefix) and re-check billable.
+        computed_set = set(computed)
+        billable = [lid for lid in listing_ids if lid in computed_set]
+    else:
+        billable = computed
     skipped = len(rows) - len(billable)
 
     # Seed / update item rows for ops UI (not hundreds of progress bars by default).
