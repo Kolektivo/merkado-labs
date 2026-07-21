@@ -40,7 +40,7 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     readiness,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(readiness, /workflow_dispatch only/);
+  assert.match(readiness, /Daily automation enabled at 06:00 Curaçao/);
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
   assert.match(readiness, /access_route_under_investigation/);
@@ -90,16 +90,18 @@ test("confirmation separates changed-listing AI from initial backfill", () => {
   );
 });
 
-test("data operations page shows schedule-off state and budgets", () => {
+test("data operations page shows schedule-on state and budgets", () => {
   const page = source("src/app/data-operations/page.tsx");
   assert.match(page, /Data operations/);
   assert.match(page, /Refresh & enrich|PipelineRefreshControls/);
   assert.match(page, /PipelineRunProgress/);
   assert.match(page, /Automatic refresh/);
-  assert.match(page, /workflow_dispatch only/);
+  assert.match(page, /AUTOMATIC_REFRESH_ENABLED/);
+  assert.match(page, /Daily cron/);
   assert.match(page, /06:00 Curaçao/);
   assert.match(page, /USD 2 \/ day/);
   assert.match(page, /GitHub workflow/);
+  assert.match(page, /Manual Run now dispatch needs setup/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");

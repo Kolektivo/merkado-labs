@@ -23,6 +23,8 @@ export default async function SettingsPage() {
     ["Server credentials", health.serviceCredentialsConfigured],
     ["AI configuration", health.openAiConfigured],
     ["Admin access", health.adminAuthConfigured],
+    ["GitHub repository target", health.githubRepositoryConfigured],
+    ["Manual Run now dispatch", health.githubDispatchConfigured],
   ] as const;
   const model = process.env.OPENAI_ENRICHMENT_MODEL ?? "gpt-5.6-terra";
 
@@ -64,13 +66,13 @@ export default async function SettingsPage() {
             {[
               [
                 "Website refreshes",
-                "Manual only",
-                "Nothing runs on a schedule.",
+                "Daily + manual",
+                "Cron at 06:00 Curaçao for the four Ready sources; Run now when dispatch credentials are set.",
               ],
               [
                 "AI enrichment",
-                "Manual only",
-                "New work starts only through an approved Data Operations run.",
+                "Daily + manual",
+                "New/changed listings only, within USD 2/day and USD 25/month.",
               ],
               [
                 "Environment",

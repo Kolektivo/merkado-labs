@@ -1,10 +1,13 @@
 name: Property pipeline (Labs)
 
 on:
+  schedule:
+    # Daily 10:00 UTC = 06:00 America/Curacao for the four Ready sources.
+    - cron: "0 10 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:
-        description: Pipeline trigger provenance (scheduled reserved for later cron PR)
+        description: Pipeline trigger provenance (scheduled vs manual/local/dry_run)
         required: true
         type: choice
         options:
@@ -82,16 +85,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          trigger="${{ inputs.trigger_type }}"
-          dry="${{ inputs.dry_run }}"
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            trigger="scheduled"
+            dry="false"
+          else
+            trigger="${{ inputs.trigger_type }}"
+            dry="${{ inputs.dry_run }}"
+          fi
           if [[ "${dry}" == "true" ]]; then
             trigger="dry_run"
           fi
           args=(--once --execute-live --trigger-type "${trigger}")
-          if [[ -n "${{ inputs.pipeline_run_id }}" ]]; then
+          if [[ "${{ github.event_name }}" != "schedule" && -n "${{ inputs.pipeline_run_id }}" ]]; then
             args+=(--pipeline-run-id "${{ inputs.pipeline_run_id }}")
           fi
-          if [[ -n "${{ inputs.source_keys }}" ]]; then
+          if [[ "${{ github.event_name }}" != "schedule" && -n "${{ inputs.source_keys }}" ]]; then
             args+=(--source-keys "${{ inputs.source_keys }}")
           fi
           if [[ "${dry}" == "true" ]]; then
