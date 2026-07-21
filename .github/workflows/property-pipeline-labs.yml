@@ -1,9 +1,8 @@
 name: Property pipeline (Labs)
 
 on:
-  schedule:
-    # Daily 10:00 UTC = 06:00 America/Curacao for the four Ready sources.
-    - cron: "0 10 * * *"
+  # Temporary: schedule disabled until post-hash-repair supervised run passes.
+  # Intended cron remains 0 10 * * * (10:00 UTC / 06:00 America/Curacao).
   workflow_dispatch:
     inputs:
       trigger_type:
