@@ -67,7 +67,7 @@ export default async function SettingsPage() {
               [
                 "Website refreshes",
                 "Daily automation configured",
-                "Automatic refresh On. Schedule 06:00 Curaçao / 10:00 UTC begins once the workflow is on the default branch. Run now when dispatch credentials are set.",
+                "Automatic refresh On. Schedule 00:00 Curaçao / 04:00 UTC (06:00 Amsterdam during CEST, 05:00 during CET) begins once the workflow is on the default branch. Run now when dispatch credentials are set.",
               ],
               [
                 "AI enrichment",

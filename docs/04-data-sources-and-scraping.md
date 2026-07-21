@@ -6,7 +6,8 @@
 
 **Automatic refresh is armed On** (`AUTOMATIC_REFRESH_ENABLED = true` in Python
 + TypeScript) after 2026-07-21 supervised + idempotent gates. GitHub Actions
-schedule `0 10 * * *` UTC = 06:00 America/Curacao in
+schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during CEST /
+05:00 Amsterdam during CET) in
 `property-pipeline-labs.yml` begins only when that workflow reaches the
 **default branch**. Manual/`workflow_dispatch` and dashboard Data Operations
 dispatch remain available for the four Ready sources. Entrypoint:

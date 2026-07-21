@@ -2,7 +2,7 @@ import type { HarvestJob } from "@/lib/domain/types";
 
 /**
  * Direct-source adapter jobs for merkado-labs.
- * Pipeline + workflow_dispatch + daily cron On (0 10 * * * UTC) after gates;
+ * Pipeline + workflow_dispatch + daily cron On (0 4 * * * UTC) after gates;
  * scheduled execution begins when the workflow reaches the default branch.
  * Keep in sync with docs/04 and src/merkado_labs/scrapers/.
  */
@@ -12,7 +12,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     name: "RE/MAX Curaçao manual adapter",
     sourceName: "RE/MAX",
     schedule: "Pipeline / manual dispatch",
-    cron: "0 10 * * * UTC (06:00 America/Curacao)",
+    cron: "0 4 * * * UTC (00:00 America/Curacao)",
     timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.remax_curacao)",
     workflowPath: ".github/workflows/property-pipeline-labs.yml",
@@ -33,7 +33,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     name: "Keller Williams Curaçao manual adapter",
     sourceName: "Keller Williams Curaçao",
     schedule: "Pipeline / manual dispatch",
-    cron: "0 10 * * * UTC (06:00 America/Curacao)",
+    cron: "0 4 * * * UTC (00:00 America/Curacao)",
     timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.keller_williams_curacao)",
     workflowPath: ".github/workflows/property-pipeline-labs.yml",
@@ -72,7 +72,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     name: "Moret Real Estate manual adapter",
     sourceName: "Moret Real Estate",
     schedule: "Pipeline / manual dispatch",
-    cron: "0 10 * * * UTC (06:00 America/Curacao)",
+    cron: "0 4 * * * UTC (00:00 America/Curacao)",
     timezone: "America/Curacao",
     runner: "Local Python (merkado_labs.scrapers.adapters.moret_real_estate)",
     workflowPath: ".github/workflows/property-pipeline-labs.yml",
@@ -92,7 +92,7 @@ export const HARVEST_JOBS: HarvestJob[] = [
     name: "Monumentenzorg Curaçao manual adapter",
     sourceName: "Monumentenzorg Curaçao",
     schedule: "Pipeline / manual dispatch",
-    cron: "0 10 * * * UTC (06:00 America/Curacao)",
+    cron: "0 4 * * * UTC (00:00 America/Curacao)",
     timezone: "America/Curacao",
     runner: "scripts/adapters/run_monumentenzorg_curacao.py",
     workflowPath: ".github/workflows/property-pipeline-labs.yml",

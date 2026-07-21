@@ -99,7 +99,10 @@ test("data operations page shows schedule flag and budgets", () => {
   assert.match(page, /Automatic refresh/);
   assert.match(page, /AUTOMATIC_REFRESH_ENABLED/);
   assert.match(page, /begins on default branch/);
-  assert.match(page, /06:00 Curaçao/);
+  assert.match(page, /00:00 Curaçao/);
+  assert.match(page, /04:00 UTC/);
+  assert.match(page, /06:00 Amsterdam \(CEST\)/);
+  assert.match(page, /05:00 Amsterdam \(CET\)/);
   assert.match(page, /USD 2 \/ day/);
   assert.match(page, /GitHub workflow/);
   assert.match(page, /Manual Run now dispatch needs setup/);

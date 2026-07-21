@@ -75,8 +75,8 @@ export default async function DataOperationsPage() {
             label: "Automatic refresh",
             value: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
             helper: AUTOMATIC_REFRESH_ENABLED
-              ? `Configured · 06:00 Curaçao / 10:00 UTC · cron ${DAILY_CRON_UTC} · begins on default branch`
-              : "No scheduled runs · intended 06:00 Curaçao when re-enabled",
+              ? `Configured · 00:00 Curaçao / 04:00 UTC · 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET) · cron ${DAILY_CRON_UTC} · begins on default branch`
+              : "No scheduled runs · intended 00:00 Curaçao when re-enabled",
             tip: AUTOMATIC_REFRESH_ENABLED
               ? "Daily automation is configured On. Scheduled execution begins once the workflow is on the default branch; Run now can still dispatch manually."
               : "Automatic refresh is currently off. Only an explicit manual dispatch can start a new refresh.",

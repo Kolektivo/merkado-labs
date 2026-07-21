@@ -1,10 +1,11 @@
 name: Property pipeline (Labs)
 
 on:
-  # 10:00 UTC = 06:00 America/Curacao. Begins only after this workflow reaches
-  # the default branch (Labs-only; no production / deploy / Sotheby's / CHH).
+  # 04:00 UTC = 00:00 America/Curacao = 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET).
+  # Begins only after this workflow reaches the default branch
+  # (Labs-only; no production / deploy / Sotheby's / CHH).
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:

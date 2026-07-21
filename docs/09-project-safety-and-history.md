@@ -82,7 +82,8 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
   public view snap **~279**. Superseded by the validation outcome below.
 - **After supervised + idempotent gates:** `AUTOMATIC_REFRESH_ENABLED = true`
   (Python + TypeScript). GHA `property-pipeline-labs.yml` schedule
-  `0 10 * * *` UTC = 06:00 America/Curacao is On in the workflow file and
+  `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during CEST /
+  05:00 Amsterdam during CET) is On in the workflow file and
   **begins only when that workflow reaches the default branch**.
   Manual/`workflow_dispatch` and Data Operations dispatch available.
 - **Snapshot inventory (Labs read-only, 2026-07-21 / `d2abb557`):** total

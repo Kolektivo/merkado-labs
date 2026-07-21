@@ -1,7 +1,10 @@
 import "server-only";
 
-/** Intended daily Labs cron: 10:00 UTC = 06:00 America/Curacao. */
-export const DAILY_CRON_UTC = "0 10 * * *";
+/**
+ * Intended daily Labs cron: 04:00 UTC = 00:00 America/Curacao
+ * = 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET).
+ */
+export const DAILY_CRON_UTC = "0 4 * * *";
 /** Matches GHA: daily cron On after 2026-07-21 supervised + idempotent gates. */
 export const AUTOMATIC_REFRESH_ENABLED = true;
 
@@ -11,7 +14,7 @@ export function nextScheduledRunUtc(now = new Date()): Date {
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
-      10,
+      4,
       0,
       0,
       0,

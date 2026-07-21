@@ -150,7 +150,7 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
     schedule: AUTOMATIC_REFRESH_ENABLED ? "on" : "off",
     schedule_metadata: {
       automatic_refresh: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
-      intended_local_time: "06:00",
+      intended_local_time: "00:00",
       timezone: "America/Curacao",
       documented_cron_utc: DAILY_CRON_UTC,
       enabled: AUTOMATIC_REFRESH_ENABLED,

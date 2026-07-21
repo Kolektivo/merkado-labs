@@ -66,7 +66,7 @@ def test_preflight_lifecycle_risk_and_enabled_schedule() -> None:
     assert preflight["schedule"] == "on"
     assert preflight["schedule_metadata"]["enabled"] is True
     assert preflight["schedule_metadata"]["automatic_refresh"] == "On"
-    assert preflight["schedule_metadata"]["documented_cron_utc"] == "0 10 * * *"
+    assert preflight["schedule_metadata"]["documented_cron_utc"] == "0 4 * * *"
     assert "Missing/removed" in preflight["lifecycle_risk_summary"]
     assert preflight["import_will_occur"] is True
 

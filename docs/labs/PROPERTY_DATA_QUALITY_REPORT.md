@@ -203,7 +203,7 @@ in this report is **historical** for the pre-gate window only.
 ### Automation validation follow-on (same day / tip `d2abb557`)
 
 - Supervised + idempotent pipeline gates passed for four Ready sources
-- `AUTOMATIC_REFRESH_ENABLED = true`; GHA cron `0 10 * * *` UTC On in
+- `AUTOMATIC_REFRESH_ENABLED = true`; GHA cron `0 4 * * *` UTC On in
   workflow; **scheduled execution begins only after merge to the default branch**
 - Snapshot (Labs read-only): total inventory **402**; public view **286**;
   EN/NL About-this-property on **283**; Remax deferred enrichment remainder
@@ -231,4 +231,4 @@ in this report is **historical** for the pre-gate window only.
 5. Track bilingual `already_complete_count` / residual selected queue and Remax `budget_deferred` remainder.
 6. Spot-check RE/MAX official XCG via NAF session (hr2066 pattern) and KW inline alts.
 7. No unexpected interaction with active `property_pipeline_runs` during apply.
-8. After default-branch merge: confirm first scheduled GHA run at `0 10 * * *` UTC.
+8. After default-branch merge: confirm first scheduled GHA run at `0 4 * * *` UTC.

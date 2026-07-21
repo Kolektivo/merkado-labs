@@ -83,8 +83,9 @@ is not live on merkado.cw.
   are present. Still no production Supabase/Vercel access and no deploy from
   this surface.
 - **Settings** — safe configuration health, admin session, **Automatic refresh
-  On**, daily cron `0 10 * * *` UTC = 06:00 Curaçao (begins when the Labs
-  workflow reaches the default branch), and environment boundaries.
+  On**, daily cron `0 4 * * *` UTC = 00:00 Curaçao (06:00 Amsterdam during
+  CEST / 05:00 Amsterdam during CET; begins when the Labs workflow reaches the
+  default branch), and environment boundaries.
 - **Browse** — under Explore / **Public preview** (Passport-style detail). Not
   only nested under Prototypes.
 - **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
@@ -93,7 +94,7 @@ is not live on merkado.cw.
 Data Operations can enqueue and dispatch the Labs-only property workflow when
 admin + credentials are configured. **Automatic refresh is On**
 (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
-gates; GHA schedule `0 10 * * *` UTC begins only on the default branch. Manual
+gates; GHA schedule `0 4 * * *` UTC begins only on the default branch. Manual
 Run still uses `workflow_dispatch` when server-only `GITHUB_REPOSITORY` and a
 dedicated fine-grained `GITHUB_TOKEN` are set. The workflow enforces USD 2
 daily / USD 25 monthly / 25-listing AI limits, and excludes blocked Sotheby's.

@@ -15,7 +15,8 @@ not Ready — official affiliate feed/export or Anywhere partner API with writte
 approval required; excluded from Ready pipelines). Four Ready adapters (KW,
 RE/MAX, Moret, Monumentenzorg) share the Labs property pipeline; **daily cron is
 armed On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
-idempotent gates; GHA schedule `0 10 * * *` UTC begins only when
+idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
+(06:00 Amsterdam during CEST / 05:00 Amsterdam during CET) begins only when
 `property-pipeline-labs.yml` reaches the default branch; manual/`workflow_dispatch`
 and dashboard Data Operations dispatch remain available. AI proposals use
 exception-based **v5** policy (`enrichment_policy_v5`; high-confidence evidenced

@@ -13,7 +13,8 @@ Active work is **direct-source property ingestion** for Curaçao:
 - property pipeline automation (orchestrator/worker/locks/anomaly/budgets/
   `change_hash`); **daily cron armed On**
   (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
-  idempotent gates; GHA schedule `0 10 * * *` UTC begins only when
+  idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
+  (06:00 Amsterdam during CEST / 05:00 Amsterdam during CET) begins only when
   `property-pipeline-labs.yml` reaches the default branch;
   manual/dashboard dispatch available;
 - AI enrichment **v5 / policy v5** (`listing_enrichment_v5` /

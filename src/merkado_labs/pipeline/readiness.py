@@ -55,7 +55,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         notes=(
             "Full catalog imported and Terra-enriched (104; live discover ~102). "
             "Pipeline path ready; GitHub daily cron On after 2026-07-21 gates "
-            "(0 10 * * * UTC / 06:00 Curaçao). Manual/dashboard dispatch available."
+            "(0 4 * * * UTC / 00:00 Curaçao). Manual/dashboard dispatch available."
         ),
     ),
     "remax_curacao": SourceReadiness(
@@ -69,7 +69,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.4.1 active (catalog contract 220; coordinates 199/220; "
             "map neighbourhood 193 inferred / 6 outside polygons). "
             "Terra-v3 initial backfill complete (220/220). "
-            "Pipeline ready; GitHub daily cron On (0 10 * * * UTC). Normal Refresh & "
+            "Pipeline ready; GitHub daily cron On (0 4 * * * UTC). Normal Refresh & "
             "enrich bills new/changed only; any future full re-enrichment still "
             "requires separate approval."
         ),
@@ -81,7 +81,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "Adapter v0.4.1 deterministic import applied. "
             "Coordinate coverage 199/220; point-in-polygon 193; Terra-v3 "
             "initial backfill complete (220/220). Normal Refresh & enrich "
-            "bills new/changed only. Cron 0 10 * * * UTC enabled after 2026-07-21 gates."
+            "bills new/changed only. Cron 0 4 * * * UTC enabled after 2026-07-21 gates."
         ),
     ),
     "moret_real_estate": SourceReadiness(
@@ -94,7 +94,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
         current_issue=(
             "First complete catalog established (71). Terra-v3 initial backfill "
             "complete (71/71). Normal Refresh & enrich remains new/changed only. "
-            "Pipeline ready; GitHub daily cron On (0 10 * * * UTC)."
+            "Pipeline ready; GitHub daily cron On (0 4 * * * UTC)."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,
@@ -118,7 +118,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
             "First complete catalog established (5). Terra-v3 initial backfill "
             "complete (5/5). Coordinates 0/5 (source has none). Normal Refresh & "
             "enrich remains new/changed only. Pipeline ready; GitHub daily cron "
-            "On (0 10 * * * UTC)."
+            "On (0 4 * * * UTC)."
         ),
         primary_action="Refresh & enrich",
         blocker_kind=None,

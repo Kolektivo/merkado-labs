@@ -8,7 +8,8 @@ orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
 `run_property_pipeline.py` / `run_property_pipeline_worker.py` and GHA
 `property-pipeline-labs.yml`. **Automatic daily cron is On**
 (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
-gates; schedule `0 10 * * *` UTC = 06:00 America/Curacao begins only when this
+gates; schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during
+CEST / 05:00 Amsterdam during CET) begins only when this
 workflow reaches the default branch. Manual/`workflow_dispatch` and dashboard
 Data Operations dispatch remain available. Sotheby's remains blocked and excluded.
 This does not change production or deploy anything.
