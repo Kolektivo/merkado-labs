@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
+import { canonicalizeNeighbourhood } from "@/lib/domain/neighbourhood-aliases";
 import {
   normalizePublicAttributes,
   PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS,
@@ -167,8 +168,12 @@ export function normalizePublicListing(
   const provenance = normalizeProvenance(
     row.effective_neighbourhood_provenance,
   );
-  const neighbourhood = row.effective_neighbourhood
+  const rawNeighbourhood = row.effective_neighbourhood
     ? String(row.effective_neighbourhood).trim() || null
+    : null;
+  // Canonical display for cards/detail; DB/source evidence stays elsewhere.
+  const neighbourhood = rawNeighbourhood
+    ? canonicalizeNeighbourhood(rawNeighbourhood).canonicalDisplay
     : null;
   const provenanceLabel = row.effective_neighbourhood_provenance_label
     ? String(row.effective_neighbourhood_provenance_label)

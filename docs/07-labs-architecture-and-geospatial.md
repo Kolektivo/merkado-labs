@@ -83,11 +83,13 @@ Sotheby's is excluded.
 #### Prompt / schema / policy v4
 
 - Current combination: prompt `listing_enrichment_v4`, JSON schema
-  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4_1`
-  (deterministic Dutch/English normalization; operational UI label **Needs review**
-  for current unresolved conflicts only; historical v3/v4 rows stay in advanced audit).
-  Public Browse/Passport expose `image_urls` galleries with card/detail carousels;
-  adapters already extract full galleries into `property_listings.image_urls`.
+  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4_2`
+  (deterministic bilingual Dutch/English evidence; curated Blue Bay gated rule;
+  operational UI label **Needs review** for current unresolved conflicts only;
+  historical v3/v4 rows stay in advanced audit). Dashboard
+  `POLICY_VERSION = enrichment_policy_v4_2`. Public Browse/Passport expose
+  `image_urls` galleries with card/detail carousels; adapters already extract
+  full galleries into `property_listings.image_urls`.
 - Labs activation (2026-07-20): policy v4.1 rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
   151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
@@ -97,6 +99,10 @@ Sotheby's is excluded.
   galleries were already stored (~12.1k URLs); no lifecycle scrape or image
   binary copy was required. Live `public_property_listings` count ~**279**
   (2026-07-21).
+- Quality pass (2026-07-21): policy **v4.2** zero-cost dry-run on ~402 listings /
+  390 proposals (USD 0.00); DB apply skipped while a pipeline run was active.
+  Waterfront public allowlist migration is in-repo; apply separately. See
+  `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
 - v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds source-language display-description blocks.
@@ -165,8 +171,9 @@ token usage, AI costs, and private HTML must never appear on `/browse`.
 
 **Public attribute allowlist:** pool (+ subtype when known), furnished,
 parking, parking spaces, garage, gated community, air conditioning, garden,
-terrace, balcony, sea view, solar panels, generator, water heater, security,
-appliances, accessibility, pet suitability.
+terrace, balcony, sea view, waterfront (migration pending Labs apply as of
+2026-07-21), solar panels, generator, water heater, security, appliances,
+accessibility, pet suitability.
 
 **Effective neighbourhood priority** (one final value; never generic Curaçao):
 
@@ -250,6 +257,20 @@ specific neighbourhood.
 Implementation: `apps/labs-dashboard/src/lib/domain/effective-neighbourhood.ts`,
 mirrored in `src/merkado_labs/enrichment/neighbourhood.py` — keep both in
 sync when the priority rules change.
+
+### Canonical neighbourhood display aliases
+
+After effective resolution, **display-only** canonicalization collapses safe
+duplicate labels without merging property assets:
+
+- Blue Bay resort / marketing variants → **Blue Bay**
+- Reviewed `… Curaçao` / `… Curacao` island suffixes → base neighbourhood
+- **St. Joris** → **Sint Joris**
+- Ambiguous multi-place or uncertain forms stay **separate** (no invented merge)
+
+Python: `src/merkado_labs/enrichment/neighbourhood_canonical.py`  
+Dashboard: `apps/labs-dashboard/src/lib/domain/neighbourhood-aliases.ts`  
+Keep the alias tables in sync.
 
 ## 5. Assignment operations
 

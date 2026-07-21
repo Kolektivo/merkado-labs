@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, FlaskConical } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FlaskConical, MapPin } from "lucide-react";
 
 import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -139,14 +139,17 @@ export default async function PublicListingPage({
           />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {listing.effectiveNeighbourhood ? (
-              <span className="min-w-0 max-w-full truncate">
-                {listing.effectiveNeighbourhood}
-                {listing.effectiveNeighbourhoodProvenanceLabel ? (
-                  <span className="text-xs">
-                    {" "}
-                    · {listing.effectiveNeighbourhoodProvenanceLabel}
-                  </span>
-                ) : null}
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate">
+                <MapPin className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">
+                  {listing.effectiveNeighbourhood}
+                  {listing.effectiveNeighbourhoodProvenanceLabel ? (
+                    <span className="text-xs">
+                      {" "}
+                      · {listing.effectiveNeighbourhoodProvenanceLabel}
+                    </span>
+                  ) : null}
+                </span>
               </span>
             ) : null}
             {listing.bedrooms != null ? (

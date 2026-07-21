@@ -28,6 +28,7 @@ PUBLIC_ATTRIBUTE_ALLOWLIST: frozenset[str] = frozenset(
         "terrace",
         "balcony",
         "sea_view",
+        "waterfront",
         "solar_panels",
         "generator",
         "water_heater",

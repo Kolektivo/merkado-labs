@@ -45,6 +45,11 @@ Action. Never commit, print, log, or expose them to browser code.
 
 Preserve scraped source data in raw form before normalization.
 
+Policy rematerialization / zero-cost proposal reeval must not call OpenAI and
+must not alter billable input checksums. Prefer dry-run first; refuse writes
+while `property_pipeline_runs` is active. Never invent live inventory counts
+in reports — use contracts, dry-run artifacts, or verified queries.
+
 ## Vercel
 
 A Labs-only dashboard lives in `apps/labs-dashboard`. If deployed, it must be a **separate**

@@ -11,6 +11,10 @@ AI can never overwrite a stronger source or map value, and the map wins
 over a conflicting AI candidate because AI is only consulted once both
 stronger tiers are exhausted.
 
+The winning tier's *display* ``name`` is canonicalized for filters/cards;
+``source_name`` / ``map_name`` / ``ai_name`` keep the original evidence
+strings. Canonicalization never merges property assets.
+
 Mirrors `apps/labs-dashboard/src/lib/domain/effective-neighbourhood.ts` —
 keep both in sync when the priority rules change.
 """
@@ -20,6 +24,31 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+
+from merkado_labs.enrichment.neighbourhood_canonical import (
+    CanonicalNeighbourhood,
+    SAFE_NEIGHBOURHOOD_ALIASES,
+    canonical_display_name,
+    canonicalize_neighbourhood,
+    neighbourhood_keys_match,
+    normalize_neighbourhood_key,
+)
+
+__all__ = [
+    "AI_NEIGHBOURHOOD_CONFIDENCE_THRESHOLD",
+    "CanonicalNeighbourhood",
+    "GENERIC_NEIGHBOURHOOD_TERMS",
+    "NEIGHBOURHOOD_PROVENANCE_LABELS",
+    "NeighbourhoodProvenance",
+    "SAFE_NEIGHBOURHOOD_ALIASES",
+    "EffectiveNeighbourhood",
+    "canonical_display_name",
+    "canonicalize_neighbourhood",
+    "is_generic_neighbourhood",
+    "neighbourhood_keys_match",
+    "normalize_neighbourhood_key",
+    "resolve_effective_neighbourhood",
+]
 
 # Generic island-level mentions that are not a real neighbourhood.
 GENERIC_NEIGHBOURHOOD_TERMS = frozenset(
@@ -87,7 +116,9 @@ def is_generic_neighbourhood(value: str | None) -> bool:
     cleaned = _clean(value)
     if not cleaned:
         return True
-    return cleaned.casefold() in GENERIC_NEIGHBOURHOOD_TERMS
+    if cleaned.casefold() in GENERIC_NEIGHBOURHOOD_TERMS:
+        return True
+    return canonicalize_neighbourhood(cleaned).reason == "generic"
 
 
 def _specific(value: str | None) -> str | None:
@@ -95,6 +126,15 @@ def _specific(value: str | None) -> str | None:
     if cleaned is None or is_generic_neighbourhood(cleaned):
         return None
     return cleaned
+
+
+def _display_name(value: str) -> str:
+    """Canonical display label for the winning tier; fall back to original."""
+
+    canonical = canonicalize_neighbourhood(value)
+    if canonical.canonical_display:
+        return canonical.canonical_display
+    return value
 
 
 def resolve_effective_neighbourhood(
@@ -112,6 +152,9 @@ def resolve_effective_neighbourhood(
     ``merkado_labs.enrichment.policy.decide_field``). It defaults to
     ``True`` so callers without a policy decision can rely on confidence
     alone; pass ``False`` explicitly for rejected/needs-attention candidates.
+
+    When source and map disagree after canonicalization, ``conflict`` is set
+    (uncertain resolution) — assets are never silently merged.
     """
 
     source_name = _clean(source_name)
@@ -125,12 +168,12 @@ def resolve_effective_neighbourhood(
     conflict = bool(
         specific_source
         and specific_map
-        and specific_source.casefold() != specific_map.casefold()
+        and not neighbourhood_keys_match(specific_source, specific_map)
     )
 
     if specific_source:
         return EffectiveNeighbourhood(
-            name=specific_source,
+            name=_display_name(specific_source),
             provenance=NeighbourhoodProvenance.SOURCE,
             source_name=source_name,
             map_name=map_name,
@@ -141,7 +184,7 @@ def resolve_effective_neighbourhood(
 
     if specific_map:
         return EffectiveNeighbourhood(
-            name=specific_map,
+            name=_display_name(specific_map),
             provenance=NeighbourhoodProvenance.MAP,
             source_name=source_name,
             map_name=map_name,
@@ -157,7 +200,7 @@ def resolve_effective_neighbourhood(
     )
     if specific_ai and grounded and high_confidence:
         return EffectiveNeighbourhood(
-            name=specific_ai,
+            name=_display_name(specific_ai),
             provenance=NeighbourhoodProvenance.AI_EXTRACTED,
             source_name=source_name,
             map_name=map_name,

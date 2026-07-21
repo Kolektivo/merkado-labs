@@ -29,6 +29,7 @@ import {
 } from "@/lib/data/price-observations";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
 import {
+  INDICATIVE_PRICE_TIP,
   buildPriceDisplay,
   formatOriginalPrice,
   formatXcgPrimary,
@@ -421,7 +422,7 @@ export default async function ListingDetailPage({
                     {TIPS.xcgBenchmark.tip}
                   </HelpTip>
                 </p>
-                <p className="mt-1 font-mono text-3xl font-semibold tabular-nums">
+                <p className="mt-1 inline-flex items-center gap-1.5 font-mono text-3xl font-semibold tabular-nums">
                   {priceDisplay.primaryAmount === null
                     ? "Price not provided"
                     : priceDisplay.primaryCurrency === "XCG"
@@ -430,6 +431,11 @@ export default async function ListingDetailPage({
                           priceDisplay.primaryAmount,
                           priceDisplay.primaryLabel,
                         )}
+                  {priceDisplay.showIndicativeTip ? (
+                    <HelpTip label="indicative price">
+                      {INDICATIVE_PRICE_TIP}
+                    </HelpTip>
+                  ) : null}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {listing.listingType === "rent"

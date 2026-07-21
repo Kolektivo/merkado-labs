@@ -197,3 +197,128 @@ def test_marketing_language_alone_is_insufficient() -> None:
         source_text="This is a stunning luxury must see opportunity in Jan Thiel.",
     )
     assert grounding.ok_for_auto_apply is False
+
+
+PIETERMAAI_NL = (
+    "Dit prachtige appartement aan zee bevindt zich in Pietermaai. "
+    "Balkon met een schitterend uitzicht op zee."
+)
+BLUE_BAY_NL = (
+    "Gelegen in het prachtige Blue Bay Resort. "
+    "De huurprijs voor dit gemeubileerde appartement is inclusief."
+)
+
+
+def test_aan_zee_waterfront_auto_applies() -> None:
+    decision = decide_field(
+        key="waterfront",
+        proposed_value=True,
+        confidence=0.95,
+        evidence_snippet="Dit prachtige appartement aan zee bevindt zich",
+        source_text=PIETERMAAI_NL,
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_vlak_bij_zee_is_not_waterfront() -> None:
+    source = "Appartement vlak bij zee in Mambo Beach, walking distance to the beach."
+    grounding = ground_evidence(
+        key="waterfront",
+        evidence_snippet="Appartement vlak bij zee in Mambo Beach",
+        source_text=source,
+    )
+    assert grounding.ok_for_auto_apply is False
+    assert grounding.reason == "waterfront_proximity_not_proven"
+    decision = decide_field(
+        key="waterfront",
+        proposed_value=True,
+        confidence=0.95,
+        evidence_snippet="Appartement vlak bij zee in Mambo Beach",
+        source_text=source,
+    )
+    assert decision.final_status != AutoApplyStatus.AUTO_APPLIED
+
+
+def test_uitzicht_op_zee_is_sea_view_not_waterfront() -> None:
+    sea = decide_field(
+        key="sea_view",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet="balkon met een schitterend uitzicht op zee",
+        source_text=PIETERMAAI_NL,
+    )
+    assert sea.final_status == AutoApplyStatus.AUTO_APPLIED
+    # Sea-view-only wording without waterfront synonyms must not prove waterfront.
+    sea_only = "Villa with a balcony and uitzicht op zee over the bay."
+    water = decide_field(
+        key="waterfront",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet="uitzicht op zee over the bay",
+        source_text=sea_only,
+    )
+    assert water.final_status != AutoApplyStatus.AUTO_APPLIED
+
+
+def test_gemeubileerd_furnished_auto_applies() -> None:
+    decision = decide_field(
+        key="furnished",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet="De huurprijs voor dit gemeubileerde appartement",
+        source_text=BLUE_BAY_NL,
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_optioneel_gemeubileerd_not_automatic() -> None:
+    source = "Het appartement is optioneel gemeubileerd tegen meerprijs."
+    grounding = ground_evidence(
+        key="furnished",
+        evidence_snippet="optioneel gemeubileerd tegen meerprijs",
+        source_text=source,
+    )
+    assert grounding.ok_for_auto_apply is False
+    assert grounding.reason == "furnished_optional_or_negotiable"
+
+
+def test_negated_dutch_and_english_amenity_phrases() -> None:
+    for key, snippet, source in (
+        ("pool", "zwembad op het terrein", "Geen zwembad op het terrein, wel een tuin."),
+        ("parking", "private parking included", "The unit has no private parking included."),
+    ):
+        grounding = ground_evidence(
+            key=key, evidence_snippet=snippet, source_text=source
+        )
+        assert grounding.ok_for_auto_apply is False
+        assert grounding.reason == "negation_conflict_with_source"
+
+
+def test_explicit_source_conflict_remains_protected() -> None:
+    decision = decide_field(
+        key="bedrooms",
+        proposed_value=4,
+        confidence=0.99,
+        evidence_snippet="four bedroom villa with sea views",
+        source_text="four bedroom villa with sea views",
+        source_values={"bedrooms": 3},
+    )
+    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert "protected_source_field" in decision.reasons
+
+
+def test_blue_bay_curated_gated_community_rule() -> None:
+    decision = decide_field(
+        key="gated_community",
+        proposed_value=True,
+        confidence=0.9,
+        evidence_snippet="gelegen in het prachtige Blue Bay Resort",
+        source_text=BLUE_BAY_NL,
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    grounding = ground_evidence(
+        key="gated_community",
+        evidence_snippet="gelegen in het prachtige Blue Bay Resort",
+        source_text=BLUE_BAY_NL,
+    )
+    assert grounding.reason == "curated_location_knowledge_gated_community"

@@ -1,4 +1,8 @@
+"use client";
+
+import { HelpTip } from "@/components/help-tip";
 import {
+  INDICATIVE_PRICE_TIP,
   formatOriginalPrice,
   formatXcgPrimary,
   type PriceDisplayModel,
@@ -8,7 +12,8 @@ import { cn } from "@/lib/utils";
 /**
  * Renders an XCG-primary price with the original amount shown as a smaller
  * secondary line. See `src/lib/domain/price-display.ts` for the resolution
- * rules and disclaimers.
+ * rules. True foreign-currency conversions show an indicative tip icon
+ * beside the primary XCG amount (not repeated disclaimer text).
  */
 export function PriceDisplay({
   model,
@@ -29,11 +34,7 @@ export function PriceDisplay({
         : formatOriginalPrice(model.primaryAmount, model.primaryLabel);
 
   const primarySizeClass =
-    size === "lg"
-      ? "text-3xl"
-      : size === "sm"
-        ? "text-sm"
-        : "text-base";
+    size === "lg" ? "text-3xl" : size === "sm" ? "text-sm" : "text-base";
 
   return (
     <div
@@ -45,11 +46,16 @@ export function PriceDisplay({
     >
       <span
         className={cn(
-          "font-mono font-semibold tabular-nums",
+          "inline-flex items-center gap-1 font-mono font-semibold tabular-nums",
           primarySizeClass,
         )}
       >
         {primaryText}
+        {model.showIndicativeTip ? (
+          <HelpTip label="indicative price" className="align-middle">
+            {INDICATIVE_PRICE_TIP}
+          </HelpTip>
+        ) : null}
       </span>
       {model.secondaryLabel ? (
         <span className="font-mono text-xs text-muted-foreground">
@@ -57,9 +63,7 @@ export function PriceDisplay({
         </span>
       ) : null}
       {model.disclaimer ? (
-        <span className="text-xs text-muted-foreground">
-          {model.disclaimer}
-        </span>
+        <span className="text-xs text-muted-foreground">{model.disclaimer}</span>
       ) : null}
       {model.soldDisclaimer ? (
         <span className="text-xs text-muted-foreground">

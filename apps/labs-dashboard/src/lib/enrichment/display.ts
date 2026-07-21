@@ -74,6 +74,75 @@ export function decisionStatusLabel(status: string): string {
   }
 }
 
+/** Human-readable labels for common enrichment ReasonCode strings. */
+export const REASON_CODE_LABELS: Record<string, string> = {
+  forbidden_field: "This field is not allowed for AI enrichment",
+  unknown_attribute_flexible_bag: "Stored as a flexible unknown attribute",
+  unknown_or_empty_value: "Proposed value was unknown or empty",
+  missing_or_weak_evidence: "Evidence was missing or too weak",
+  evidence_not_grounded: "Evidence was not grounded in source text",
+  evidence_grounding: "Evidence grounded in source text",
+  terrace_variant_needs_attention: "Terrace variant needs human review",
+  model_conflict_indicator: "Model reported a conflict",
+  parking_spaces_not_integer: "Parking spaces must be a whole number",
+  parking_spaces_out_of_bounds: "Parking spaces value was out of range",
+  confidence_too_low: "Confidence too low to use",
+  confidence_moderate_needs_attention: "Moderate confidence — needs review",
+  confidence_below_field_auto_apply_threshold:
+    "Below the field-specific auto-apply confidence bar",
+  confidence_below_auto_apply_rejected:
+    "Below auto-apply confidence — rejected",
+  effective_resolver_conflict: "Conflicts with the effective-value resolver",
+  high_confidence_evidence_backed: "High confidence with supporting evidence",
+  already_represented_by_source: "Already represented by the source value",
+  already_represented_by_map: "Already represented by the map assignment",
+  redundant_source_value: "Redundant with the source value",
+  redundant_map_value: "Redundant with the map value",
+  redundant_duplicate_proposal: "Duplicate of an existing proposal",
+  protected_source_field: "Protected source field — AI cannot overwrite",
+  generic_neighbourhood: "Neighbourhood is too generic (island-level)",
+  narrative_invents_protected_claim:
+    "Narrative invented a protected factual claim",
+  property_type_equivalent: "Property type is equivalent to the source",
+  property_type_refines_generic_source:
+    "Property type refines a generic source type",
+  property_type_source_wins_quiet: "Source property type kept quietly",
+  subjective_accessibility_rejected:
+    "Subjective accessibility claim rejected",
+  subjective_marketing_rejected: "Subjective marketing claim rejected",
+  source_negation_confirms_false: "Source negation confirms a false value",
+  source_negation_rejects_true: "Source negation rejects a true value",
+  source_terrace_false_wins: "Source terrace=false takes precedence",
+  unsupported_rejected: "Unsupported value rejected",
+  legacy_proposal_requires_audit: "Legacy proposal shape — needs audit",
+  curated_location_knowledge_gated_community:
+    "Accepted from reviewed location knowledge (gated community)",
+  waterfront_proximity_not_proven:
+    "Near the sea/beach only — waterfront not proven",
+  furnished_optional_or_negotiable:
+    "Furniture is optional or negotiable — not auto-furnished",
+  direct_bilingual_evidence: "Direct Dutch/English source evidence",
+  evidence_span_in_source: "Evidence span found in source text",
+  snippet_present_synonym_missing:
+    "Snippet present but field synonym missing",
+  gated_without_gate_synonym_rejected:
+    "Resort/gated claim without gate language rejected",
+  paraphrased_evidence_with_synonym:
+    "Paraphrased evidence with a matching synonym",
+  nearby_facility_not_property_attribute:
+    "Nearby facility — not a property attribute",
+};
+
+export function humanizeReasonCode(code: string): string {
+  const mapped = REASON_CODE_LABELS[code];
+  if (mapped) return mapped;
+  return code.replaceAll("_", " ");
+}
+
+export function humanizeReasonCodes(reasons: string[]): string[] {
+  return reasons.map(humanizeReasonCode);
+}
+
 /**
  * Neighbourhood AI candidates are audit-only when a stronger source or map
  * neighbourhood already exists. Keep them out of the operational queue.

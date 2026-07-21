@@ -1,14 +1,16 @@
 # 06 - Currency and Pricing Rules
 
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
-**Last updated:** July 17, 2026
+**Last updated:** July 21, 2026
 
 ## 1. Principles
 
 - Preserve the original asking amount and original currency as source truth.
 - Store a separate XCG benchmark for comparison.
 - Never present the XCG figure as a bank conversion quote, transaction rate, appraisal, or contractual amount.
-- Display disclaimer: **Indicative equivalent based on known information.**
+- For true foreign-currency → XCG conversions, surface an **indicative tip/icon**
+  (copy: **Indicative equivalent based on known information.**). Do not repeat
+  that sentence inline under every price.
 
 ## 2. Fixed conversions
 
@@ -84,8 +86,10 @@ events (not `price_changed`). Current dashboard listing values use the ECB provi
 - If an original price exists but no XCG benchmark is available yet, show
   the original amount with **"XCG equivalent currently unavailable"**
   instead of fabricating a conversion.
-- Every converted amount carries the disclaimer: **Indicative equivalent
-  based on known information.**
+- True foreign→XCG conversions show an indicative **tip/icon** beside the
+  primary XCG amount (HelpTip); XCG/ANG/NAf identity cases omit it. Do not
+  repeat the indicative sentence as always-visible body text under the price.
 - Sold listings additionally show: **Last known listing price. The actual
   sale price may differ.**
-- Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts`.
+- Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts` +
+  `apps/labs-dashboard/src/components/price-display.tsx`.

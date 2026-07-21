@@ -195,17 +195,38 @@ Sold/rented timestamps:
 - `ai_enrichment_jobs` — manual job progress (queued → running → completed*)
 - `ai_enrichment_proposals` — model/prompt/schema/input-checksum keyed proposals
   (current foundation uses **v4**: `listing_enrichment_v4` /
-  `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`; v3 JSON remains
-  replayable)
+  `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`; v3 JSON remains
+  replayable). Dashboard `POLICY_VERSION` matches
+  (`apps/labs-dashboard/src/lib/enrichment/scope.ts`).
 - Review is **exception-based**: only conflicts, weak/ambiguous evidence, or
   new-attribute taxonomy reach `needs_attention`; unsupported, duplicated,
   noisy proposals are rejected; already-represented source/map values are
-  `redundant` and never
-  enter the attention queue
+  `redundant` and never enter the attention queue. Decision rows carry
+  **reason codes** (humanized in the enrichment UI).
+- Evidence matching is **bilingual** (Dutch/English synonyms and spans), e.g.
+  `uitzicht op zee` → sea view, `gemeubileerde` → furnished, `aan zee` →
+  waterfront when provenance rules allow. Policy alone does **not** create
+  billable AI work.
+- **Zero-cost policy reeval** rematerializes stored proposals under the current
+  policy (`scripts/reeval_stored_proposals_zero_cost.py`) without OpenAI calls
+  and without changing billable input checksums. Apply is refused while
+  `property_pipeline_runs` is active.
 - v4 can auto-apply grounded neighbourhood gap-fills and public display
   description blocks. Labs public-effective / gallery migrations are **applied**;
   production merkado.cw property projection remains **paused**.
 - Never overwrite raw evidence, price, currency, status, dates, coords, address, neighbourhood, realtor, or source reference
+
+### Source / effective / enriched precedence
+
+Public and dashboard **effective** values resolve in this order (stronger wins):
+
+1. Explicit source facts (never overwritten by AI)
+2. Safe deterministic normalization (currency, aliases, synonym keys)
+3. Effective map / neighbourhood (point-in-polygon when source is missing/generic)
+4. Automatically applied, evidence-grounded AI attributes (`auto_applied` only)
+
+Rejected / needs-attention proposals, confidence, evidence snippets, tokens,
+costs, and private HTML never appear on `/browse`.
 
 Each event should store:
 
@@ -280,11 +301,12 @@ Admin/server only:
 - Public-safe projection is `public_property_listings` / app `/browse`.
 - The public view exposes **effective** consumer fields only:
   `effective_neighbourhood` (+ provenance label), `effective_property_type`,
-  `public_attributes` (allowlisted `auto_applied` values), optional
-  `effective_summary`, XCG primary price, original price/currency, beds/baths/
-  areas, listing type, images, source description, first/last seen, source
-  attribution. It never exposes raw proposals, evidence, confidence, tokens,
-  costs, checksums, or private HTML.
+  `public_attributes` (allowlisted `auto_applied` values, including waterfront
+  once the allowlist migration is applied), optional `effective_summary`, XCG
+  primary price, original price/currency, beds/baths/areas, listing type,
+  images, source description, first/last seen, source attribution. It never
+  exposes raw proposals, evidence, confidence, tokens, costs, checksums, or
+  private HTML.
 - Service-role credentials are server-only; never `NEXT_PUBLIC_*`.
 
 Enable RLS on every table in an exposed schema.

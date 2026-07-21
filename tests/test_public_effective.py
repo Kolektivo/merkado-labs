@@ -211,14 +211,14 @@ def test_source_conflict_ai_neighbourhood_not_used_for_gap_fill() -> None:
     assert effective["name"] is None
 
 
-def test_gated_resort_wording_without_gate_synonym_is_rejected() -> None:
+def test_blue_bay_curated_location_grounds_gated_community() -> None:
     grounding = ground_evidence(
         key="gated_community",
         evidence_snippet="Blue Bay Golf & Beach Resort Curacao",
         source_text="Apartment at Blue Bay Golf & Beach Resort Curacao with pool.",
     )
-    assert grounding.ok_for_auto_apply is False
-    assert grounding.ok_for_attention is False
+    assert grounding.ok_for_auto_apply is True
+    assert grounding.reason == "curated_location_knowledge_gated_community"
 
     decision = decide_field(
         key="gated_community",
@@ -227,7 +227,17 @@ def test_gated_resort_wording_without_gate_synonym_is_rejected() -> None:
         evidence_snippet="Blue Bay Golf & Beach Resort Curacao",
         source_text="Apartment at Blue Bay Golf & Beach Resort Curacao with pool.",
     )
-    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_unrelated_resort_name_without_gate_synonym_is_rejected() -> None:
+    grounding = ground_evidence(
+        key="gated_community",
+        evidence_snippet="Santa Barbara Resort Curacao",
+        source_text="Apartment at Santa Barbara Resort Curacao with pool.",
+    )
+    assert grounding.ok_for_auto_apply is False
+    assert grounding.reason == "gated_without_gate_synonym_rejected"
 
 
 def test_gated_with_surrounding_gate_can_auto_apply() -> None:

@@ -281,7 +281,7 @@ def test_evaluate_proposal_idempotent_structure() -> None:
 
 
 def test_policy_version_is_v4() -> None:
-    assert POLICY_VERSION == "enrichment_policy_v4_1"
+    assert POLICY_VERSION == "enrichment_policy_v4_2"
 
 
 def test_reason_codes_are_stable_machine_readable_strings() -> None:

@@ -25,6 +25,7 @@ import {
 import {
   decisionStatusLabel,
   extractFieldDecisions,
+  humanizeReasonCode,
   isOperationalAttentionDecision,
   type FieldDecisionView,
 } from "@/lib/enrichment/display";
@@ -319,7 +320,25 @@ function DecisionTable({ decisions }: { decisions: FieldDecisionView[] }) {
               </td>
               <td className="px-3 py-2">{formatValue(decision.after)}</td>
               <td className="max-w-xs px-3 py-2 text-xs text-muted-foreground">
-                {decision.evidence ?? "—"}
+                {decision.reasons.length ? (
+                  <ul className="mb-1 list-disc space-y-0.5 pl-4">
+                    {decision.reasons.map((code) => (
+                      <li key={code}>{humanizeReasonCode(code)}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {decision.evidence ? (
+                  <p
+                    className={
+                      decision.reasons.length
+                        ? "border-t border-border/60 pt-1 italic"
+                        : undefined
+                    }
+                  >
+                    {decision.evidence}
+                  </p>
+                ) : null}
+                {!decision.reasons.length && !decision.evidence ? "—" : null}
               </td>
               <td className="px-3 py-2 font-mono text-xs">
                 {decision.confidence !== null

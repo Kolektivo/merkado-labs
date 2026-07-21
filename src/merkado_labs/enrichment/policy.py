@@ -19,7 +19,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from merkado_labs.enrichment.evidence import ground_evidence
+from merkado_labs.enrichment.evidence import (
+    curated_gated_location_hit,
+    ground_evidence,
+)
 from merkado_labs.enrichment.fields import (
     ATTRIBUTE_DISPLAY_LABELS,
     FORBIDDEN_AI_FIELDS,
@@ -47,7 +50,7 @@ from merkado_labs.enrichment.values import (
     resolve_effective_value,
 )
 
-POLICY_VERSION = "enrichment_policy_v4_1"
+POLICY_VERSION = "enrichment_policy_v4_2"
 
 
 class ReasonCode:
@@ -91,6 +94,10 @@ class ReasonCode:
     SOURCE_NEGATION_CONFIRMS_FALSE = "source_negation_confirms_false"
     SOURCE_NEGATION_REJECTS_TRUE = "source_negation_rejects_true"
     SOURCE_TERRACE_FALSE_WINS = "source_terrace_false_wins"
+    CURATED_LOCATION_KNOWLEDGE = "curated_location_knowledge_gated_community"
+    WATERFRONT_PROXIMITY_NOT_PROVEN = "waterfront_proximity_not_proven"
+    FURNISHED_OPTIONAL_OR_NEGOTIABLE = "furnished_optional_or_negotiable"
+    DIRECT_BILINGUAL_EVIDENCE = "direct_bilingual_evidence"
 
 
 # Configurable thresholds — not magic numbers sprinkled in call sites.
@@ -921,24 +928,42 @@ def decide_field(
         )
 
     if conflict_indicator:
-        return FieldDecision(
-            key=normalized_key,
-            proposed_value=coerced,
-            value_type=value_type,
-            confidence=confidence,
-            evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source,
-            extraction_reason=extraction_reason,
-            classification=classification,
-            conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.NEEDS_ATTENTION,
-            conflict_status=ConflictStatus.AMBIGUOUS,
-            reasons=("model_conflict_indicator",),
-            previous_effective=previous_effective,
-            resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        # Reviewed location knowledge for gated communities is stronger than an
+        # advisory model conflict flag on an otherwise empty source field.
+        curated_gated = (
+            normalized_key == "gated_community"
+            and coerced is True
+            and (
+                curated_gated_location_hit(corpus)
+                or curated_gated_location_hit(evidence_snippet)
+                or curated_gated_location_hit(
+                    str(source_values.get("source_neighbourhood_text") or "")
+                )
+            )
         )
+        if not curated_gated:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.NEEDS_ATTENTION,
+                conflict_status=ConflictStatus.AMBIGUOUS,
+                reasons=("model_conflict_indicator",),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
+        reasons.append(ReasonCode.CURATED_LOCATION_KNOWLEDGE)
+        reasons.append("model_conflict_indicator_overridden_by_curated_location")
 
     bounds_error = _validate_bounds(normalized_key, coerced)
     if bounds_error:

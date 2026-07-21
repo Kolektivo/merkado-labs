@@ -45,6 +45,7 @@ export const PUBLIC_ATTRIBUTE_ALLOWLIST = [
   "terrace",
   "balcony",
   "sea_view",
+  "waterfront",
   "solar_panels",
   "generator",
   "water_heater",
@@ -74,6 +75,7 @@ export const PUBLIC_ATTRIBUTE_DISPLAY_LABELS: Record<string, string> = {
   terrace: "Terrace",
   balcony: "Balcony",
   sea_view: "Sea view",
+  waterfront: "Waterfront",
   solar_panels: "Solar panels",
   generator: "Generator",
   water_heater: "Water heater",
@@ -117,7 +119,7 @@ export const PUBLIC_FEATURE_GROUPS: Array<{
   {
     id: "views_location",
     title: "Views and location",
-    keys: ["sea_view"],
+    keys: ["sea_view", "waterfront"],
   },
   {
     id: "security_utilities",
@@ -255,6 +257,7 @@ export const PUBLIC_ATTRIBUTE_CHIP_PRIORITY = [
   "gated_community",
   "parking",
   "sea_view",
+  "waterfront",
   "garden",
   "terrace",
   "balcony",

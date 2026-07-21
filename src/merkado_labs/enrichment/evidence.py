@@ -29,12 +29,16 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     ),
     "garage": re.compile(r"\bgarage\b", re.I),
     "gated_community": re.compile(
-        r"\bgated(\s+(community|resort|complex))?\b"
+        r"\bgated(\s+(community|resort|complex|entrance))?\b"
         r"|\bsecure\s+community\b"
+        r"|\bcontrolled\s+access\b"
         r"|\bsurrounding\s+gate\b"
         r"|\bsecured\s+with\s+a\s+(surrounding\s+)?gate\b"
-        r"|\bbeveiligd(e)?\s+terrein\b"
-        r"|\bafgesloten\s+terrein\b",
+        r"|\bbeveiligd(e)?\s+(terrein|resort)\b"
+        r"|\bafgesloten\s+(terrein|resort)\b"
+        r"|\bbewaakte\s+toegang\b"
+        r"|\b24\s*/\s*7\s+security\b.{0,40}\bcontrolled\s+entry\b"
+        r"|\bcontrolled\s+entry\b.{0,40}\b24\s*/\s*7\s+security\b",
         re.I,
     ),
     "air_conditioning": re.compile(
@@ -63,15 +67,22 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
         re.I,
     ),
     "furnished": re.compile(
-        r"\b(fully\s+)?furnished\b"
+        r"\b(fully\s+|turn[\s-]?key\s+)?furnished\b"
         r"|\bunfurnished\b"
         r"|\bnot\s+furnished\b"
-        r"|\b(volledig\s+)?gemeubileerd\b"
-        r"|\bongemeubileerd\b"
-        r"|\bniet\s+gemeubileerd\b",
+        r"|\b(volledig\s+)?gemeubileerd(?:e|en)?\b"
+        r"|\bongemeubileerd(?:e|en)?\b"
+        r"|\bniet\s+gemeubileerd(?:e|en)?\b",
         re.I,
     ),
-    "sea_view": re.compile(r"\b(sea|ocean)\s+view\b|\bzeezicht\b", re.I),
+    "sea_view": re.compile(
+        r"\b(sea|ocean)\s+views?\b"
+        r"|\bviews?\s+over\s+the\s+(caribbean\s+)?sea\b"
+        r"|\bzeezicht\b"
+        r"|\bpanoramisch(?:e)?\s+zeezicht\b"
+        r"|\buitzicht\s+op\s+(de\s+)?zee\b",
+        re.I,
+    ),
     "solar_panels": re.compile(r"\bsolar(\s+panels?)?\b|\bzonnepanelen\b", re.I),
     "generator": re.compile(r"\bgenerator\b|\bnoodstroom\b", re.I),
     "water_heater": re.compile(
@@ -95,7 +106,20 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
         r"\bgasfornuis\b|\boven\b|\bkoelkast\b|\brefrigerator\b|\bstove\b",
         re.I,
     ),
-    "waterfront": re.compile(r"\bwaterfront\b|\bbeach\s*front\b", re.I),
+    "waterfront": re.compile(
+        r"\bwaterfront\b"
+        r"|\bseafront\b"
+        r"|\boceanfront\b"
+        r"|\bbeach[\s-]?front\b"
+        r"|\bwater['’]?\s*s\s+edge\b"
+        r"|\bdirect\s+aan\s+(de\s+)?zee\b"
+        r"|\bgelegen\s+aan\s+(de\s+)?zee\b"
+        r"|\b(?:appartement|woning|villa|huis|pand)\s+aan\s+(de\s+)?zee\b"
+        r"|\baan\s+(de\s+)?zee\b"
+        r"|\bdirect\s+aan\s+het\s+water\b"
+        r"|\baan\s+het\s+water\b",
+        re.I,
+    ),
     "pet_suitability": re.compile(
         r"\bpets?[_\s-]?allowed\b"
         r"|\bpets?\s+(are\s+)?(not\s+)?allowed\b"
@@ -140,10 +164,61 @@ NEGATION_MARKERS = re.compile(
 # property itself (nearby facilities must not ground property attributes).
 OFF_PROPERTY_MARKERS = re.compile(
     r"\b(nearby|close\s+to|near\s+the|within\s+walking\s+distance|"
+    r"walking\s+distance\s+to|"
     r"a\s+short\s+(walk|drive)|steps?\s+(from|away)|minutes?\s+(from|away)|"
-    r"in\s+the\s+area|surrounding\s+area)\b",
+    r"in\s+the\s+area|surrounding\s+area|"
+    r"nabij|vlak\s+bij|dicht\s+bij)\b",
     re.I,
 )
+
+# Waterfront "near the sea/beach" language — proximity only, not waterfront.
+WATERFRONT_NEARBY_ONLY = re.compile(
+    r"\bnabij\s+(de\s+)?zee\b"
+    r"|\bvlak\s+bij\s+(de\s+)?zee\b"
+    r"|\bvlak\s+bij\s+het\s+strand\b"
+    r"|\bdicht\s+bij\s+het\s+strand\b"
+    r"|\bwalking\s+distance\s+to\s+the\s+beach\b"
+    r"|\bclose\s+to\s+the\s+beach\b"
+    r"|\bnear\s+the\s+sea\b"
+    r"|\bnear\s+the\s+beach\b",
+    re.I,
+)
+
+# Optional / negotiable furniture — must not auto-apply furnished=true.
+FURNISHED_OPTIONAL_ONLY = re.compile(
+    r"\boptioneel\s+gemeubileerd(?:e|en)?\b"
+    r"|\bmeubels?\s+ter\s+overname\b"
+    r"|\bfurniture\s+negotiable\b"
+    r"|\bfurnished\s+optional\b"
+    r"|\boptionally\s+furnished\b",
+    re.I,
+)
+
+# Reviewed location-knowledge markers for gated_community (not direct source
+# gate language). Matched against source corpus + evidence snippet.
+# Product policy: Blue Bay / Blue Bay Resort is a controlled-access resort.
+CURATED_GATED_LOCATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\bblue\s+bay(?:\s+golf)?(?:\s*&?\s*beach)?(?:\s+resort)?\b",
+        re.I,
+    ),
+)
+
+
+def curated_gated_location_hit(text: str | None) -> bool:
+    """True when reviewed location knowledge supports gated_community."""
+
+    norm = normalize_evidence_text(text)
+    if not norm:
+        return False
+    for pattern in CURATED_GATED_LOCATION_PATTERNS:
+        for match in pattern.finditer(norm):
+            if _match_is_negated(norm, match):
+                continue
+            if _match_is_off_property(norm, match):
+                continue
+            return True
+    return False
 
 # Marketing language that never counts as evidence on its own.
 MARKETING_ONLY_TERMS = frozenset(
@@ -332,6 +407,50 @@ def ground_evidence(
         key, norm_source
     )
 
+    # Proximity-to-sea language never proves waterfront, even with an exact span.
+    if key == "waterfront":
+        nearby_only = bool(WATERFRONT_NEARBY_ONLY.search(norm_source)) and (
+            synonym_hit is not True
+        )
+        if nearby_only or (
+            WATERFRONT_NEARBY_ONLY.search(norm_snippet)
+            and synonym_hit is not True
+        ):
+            return EvidenceGrounding(
+                ok_for_auto_apply=False,
+                ok_for_attention=False,
+                reason="waterfront_proximity_not_proven",
+                normalization_warning=warning,
+                normalized_snippet=norm_snippet,
+            )
+
+    # Optional / negotiable furniture is not automatic furnished=true.
+    if key == "furnished" and FURNISHED_OPTIONAL_ONLY.search(norm_source):
+        optional_spans = list(FURNISHED_OPTIONAL_ONLY.finditer(norm_source))
+        hard_hits = list(
+            AMENITY_SYNONYM_PATTERNS["furnished"].finditer(norm_source)
+        )
+        hard_positive = False
+        for match in hard_hits:
+            if _match_is_negated(norm_source, match):
+                continue
+            # Include the match itself so "optioneel gemeubileerd" is detected.
+            window = norm_source[
+                max(0, match.start() - 48) : min(len(norm_source), match.end() + 24)
+            ]
+            if FURNISHED_OPTIONAL_ONLY.search(window):
+                continue
+            hard_positive = True
+            break
+        if optional_spans and not hard_positive:
+            return EvidenceGrounding(
+                ok_for_auto_apply=False,
+                ok_for_attention=True,
+                reason="furnished_optional_or_negotiable",
+                normalization_warning=warning,
+                normalized_snippet=norm_snippet,
+            )
+
     if key == "terrace":
         # Guard against terra/terrain-only contamination.
         if synonym_hit is False and TERRACE_FALSE_FRIENDS.search(norm_source):
@@ -386,6 +505,16 @@ def ground_evidence(
         # Exact snippet exists but key synonym absent — mismatched / weak claim.
         # v4: reject as unsupported noise rather than queueing review.
         if key == "gated_community":
+            if curated_gated_location_hit(norm_source) or curated_gated_location_hit(
+                norm_snippet
+            ):
+                return EvidenceGrounding(
+                    ok_for_auto_apply=True,
+                    ok_for_attention=True,
+                    reason="curated_location_knowledge_gated_community",
+                    normalization_warning=warning,
+                    normalized_snippet=norm_snippet,
+                )
             return EvidenceGrounding(
                 ok_for_auto_apply=False,
                 ok_for_attention=False,
@@ -400,6 +529,20 @@ def ground_evidence(
             normalization_warning=warning,
             normalized_snippet=norm_snippet,
         )
+
+    # Curated location knowledge can ground gated_community even when the model
+    # snippet is a soft paraphrase of the resort name (exact span may miss).
+    if key == "gated_community" and synonym_hit is not True:
+        if curated_gated_location_hit(norm_source) or curated_gated_location_hit(
+            norm_snippet
+        ):
+            return EvidenceGrounding(
+                ok_for_auto_apply=True,
+                ok_for_attention=True,
+                reason="curated_location_knowledge_gated_community",
+                normalization_warning=warning,
+                normalized_snippet=norm_snippet,
+            )
 
     if paraphrased and synonym_hit:
         # Synonym is present in source text and the snippet is a soft paraphrase

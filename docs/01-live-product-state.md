@@ -55,17 +55,19 @@ The isolated Labs project currently has:
 - Moret Real Estate adapter **v0.2.0**: **71** listings; coordinates 71/71;
   Terra coverage complete; pipeline ready / cron Off / dispatch available;
   Refresh & enrich = new/changed only;
-- AI enrichment **v4 / v4.1** is current in Labs across KW, RE/MAX, Moret, and
-  Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
+- AI enrichment **v4 / policy v4.2** is current in Labs across KW, RE/MAX, Moret,
+  and Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
   `listing_enrichment_v4` / `listing_enrichment_schema_v4` /
-  `enrichment_policy_v4_1` with v3/v4 history retained. Decisions distinguish
+  `enrichment_policy_v4_2` with v3/v4 history retained. Decisions distinguish
   accepted / redundant / rejected / needs_attention. Public listings (~**279**)
   expose effective neighbourhood, feature attrs, `effective_summary`,
   same-language `display_description`, and image galleries. Dashboard AI job
   execution is disabled; pipeline AI runs under budgets (USD 2/day, USD 25/month,
   25 listings/run) when the worker executes. Exception-based review only.
-  Labs public-effective migrations are **applied**; production merkado.cw
-  property migration remains **paused**.
+  Zero-cost policy rematerialization does not create billable AI work. Labs
+  public-effective migrations are **applied**; waterfront allowlist + v4.2
+  proposal rematerialize were pending DB apply as of 2026-07-21 quality pass.
+  Production merkado.cw property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 
@@ -95,11 +97,11 @@ Core MVP rules:
 - Show only active listings with a known positive price.
 - Preserve the original amount and original currency.
 - Display XCG as the primary displayed, search, and filter price; show the
-  original amount and currency as secondary, with disclaimer: indicative
-  equivalent based on known information.
+  original amount and currency as secondary. For true foreign→XCG conversions,
+  show an indicative tip/icon (not a repeated inline disclaimer sentence).
 - Convert USD at `1 USD = 1.79 XCG`.
 - Convert EUR using ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`).
-- Show `Indicative equivalent based on known information.` for converted values.
+- Tip copy for converted values: `Indicative equivalent based on known information.`
 - Preserve source listing dates separately from Merkado detection dates.
 - Append lifecycle events instead of only overwriting current values.
 - Keep `sold` separate from `removed`.

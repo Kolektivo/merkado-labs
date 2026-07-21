@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FlaskConical, Search } from "lucide-react";
+import { FlaskConical, MapPin, Search } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicListings } from "@/lib/data/public-listings";
+import {
+  canonicalizeNeighbourhood,
+  neighbourhoodKeysMatch,
+} from "@/lib/domain/neighbourhood-aliases";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import {
@@ -21,6 +25,13 @@ import {
 } from "@/lib/domain/public-attributes";
 import type { PublicPropertyListing } from "@/lib/domain/types";
 import { titleCase } from "@/lib/format";
+
+function listingNeighbourhoodLabel(
+  listing: PublicPropertyListing,
+): string | null {
+  return canonicalizeNeighbourhood(listing.effectiveNeighbourhood)
+    .canonicalDisplay;
+}
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Public browse" };
@@ -46,22 +57,25 @@ const one = (
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 };
 
-function cardMetaLine(listing: PublicPropertyListing): string {
-  const parts: string[] = [];
-  if (listing.effectiveNeighbourhood) {
-    parts.push(listing.effectiveNeighbourhood);
-  }
+function cardMetaParts(listing: PublicPropertyListing): {
+  neighbourhood: string | null;
+  details: string[];
+} {
+  const details: string[] = [];
   if (listing.bedrooms != null) {
-    parts.push(
+    details.push(
       `${listing.bedrooms} bedroom${listing.bedrooms === 1 ? "" : "s"}`,
     );
   }
   if (listing.bathrooms != null) {
-    parts.push(
+    details.push(
       `${listing.bathrooms} bathroom${listing.bathrooms === 1 ? "" : "s"}`,
     );
   }
-  return parts.join(" · ");
+  return {
+    neighbourhood: listingNeighbourhoodLabel(listing),
+    details,
+  };
 }
 
 function cardAttributeChips(listing: PublicPropertyListing): string[] {
@@ -85,7 +99,10 @@ function matchesFilters(
   if (filters.source && listing.sourceKey !== filters.source) return false;
   if (
     filters.neighbourhood &&
-    listing.effectiveNeighbourhood !== filters.neighbourhood
+    !neighbourhoodKeysMatch(
+      listing.effectiveNeighbourhood,
+      filters.neighbourhood,
+    )
   ) {
     return false;
   }
@@ -155,7 +172,7 @@ export default async function BrowsePage({
   const neighbourhoodOptions = Array.from(
     new Set(
       publicListings
-        .map((listing) => listing.effectiveNeighbourhood)
+        .map((listing) => listingNeighbourhoodLabel(listing))
         .filter((value): value is string => Boolean(value)),
     ),
   ).sort((a, b) => a.localeCompare(b));
@@ -343,8 +360,9 @@ export default async function BrowsePage({
       </p>
       <div className="grid max-w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {listings.map((listing, index) => {
-          const meta = cardMetaLine(listing);
+          const meta = cardMetaParts(listing);
           const chips = cardAttributeChips(listing);
+          const hasMeta = Boolean(meta.neighbourhood || meta.details.length);
           return (
             <Link
               key={listing.id}
@@ -382,9 +400,27 @@ export default async function BrowsePage({
                     })}
                     size="sm"
                   />
-                  {meta ? (
-                    <p className="truncate text-sm text-muted-foreground">
-                      {meta}
+                  {hasMeta ? (
+                    <p className="flex min-w-0 items-center gap-1.5 truncate text-sm text-muted-foreground">
+                      {meta.neighbourhood ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                          <MapPin
+                            className="size-3.5 shrink-0"
+                            aria-hidden
+                          />
+                          <span className="truncate">{meta.neighbourhood}</span>
+                        </span>
+                      ) : null}
+                      {meta.neighbourhood && meta.details.length ? (
+                        <span className="shrink-0" aria-hidden>
+                          ·
+                        </span>
+                      ) : null}
+                      {meta.details.length ? (
+                        <span className="truncate">
+                          {meta.details.join(" · ")}
+                        </span>
+                      ) : null}
                     </p>
                   ) : null}
                   {chips.length ? (
