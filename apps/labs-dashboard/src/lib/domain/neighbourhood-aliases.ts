@@ -51,6 +51,7 @@ const UNCERTAIN_KEY_PATTERNS: RegExp[] = [
  * Reviewed SAFE aliases: normalized_key → canonical display name.
  * DO NOT map Brakkeput Abou / Mei Mei / Ariba → Brakkeput.
  * DO NOT map Cas Abou Resort → Cas Abou.
+ * DO NOT map Salinja Abou / Salinja Ariba / Saliña Ariba → Saliña.
  * Mirrors SAFE_NEIGHBOURHOOD_ALIASES in neighbourhood_canonical.py — keep in sync.
  */
 export const SAFE_NEIGHBOURHOOD_ALIASES: Record<string, string> = {
@@ -67,12 +68,22 @@ export const SAFE_NEIGHBOURHOOD_ALIASES: Record<string, string> = {
   "mambo beach curacao": "Mambo Beach",
   "willemstad curacao": "Willemstad",
   "zuikertuintje curacao": "Zuikertuintje",
-  "salina curacao": "Salinja",
-  "salinja curacao": "Salinja",
   "mundo nobo curacao": "Mundo Nobo",
   "seru loraweg curacao": "Seru Loraweg",
   "blauwbaai curacao": "Blue Bay",
   "blue bay curacao": "Blue Bay",
+  // Saliña spelling variants (accent / j / bare / island suffix)
+  salina: "Saliña",
+  salinja: "Saliña",
+  "salina curacao": "Saliña",
+  "salinja curacao": "Saliña",
+  // Marie Pampoen spelling variants (incl. dual-label source form)
+  "marie pompoen": "Marie Pampoen",
+  "marie pompoen curacao": "Marie Pampoen",
+  "marie pampoen": "Marie Pampoen",
+  "marie pampoen curacao": "Marie Pampoen",
+  "marie pampoen marie pompoen": "Marie Pampoen",
+  "marie pampoen marie pompoen curacao": "Marie Pampoen",
   "st joris": "Sint Joris",
   "st joris curacao": "Sint Joris",
   "sint joris": "Sint Joris",
@@ -182,7 +193,7 @@ export function canonicalizeNeighbourhood(
     if (alias) {
       return {
         original,
-        normalizedKey: rawKey,
+        normalizedKey: normalizeNeighbourhoodKey(alias),
         canonicalDisplay: alias,
         reason: "exact_alias",
         confidence: 1,
@@ -208,7 +219,7 @@ export function canonicalizeNeighbourhood(
     if (strippedAlias) {
       return {
         original,
-        normalizedKey: rawKey,
+        normalizedKey: normalizeNeighbourhoodKey(strippedAlias),
         canonicalDisplay: strippedAlias,
         reason: "exact_alias",
         confidence: 1,
@@ -241,12 +252,23 @@ export function canonicalDisplayName(
   return canonicalizeNeighbourhood(value).canonicalDisplay;
 }
 
+/** Comparison key for filter matching after safe display canonicalization. */
+export function canonicalComparisonKey(
+  value: string | null | undefined,
+): string {
+  const result = canonicalizeNeighbourhood(value);
+  if (result.canonicalDisplay) {
+    return normalizeNeighbourhoodKey(result.canonicalDisplay);
+  }
+  return result.normalizedKey;
+}
+
 export function neighbourhoodKeysMatch(
   left: string | null | undefined,
   right: string | null | undefined,
 ): boolean {
-  const leftKey = canonicalizeNeighbourhood(left).normalizedKey;
-  const rightKey = canonicalizeNeighbourhood(right).normalizedKey;
+  const leftKey = canonicalComparisonKey(left);
+  const rightKey = canonicalComparisonKey(right);
   if (!leftKey || !rightKey) return false;
   return leftKey === rightKey;
 }

@@ -79,6 +79,29 @@ test("public browse uses safe data and labels the prototype", async ({ page }) =
   await expect(page.getByLabel("Min price (XCG)")).toBeVisible();
   // Public-eligible inventory drifts as sources refresh; keep a floor, not a brittle exact count.
   expect(await page.locator('a[href^="/browse/"]').count()).toBeGreaterThanOrEqual(250);
+
+  const neighbourhoodOptions = page.locator("#browse-neighbourhood option");
+  const optionLabels = (await neighbourhoodOptions.allTextContents()).map((label) =>
+    label.trim(),
+  );
+  expect(optionLabels.filter((label) => label === "Saliña")).toHaveLength(1);
+  expect(optionLabels.filter((label) => label === "Salinja")).toHaveLength(0);
+  expect(optionLabels.filter((label) => label === "Marie Pampoen")).toHaveLength(1);
+  expect(optionLabels.filter((label) => label === "Marie Pompoen")).toHaveLength(0);
+
+  const salinaFilter = await page.goto("/browse?neighbourhood=Sali%C3%B1a");
+  expect(salinaFilter?.status()).toBe(200);
+  await expect(page).toHaveURL(/neighbourhood=Sali/);
+  const salinaCount = await page.locator('a[href^="/browse/"]').count();
+  expect(salinaCount).toBeGreaterThanOrEqual(1);
+  const marieFilter = await page.goto(
+    "/browse?neighbourhood=Marie%20Pampoen",
+  );
+  expect(marieFilter?.status()).toBe(200);
+  await expect(page).toHaveURL(/neighbourhood=Marie(\+|%20)Pampoen/);
+  expect(await page.locator('a[href^="/browse/"]').count()).toBeGreaterThanOrEqual(1);
+
+  await page.goto("/browse");
   await expectNoHorizontalOverflow(page, "/browse");
 
   const detailHref = await page.locator('a[href^="/browse/"]').first().getAttribute("href");
@@ -144,7 +167,9 @@ test("authenticated core routes load real data without browser errors", async ({
   ).toBeVisible();
 
   await page.goto("/data-operations");
-  await expect(page.getByText("No scheduled runs")).toBeVisible();
+  await expect(page.getByText("Automatic refresh", { exact: true })).toBeVisible();
+  await expect(page.getByText("On", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/begins on default branch/)).toBeVisible();
   await expect(page.getByText("Next scheduled run", { exact: true })).toHaveCount(0);
 
   await page.goto("/listings?type=rent");

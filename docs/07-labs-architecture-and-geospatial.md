@@ -302,7 +302,13 @@ duplicate labels without merging property assets:
 - Blue Bay resort / marketing variants → **Blue Bay**
 - Reviewed `… Curaçao` / `… Curacao` island suffixes → base neighbourhood
 - **St. Joris** → **Sint Joris**
+- **Salina** / **Salinja** / **Saliña** → **Saliña** (not Salinja Abou / Saliña Ariba)
+- **Marie Pompoen** / dual-label source forms → **Marie Pampoen**
 - Ambiguous multi-place or uncertain forms stay **separate** (no invented merge)
+
+Source evidence (`source_neighbourhood_text`, map assignment names) stays raw.
+Filter options and filter matching use the canonical display key so each
+neighbourhood appears once and selecting it returns every mapped variant.
 
 Python: `src/merkado_labs/enrichment/neighbourhood_canonical.py`  
 Dashboard: `apps/labs-dashboard/src/lib/domain/neighbourhood-aliases.ts`  

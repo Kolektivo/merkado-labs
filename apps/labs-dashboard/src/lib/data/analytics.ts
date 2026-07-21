@@ -6,7 +6,9 @@ import type {
   NeighbourhoodSummary,
   PropertyListing,
 } from "@/lib/domain/types";
+import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
 import { listingHasNeighbourhoodSearchGap } from "@/lib/domain/location-gaps";
+import { neighbourhoodKeysMatch } from "@/lib/domain/neighbourhood-aliases";
 import {
   ASSIGNMENT_STATUS_LABELS,
   COORDINATE_QUALITY_LABELS,
@@ -14,6 +16,33 @@ import {
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
 import { matchesSynonymSearch } from "@/lib/search/synonyms";
+
+function listingCanonicalNeighbourhood(listing: {
+  neighbourhoodName?: string | null;
+  neighbourhood?: { id: string; name: string } | null;
+  inferredNeighbourhoodName?: string | null;
+  sourceNeighbourhoodText?: string | null;
+  inferredNeighbourhood?: { name: string } | null;
+}): string | null {
+  return resolveEffectiveNeighbourhood({
+    sourceName:
+      listing.sourceNeighbourhoodText ??
+      listing.neighbourhood?.name ??
+      listing.neighbourhoodName ??
+      null,
+    mapName:
+      listing.inferredNeighbourhood?.name ??
+      listing.inferredNeighbourhoodName ??
+      null,
+  }).name;
+}
+
+function markerCanonicalNeighbourhood(marker: MapListingMarker): string | null {
+  return resolveEffectiveNeighbourhood({
+    sourceName: marker.sourceNeighbourhoodText ?? marker.neighbourhoodName,
+    mapName: marker.inferredNeighbourhoodName,
+  }).name;
+}
 
 export function median(values: number[]): number | null {
   if (!values.length) return null;
@@ -122,7 +151,10 @@ function matchesSharedFilters(
     );
   const matchesNeighbourhood =
     !filters.neighbourhood ||
-    listing.neighbourhood?.id === filters.neighbourhood;
+    neighbourhoodKeysMatch(
+      listingCanonicalNeighbourhood(listing),
+      filters.neighbourhood,
+    );
   const matchesType =
     !filters.listingType || listing.listingType === filters.listingType;
   const matchesSource =
@@ -276,9 +308,9 @@ export function filterMapMarkers(
     )
     .filter((marker) => {
       if (!filters.neighbourhood) return true;
-      return (
-        marker.neighbourhoodName === filters.neighbourhood ||
-        marker.inferredNeighbourhoodName === filters.neighbourhood
+      return neighbourhoodKeysMatch(
+        markerCanonicalNeighbourhood(marker),
+        filters.neighbourhood,
       );
     });
 }
@@ -296,12 +328,14 @@ export function listingFilterOptions(listings: PropertyListing[]) {
       ),
     ).sort((a, b) => a[1].localeCompare(b[1])),
     neighbourhoods: Array.from(
-      new Map(
+      new Set(
         listings
-          .filter((item) => item.neighbourhood)
-          .map((item) => [item.neighbourhood!.id, item.neighbourhood!.name]),
+          .map((item) => listingCanonicalNeighbourhood(item))
+          .filter((value): value is string => Boolean(value)),
       ),
-    ).sort((a, b) => a[1].localeCompare(b[1])),
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => [name, name] as [string, string]),
     listingTypes: Array.from(
       new Set(listings.flatMap((item) => item.listingType ?? [])),
     ).sort(),
@@ -416,11 +450,9 @@ export function summarizeRealtors(listings: PropertyListing[]) {
 export function mapFilterOptions(markers: MapListingMarker[]) {
   const neighbourhoodNames = Array.from(
     new Set(
-      markers.flatMap((marker) =>
-        [marker.neighbourhoodName, marker.inferredNeighbourhoodName].filter(
-          (value): value is string => Boolean(value),
-        ),
-      ),
+      markers
+        .map((marker) => markerCanonicalNeighbourhood(marker))
+        .filter((value): value is string => Boolean(value)),
     ),
   ).sort((a, b) => a.localeCompare(b));
 

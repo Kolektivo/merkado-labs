@@ -24,7 +24,6 @@ import { formatDateTime } from "@/lib/format";
 import {
   AUTOMATIC_REFRESH_ENABLED,
   DAILY_CRON_UTC,
-  nextScheduledRunUtc,
 } from "@/lib/pipeline/schedule";
 import { getConfigurationHealth } from "@/lib/system/health";
 import { jobStatusLabel, jobStatusTone } from "@/lib/ui-labels";
@@ -60,9 +59,6 @@ export default async function DataOperationsPage() {
   );
   const activeDetail = active ? await getPipelineRunDetail(active.id) : null;
   const health = getConfigurationHealth();
-  const nextRunLabel = AUTOMATIC_REFRESH_ENABLED
-    ? formatDateTime(nextScheduledRunUtc().toISOString())
-    : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -79,9 +75,11 @@ export default async function DataOperationsPage() {
             label: "Automatic refresh",
             value: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
             helper: AUTOMATIC_REFRESH_ENABLED
-              ? `Next run ${nextRunLabel} · cron ${DAILY_CRON_UTC} UTC`
+              ? `Configured · 06:00 Curaçao / 10:00 UTC · cron ${DAILY_CRON_UTC} · begins on default branch`
               : "No scheduled runs · intended 06:00 Curaçao when re-enabled",
-            tip: "Automatic refresh is currently off. Only an explicit manual dispatch can start a new refresh.",
+            tip: AUTOMATIC_REFRESH_ENABLED
+              ? "Daily automation is configured On. Scheduled execution begins once the workflow is on the default branch; Run now can still dispatch manually."
+              : "Automatic refresh is currently off. Only an explicit manual dispatch can start a new refresh.",
             tipLabel: "automatic refresh",
             icon: RefreshCw,
           },

@@ -98,13 +98,19 @@ test("data operations page shows schedule flag and budgets", () => {
   assert.match(page, /PipelineRunProgress/);
   assert.match(page, /Automatic refresh/);
   assert.match(page, /AUTOMATIC_REFRESH_ENABLED/);
-  assert.match(page, /Daily cron/);
+  assert.match(page, /begins on default branch/);
   assert.match(page, /06:00 Curaçao/);
   assert.match(page, /USD 2 \/ day/);
   assert.match(page, /GitHub workflow/);
   assert.match(page, /Manual Run now dispatch needs setup/);
+  assert.doesNotMatch(page, /Manual dispatch \(cron Off\)/);
+  assert.match(page, /Daily automation is configured On/);
   const schedule = source("src/lib/pipeline/schedule.ts");
   assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = true/);
+  const settings = source("src/app/settings/page.tsx");
+  assert.match(settings, /Daily automation configured/);
+  assert.match(settings, /begins once the workflow is on the default branch/);
+  assert.doesNotMatch(settings, /Manual dispatch \(cron Off\)/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");
@@ -160,6 +166,8 @@ test("quality neighbourhood gaps drill into an actual listings filter", () => {
   const quality = source("src/app/quality/page.tsx");
   assert.match(analytics, /locationGap: value\("locationGap"\)/);
   assert.match(analytics, /listingHasNeighbourhoodSearchGap/);
+  assert.match(analytics, /neighbourhoodKeysMatch/);
+  assert.match(analytics, /listingCanonicalNeighbourhood/);
   assert.match(filters, /Missing from neighbourhood search/);
   assert.match(
     quality,

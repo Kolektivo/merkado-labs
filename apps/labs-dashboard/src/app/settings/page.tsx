@@ -66,8 +66,8 @@ export default async function SettingsPage() {
             {[
               [
                 "Website refreshes",
-                "Manual dispatch (cron Off)",
-                "Pipeline ready for the four Ready sources. GitHub daily cron On (06:00 Curaçao / 10:00 UTC) after gates; Run now when dispatch credentials are set.",
+                "Daily automation configured",
+                "Automatic refresh On. Schedule 06:00 Curaçao / 10:00 UTC begins once the workflow is on the default branch. Run now when dispatch credentials are set.",
               ],
               [
                 "AI enrichment",

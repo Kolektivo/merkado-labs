@@ -37,6 +37,55 @@ def test_st_joris_to_sint_joris() -> None:
         assert result.reason == "exact_alias"
 
 
+def test_salina_variants_to_salina_with_n() -> None:
+    from merkado_labs.enrichment.neighbourhood_canonical import (
+        neighbourhood_keys_match,
+    )
+
+    for raw in ("Salina", "Salinja", "Saliña", "Salinja Curacao", "Salina Curacao"):
+        result = canonicalize_neighbourhood(raw)
+        assert result.canonical_display == "Saliña", raw
+        assert result.safe is True
+    assert neighbourhood_keys_match("Salinja", "Saliña")
+    assert neighbourhood_keys_match("Salina Curacao", "Saliña")
+    # Distinct sub-areas must stay separate from the parent.
+    abou = canonicalize_neighbourhood("Salinja Abou")
+    assert abou.canonical_display == "Salinja Abou"
+    assert not neighbourhood_keys_match("Salinja Abou", "Saliña")
+    ariba = canonicalize_neighbourhood("Saliña Ariba")
+    assert ariba.canonical_display == "Saliña Ariba"
+    assert not neighbourhood_keys_match("Saliña Ariba", "Saliña")
+
+
+def test_marie_pompoen_to_marie_pampoen() -> None:
+    from merkado_labs.enrichment.neighbourhood_canonical import (
+        neighbourhood_keys_match,
+    )
+
+    for raw in (
+        "Marie Pompoen",
+        "Marie Pampoen",
+        "Marie Pampoen / Marie Pompoen Curacao",
+        "Marie Pompoen Curacao",
+    ):
+        result = canonicalize_neighbourhood(raw)
+        assert result.canonical_display == "Marie Pampoen", raw
+        assert result.safe is True
+    assert neighbourhood_keys_match("Marie Pompoen", "Marie Pampoen")
+
+
+def test_alias_filter_keys_converge() -> None:
+    from merkado_labs.enrichment.neighbourhood_canonical import (
+        neighbourhood_keys_match,
+    )
+
+    assert neighbourhood_keys_match(
+        "Blue Bay Golf & Beach Resort Curacao",
+        "Blue Bay",
+    )
+    assert neighbourhood_keys_match("St. Joris", "Sint Joris")
+
+
 def test_brakkeput_abou_remains_distinct() -> None:
     result = canonicalize_neighbourhood("Brakkeput Abou")
     assert result.canonical_display == "Brakkeput Abou"

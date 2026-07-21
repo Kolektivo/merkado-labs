@@ -254,6 +254,48 @@ test("neighbourhood aliases strip Curacao suffix and Blue Bay resort variants", 
   );
 });
 
+test("salina and marie spelling variants collapse for filters", () => {
+  for (const raw of [
+    "Salina",
+    "Salinja",
+    "Saliña",
+    "Salinja Curacao",
+    "Salina Curacao",
+  ]) {
+    assert.equal(canonicalizeNeighbourhood(raw).canonicalDisplay, "Saliña", raw);
+  }
+  assert.equal(neighbourhoodKeysMatch("Salinja", "Saliña"), true);
+  assert.equal(neighbourhoodKeysMatch("Salina Curacao", "Saliña"), true);
+  assert.equal(
+    canonicalizeNeighbourhood("Salinja Abou").canonicalDisplay,
+    "Salinja Abou",
+  );
+  assert.equal(neighbourhoodKeysMatch("Salinja Abou", "Saliña"), false);
+  assert.equal(
+    canonicalizeNeighbourhood("Saliña Ariba").canonicalDisplay,
+    "Saliña Ariba",
+  );
+  assert.equal(neighbourhoodKeysMatch("Saliña Ariba", "Saliña"), false);
+
+  for (const raw of [
+    "Marie Pompoen",
+    "Marie Pampoen",
+    "Marie Pampoen / Marie Pompoen Curacao",
+  ]) {
+    assert.equal(
+      canonicalizeNeighbourhood(raw).canonicalDisplay,
+      "Marie Pampoen",
+      raw,
+    );
+  }
+  assert.equal(neighbourhoodKeysMatch("Marie Pompoen", "Marie Pampoen"), true);
+  assert.equal(
+    neighbourhoodKeysMatch("Blue Bay Golf & Beach Resort Curacao", "Blue Bay"),
+    true,
+  );
+  assert.equal(neighbourhoodKeysMatch("St. Joris", "Sint Joris"), true);
+});
+
 test("effective neighbourhood display uses canonical name and keeps evidence", () => {
   const effective = resolveEffectiveNeighbourhood({
     sourceName: "Bottelier Curacao",

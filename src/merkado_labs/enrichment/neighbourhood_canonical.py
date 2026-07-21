@@ -57,6 +57,7 @@ _UNCERTAIN_KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
 # Include raw duplicate forms (with and without island suffix) after key norm.
 # DO NOT map Brakkeput Abou / Mei Mei / Ariba → Brakkeput.
 # DO NOT map Cas Abou Resort → Cas Abou.
+# DO NOT map Salinja Abou / Salinja Ariba / Saliña Ariba → Saliña.
 # Mirrors SAFE_NEIGHBOURHOOD_ALIASES in neighbourhood-aliases.ts — keep in sync.
 SAFE_NEIGHBOURHOOD_ALIASES: dict[str, str] = {
     # Explicit Labs duplicates with island suffix
@@ -73,12 +74,22 @@ SAFE_NEIGHBOURHOOD_ALIASES: dict[str, str] = {
     "mambo beach curacao": "Mambo Beach",
     "willemstad curacao": "Willemstad",
     "zuikertuintje curacao": "Zuikertuintje",
-    "salina curacao": "Salinja",
-    "salinja curacao": "Salinja",
     "mundo nobo curacao": "Mundo Nobo",
     "seru loraweg curacao": "Seru Loraweg",
     "blauwbaai curacao": "Blue Bay",
     "blue bay curacao": "Blue Bay",
+    # Saliña spelling variants (accent / j / bare / island suffix)
+    "salina": "Saliña",
+    "salinja": "Saliña",
+    "salina curacao": "Saliña",
+    "salinja curacao": "Saliña",
+    # Marie Pampoen spelling variants (incl. dual-label source form)
+    "marie pompoen": "Marie Pampoen",
+    "marie pompoen curacao": "Marie Pampoen",
+    "marie pampoen": "Marie Pampoen",
+    "marie pampoen curacao": "Marie Pampoen",
+    "marie pampoen marie pompoen": "Marie Pampoen",
+    "marie pampoen marie pompoen curacao": "Marie Pampoen",
     # St. Joris spelling variants
     "st joris": "Sint Joris",
     "st joris curacao": "Sint Joris",
@@ -220,7 +231,7 @@ def canonicalize_neighbourhood(value: str | None) -> CanonicalNeighbourhood:
         if alias:
             return CanonicalNeighbourhood(
                 original=original,
-                normalized_key=raw_key,
+                normalized_key=normalize_neighbourhood_key(alias),
                 canonical_display=alias,
                 reason="exact_alias",
                 confidence=1.0,
@@ -240,10 +251,11 @@ def canonicalize_neighbourhood(value: str | None) -> CanonicalNeighbourhood:
                 safe=True,
             )
         if stripped_key in SAFE_NEIGHBOURHOOD_ALIASES:
+            alias = SAFE_NEIGHBOURHOOD_ALIASES[stripped_key]
             return CanonicalNeighbourhood(
                 original=original,
-                normalized_key=raw_key,
-                canonical_display=SAFE_NEIGHBOURHOOD_ALIASES[stripped_key],
+                normalized_key=normalize_neighbourhood_key(alias),
+                canonical_display=alias,
                 reason="exact_alias",
                 confidence=1.0,
                 safe=True,
@@ -275,11 +287,20 @@ def canonical_display_name(value: str | None) -> str | None:
     return canonicalize_neighbourhood(value).canonical_display
 
 
+def canonical_comparison_key(value: str | None) -> str:
+    """Comparison key for filter matching after safe display canonicalization."""
+
+    result = canonicalize_neighbourhood(value)
+    if result.canonical_display:
+        return normalize_neighbourhood_key(result.canonical_display)
+    return result.normalized_key
+
+
 def neighbourhood_keys_match(left: str | None, right: str | None) -> bool:
     """True when both sides canonicalize to the same non-empty comparison key."""
 
-    left_key = canonicalize_neighbourhood(left).normalized_key
-    right_key = canonicalize_neighbourhood(right).normalized_key
+    left_key = canonical_comparison_key(left)
+    right_key = canonical_comparison_key(right)
     if not left_key or not right_key:
         return False
     return left_key == right_key

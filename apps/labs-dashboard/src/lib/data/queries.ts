@@ -119,6 +119,7 @@ const MAP_MARKER_SELECT = [
   "source_url",
   "original_realtor_url",
   "original_realtor_name",
+  "source_neighbourhood_text",
   "neighbourhood_assignment_status",
   SOURCE_EMBED,
   "neighbourhood:neighbourhoods!property_listings_neighbourhood_id_fkey(name)",
@@ -444,6 +445,9 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
       : null,
     neighbourhoodName: neighbourhood?.name
       ? String(neighbourhood.name)
+      : null,
+    sourceNeighbourhoodText: row.source_neighbourhood_text
+      ? String(row.source_neighbourhood_text)
       : null,
     inferredNeighbourhoodName: inferred?.name ? String(inferred.name) : null,
     neighbourhoodAssignmentStatus: normalizeAssignmentStatus(

@@ -378,6 +378,7 @@ export type MapListingMarker = {
   originalRealtorUrl: string | null;
   originalRealtorName: string | null;
   neighbourhoodName: string | null;
+  sourceNeighbourhoodText: string | null;
   inferredNeighbourhoodName: string | null;
   neighbourhoodAssignmentStatus: NeighbourhoodAssignmentStatus;
   coordinateQuality: CoordinateQuality;
