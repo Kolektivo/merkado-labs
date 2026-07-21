@@ -69,25 +69,24 @@ or costs. The preview remains Labs-only and is not live on merkado.cw.
   Match Reports. These are explicitly experimental.
 
 Data Operations can enqueue and dispatch the Labs-only property workflow.
-Automatic refresh remains **Off** in the foundation; 06:00 Curaçao is the
-intended daily schedule after a separate cron-enabling PR. The current workflow
-is `workflow_dispatch` only, enforces USD 2 daily / USD 25 monthly / 25-listing
+Automatic refresh is **On**: daily cron `0 10 * * *` UTC (06:00 Curaçao) for
+the four Ready sources. Manual Run now still uses `workflow_dispatch` when
+server-only `GITHUB_REPOSITORY` and a dedicated fine-grained `GITHUB_TOKEN`
+are configured. The workflow enforces USD 2 daily / USD 25 monthly / 25-listing
 AI limits, and excludes blocked Sotheby's.
 
 ## Understand source runs
 
 `success` is meaningful only for a complete catalog. Bounded, truncated, or
 partially failed runs are `partial` and must never mark absent listings missing
-or removed. Dispatch automation exists, but the daily schedule remains off.
+or removed. Daily schedule and manual dispatch share the same Labs worker path.
 
 Current maturity:
 
-- RE/MAX: working complete manual adapter (220 listings); adapter v0.4.1 active (coordinates 199/220); GPT-5.6 Terra-v3 initial backfill complete (220/220); Data Ops Refresh & enrich still bills new/changed only (initial backfill was a separate one-time approval).
-- Keller Williams: complete 84-listing catalog via offline import (the
-  live-crawl adapter still has incomplete pagination); GPT-5.6 Terra AI
-  enrichment activated — 84/84 successful proposals, manual/unscheduled.
-- Moret: Ready (adapter v0.2.0; first complete catalog 71 activated; GPT-5.6 Terra-v3 initial backfill complete 71/71; Refresh & enrich = new/changed only; remains manual/unscheduled).
-- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; 2 public-eligible; Terra-v3 5/5; coordinates 0/5; manual/unscheduled).
+- RE/MAX: Ready adapter v0.4.1; Terra-v3 initial backfill complete; daily cron + Refresh & enrich bill new/changed only.
+- Keller Williams: Ready adapter v0.3.1; marketing non-listing URLs excluded; Terra enrichment active; included in daily cron.
+- Moret: Ready (adapter v0.2.0; catalog 71; Terra-v3 71/71; daily cron).
+- Monumentenzorg: Ready (adapter v0.2.0; 5 listings; 2 public-eligible; Terra-v3 5/5; daily cron).
 - Sotheby's: Access route BLOCKED (2026-07-20 recon — affiliate TLS broken; network HTTP 202 WAF; app.sir.com office shell has no catalog). Official feed/partner API required. Not Ready.
 
 ## Troubleshoot database loading

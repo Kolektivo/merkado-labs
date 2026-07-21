@@ -75,7 +75,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 220,
     catalogStatus: "complete",
     currentIssue:
-      "Adapter v0.4.1 active (220 listings; coordinates 199/220). Terra-v3 initial backfill complete (220/220). Daily automation is intended but not enabled; foundation is workflow_dispatch only. Normal Refresh & enrich remains new/changed only.",
+      "Adapter v0.4.1 active (220 listings; coordinates 199/220). Terra-v3 initial backfill complete (220/220). Daily automation enabled at 06:00 Curaçao (cron 0 10 * * * UTC). Normal Refresh & enrich remains new/changed only.",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
@@ -88,7 +88,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 71,
     catalogStatus: "complete",
     currentIssue:
-      "First complete catalog established (71). Terra-v3 initial backfill complete (71/71). Daily automation is intended but not enabled; foundation is workflow_dispatch only.",
+      "First complete catalog established (71). Terra-v3 initial backfill complete (71/71). Daily automation enabled at 06:00 Curaçao (cron 0 10 * * * UTC).",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,
@@ -101,7 +101,7 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
     listingCountExpected: 5,
     catalogStatus: "complete",
     currentIssue:
-      "First complete catalog established (5). Terra-v3 initial backfill complete (5/5). Coordinates 0/5. Daily automation is intended but not enabled; foundation is workflow_dispatch only.",
+      "First complete catalog established (5). Terra-v3 initial backfill complete (5/5). Coordinates 0/5. Daily automation enabled at 06:00 Curaçao (cron 0 10 * * * UTC).",
     primaryAction: "Refresh & enrich",
     blockerKind: null,
     allowsFullRefresh: true,

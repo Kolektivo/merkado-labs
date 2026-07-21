@@ -11,6 +11,9 @@ export type ConfigurationHealth = {
   serviceCredentialsConfigured: boolean;
   openAiConfigured: boolean;
   adminAuthConfigured: boolean;
+  /** Server-only manual Run now dispatch (optional; cron does not require this). */
+  githubDispatchConfigured: boolean;
+  githubRepositoryConfigured: boolean;
 };
 
 function configured(value: string | undefined) {
@@ -29,6 +32,7 @@ export function getConfigurationHealth(): ConfigurationHealth {
     // Health reports booleans only; detailed safe errors remain on data pages.
   }
 
+  const repository = process.env.GITHUB_REPOSITORY?.trim() ?? "";
   return {
     supabaseConfigured,
     correctLabsProject,
@@ -39,5 +43,9 @@ export function getConfigurationHealth(): ConfigurationHealth {
       configured(process.env.OPENAI_API_KEY) &&
       configured(process.env.OPENAI_ENRICHMENT_MODEL),
     adminAuthConfigured: configured(process.env.LABS_ADMIN_SECRET),
+    githubRepositoryConfigured: /^[\w.-]+\/[\w.-]+$/.test(repository),
+    githubDispatchConfigured:
+      configured(process.env.GITHUB_TOKEN) &&
+      /^[\w.-]+\/[\w.-]+$/.test(repository),
   };
 }

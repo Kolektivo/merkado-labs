@@ -20,6 +20,12 @@ import {
 } from "@/components/ui/card";
 import { formatUsd } from "@/lib/enrichment/cost";
 import { formatDateTime } from "@/lib/format";
+import {
+  AUTOMATIC_REFRESH_ENABLED,
+  DAILY_CRON_UTC,
+  nextScheduledRunUtc,
+} from "@/lib/pipeline/schedule";
+import { getConfigurationHealth } from "@/lib/system/health";
 import { jobStatusLabel, jobStatusTone } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +44,7 @@ export default async function DataOperationsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Data operations"
-          description="Labs property refresh automation. The daily schedule is not enabled."
+          description="Labs property refresh automation with a daily 06:00 Curaçao schedule."
           icon={RefreshCw}
         />
         <DataError
@@ -52,6 +58,9 @@ export default async function DataOperationsPage() {
     ["queued", "running", "stopping"].includes(run.status),
   );
   const activeDetail = active ? await getPipelineRunDetail(active.id) : null;
+  const health = getConfigurationHealth();
+  const nextRun = nextScheduledRunUtc();
+  const nextRunLabel = formatDateTime(nextRun.toISOString());
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,19 +74,19 @@ export default async function DataOperationsPage() {
         <Card>
           <CardHeader>
             <CardDescription>Automatic refresh</CardDescription>
-            <CardTitle>Off</CardTitle>
+            <CardTitle>{AUTOMATIC_REFRESH_ENABLED ? "On" : "Off"}</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            workflow_dispatch only
+            Daily cron {DAILY_CRON_UTC} UTC
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Intended schedule</CardDescription>
+            <CardDescription>Next scheduled run</CardDescription>
             <CardTitle>06:00 Curaçao</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Pending a separate cron PR
+            {nextRunLabel} (10:00 UTC)
           </CardContent>
         </Card>
         <Card>
@@ -99,6 +108,22 @@ export default async function DataOperationsPage() {
           </CardContent>
         </Card>
       </section>
+
+      {!health.githubDispatchConfigured ? (
+        <div className="rounded-xl border border-dashed px-4 py-4 text-sm">
+          <p className="font-medium">Manual Run now dispatch needs setup</p>
+          <p className="mt-1 text-muted-foreground">
+            Set server-only{" "}
+            <code className="text-xs">GITHUB_REPOSITORY=Kolektivo/merkado-labs</code>{" "}
+            and a dedicated fine-grained{" "}
+            <code className="text-xs">GITHUB_TOKEN</code> with Actions workflow
+            dispatch permission. Daily cron does not require this credential.
+            {!health.githubRepositoryConfigured
+              ? " Repository variable is missing."
+              : " Token is missing or not loaded on this host."}
+          </p>
+        </div>
+      ) : null}
 
       <section
         aria-labelledby="operations-sources-heading"

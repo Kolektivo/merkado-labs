@@ -18,7 +18,7 @@ CACHE_DIRS = {
 }
 
 CURACAO_TZ = "America/Curacao"
-DAILY_CRON_UTC = "0 10 * * *"  # Documented target: 06:00 Curaçao; not enabled.
+DAILY_CRON_UTC = "0 10 * * *"  # Enabled: 10:00 UTC / 06:00 America/Curacao.
 
 
 def ordered_ready_keys(source_keys: Iterable[str] | None = None) -> list[str]:

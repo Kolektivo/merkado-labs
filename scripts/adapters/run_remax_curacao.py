@@ -1,6 +1,6 @@
 """Manual RE/MAX Curaçao adapter runner.
 
-Scheduling is intentionally not enabled. Default mode is dry-run (no DB writes).
+Standalone adapter entrypoint. Default mode is dry-run (no DB writes).
 
 ``--preview-import`` reconciles a local complete catalog against Labs with
 read-only SELECTs only (no website requests, writes, uploads, or events).

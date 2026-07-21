@@ -146,13 +146,13 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
       "Missing/removed transitions only when a source completes a full successful catalog. Partial or failed catalogs never mark absence.",
     cost_disclaimer:
       "Estimated from recorded token usage and configured model pricing.",
-    schedule: "off",
+    schedule: "on",
     schedule_metadata: {
-      automatic_refresh: "Off",
+      automatic_refresh: "On",
       intended_local_time: "06:00",
       timezone: "America/Curacao",
       documented_cron_utc: "0 10 * * *",
-      enabled: false,
+      enabled: true,
     },
     ready_source_keys: readySourceKeys(),
   };
@@ -165,7 +165,7 @@ export async function enqueuePipelineRun(input: EnqueueInput) {
       trigger_type: input.triggerType ?? "manual",
       status: "queued",
       dispatch_status: "pending",
-      automatic_refresh_enabled: false,
+      automatic_refresh_enabled: true,
       requested_by: input.requestedBy ?? "labs_admin",
       source_keys: keys,
       preflight,

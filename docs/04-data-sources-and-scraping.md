@@ -4,11 +4,11 @@
 
 ## Automation foundation (Labs only)
 
-Automatic daily refresh at 06:00 Curaçao is the intended default for the four
-Ready sources. The foundation workflow is currently `workflow_dispatch` only:
-the documented `0 10 * * *` UTC cron is **not enabled** and automatic refresh
-shows **Off** until a separate cron PR. Daily AI limits are USD 2, USD 25 per
-month, and 25 changed listings per run. Sotheby's is blocked and excluded.
+Automatic daily refresh is enabled for the four Ready sources at 06:00 Curaçao
+(`0 10 * * *` UTC) via GitHub Actions `schedule`, with `workflow_dispatch`
+retained for manual/dashboard runs. Automatic refresh shows **On**. Daily AI
+limits are USD 2, USD 25 per month, and 25 changed listings per run. Sotheby's
+is blocked and excluded.
 
 Selection uses the shared canonical hash contract
 (`enrichment_input_hash_v1` in `merkado_labs.pipeline.change_hash`). Semantic
@@ -24,7 +24,7 @@ inventory (which continues under listing/cost budgets).
 |---|---|---|
 | `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.1; marketing non-listing URLs excluded; Terra prompt/schema v4 + policy v4.1 |
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route BLOCKED (2026-07-20 recon); not Ready |
-| `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
+| `remax_curacao` | RE/MAX | [LABS] Complete catalog; Terra-v3 initial backfill complete; daily cron enabled |
 | `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
 | `monumentenzorg_curacao` | Monumentenzorg Curaçao | [LABS] Adapter v0.2.0 Ready; catalog 5; public eligible 2; Terra 5/5 |
 

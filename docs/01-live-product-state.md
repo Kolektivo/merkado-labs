@@ -3,10 +3,10 @@
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
 **Last updated:** July 20, 2026
 
-**Labs automation foundation:** the four Ready property sources now have a
-workflow-dispatch orchestration path with source locks, anomaly gates, and AI
-budgets. Automatic daily refresh at 06:00 Curaçao is the intended default, but
-the cron trigger is not enabled in this foundation. Sotheby's remains blocked
+**Labs automation foundation:** the four Ready property sources share a Labs-only
+orchestration path with source locks, anomaly gates, and AI budgets. Automatic
+daily refresh runs at 06:00 Curaçao (`0 10 * * *` UTC) via GitHub Actions
+schedule; manual/dashboard dispatch remains available. Sotheby's remains blocked
 and excluded. This does not change production or deploy anything.
 
 ## 1. Production today `[LIVE]`

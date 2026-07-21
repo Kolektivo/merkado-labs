@@ -15,7 +15,8 @@ from merkado_labs.pipeline.readiness import (
     filter_run_all_ready,
     resolve_source_readiness,
 )
-from merkado_labs.pipeline.sources import CURACAO_TZ, DAILY_CRON_UTC, ordered_ready_keys
+from merkado_labs.pipeline.schedule import schedule_metadata
+from merkado_labs.pipeline.sources import ordered_ready_keys
 from merkado_labs.scrapers.kw_import_preview import assert_labs_project_ref as assert_ref
 
 
@@ -116,14 +117,8 @@ def build_preflight(
         "cost_disclaimer": (
             "Estimated from recorded token usage and configured model pricing."
         ),
-        "schedule": "off",
-        "schedule_metadata": {
-            "automatic_refresh": "Off",
-            "intended_local_time": "06:00",
-            "timezone": CURACAO_TZ,
-            "documented_cron_utc": DAILY_CRON_UTC,
-            "enabled": False,
-        },
+        "schedule": "on",
+        "schedule_metadata": schedule_metadata(enabled=True),
     }
 
 

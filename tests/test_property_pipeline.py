@@ -56,15 +56,17 @@ def test_pipeline_stages_are_seven() -> None:
     )
 
 
-def test_preflight_lifecycle_risk_and_no_schedule() -> None:
+def test_preflight_lifecycle_risk_and_enabled_schedule() -> None:
     preflight = build_preflight(
         source_keys=["keller_williams_curacao"],
         trigger_mode="single_source",
         project_ref=LABS_PROJECT_REF,
         expected_ai_listing_count=0,
     )
-    assert preflight["schedule"] == "off"
-    assert preflight["schedule_metadata"]["enabled"] is False
+    assert preflight["schedule"] == "on"
+    assert preflight["schedule_metadata"]["enabled"] is True
+    assert preflight["schedule_metadata"]["automatic_refresh"] == "On"
+    assert preflight["schedule_metadata"]["documented_cron_utc"] == "0 10 * * *"
     assert "Missing/removed" in preflight["lifecycle_risk_summary"]
     assert preflight["import_will_occur"] is True
 
@@ -355,7 +357,7 @@ def test_preflight_stores_approved_ceiling() -> None:
         expected_ai_listing_count=84,
     )
     assert preflight["estimated_ai_ceiling_usd"] == 2
-    assert preflight["schedule"] == "off"
+    assert preflight["schedule"] == "on"
 
 
 def test_empty_worker_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
