@@ -21,12 +21,18 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import parse_qs, unquote, urljoin, urlparse, urlunparse
 
-from merkado_labs.normalization.currency import parse_decimal_amount, resolve_original_money
+from merkado_labs.normalization.currency import (
+    normalize_currency_code,
+    parse_decimal_amount,
+    resolve_original_money,
+)
 from merkado_labs.scrapers.adapters.base import DirectSourceAdapter
 from merkado_labs.scrapers.contracts import (
+    SOURCE_OFFICIAL_PROVENANCE,
     AdapterListingSnapshot,
     FieldProvenance,
     ListingLifecycleStatus,
+    OfficialAlternatePrice,
     SourceRunOutcome,
     SourceRunRecord,
     classify_run_outcome,
@@ -1028,6 +1034,9 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
         property_type = property_type_from_context(type_context)
         amount, currency, price_raw = _extract_price(html)
         money = resolve_original_money(amount=amount, currency=currency, evidence=price_raw)
+        official_alternates = _extract_official_alternate_prices(
+            html, anchor_currency=currency
+        )
         if money is None:
             warnings.append("no_price_extracted")
 
@@ -1282,6 +1291,7 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
             source_status=source_status,
             lifecycle_hint=lifecycle,
             original_price=money,
+            official_alternate_prices=tuple(official_alternates),
             bedrooms=int(bedrooms) if bedrooms is not None else None,
             bathrooms=normalized_bathrooms,
             floor_area_m2=floor_area,
@@ -1311,6 +1321,7 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
                 "half_bathrooms": half_baths,
                 "agent_name": agent_name,
                 "location_evidence": location_evidence,
+                "official_alternate_prices": [alt.as_dict() for alt in official_alternates],
             },
             fields=tuple(fields),
             warnings=tuple(warnings),
@@ -1655,6 +1666,50 @@ def _extract_price(html: str) -> tuple[Decimal | None, str | None, str | None]:
     currency = match.group(1).upper()
     amount = parse_decimal_amount(f"{currency} {match.group(2).strip()}")
     return amount, currency, raw
+
+
+def _extract_official_alternate_prices(
+    html: str,
+    *,
+    anchor_currency: str | None,
+) -> list[OfficialAlternatePrice]:
+    """Capture KW inline EUR/XCG lines as source-official alternates.
+
+    Anchor remains the first currency code; following amounts are official
+    source conversions, never Merkado-inferred.
+    """
+
+    price_html = PRICE_RE.search(html)
+    if not price_html:
+        return []
+    raw = _text(price_html.group("body"))
+    matches = list(re.finditer(r"\b(USD|EUR|XCG|ANG|NAF)\s*([\d.,\s]+)", raw, re.I))
+    if len(matches) <= 1:
+        return []
+    anchor = normalize_currency_code(anchor_currency)
+    alts: list[OfficialAlternatePrice] = []
+    seen: set[str] = set()
+    for match in matches[1:]:
+        currency = normalize_currency_code(match.group(1))
+        amount = parse_decimal_amount(f"{match.group(1)} {match.group(2).strip()}")
+        if currency is None or amount is None or amount <= 0:
+            continue
+        if currency == anchor:
+            continue
+        key = f"{currency}|{amount}"
+        if key in seen:
+            continue
+        seen.add(key)
+        alts.append(
+            OfficialAlternatePrice(
+                amount=amount,
+                currency=currency,
+                provenance=SOURCE_OFFICIAL_PROVENANCE,
+                evidence=match.group(0)[:240],
+                source_label="kw_inline_price_line",
+            )
+        )
+    return alts
 
 
 def _extract_features(html: str) -> dict[str, str]:

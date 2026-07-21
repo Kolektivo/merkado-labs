@@ -24,7 +24,7 @@ This folder holds the working context for Merkado Labs property work.
 | Moret adapter | [LABS] v0.2.0 Ready; 71 catalog |
 | Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog |
 | Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (excluded from Ready pipelines; feed/API needed) |
-| AI enrichment (v4 / v4.2) | [LABS] Active: `listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`; dashboard AI execution disabled; pipeline AI under budgets when worker runs; 2026-07-21 quality pass dry-run (DB apply pending) — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
+| AI enrichment (v4 / v4.2) | [LABS] Active: `listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`; dashboard AI execution disabled; pipeline AI under budgets when worker runs; 2026-07-21 quality pass **applied to fixed point** (openai_calls=0) — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
 
 ## The files
@@ -45,7 +45,7 @@ This folder holds the working context for Merkado Labs property work.
 | `labs/PROJECT_CONTEXT.md` | What Merkado Labs is and current state. | Orienting a new session. |
 | `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
 | `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |
-| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality pass (policy v4.2, zero-cost reeval). | After enrichment/policy rematerialization work. |
+| `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality stabilization (policy v4.2 fixed point, images, currency, timeline, geo gaps). | After enrichment/policy rematerialization or price/geo quality work. |
 
 Production reference copies (not Labs build docs):
 

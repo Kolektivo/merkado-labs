@@ -2,6 +2,11 @@
  * Listing-detail helpers for source / AI / effective values and change audit.
  */
 
+/** Keep in sync with `lib/enrichment/scope.ts` (that module is server-only). */
+export const CURRENT_PROMPT_VERSION = "listing_enrichment_v4";
+export const CURRENT_SCHEMA_VERSION = "listing_enrichment_schema_v4";
+export const CURRENT_POLICY_VERSION = "enrichment_policy_v4_2";
+
 export type ProvenanceKind =
   | "source"
   | "deterministic"
@@ -30,6 +35,16 @@ export type FieldDecisionView = {
   conflict: boolean;
   reasons: string[];
 };
+
+/** Reason codes that mean review for ambiguity/conflict — not low confidence. */
+export const AMBIGUITY_ATTENTION_REASON_CODES = [
+  "model_conflict_indicator",
+  "effective_resolver_conflict",
+  "terrace_variant_needs_attention",
+  "legacy_proposal_requires_audit",
+] as const;
+
+const AMBIGUITY_REASON_SET = new Set<string>(AMBIGUITY_ATTENTION_REASON_CODES);
 
 export const PROVENANCE_LABELS: Record<
   ProvenanceKind,
@@ -143,6 +158,140 @@ export function humanizeReasonCodes(reasons: string[]): string[] {
   return reasons.map(humanizeReasonCode);
 }
 
+export type ReasonDisplay = {
+  code: string;
+  label: string;
+};
+
+/** Plain-language label plus the machine-readable reason code. */
+export function reasonDisplays(reasons: string[]): ReasonDisplay[] {
+  return reasons.map((code) => ({
+    code,
+    label: humanizeReasonCode(code),
+  }));
+}
+
+/**
+ * Why a high-confidence proposal can still need a person — conflict or
+ * ambiguity, not "confidence too low."
+ */
+export function explainAttentionReview(
+  decision: Pick<FieldDecisionView, "confidence" | "reasons" | "conflict">,
+): string | null {
+  const reasons = decision.reasons ?? [];
+  const highConfidence =
+    decision.confidence !== null && decision.confidence >= 0.85;
+  const ambiguityReasons = reasons.filter((code) =>
+    AMBIGUITY_REASON_SET.has(code),
+  );
+
+  if (ambiguityReasons.length || decision.conflict) {
+    const parts = ambiguityReasons.map(humanizeReasonCode);
+    if (decision.conflict && !ambiguityReasons.includes("model_conflict_indicator")) {
+      parts.unshift("Model reported a conflict");
+    }
+    const detail = parts.length
+      ? parts.join("; ")
+      : "Conflicting signals need a human decision";
+    if (highConfidence) {
+      return `High model confidence (${Math.round(
+        (decision.confidence as number) * 100,
+      )}%) can still require review when signals conflict or the value is ambiguous — ${detail}. This is not a low-confidence rejection.`;
+    }
+    return detail;
+  }
+
+  if (highConfidence && reasons.includes("confidence_moderate_needs_attention")) {
+    return "Confidence is high enough to surface, but policy still requires a person for this field.";
+  }
+
+  if (
+    highConfidence &&
+    reasons.some(
+      (code) =>
+        code === "missing_or_weak_evidence" ||
+        code === "evidence_not_grounded" ||
+        code === "snippet_present_synonym_missing",
+    )
+  ) {
+    return `High model confidence (${Math.round(
+      (decision.confidence as number) * 100,
+    )}%) with incomplete evidence grounding — review required. This is not a low-confidence rejection.`;
+  }
+
+  return null;
+}
+
+export function isCurrentPolicyVersions(
+  promptVersion: string | null | undefined,
+  schemaVersion: string | null | undefined,
+): boolean {
+  return (
+    promptVersion === CURRENT_PROMPT_VERSION &&
+    schemaVersion === CURRENT_SCHEMA_VERSION
+  );
+}
+
+type SelectableProposal = {
+  id: string;
+  status: string;
+  generatedAt: string;
+  promptVersion: string;
+  schemaVersion: string;
+  inputChecksum?: string | null;
+};
+
+function isSuccessStatus(status: string): boolean {
+  return status === "succeeded" || status === "needs_review";
+}
+
+/**
+ * Prefer the retained current-policy (v4) successful attempt, else newest
+ * successful attempt, else the newest row. Matches enrichment dashboard
+ * retained ranking.
+ */
+export function selectRetainedProposal<T extends SelectableProposal>(
+  proposals: T[],
+  preferredChecksum?: string | null,
+): T | null {
+  if (!proposals.length) return null;
+  if (preferredChecksum) {
+    const byChecksum = proposals.find(
+      (item) => item.inputChecksum === preferredChecksum,
+    );
+    if (byChecksum) return byChecksum;
+  }
+  const successful = proposals.filter((item) => isSuccessStatus(item.status));
+  if (!successful.length) return proposals[0] ?? null;
+  const ranked = [...successful].sort((a, b) => {
+    const aCurrent = isCurrentPolicyVersions(a.promptVersion, a.schemaVersion)
+      ? 0
+      : 1;
+    const bCurrent = isCurrentPolicyVersions(b.promptVersion, b.schemaVersion)
+      ? 0
+      : 1;
+    if (aCurrent !== bCurrent) return aCurrent - bCurrent;
+    return b.generatedAt.localeCompare(a.generatedAt);
+  });
+  return ranked[0] ?? proposals[0] ?? null;
+}
+
+/**
+ * Collapse duplicate field keys to the latest effective decision (last
+ * occurrence wins — mirrors evaluation order in stored proposals).
+ */
+export function latestEffectiveDecisions(
+  decisions: FieldDecisionView[],
+): FieldDecisionView[] {
+  const byKey = new Map<string, FieldDecisionView>();
+  for (const decision of decisions) {
+    const key = decision.key || decision.displayLabel;
+    if (!key) continue;
+    byKey.set(key, decision);
+  }
+  return [...byKey.values()];
+}
+
 /**
  * Neighbourhood AI candidates are audit-only when a stronger source or map
  * neighbourhood already exists. Keep them out of the operational queue.
@@ -184,7 +333,7 @@ export function extractFieldDecisions(
   if (!Array.isArray(raw)) {
     // Legacy proposal shape: synthesize a light view from features.
     const features = asRecord(proposal.features);
-    return Object.entries(features).flatMap(([key, value]) => {
+    const legacy = Object.entries(features).flatMap(([key, value]) => {
       const item = asRecord(value);
       if (!item.value || item.value === "unknown") return [];
       return [
@@ -207,9 +356,10 @@ export function extractFieldDecisions(
         },
       ];
     });
+    return latestEffectiveDecisions(legacy);
   }
 
-  return raw.map((entry) => {
+  const mapped = raw.map((entry) => {
     const item = asRecord(entry);
     const status = String(item.final_status ?? "not_evaluated") as FieldDecisionStatus;
     return {
@@ -229,6 +379,7 @@ export function extractFieldDecisions(
         : [],
     };
   });
+  return latestEffectiveDecisions(mapped);
 }
 
 export function effectiveAttributesFromProposal(

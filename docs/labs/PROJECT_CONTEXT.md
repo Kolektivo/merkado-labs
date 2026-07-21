@@ -14,8 +14,10 @@ Active work is **direct-source property ingestion** for Curaçao:
   `change_hash`); daily cron temporarily Off; manual/dashboard dispatch available;
 - AI enrichment v4 / policy v4.2 (`listing_enrichment_v4` /
   `listing_enrichment_schema_v4` / `enrichment_policy_v4_2`); zero-cost
-  policy rematerialization does not create billable AI work (see
-  `PROPERTY_DATA_QUALITY_REPORT.md`);
+  policy rematerialization reached fixed point 2026-07-21 (no billable AI;
+  see `PROPERTY_DATA_QUALITY_REPORT.md` for synonym-dedupe root cause,
+  image dedup, source-official currency, presentation timeline, map vs
+  neighbourhood-search gaps);
 - Labs public-effective view + image galleries; Browse public preview;
 - Labs dashboard: ops + Data Operations + Enrichment review + prototypes
   (not read-only);

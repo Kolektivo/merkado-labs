@@ -23,7 +23,7 @@
 import {
   canonicalizeNeighbourhood,
   neighbourhoodKeysMatch,
-} from "./neighbourhood-aliases";
+} from "./neighbourhood-aliases.ts";
 
 /** Generic island-level mentions that are not a real neighbourhood. */
 const GENERIC_NEIGHBOURHOOD_TERMS = new Set([

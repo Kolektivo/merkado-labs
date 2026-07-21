@@ -695,11 +695,27 @@ def proposal_to_attribute_dicts(
 
     Works for both legacy v2 proposals (populated ``features`` dict) and
     compact v3 proposals (``features`` empty, everything in ``attributes``).
+    Canonical-key dedupe keeps synonym duplicates from becoming parallel
+    decisions (e.g. pets_allowed + pet_suitability).
     """
 
+    from merkado_labs.enrichment.fields import normalize_attribute_key
+
     items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def _append(item: dict[str, Any]) -> None:
+        key = str(item.get("key") or "").strip()
+        if not key:
+            return
+        canonical = normalize_attribute_key(key)
+        if not canonical or canonical in seen:
+            return
+        seen.add(canonical)
+        items.append({**item, "key": canonical})
+
     for key, assessment in proposal.features.items():
-        items.append(
+        _append(
             {
                 "key": key,
                 "value": assessment.value,
@@ -714,7 +730,7 @@ def proposal_to_attribute_dicts(
             }
         )
     for attr in proposal.attributes:
-        items.append(
+        _append(
             {
                 "key": attr.key,
                 "value": attr.value,
@@ -728,7 +744,7 @@ def proposal_to_attribute_dicts(
             }
         )
     if proposal.neighbourhood_candidate:
-        items.append(
+        _append(
             {
                 "key": "neighbourhood_candidate",
                 "value": proposal.neighbourhood_candidate,
@@ -742,7 +758,7 @@ def proposal_to_attribute_dicts(
             }
         )
     if proposal.normalized_property_type_candidate:
-        items.append(
+        _append(
             {
                 "key": "property_type",
                 "value": proposal.normalized_property_type_candidate,
@@ -759,7 +775,7 @@ def proposal_to_attribute_dicts(
         )
     source_excerpt = (source_text or "").strip()[:160] or None
     if proposal.concise_summary:
-        items.append(
+        _append(
             {
                 "key": "concise_summary",
                 "value": proposal.concise_summary,
@@ -780,7 +796,7 @@ def proposal_to_attribute_dicts(
         ("display_practical", proposal.display_practical),
     ):
         if value:
-            items.append(
+            _append(
                 {
                     "key": key,
                     "value": value,
@@ -798,7 +814,7 @@ def proposal_to_attribute_dicts(
         # literal extraction_reason string is never fabricated as evidence —
         # with no grounded text, policy rejects the claim outright instead
         # of raising a needs_attention item nobody can act on.
-        items.append(
+        _append(
             {
                 "key": "gated_community",
                 "value": proposal.resort_or_gated_candidate,

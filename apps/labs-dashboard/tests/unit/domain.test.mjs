@@ -183,8 +183,8 @@ test("humanizeReasonCode maps common ReasonCode strings", () => {
 });
 
 test("formatXcgPrimary prefixes the amount with the Cg symbol", () => {
-  const formatted = formatXcgPrimary(179_000);
-  assert.match(formatted, /Cg/);
+  assert.equal(formatXcgPrimary(179_000), "Cg 179,000");
+  assert.equal(formatXcgPrimary(1_927), "Cg 1,927");
 });
 
 test("neighbourhood AI attention is demoted when source or map already exists", () => {

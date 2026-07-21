@@ -127,12 +127,20 @@ export default async function QualityPage() {
 
   const important: Issue[] = [
     {
-      title: "No map location available",
+      title: "Missing map coordinates",
       count: quality.missingCoordinates,
       impact:
-        "These listings cannot appear on the map and may have weaker neighbourhood matching.",
-      action: "View affected listings",
+        "No latitude/longitude — these listings cannot appear on the map. They may still be findable by neighbourhood filter when source or map area text exists.",
+      action: "View map gaps",
       href: "/listings?coordQuality=missing_coords&from=quality",
+    },
+    {
+      title: "Missing neighbourhood for search",
+      count: quality.missingNeighbourhoodSearch,
+      impact:
+        "No usable neighbourhood after effective resolve + canonicalize (map polygon when coords exist, otherwise source text). Neighbourhood filter and search cannot place these listings. Source text that only needs alias cleanup is not counted here.",
+      action: "Browse listings",
+      href: "/listings?from=quality",
     },
   ].filter((issue) => issue.count > 0);
 
@@ -173,13 +181,21 @@ export default async function QualityPage() {
             icon: TriangleAlert,
           },
           {
-            label: "Important location gaps",
+            label: "Map location gaps",
             value: formatNumber(quality.missingCoordinates),
-            helper: "Affect maps and neighbourhood search",
+            helper: "Missing lat/lng — cannot appear on the map",
+            href: "/listings?coordQuality=missing_coords&from=quality",
+            icon: Info,
+          },
+          {
+            label: "Neighbourhood search gaps",
+            value: formatNumber(quality.missingNeighbourhoodSearch),
+            helper: "No canonical area for filter/search",
+            href: "/listings?from=quality",
             icon: Info,
           },
         ]}
-        className="xl:grid-cols-3"
+        className="xl:grid-cols-4"
       />
 
       {critical.length ? (

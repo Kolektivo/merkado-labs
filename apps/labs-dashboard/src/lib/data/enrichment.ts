@@ -17,6 +17,7 @@ import {
 import { getRecentAiEnrichmentJobs } from "@/lib/data/queries";
 import {
   extractFieldDecisions,
+  isCurrentPolicyVersions,
   isOperationalAttentionDecision,
 } from "@/lib/enrichment/display";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
@@ -44,9 +45,13 @@ export type ProposalQueueItem = {
   retained: boolean;
   attentionFields: Array<{
     label: string;
+    key: string;
     currentValue: unknown;
     suggestedValue: unknown;
     evidence: string | null;
+    reasons: string[];
+    confidence: number | null;
+    conflict: boolean;
   }>;
 };
 
@@ -278,9 +283,13 @@ const loadAllAiEnrichmentAttempts = cache(async (): Promise<UsageAttempt[]> => {
       needsAttentionCount: operationalAttention.length,
       attentionFields: operationalAttention.map((decision) => ({
         label: decision.displayLabel,
+        key: decision.key,
         currentValue: decision.before,
         suggestedValue: decision.after,
         evidence: decision.evidence,
+        reasons: decision.reasons,
+        confidence: decision.confidence,
+        conflict: decision.conflict,
       })),
       rejectedCount: decisions.filter((d) => d.status === "rejected").length,
       errorMessage: row.error_message ? String(row.error_message) : null,
@@ -310,16 +319,12 @@ function markRetainedAttempts(attempts: UsageAttempt[]): UsageAttempt[] {
     const successful = list.filter((a) => isSuccessStatus(a.status));
     if (!successful.length) continue;
     const ranked = [...successful].sort((a, b) => {
-      const aV4 =
-        a.promptVersion === "listing_enrichment_v4" &&
-        a.schemaVersion === "listing_enrichment_schema_v4"
-          ? 0
-          : 1;
-      const bV4 =
-        b.promptVersion === "listing_enrichment_v4" &&
-        b.schemaVersion === "listing_enrichment_schema_v4"
-          ? 0
-          : 1;
+      const aV4 = isCurrentPolicyVersions(a.promptVersion, a.schemaVersion)
+        ? 0
+        : 1;
+      const bV4 = isCurrentPolicyVersions(b.promptVersion, b.schemaVersion)
+        ? 0
+        : 1;
       if (aV4 !== bV4) return aV4 - bV4;
       return b.generatedAt.localeCompare(a.generatedAt);
     });
@@ -638,14 +643,16 @@ export const getEnrichmentDashboard = cache(async () => {
     .map(attemptToProposalQueueItem);
 
   const retainedAttempts = attempts.filter((a) => a.retained);
+  /** Current retained results that still have actionable review work. */
+  const attentionQueue = retainedAttempts
+    .filter((a) => a.needsAttentionCount > 0)
+    .map(attemptToProposalQueueItem);
   const autoAppliedFields = retainedAttempts.reduce(
     (sum, a) => sum + a.autoAppliedCount,
     0,
   );
   const needsAttentionListings = new Set(
-    retainedAttempts
-      .filter((a) => a.needsAttentionCount > 0 || a.status === "needs_review")
-      .map((a) => a.listingId),
+    attentionQueue.map((a) => a.listingId),
   ).size;
   const models = new Set(attempts.map((a) => a.model));
 
@@ -655,6 +662,7 @@ export const getEnrichmentDashboard = cache(async () => {
 
   return {
     proposals,
+    attentionQueue,
     jobs,
     runRows,
     costSummary,
@@ -676,11 +684,20 @@ export function filterEnrichmentProposals(
   if (!filter || filter === "all") return proposals;
   switch (filter) {
     case "needs_attention":
-      // Operational attention only — neighbourhood echoes when source/map
-      // already supply a neighbourhood are demoted in needsAttentionCount.
-      return proposals.filter((p) => p.needsAttentionCount > 0);
+      // Retained + operational attention only — historical / superseded rows
+      // and demoted neighbourhood echoes are not current review work.
+      return proposals.filter((p) => p.retained && p.needsAttentionCount > 0);
     case "conflicts":
-      return proposals.filter((p) => p.needsAttentionCount > 0);
+      return proposals.filter(
+        (p) =>
+          p.retained &&
+          p.attentionFields.some(
+            (field) =>
+              field.conflict ||
+              field.reasons.includes("model_conflict_indicator") ||
+              field.reasons.includes("effective_resolver_conflict"),
+          ),
+      );
     case "low_confidence":
       return proposals.filter(
         (p) => p.confidence !== null && p.confidence < 0.85,

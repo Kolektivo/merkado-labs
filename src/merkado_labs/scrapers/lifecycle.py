@@ -327,44 +327,10 @@ def compare_complete_success_snapshots(
                 )
             )
 
-        prev_price = existing.original_price
-        prev_currency = existing.original_currency
-        new_price = (
-            snapshot.original_price.amount if snapshot.original_price else None
-        )
-        new_currency = (
-            snapshot.original_price.currency if snapshot.original_price else None
-        )
-        if prev_price is not None and new_price is not None and prev_price != new_price:
-            transitions.append(
-                LifecycleTransition(
-                    external_id=external_id,
-                    event_type=ActivityEventType.PRICE_CHANGED,
-                    event_at=event_at,
-                    previous_status=None,
-                    new_status=None,
-                    previous_value={"amount": str(prev_price), "currency": prev_currency},
-                    new_value={"amount": str(new_price), "currency": new_currency},
-                    derivation=DerivationType.SOURCE_FACT,
-                )
-            )
-        if (
-            prev_currency
-            and new_currency
-            and prev_currency != new_currency
-        ):
-            transitions.append(
-                LifecycleTransition(
-                    external_id=external_id,
-                    event_type=ActivityEventType.CURRENCY_CHANGED,
-                    event_at=event_at,
-                    previous_status=None,
-                    new_status=None,
-                    previous_value={"currency": prev_currency},
-                    new_value={"currency": new_currency},
-                    derivation=DerivationType.SOURCE_FACT,
-                )
-            )
+        # Asking price / currency events are owned exclusively by import_pipeline
+        # (observed_at timestamps + benchmark_recalculated semantics). Emitting
+        # PRICE_CHANGED / CURRENCY_CHANGED here duplicated the same transition
+        # at run.completed_at.
 
     for external_id, existing in previous.items():
         if external_id in seen_ids:

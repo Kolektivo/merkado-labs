@@ -38,6 +38,10 @@ import {
   formatPercent,
   totalTokenCount,
 } from "@/lib/enrichment/cost";
+import {
+  explainAttentionReview,
+  humanizeReasonCode,
+} from "@/lib/enrichment/display";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 import {
   jobStatusLabel,
@@ -112,16 +116,15 @@ export default async function EnrichmentPage({
     );
   }
 
-  const attentionProposals = filterEnrichmentProposals(
-    dashboard.proposals,
-    "needs_attention",
-  );
+  const attentionProposals = dashboard.attentionQueue;
   const visibleProposals =
     filter === "never_enriched"
       ? []
       : filter === "all" && view === "attention"
         ? attentionProposals
-        : filterEnrichmentProposals(dashboard.proposals, filter);
+        : filter === "needs_attention" || filter === "conflicts"
+          ? filterEnrichmentProposals(attentionProposals, filter)
+          : filterEnrichmentProposals(dashboard.proposals, filter);
   const cost = dashboard.costSummary;
   const latestRun = dashboard.runRows[0] ?? null;
 
@@ -231,8 +234,9 @@ export default async function EnrichmentPage({
                 <h2>Needs review</h2>
               </CardTitle>
               <CardDescription>
-                Real exceptions requiring a decision. Rejected noise stays in
-                advanced audit below.
+                Current retained results only — historical runs and skipped noise
+                are not counted here. Rejected technical detail stays in advanced
+                audit below.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -267,12 +271,19 @@ export default async function EnrichmentPage({
                           {proposal.needsAttentionCount}{" "}
                           {proposal.needsAttentionCount === 1 ? "field" : "fields"}
                         </Badge>
+                        <Badge variant="secondary">Current result</Badge>
                         <StatusBadge tone="warning">Needs review</StatusBadge>
                       </div>
                     </div>
-                    {proposal.attentionFields.slice(0, 2).map((field) => (
+                    {proposal.attentionFields.slice(0, 2).map((field, fieldIndex) => {
+                      const why =
+                        explainAttentionReview(field) ??
+                        (field.reasons.length
+                          ? field.reasons.map(humanizeReasonCode).join("; ")
+                          : "A person needs to decide this field.");
+                      return (
                       <dl
-                        key={field.label}
+                        key={`${field.key || field.label}-${fieldIndex}`}
                         className="grid gap-3 rounded-lg bg-muted/35 p-3 text-sm sm:grid-cols-2"
                       >
                         <div>
@@ -283,7 +294,12 @@ export default async function EnrichmentPage({
                           <dt className="text-xs text-muted-foreground">
                             Why attention is required
                           </dt>
-                          <dd>Evidence or confidence needs a person to decide.</dd>
+                          <dd>{why}</dd>
+                          {field.reasons.length ? (
+                            <dd className="mt-1 font-mono text-[10px] text-muted-foreground">
+                              {field.reasons.join(", ")}
+                            </dd>
+                          ) : null}
                         </div>
                         <div>
                           <dt className="text-xs text-muted-foreground">
@@ -308,7 +324,8 @@ export default async function EnrichmentPage({
                           </div>
                         ) : null}
                       </dl>
-                    ))}
+                      );
+                    })}
                     <Button variant="outline" size="sm" asChild className="w-fit">
                       <Link
                         href={listingDetailHref(proposal.listingId, {

@@ -123,8 +123,31 @@ AMENITY_SYNONYM_PATTERNS: dict[str, re.Pattern[str]] = {
     "pet_suitability": re.compile(
         r"\bpets?[_\s-]?allowed\b"
         r"|\bpets?\s+(are\s+)?(not\s+)?allowed\b"
+        r"|\bno\s+pets?\b"
         r"|\bhuisdieren?\b"
+        r"|\bhuisdieren?\s+niet\s+toegestaan\b"
         r"|\b(niet\s+)?toegestaan\b",
+        re.I,
+    ),
+    "bedrooms": re.compile(
+        r"\b(\d+)\s*[- ]?\s*bedrooms?\b"
+        r"|\b(\d+)\s*[- ]?\s*slaapkamers?\b"
+        r"|\bbedrooms?\s*[:\-]?\s*(\d+)\b"
+        r"|\bslaapkamers?\s*[:\-]?\s*(\d+)\b",
+        re.I,
+    ),
+    "bathrooms": re.compile(
+        r"\b(\d+(?:[.,]\d+)?)\s*[- ]?\s*bathrooms?\b"
+        r"|\b(\d+(?:[.,]\d+)?)\s*[- ]?\s*badkamers?\b"
+        r"|\bbathrooms?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\b"
+        r"|\bbadkamers?\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\b",
+        re.I,
+    ),
+    "price_period": re.compile(
+        r"\bper\s+month\b|\bmonthly\b|\b/mo\.?\b|\b/month\b"
+        r"|\bper\s+maand\b|\bper\s+maand\b|\bmaandelijks\b"
+        r"|\bper\s+week\b|\bweekly\b|\bper\s+night\b|\bnightly\b"
+        r"|\bper\s+year\b|\byearly\b|\bfor\s+sale\b",
         re.I,
     ),
     "living_room": re.compile(

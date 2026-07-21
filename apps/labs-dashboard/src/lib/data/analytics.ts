@@ -6,6 +6,7 @@ import type {
   NeighbourhoodSummary,
   PropertyListing,
 } from "@/lib/domain/types";
+import { listingHasNeighbourhoodSearchGap } from "@/lib/domain/location-gaps";
 import {
   ASSIGNMENT_STATUS_LABELS,
   COORDINATE_QUALITY_LABELS,
@@ -443,6 +444,9 @@ export function summarizeGeographicQuality(
     ).length,
     validCoords: listings.filter((item) =>
       hasMappableCoordinates(item.latitude, item.longitude),
+    ).length,
+    missingNeighbourhoodSearch: listings.filter(
+      listingHasNeighbourhoodSearchGap,
     ).length,
     sourceNeighbourhood: listings.filter((item) => item.neighbourhood).length,
     geographicallyInferred: listings.filter(

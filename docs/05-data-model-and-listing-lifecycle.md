@@ -91,10 +91,11 @@ Store:
 | Original currency | Explicit source currency where available |
 | Benchmark amount | Derived XCG value |
 | Conversion rate | Exact rate used |
-| Conversion method | `identity`, `legacy_1_to_1`, `usd_fixed_peg`, `eur_api` |
+| Conversion method | `identity`, `legacy_1_to_1`, `usd_fixed_peg`, `eur_api`, `source_official_conversion` |
 | Provider | Policy/provider identifier |
 | Rate timestamp | When the rate was observed |
 | Currency evidence | Source text, selector, or structured data |
+| Official alternates | `official_alternate_prices` jsonb — source-published alts with provenance `source_official_conversion` |
 | Inference | Boolean, reason, and confidence |
 
 ### Conversion rules
@@ -103,6 +104,8 @@ Store:
 - ANG/NAf: normalize 1:1 to XCG while retaining original currency text/code.
 - USD: multiply by `1.79`.
 - EUR: `EUR_TO_XCG = ECB_USD_PER_EUR × 1.79` via `ecb_eur_usd_xcg_peg`.
+- Prefer source-official ANG/XCG for the public XCG figure when present; else Merkado conversion.
+- Never invent `source_official_conversion` from a Merkado rate.
 - One source run uses one cached EUR quote.
 - Store provider, derived rate, ECB observation date, and fetch provenance.
 - Store raw calculation precision and round only for display.
@@ -210,7 +213,15 @@ Sold/rented timestamps:
 - **Zero-cost policy reeval** rematerializes stored proposals under the current
   policy (`scripts/reeval_stored_proposals_zero_cost.py`) without OpenAI calls
   and without changing billable input checksums. Apply is refused while
-  `property_pipeline_runs` is active.
+  `property_pipeline_runs` is active. Inputs must be **immutable proposal
+  fields only** (features/attributes/neighbourhood/resort_or_gated) with
+  **canonical-key** dedupe — never feed materialized field_decisions/audit
+  back as proposal inputs (synonym churn). Corrective apply reached fixed
+  point 2026-07-21 (`transitions={}`, `changed=0`); see
+  `labs/PROPERTY_DATA_QUALITY_REPORT.md`.
+- Decision statuses: `auto_applied` / `redundant` (same-value or already
+  represented) / `needs_attention` (current conflicts only) / `rejected` /
+  `skipped`.
 - v4 can auto-apply grounded neighbourhood gap-fills and public display
   description blocks. Labs public-effective / gallery migrations are **applied**;
   production merkado.cw property projection remains **paused**.
@@ -235,7 +246,38 @@ Each event should store:
 - previous/new value JSON where relevant;
 - source observation ID;
 - derivation type: `source_fact`, `system_calculated`, or `inferred`;
-- notes/confidence where relevant.
+- notes/confidence where relevant;
+- optional additive presentation fields: `presentation_class`, `suppressed_reason`,
+  `presentation_metadata` (core event facts remain immutable; presentation_* may update).
+
+### Price events vs benchmark (do not conflate)
+
+| Event | Means |
+|---|---|
+| `price_changed` | Asking **amount** changed (source fact) |
+| `currency_changed` | Asking **currency** changed (source fact) |
+| `benchmark_recalculated` | FX/rate/provider context only; asking anchor unchanged |
+
+Import pipeline is the sole writer for these three. Dual-writer duplication of
+`price_changed` was fixed in the 2026-07-21 quality pass.
+
+### Presentation timeline (Phase 5)
+
+Default listing timeline shows genuine seller/source activity. Hide/group at
+read-time (do **not** delete events):
+
+- `benchmark_recalculated` (rate-only)
+- policy rematerialization / enrichment-only / ops noise
+- dual-writer duplicate `price_changed` / `currency_changed` (legacy rows)
+- repeated identical observations (collapsed in price history)
+
+Timeline dry-run sample (Labs): **1000** events → **557** visible default,
+**443** suppressed. Tooling:
+`merkado_labs.scrapers.presentation.dry_run_presentation_counts`
+(and dashboard `dryRunPresentationCounts`). Archive/hide from presentation only
+unless Labs cleanup policy explicitly allows delete with proof.
+
+Migration: `20260721140000_source_official_currency_and_presentation.sql`.
 
 ## 7. Sold and removed handling
 
@@ -301,12 +343,11 @@ Admin/server only:
 - Public-safe projection is `public_property_listings` / app `/browse`.
 - The public view exposes **effective** consumer fields only:
   `effective_neighbourhood` (+ provenance label), `effective_property_type`,
-  `public_attributes` (allowlisted `auto_applied` values, including waterfront
-  once the allowlist migration is applied), optional `effective_summary`, XCG
-  primary price, original price/currency, beds/baths/areas, listing type,
-  images, source description, first/last seen, source attribution. It never
-  exposes raw proposals, evidence, confidence, tokens, costs, checksums, or
-  private HTML.
+  `public_attributes` (allowlisted `auto_applied` values, including waterfront),
+  optional `effective_summary`, XCG primary price, original price/currency,
+  beds/baths/areas, listing type, images, source description, first/last seen,
+  source attribution. It never exposes raw proposals, evidence, confidence,
+  tokens, costs, checksums, or private HTML.
 - Service-role credentials are server-only; never `NEXT_PUBLIC_*`.
 
 Enable RLS on every table in an exposed schema.

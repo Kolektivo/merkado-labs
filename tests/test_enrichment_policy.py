@@ -276,8 +276,10 @@ def test_evaluate_proposal_idempotent_structure() -> None:
     ]
     first = evaluate_proposal_attributes(attrs, source_text=f"Villa with {snippet}.")
     second = evaluate_proposal_attributes(attrs, source_text=f"Villa with {snippet}.")
-    assert len(first.auto_applied) == len(second.auto_applied) == 2
-    assert first.as_dict()["auto_applied_count"] == 2
+    # Duplicate canonical keys collapse to one decision; both passes agree.
+    assert len(first.auto_applied) == len(second.auto_applied) == 1
+    assert first.as_dict()["auto_applied_count"] == 1
+    assert first.as_dict() == second.as_dict()
 
 
 def test_policy_version_is_v4() -> None:
@@ -473,16 +475,106 @@ def test_gated_community_with_real_grounded_evidence_can_auto_apply() -> None:
     assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
 
 
-def test_protected_bedrooms_rejected_before_flexible_bag() -> None:
+def test_protected_bedrooms_rejected_when_source_present() -> None:
     decision = decide_field(
         key="bedrooms",
         proposed_value=4,
         confidence=0.99,
         evidence_snippet="four bedrooms",
         source_text="The home has four bedrooms.",
+        source_values={"bedrooms": 3},
     )
     assert decision.final_status == AutoApplyStatus.REJECTED
     assert ReasonCode.PROTECTED_SOURCE_FIELD in decision.reasons
+
+
+def test_empty_source_bedrooms_gap_fill_from_description() -> None:
+    decision = decide_field(
+        key="bedrooms",
+        proposed_value=2,
+        confidence=0.98,
+        evidence_snippet="2-bedroom apartment",
+        source_text="Bright 2-bedroom apartment near the sea.",
+        source_values={"bedrooms": None},
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    assert decision.resulting_effective == 2
+
+
+def test_empty_source_bathrooms_gap_fill_from_description() -> None:
+    decision = decide_field(
+        key="bathrooms",
+        proposed_value=1,
+        confidence=0.97,
+        evidence_snippet="1-bathroom unit",
+        source_text="Compact 1-bathroom unit with balcony.",
+        source_values={"bathrooms": None},
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_price_period_month_auto_applies_on_rental() -> None:
+    decision = decide_field(
+        key="price_period",
+        proposed_value="month",
+        confidence=0.96,
+        evidence_snippet="EUR 1,200 per month",
+        source_text="Apartment for rent at EUR 1,200 per month.",
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    assert decision.resulting_effective == "month"
+
+
+def test_same_value_source_proposal_is_redundant() -> None:
+    decision = decide_field(
+        key="pool",
+        proposed_value=True,
+        confidence=0.99,
+        evidence_snippet="swimming pool",
+        source_text="Villa with swimming pool.",
+        source_values={"pool": True},
+    )
+    assert decision.final_status == AutoApplyStatus.REDUNDANT
+    assert ReasonCode.REDUNDANT_SOURCE_VALUE in decision.reasons
+
+
+def test_pets_false_with_explicit_negative_evidence_auto_applies() -> None:
+    source = "Huisdieren niet toegestaan in dit appartement."
+    decision = decide_field(
+        key="pets_allowed",
+        proposed_value=False,
+        confidence=0.98,
+        evidence_snippet="Huisdieren niet toegestaan",
+        source_text=source,
+        conflict_indicator=True,
+    )
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+    assert decision.resulting_effective is False
+
+
+def test_synonym_attrs_dedupe_to_one_decision() -> None:
+    evaluation = evaluate_proposal_attributes(
+        [
+            {
+                "key": "pets_allowed",
+                "value": False,
+                "confidence": 0.98,
+                "evidence_snippet": "no pets allowed",
+                "conflict": False,
+            },
+            {
+                "key": "pet_suitability",
+                "value": False,
+                "confidence": 0.98,
+                "evidence_snippet": "no pets allowed",
+                "conflict": True,
+            },
+        ],
+        source_text="Apartment policy: no pets allowed.",
+    )
+    assert len(evaluation.decisions) == 1
+    assert evaluation.decisions[0].key == "pet_suitability"
+    assert evaluation.decisions[0].final_status == AutoApplyStatus.AUTO_APPLIED
 
 
 def test_has_pool_synonym_normalizes_and_auto_applies() -> None:

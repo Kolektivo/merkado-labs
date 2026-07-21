@@ -155,7 +155,9 @@ test("listing overview hides empty optional fields", () => {
 
 test("listing AI changes keep audit detail collapsed", () => {
   const changes = source("src/components/listing-ai-changes.tsx");
-  assert.match(changes, /Advanced metadata/);
-  assert.match(changes, /Detailed audit/);
+  assert.match(changes, /History \/ advanced/);
+  assert.match(changes, /Rejected \/ ignored technical audit/);
   assert.match(changes, /Applied changes/);
+  assert.match(changes, /Needs review/);
+  assert.match(changes, /selectRetainedProposal/);
 });

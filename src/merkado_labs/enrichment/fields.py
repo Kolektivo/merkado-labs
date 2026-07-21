@@ -46,14 +46,23 @@ ALLOWED_AI_FIELDS: frozenset[str] = frozenset(
         "title_normalization",
         "waterfront",
         "renovation_or_maintenance_mention",
+        # Gap-fill only when the structured source value is empty/null.
+        "bedrooms",
+        "bathrooms",
+        "price_period",
     }
 )
 
-# Fields retained as immutable listing facts. They are deliberately not
-# allowlisted, so proposed values receive a protected-field rejection rather
-# than being treated as a new flexible attribute.
+# Fields retained as immutable listing facts when a non-null source value
+# already exists. Empty source bedrooms/bathrooms may be filled from direct
+# description evidence; floor_area_m2 stays hard-protected either way.
 PROTECTED_AI_PROPOSAL_FIELDS: frozenset[str] = frozenset(
     {"bedrooms", "bathrooms", "floor_area_m2"}
+)
+
+# Protected fields that may be gap-filled when the source column is null/empty.
+DESCRIPTION_FILLABLE_PROTECTED_FIELDS: frozenset[str] = frozenset(
+    {"bedrooms", "bathrooms"}
 )
 
 # Identity / money / legal facts AI must never change or invent.
@@ -129,10 +138,15 @@ CANONICAL_ATTRIBUTE_KEYS: frozenset[str] = frozenset(
         "gas_included",
         "garden_maintenance_included",
         "waterfront",
+        "price_period",
     }
 )
 
 ATTRIBUTE_DISPLAY_LABELS: dict[str, str] = {
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "price_period": "Price period",
+    "floor_area_m2": "Floor area",
     "pool": "Pool",
     "furnished": "Furnished",
     "parking": "Parking",

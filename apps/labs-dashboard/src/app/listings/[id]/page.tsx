@@ -27,6 +27,7 @@ import {
   describeConversionLabel,
   isCurrentProductionBenchmark,
 } from "@/lib/data/price-observations";
+import { filterDefaultTimeline } from "@/lib/domain/activity-presentation";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
 import {
   INDICATIVE_PRICE_TIP,
@@ -34,6 +35,7 @@ import {
   formatOriginalPrice,
   formatXcgPrimary,
 } from "@/lib/domain/price-display";
+import { buildXcgPriceSeries } from "@/lib/domain/xcg-price-series";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,12 +65,14 @@ import {
   extractFieldDecisions,
   isOperationalAttentionDecision,
   PROVENANCE_LABELS,
+  selectRetainedProposal,
   type ProvenanceKind,
 } from "@/lib/enrichment/display";
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  formatNumber,
   titleCase,
 } from "@/lib/format";
 import {
@@ -168,6 +172,7 @@ function activityLabel(eventType: string, sourceName: string) {
     first_seen: `Listing first found on ${sourceName}`,
     listing_first_seen: `Listing first found on ${sourceName}`,
     price_changed: "Asking price changed",
+    currency_changed: "Asking currency changed",
     status_changed: "Listing status changed",
     missing_from_source: "Listing was not found in a complete source refresh",
     removed_from_source: "Listing was removed from the source website",
@@ -176,6 +181,11 @@ function activityLabel(eventType: string, sourceName: string) {
     enrichment_completed: "AI enrichment completed",
     ai_enrichment_completed: "AI enrichment completed",
     source_refresh_completed: "Source refresh completed",
+    source_marked_sold: "Source marked listing as sold",
+    source_marked_rented: "Source marked listing as rented",
+    source_marked_under_contract: "Source marked listing under contract",
+    source_returned_active: "Listing returned to active on source",
+    source_description_changed: "Source description changed",
   };
   return labels[eventType] ?? titleCase(eventType.replaceAll("_", " "));
 }
@@ -242,12 +252,13 @@ export default async function ListingDetailPage({
   }
 
   const sourceLink = listing.originalRealtorUrl ?? listing.sourceUrl;
-  const chartHistory = history.map((item) => ({
-    date: formatDate(item.observedAt),
-    price: item.price,
-    currency: item.currency,
+  // XCG-over-time from material asking changes only (not rate-only moves).
+  const chartHistory = buildXcgPriceSeries(history).map((point) => ({
+    ...point,
+    date: formatDate(point.observedAt),
   }));
-  const proposal = proposals[0] ?? null;
+  const timelineActivity = filterDefaultTimeline(activity);
+  const proposal = selectRetainedProposal(proposals);
   const proposalBody = asRecord(proposal?.proposal);
   const fieldDecisions = extractFieldDecisions(proposalBody, {
     model: proposal?.model,
@@ -302,22 +313,6 @@ export default async function ListingDetailPage({
   const defaultTab = availableTabs.has(normalizedTab)
     ? normalizedTab
     : "overview";
-  const timelineDrafts = (() => {
-    const evidencePayload = proposal?.supportingEvidence;
-    if (
-      !evidencePayload ||
-      typeof evidencePayload !== "object" ||
-      Array.isArray(evidencePayload)
-    ) {
-      return [] as Array<{ summary: string; event_at?: string; event_type?: string }>;
-    }
-    const drafts = (evidencePayload as Record<string, unknown>).timeline_drafts;
-    if (!Array.isArray(drafts)) return [];
-    return drafts.filter(
-      (item): item is { summary: string; event_at?: string; event_type?: string } =>
-        Boolean(item && typeof item === "object" && "summary" in item),
-    );
-  })();
   const heroMissingCount = [
     listing.bedrooms == null,
     listing.bathrooms == null,
@@ -527,7 +522,7 @@ export default async function ListingDetailPage({
                     value={
                       <span className="inline-flex items-center gap-2">
                         <Maximize2 className="size-4 text-muted-foreground" />
-                        {listing.floorAreaM2.toLocaleString()} m²
+                        {formatNumber(listing.floorAreaM2)} m²
                       </span>
                     }
                   />
@@ -538,7 +533,7 @@ export default async function ListingDetailPage({
                     value={
                       <span className="inline-flex items-center gap-2">
                         <LandPlot className="size-4 text-muted-foreground" />
-                        {listing.lotAreaValue.toLocaleString()}
+                        {formatNumber(listing.lotAreaValue)}
                         {listing.lotAreaUnit ? ` ${listing.lotAreaUnit}` : ""}
                       </span>
                     }
@@ -614,7 +609,7 @@ export default async function ListingDetailPage({
                     {listing.floorAreaM2 != null ? (
                       <DetailItem
                         label="Floor area"
-                        value={`${listing.floorAreaM2.toLocaleString()} m²`}
+                        value={`${formatNumber(listing.floorAreaM2)} m²`}
                       />
                     ) : null}
                     {listing.lotAreaValue != null ? (
@@ -622,7 +617,7 @@ export default async function ListingDetailPage({
                         label="Lot area"
                         tip="Value taken as written on the website. The unit may be missing or inconsistent across sites."
                         tipLabel="lot area"
-                        value={`${listing.lotAreaValue.toLocaleString()}${
+                        value={`${formatNumber(listing.lotAreaValue)}${
                           listing.lotAreaUnit
                             ? ` ${listing.lotAreaUnit}`
                             : " (unit unknown)"
@@ -882,6 +877,7 @@ export default async function ListingDetailPage({
         <TabsContent value="changes" className="space-y-4">
           <ListingAiChanges
             proposals={proposals}
+            selectedChecksum={proposal?.inputChecksum ?? null}
             sourceNeighbourhoodText={listing.sourceNeighbourhoodText}
             mapNeighbourhoodName={listing.inferredNeighbourhood?.name ?? null}
           />
@@ -1117,41 +1113,22 @@ export default async function ListingDetailPage({
                 <ProvenanceLabel kind="system" />
               </div>
               <CardDescription>
-                Import, price, lifecycle, and AI enrichment events in plain language.
+                Seller and source activity. Rate-only benchmark updates,
+                enrichment, and duplicate import events stay in storage but are
+                hidden from this default view.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {activity.length === 0 && timelineDrafts.length === 0 ? (
+              {timelineActivity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No activity events yet for this listing.
+                  No seller/source activity events for this listing.
+                  {activity.length > 0
+                    ? ` (${activity.length} system events suppressed from default view)`
+                    : ""}
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {timelineDrafts.map((draft, index) => (
-                    <li
-                      key={`ai-draft-${index}-${draft.summary}`}
-                      className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {draft.event_type
-                            ? activityLabel(draft.event_type, listing.source.name)
-                            : "AI enrichment"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {draft.event_at
-                            ? formatDateTime(draft.event_at)
-                            : proposal?.generatedAt
-                              ? formatDateTime(proposal.generatedAt)
-                              : "—"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {draft.summary}
-                      </p>
-                    </li>
-                  ))}
-                  {activity.map((event) => (
+                  {timelineActivity.map((event) => (
                     <li
                       key={event.id}
                       className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"

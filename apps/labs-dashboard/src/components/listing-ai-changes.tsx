@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { ProposalReviewControl } from "@/components/proposal-review-control";
@@ -23,10 +26,14 @@ import {
   totalTokenCount,
 } from "@/lib/enrichment/cost";
 import {
+  CURRENT_POLICY_VERSION,
   decisionStatusLabel,
+  explainAttentionReview,
   extractFieldDecisions,
-  humanizeReasonCode,
+  isCurrentPolicyVersions,
   isOperationalAttentionDecision,
+  reasonDisplays,
+  selectRetainedProposal,
   type FieldDecisionView,
 } from "@/lib/enrichment/display";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -46,6 +53,15 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
+function isTechnicalAuditStatus(status: FieldDecisionView["status"]): boolean {
+  return (
+    status === "rejected" ||
+    status === "skipped" ||
+    status === "redundant" ||
+    status === "not_evaluated"
+  );
+}
+
 export function ListingAiChanges({
   proposals,
   selectedChecksum,
@@ -57,7 +73,18 @@ export function ListingAiChanges({
   sourceNeighbourhoodText?: string | null;
   mapNeighbourhoodName?: string | null;
 }) {
-  if (!proposals.length) {
+  const retained = useMemo(
+    () => selectRetainedProposal(proposals, selectedChecksum),
+    [proposals, selectedChecksum],
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected =
+    proposals.find((item) => item.id === selectedId) ??
+    retained ??
+    proposals[0] ??
+    null;
+
+  if (!proposals.length || !selected) {
     return (
       <Card>
         <CardHeader className="border-b">
@@ -71,21 +98,21 @@ export function ListingAiChanges({
     );
   }
 
-  const selected =
-    proposals.find((item) => item.inputChecksum === selectedChecksum) ??
-    proposals[0];
+  const attentionContext = {
+    sourceNeighbourhood: sourceNeighbourhoodText,
+    mapNeighbourhood: mapNeighbourhoodName,
+  };
   const decisions = extractFieldDecisions(selected.proposal, {
     model: selected.model,
     generatedAt: selected.generatedAt,
   });
   const attention = decisions.filter((d) =>
-    isOperationalAttentionDecision(d, {
-      sourceNeighbourhood: sourceNeighbourhoodText,
-      mapNeighbourhood: mapNeighbourhoodName,
-    }),
+    isOperationalAttentionDecision(d, attentionContext),
   );
   const applied = decisions.filter((d) => d.status === "auto_applied");
-  const rejected = decisions.filter((d) => d.status === "rejected");
+  const technicalAudit = decisions.filter((d) =>
+    isTechnicalAuditStatus(d.status),
+  );
   const evidence = selected.supportingEvidence;
   const runAudit =
     evidence && typeof evidence === "object" && !Array.isArray(evidence)
@@ -96,7 +123,7 @@ export function ListingAiChanges({
       ? (runAudit as Record<string, unknown>)
       : null;
 
-  const latest = proposals[0];
+  const latest = retained ?? proposals[0]!;
   const latestTokens = parseTokenUsage(latest.tokenUsage);
   const latestCostUsd = calculateUsageCostUsd(latest.model, latestTokens);
   const latestDecisions = extractFieldDecisions(latest.proposal, {
@@ -107,10 +134,7 @@ export function ListingAiChanges({
     (d) => d.status === "auto_applied",
   ).length;
   const latestAttention = latestDecisions.filter((d) =>
-    isOperationalAttentionDecision(d, {
-      sourceNeighbourhood: sourceNeighbourhoodText,
-      mapNeighbourhood: mapNeighbourhoodName,
-    }),
+    isOperationalAttentionDecision(d, attentionContext),
   ).length;
   const cumulativeCostUsd = sumCostUsd(
     proposals.map((item) =>
@@ -121,6 +145,12 @@ export function ListingAiChanges({
   const failedOrSupersededCount = latestIsRetained
     ? proposals.length - 1
     : proposals.length;
+  const selectedIsCurrentPolicy = isCurrentPolicyVersions(
+    selected.promptVersion,
+    selected.schemaVersion,
+  );
+  const selectedIsRetained = retained?.id === selected.id;
+  const historicalRuns = proposals.filter((item) => item.id !== selected.id);
 
   return (
     <div className="space-y-4">
@@ -134,18 +164,18 @@ export function ListingAiChanges({
         <div className="mt-4">
           <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <dt className="text-xs text-muted-foreground">Latest model</dt>
+              <dt className="text-xs text-muted-foreground">Current model</dt>
               <dd className="font-mono">{latest.model}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">
-                Latest enrichment time
+                Current enrichment time
               </dt>
               <dd>{formatDateTime(latest.generatedAt)}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">
-                Latest run tokens / cost
+                Current run tokens / cost
               </dt>
               <dd>
                 {formatNumber(totalTokenCount(latestTokens))} tokens ·{" "}
@@ -154,7 +184,7 @@ export function ListingAiChanges({
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">
-                Fields applied / attention (latest run)
+                Fields applied / attention (current result)
               </dt>
               <dd>
                 {latestApplied} applied · {latestAttention} attention
@@ -178,6 +208,10 @@ export function ListingAiChanges({
               </dt>
               <dd>{failedOrSupersededCount}</dd>
             </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Policy version</dt>
+              <dd className="font-mono text-xs">{CURRENT_POLICY_VERSION}</dd>
+            </div>
           </dl>
           <p className="mt-3 text-xs text-muted-foreground">
             {COST_ESTIMATE_LABEL}
@@ -193,10 +227,29 @@ export function ListingAiChanges({
                 <Badge variant="outline" className="font-normal">
                   AI extracted
                 </Badge>
+                {selectedIsRetained ? (
+                  <Badge variant="secondary" className="font-normal">
+                    Current result
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="font-normal text-muted-foreground">
+                    Historical run
+                  </Badge>
+                )}
+                {selectedIsCurrentPolicy ? (
+                  <Badge variant="outline" className="font-normal">
+                    {CURRENT_POLICY_VERSION}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="font-normal text-muted-foreground">
+                    Obsolete policy
+                  </Badge>
+                )}
               </div>
               <CardDescription>
-                Before/after from the selected enrichment run. Exceptions are
-                highlighted; successful auto-applied fields do not need approval.
+                Latest effective decision per field from the current retained
+                enrichment result. Exceptions are highlighted; successful
+                auto-applied fields do not need approval.
               </CardDescription>
             </div>
             <Button variant="outline" asChild>
@@ -208,20 +261,6 @@ export function ListingAiChanges({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {proposals.map((item) => {
-              const active = item.id === selected.id;
-              return (
-                <Badge
-                  key={item.id}
-                  variant={active ? "default" : "outline"}
-                  className="font-normal"
-                >
-                  {formatDateTime(item.generatedAt)} · {item.model}
-                </Badge>
-              );
-            })}
-          </div>
           <div className="flex flex-wrap gap-2 text-sm">
             <StatusBadge tone="success">
               {applied.length} auto-applied
@@ -229,7 +268,9 @@ export function ListingAiChanges({
             <StatusBadge tone="warning">
               {attention.length} need attention
             </StatusBadge>
-            <StatusBadge tone="neutral">{rejected.length} rejected</StatusBadge>
+            <StatusBadge tone="neutral">
+              {technicalAudit.length} rejected / ignored
+            </StatusBadge>
             <Badge variant="outline">{selected.model}</Badge>
           </div>
 
@@ -242,7 +283,7 @@ export function ListingAiChanges({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No fields need attention for this run.
+              No fields need attention for the current result.
             </p>
           )}
 
@@ -257,22 +298,58 @@ export function ListingAiChanges({
             </details>
           ) : null}
 
-          {rejected.length ? (
+          {technicalAudit.length ? (
             <details className="rounded-lg border p-3">
               <summary className="cursor-pointer text-sm font-medium">
-                Detailed audit ({rejected.length} rejected)
+                Rejected / ignored technical audit ({technicalAudit.length})
               </summary>
               <div className="mt-3">
-                <DecisionTable decisions={rejected} />
+                <DecisionTable decisions={technicalAudit} />
               </div>
             </details>
           ) : null}
 
           <details className="rounded-lg border border-dashed p-3">
             <summary className="cursor-pointer text-sm font-medium">
-              Advanced metadata (checksums, rejected noise, review notes)
+              History / advanced
+              {historicalRuns.length
+                ? ` (${historicalRuns.length} older run${
+                    historicalRuns.length === 1 ? "" : "s"
+                  })`
+                : ""}
             </summary>
             <div className="mt-3 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Older runs and obsolete policy decisions stay here. They do not
+                count as current review work.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {proposals.map((item) => {
+                  const active = item.id === selected.id;
+                  const isRetainedRow = retained?.id === item.id;
+                  const isCurrentPolicy = isCurrentPolicyVersions(
+                    item.promptVersion,
+                    item.schemaVersion,
+                  );
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedId(item.id)}
+                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Badge
+                        variant={active ? "default" : "outline"}
+                        className="font-normal"
+                      >
+                        {formatDateTime(item.generatedAt)} · {item.model}
+                        {isRetainedRow ? " · current" : ""}
+                        {!isCurrentPolicy ? " · obsolete" : ""}
+                      </Badge>
+                    </button>
+                  );
+                })}
+              </div>
               {audit ? (
                 <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                   <div>Proposed: {String(audit.fields_proposed ?? "—")}</div>
@@ -282,8 +359,21 @@ export function ListingAiChanges({
                       {String(audit.input_checksum ?? selected.inputChecksum)}
                     </span>
                   </div>
+                  <div>
+                    Prompt / schema:{" "}
+                    <span className="font-mono">
+                      {selected.promptVersion} / {selected.schemaVersion}
+                    </span>
+                  </div>
                 </dl>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Prompt / schema:{" "}
+                  <span className="font-mono">
+                    {selected.promptVersion} / {selected.schemaVersion}
+                  </span>
+                </p>
+              )}
               <ProposalReviewControl
                 proposalId={selected.id}
                 initialStatus={selected.reviewStatus}
@@ -312,46 +402,65 @@ function DecisionTable({ decisions }: { decisions: FieldDecisionView[] }) {
           </tr>
         </thead>
         <tbody>
-          {decisions.map((decision) => (
-            <tr key={`${decision.key}-${decision.status}`} className="border-t">
-              <td className="px-3 py-2 font-medium">{decision.displayLabel}</td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {formatValue(decision.before)}
-              </td>
-              <td className="px-3 py-2">{formatValue(decision.after)}</td>
-              <td className="max-w-xs px-3 py-2 text-xs text-muted-foreground">
-                {decision.reasons.length ? (
-                  <ul className="mb-1 list-disc space-y-0.5 pl-4">
-                    {decision.reasons.map((code) => (
-                      <li key={code}>{humanizeReasonCode(code)}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                {decision.evidence ? (
-                  <p
-                    className={
-                      decision.reasons.length
-                        ? "border-t border-border/60 pt-1 italic"
-                        : undefined
-                    }
-                  >
-                    {decision.evidence}
-                  </p>
-                ) : null}
-                {!decision.reasons.length && !decision.evidence ? "—" : null}
-              </td>
-              <td className="px-3 py-2 font-mono text-xs">
-                {decision.confidence !== null
-                  ? `${Math.round(decision.confidence * 100)}%`
-                  : "—"}
-              </td>
-              <td className="px-3 py-2">
-                <StatusBadge tone={statusTone(decision.status)}>
-                  {decisionStatusLabel(decision.status)}
-                </StatusBadge>
-              </td>
-            </tr>
-          ))}
+          {decisions.map((decision, index) => {
+            const reasons = reasonDisplays(decision.reasons);
+            const attentionNote = explainAttentionReview(decision);
+            return (
+              <tr
+                key={`${decision.key}-${decision.status}-${index}`}
+                className="border-t"
+              >
+                <td className="px-3 py-2 font-medium">{decision.displayLabel}</td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {formatValue(decision.before)}
+                </td>
+                <td className="px-3 py-2">{formatValue(decision.after)}</td>
+                <td className="max-w-xs px-3 py-2 text-xs text-muted-foreground">
+                  {reasons.length ? (
+                    <ul className="mb-1 list-disc space-y-0.5 pl-4">
+                      {reasons.map((reason, reasonIndex) => (
+                        <li key={`${reason.code}-${reasonIndex}`}>
+                          <span>{reason.label}</span>
+                          <span className="ml-1 font-mono text-[10px] text-muted-foreground/80">
+                            ({reason.code})
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {attentionNote ? (
+                    <p className="mb-1 rounded bg-amber-50 px-2 py-1 text-[11px] leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                      {attentionNote}
+                    </p>
+                  ) : null}
+                  {decision.evidence ? (
+                    <p
+                      className={
+                        reasons.length || attentionNote
+                          ? "border-t border-border/60 pt-1 italic"
+                          : undefined
+                      }
+                    >
+                      {decision.evidence}
+                    </p>
+                  ) : null}
+                  {!reasons.length && !decision.evidence && !attentionNote
+                    ? "—"
+                    : null}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs">
+                  {decision.confidence !== null
+                    ? `${Math.round(decision.confidence * 100)}%`
+                    : "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <StatusBadge tone={statusTone(decision.status)}>
+                    {decisionStatusLabel(decision.status)}
+                  </StatusBadge>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

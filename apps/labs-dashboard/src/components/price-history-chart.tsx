@@ -10,20 +10,30 @@ import {
   YAxis,
 } from "recharts";
 
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatOriginalPriceLabel } from "@/lib/format";
+import type { XcgPricePoint } from "@/lib/domain/xcg-price-series";
+
+function provenanceLabel(point: XcgPricePoint): string {
+  if (point.xcgProvenance === "source_official_conversion") {
+    return "Source-official XCG";
+  }
+  if (point.conversionProvider === "ecb_eur_usd_xcg_peg") {
+    return "Merkado ECB benchmark";
+  }
+  return "Merkado benchmark";
+}
 
 export function PriceHistoryChart({
   data,
 }: {
-  data: { date: string; price: number; currency: string }[];
+  data: XcgPricePoint[];
 }) {
   if (!data.length) return null;
-  const currency = data[0].currency;
   return (
     <div
       className="h-[220px] w-full min-w-0 overflow-hidden sm:h-[260px]"
       role="img"
-      aria-label={`Price history in ${currency}`}
+      aria-label="Asking price history in XCG"
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
@@ -45,7 +55,19 @@ export function PriceHistoryChart({
             }
           />
           <Tooltip
-            formatter={(value) => formatCurrency(Number(value), currency)}
+            formatter={(value, _name, item) => {
+              const point = item?.payload as XcgPricePoint | undefined;
+              const xcg = formatCurrency(Number(value), "XCG");
+              if (!point) return xcg;
+              const original = formatOriginalPriceLabel(
+                point.originalAmount,
+                point.originalCurrency,
+              );
+              return [
+                `${xcg} · ${original} · ${provenanceLabel(point)}`,
+                "Asking (XCG)",
+              ];
+            }}
             contentStyle={{
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--border)",
@@ -57,7 +79,7 @@ export function PriceHistoryChart({
           />
           <Line
             type="stepAfter"
-            dataKey="price"
+            dataKey="priceXcg"
             stroke="var(--chart-1)"
             strokeWidth={2}
             dot={{ r: 3, fill: "var(--chart-1)" }}

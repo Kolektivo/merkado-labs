@@ -101,7 +101,10 @@ def test_extract_listing_agent_from_employee() -> None:
 
 def test_extract_images_filters_agent_headshots() -> None:
     html = """
-    <img src="//cdn.remax-abc.com/img/cache/2-1770063802-1000x667.jpg" />
+    <a href="//cdn.remax-abc.com/img/cache/2-1770063802-1000x667.jpg"
+       rel="objectimages" data-fancybox="gallary">
+      <img src="//cdn.remax-abc.com/img/cache/2-1770063802-607x405.jpg" />
+    </a>
     <div id="detail_agentlist">
       <img src="//cdn.remax-abc.com/img/cache/img-7333-2-large-1738598875-112x150.jpg"
            class="agent-image_detail" />
@@ -110,7 +113,40 @@ def test_extract_images_filters_agent_headshots() -> None:
     urls = extract_images(html)
     assert len(urls) == 1
     assert "1000x667" in urls[0]
+    assert "607x405" not in urls[0]
     assert "img-7333" not in urls[0]
+
+
+def test_extract_images_prefers_fancybox_href_not_img_src() -> None:
+    """Lightbox href + resized img src must not both enter the gallery."""
+
+    html = """
+    <a class="item active"
+       href="//cdn.remax-abc.com/img/cache/11-1775162488-1000x667.jpg"
+       rel="objectimages" data-fancybox="gallary" data-itemindex="0">
+      <img src="//cdn.remax-abc.com/img/cache/11-1775162488-607x405.jpg" alt="x" />
+    </a>
+    <a class="item"
+       href="//cdn.remax-abc.com/img/cache/12-1775162489-1000x667.jpg"
+       rel="objectimages" data-fancybox="gallary" data-itemindex="1">
+      <img src="//cdn.remax-abc.com/img/cache/12-1775162490-607x405.jpg" alt="x" />
+    </a>
+    """
+    urls = extract_images(html)
+    assert len(urls) == 2
+    assert all("1000x667" in u for u in urls)
+    assert all("607x405" not in u for u in urls)
+
+
+def test_extract_images_fixture_no_longer_doubles_gallery() -> None:
+    """Sample detail HTML previously yielded 82 URLs (href+src per slide)."""
+
+    html = FIXTURE.read_text(encoding="utf-8")
+    urls = extract_images(html)
+    assert len(urls) == 42
+    assert all("607x405" not in u and "542x405" not in u for u in urls)
+    assert all(u.startswith("https://cdn.remax-abc.com/img/cache/") for u in urls)
+    assert len(urls) == len(set(urls))
 
 
 def test_parse_fixture_extracts_coords_agent_and_half_baths() -> None:

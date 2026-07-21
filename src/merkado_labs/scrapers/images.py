@@ -7,6 +7,7 @@ Image updates are independent from listing lifecycle.
 from __future__ import annotations
 
 import hashlib
+import html
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 DEFAULT_GALLERY_SAFETY_CAP = 50
 
 # Query params that are safe to strip for deduplication / display.
+# Do not strip transform params (w, h, fit, crop, q, …) — they change pixels.
 _TRACKING_QUERY_KEYS = frozenset(
     {
         "utm_source",
@@ -29,6 +31,18 @@ _TRACKING_QUERY_KEYS = frozenset(
         "mc_eid",
     }
 )
+
+# WordPress intermediate sizes: photo-300x200.jpg → photo.jpg
+_WP_SIZE_SUFFIX_RE = re.compile(r"-\d{2,4}x\d{2,4}(?=\.[A-Za-z0-9]+$)")
+
+# RE/MAX CDN cache: {id}-{timestamp}-{WxH}.ext (id may contain dashes / UUID)
+_REMAX_CACHE_FILE_RE = re.compile(
+    r"^(?P<body>.+)-(?P<ts>\d{9,12})-(?P<w>\d{2,5})x(?P<h>\d{2,5})"
+    r"(?P<ext>\.[A-Za-z0-9]+)$",
+    re.I,
+)
+
+_REMAX_TS_FUZZ_SECONDS = 2
 
 _CONTAMINATION_HINTS = re.compile(
     r"("
@@ -103,10 +117,28 @@ class GalleryResult:
         }
 
 
-def canonicalize_image_url(url: str) -> str:
-    """Normalize scheme/host/path and strip safe tracking query params."""
+def strip_wordpress_size_suffix(path: str) -> str:
+    """Remove WordPress ``-NxM`` intermediate size suffix from upload paths.
 
-    raw = (url or "").strip()
+    Only applies under ``/wp-content/uploads/`` so RE/MAX CDN ``-WxH`` cache
+    filenames are left intact for identity / prefer-largest logic.
+    """
+
+    text = path or ""
+    if "/wp-content/uploads/" not in text.casefold():
+        return text
+    return _WP_SIZE_SUFFIX_RE.sub("", text)
+
+
+def canonicalize_image_url(url: str) -> str:
+    """Normalize scheme/host/path and strip safe tracking query params.
+
+    Preserves transform query params that change image content. Strips WordPress
+    intermediate size suffixes under ``/wp-content/uploads/``. Does not strip
+    RE/MAX CDN ``-WxH`` segments (distinct cache objects; collapsed via identity).
+    """
+
+    raw = html.unescape((url or "").strip())
     if raw.startswith("//"):
         raw = "https:" + raw
     parsed = urlparse(raw)
@@ -117,13 +149,13 @@ def canonicalize_image_url(url: str) -> str:
         for k, v in parse_qsl(parsed.query, keep_blank_values=True)
         if k.casefold() not in _TRACKING_QUERY_KEYS
     ]
-    # Prefer https for public CDNs.
     scheme = "https" if parsed.scheme == "http" else parsed.scheme
+    path = strip_wordpress_size_suffix(parsed.path)
     return urlunparse(
         (
             scheme,
             parsed.netloc.casefold(),
-            parsed.path,
+            path,
             "",
             urlencode(query, doseq=True),
             "",
@@ -131,12 +163,43 @@ def canonicalize_image_url(url: str) -> str:
     )
 
 
+def _remax_cache_meta(url: str) -> tuple[str, int, int] | None:
+    """Return ``(body, timestamp, pixel_area)`` for RE/MAX CDN cache filenames."""
+
+    parsed = urlparse(url if "://" in url or url.startswith("//") else f"https://{url}")
+    host = parsed.netloc.casefold()
+    if "remax-abc.com" not in host or "/img/cache/" not in parsed.path:
+        return None
+    name = parsed.path.rsplit("/", 1)[-1]
+    match = _REMAX_CACHE_FILE_RE.match(name)
+    if not match:
+        return None
+    width = int(match.group("w"))
+    height = int(match.group("h"))
+    return (
+        match.group("body").casefold(),
+        int(match.group("ts")),
+        width * height,
+    )
+
+
+def image_identity_key(url: str) -> str:
+    """Identity key for gallery dedupe (may be coarser than the display URL)."""
+
+    canon = canonicalize_image_url(url)
+    meta = _remax_cache_meta(canon)
+    if meta is not None:
+        body, ts, _area = meta
+        return f"remax:{body}:{ts}"
+    return canon
+
+
 def is_likely_contamination(url: str) -> bool:
     return bool(_CONTAMINATION_HINTS.search(url or ""))
 
 
 def is_plausible_image_url(url: str) -> bool:
-    text = (url or "").strip()
+    text = html.unescape((url or "").strip())
     if not text:
         return False
     if text.startswith("data:"):
@@ -156,6 +219,19 @@ def is_plausible_image_url(url: str) -> bool:
     )
 
 
+def _find_remax_duplicate_index(
+    kept_meta: list[tuple[str, int, int] | None],
+    meta: tuple[str, int, int],
+) -> int | None:
+    body, ts, _area = meta
+    for index, prev in enumerate(kept_meta):
+        if prev is None:
+            continue
+        if prev[0] == body and abs(prev[1] - ts) <= _REMAX_TS_FUZZ_SECONDS:
+            return index
+    return None
+
+
 def build_gallery(
     urls: Sequence[str] | None,
     *,
@@ -163,7 +239,13 @@ def build_gallery(
     safety_cap: int = DEFAULT_GALLERY_SAFETY_CAP,
     source_provenance: str = "listing_gallery",
 ) -> GalleryResult:
-    """Build an ordered, deduplicated gallery from raw extracted URLs."""
+    """Build an ordered, deduplicated gallery from raw extracted URLs.
+
+    Preserves first-seen order. For RE/MAX size variants, keeps the larger
+    pixel area when a near-duplicate (same id, timestamp within 2s) appears
+    later, without changing position. WordPress ``-NxM`` variants collapse via
+    path canonicalization.
+    """
 
     result = GalleryResult(safety_cap=max(1, int(safety_cap)))
     ordered: list[str] = []
@@ -175,8 +257,10 @@ def build_gallery(
 
     seen: set[str] = set()
     kept: list[str] = []
+    kept_meta: list[tuple[str, int, int] | None] = []
+
     for raw in ordered:
-        candidate = raw.strip()
+        candidate = html.unescape(raw.strip())
         if not candidate:
             result.invalid_removed += 1
             continue
@@ -189,17 +273,34 @@ def build_gallery(
             result.contamination_removed += 1
             continue
         canonical = canonicalize_image_url(candidate)
-        if canonical in seen:
+        meta = _remax_cache_meta(canonical)
+        if meta is not None:
+            dup_index = _find_remax_duplicate_index(kept_meta, meta)
+            if dup_index is not None:
+                prev = kept_meta[dup_index]
+                assert prev is not None
+                if meta[2] > prev[2]:
+                    kept[dup_index] = canonical
+                    kept_meta[dup_index] = meta
+                result.duplicates_removed += 1
+                continue
+            identity = image_identity_key(canonical)
+            seen.add(identity)
+            kept.append(canonical)
+            kept_meta.append(meta)
+            continue
+
+        identity = image_identity_key(canonical)
+        if identity in seen:
             result.duplicates_removed += 1
             continue
-        seen.add(canonical)
+        seen.add(identity)
         kept.append(canonical)
+        kept_meta.append(None)
 
     if len(kept) > result.safety_cap:
         result.truncated = True
-        result.warnings.append(
-            f"gallery_truncated_at_{result.safety_cap}"
-        )
+        result.warnings.append(f"gallery_truncated_at_{result.safety_cap}")
         kept = kept[: result.safety_cap]
 
     images: list[ListingImage] = []

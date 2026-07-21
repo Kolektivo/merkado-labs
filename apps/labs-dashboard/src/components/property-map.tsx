@@ -24,6 +24,7 @@ import {
 import { listingDetailHref } from "@/lib/breadcrumbs";
 import type { MapListingMarker } from "@/lib/domain/types";
 import { formatCurrency } from "@/lib/format";
+import { resolveListingPrimaryImageUrl } from "@/lib/listing-gallery-urls";
 import {
   ASSIGNMENT_STATUS_LABELS,
   type NeighbourhoodAssignmentStatus,
@@ -191,12 +192,15 @@ function MarkerDetails({
   const title = marker.title ?? "Untitled listing";
   const detailHref = listingDetailHref(marker.id, detailContext);
 
+  const imageUrl = resolveListingPrimaryImageUrl({
+    primaryImageUrl: marker.primaryImageUrl,
+  });
   return (
     <article className="space-y-3 rounded-lg border p-4">
       <div className="relative aspect-[16/9] overflow-hidden rounded-md border bg-muted">
-        {marker.primaryImageUrl ? (
+        {imageUrl ? (
           <Image
-            src={marker.primaryImageUrl}
+            src={imageUrl}
             alt=""
             fill
             className="object-cover"

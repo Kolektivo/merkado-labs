@@ -74,7 +74,11 @@ export const TIPS = {
   },
   missingCoordinates: {
     label: "missing coordinates",
-    tip: "Listings with no map pin, so they cannot appear on the map view.",
+    tip: "Listings with no latitude/longitude map pin. Affects map display only — not the same as a neighbourhood-search gap.",
+  },
+  missingNeighbourhoodSearch: {
+    label: "missing neighbourhood for search",
+    tip: "No usable neighbourhood after effective resolve and canonicalize. Affects neighbourhood filter/search. Source text that only needs alias cleanup is not counted.",
   },
   evidenceChecksum: {
     label: "source evidence",

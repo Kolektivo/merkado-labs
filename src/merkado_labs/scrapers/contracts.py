@@ -44,6 +44,11 @@ class ConversionMethod(StrEnum):
     LEGACY_1_TO_1 = "legacy_1_to_1"
     USD_FIXED_PEG = "usd_fixed_peg"
     EUR_API = "eur_api"
+    # Source-published official ANG/XCG (or other) amount — never Merkado-inferred.
+    SOURCE_OFFICIAL_CONVERSION = "source_official_conversion"
+
+
+SOURCE_OFFICIAL_PROVENANCE = "source_official_conversion"
 
 
 class ActivityEventType(StrEnum):
@@ -107,6 +112,30 @@ class MoneyAmount:
 
 
 @dataclass(frozen=True)
+class OfficialAlternatePrice:
+    """Source-published alternate currency amount (not Merkado FX).
+
+    ``provenance`` must remain ``source_official_conversion``. Never invent
+    these from Merkado/ECB rates.
+    """
+
+    amount: Decimal
+    currency: str
+    provenance: str = SOURCE_OFFICIAL_PROVENANCE
+    evidence: str | None = None
+    source_label: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "amount": str(self.amount),
+            "currency": self.currency,
+            "provenance": self.provenance,
+            "evidence": self.evidence,
+            "source_label": self.source_label,
+        }
+
+
+@dataclass(frozen=True)
 class BenchmarkPrice:
     """XCG benchmark with conversion provenance."""
 
@@ -142,6 +171,7 @@ class AdapterListingSnapshot:
     source_status: str | None = None
     lifecycle_hint: ListingLifecycleStatus | None = None
     original_price: MoneyAmount | None = None
+    official_alternate_prices: tuple[OfficialAlternatePrice, ...] = ()
     source_listed_at: datetime | None = None
     bedrooms: int | None = None
     bathrooms: float | None = None

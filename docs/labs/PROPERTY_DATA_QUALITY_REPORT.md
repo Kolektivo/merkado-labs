@@ -1,6 +1,6 @@
 # Property data quality pass — Labs report
 
-**Date:** 2026-07-21  
+**Date:** 2026-07-21 (completed stabilization)  
 **Branch:** `fix/property-data-quality-pass`  
 **Labs project only:** `csaefdkpwukshtouyixg`  
 **Policy version:** `enrichment_policy_v4_2`  
@@ -8,121 +8,152 @@
 
 No secrets, service-role keys, raw HTML, or private proposal payloads are included here.
 
-## Dataset (contracts + dry-run)
+## Scope confirmations
+
+- Labs only (`csaefdkpwukshtouyixg`); production (`jkrfyvukhhsapoivntms`) untouched
+- No scrape, cron, OpenAI calls, Sotheby's, or CHH work in this pass
+- No asset merge; no Vercel deploy
+
+## Dataset snapshot
 
 | Signal | Value |
 |---|---|
-| Listings considered (zero-cost reeval dry-run) | **402** |
-| Ready sources in scope | **4** — Keller Williams, RE/MAX, Moret, Monumentenzorg |
-| Sotheby's | Excluded (access route BLOCKED; not Ready) |
-| CHH | Retired / removed from active repo and Labs inventory |
-| OpenAI calls / AI cost (reeval) | **0** / **USD 0.00** |
+| Ready sources | **4** — Keller Williams, RE/MAX, Moret, Monumentenzorg |
+| Latest proposals (reeval) | **390** |
+| OpenAI calls | **0** |
+| Billable input checksums | Unchanged |
+| Public eligibility (unchanged) | KW **88** / Moret **71** / RE/MAX **118** / Monumentenzorg **2** |
 
-Live Labs snapshot (2026-07-21, read-only):
+Sotheby's remains excluded (access BLOCKED). CHH retired/absent.
 
-| Source | Listings | Public-eligible | Active | Missing coords | Missing/invalid price |
-|---|---:|---:|---:|---:|---:|
-| Keller Williams | 104 | 88 | 90 | 2 | 14 |
-| Monumentenzorg | 5 | 2 | 4 | 5 | 3 |
-| Moret | 71 | 71 | 71 | 0 | 0 |
-| RE/MAX | 222 | 118 | 124 | 21 | 12 |
-| **Public view rows** | | **279** | | | |
+---
 
-Sotheby's remains `adapter_status=recon` (not Ready). CHH absent.
+## Phase 1 — Root cause & corrective apply
 
-## Root cause (why fields were under-applied)
+### Residual churn after first apply
 
-1. **Dutch synonym gaps** — evidence/normalization missed common forms such as `uitzicht op zee` (sea view), `aan zee` / waterfront phrases, and `gemeubileerde` (furnished), so grounded proposals were rejected or never matched.
-2. **Blue Bay gated community** — model often contradicted itself; gated was not auto-applied without a curated location rule for Blue Bay / Blue Bay Resort variants.
-3. **Waterfront public allowlist** — `waterfront` could be decided internally but was missing from the public attribute allowlist / view projection, so Browse/Passport could not surface it.
+After the first policy rematerialization, a dry-run still reported **68** transitions. Root cause:
 
-## Zero-cost policy reeval (dry-run)
+1. `_attrs_from_proposal` fed **materialized** `field_decisions` / audit decisions back as proposal inputs.
+2. Dedupe used **raw keys**, not canonical keys → synonym pairs (`pets_allowed`/`pet_suitability`, `has_pool`/`pool`) survived with disagreeing statuses.
 
-Artifact: `data/processed/zero_cost_policy_reeval_dry_run.json`  
-(`mode: dry_run`, `policy_version: enrichment_policy_v4_2`, latest refresh after curated-gated conflict override)
+### Fix
 
-| Metric | Count |
+- Immutable proposal inputs only: `features` / `attributes` / `neighbourhood` / `resort_or_gated`
+- Canonical-key dedupe
+- Never backfill from field_decisions or audit into proposal inputs
+
+### Corrective apply — fixed point
+
+Immediate post-apply dry-run: `transitions={}`, `changed=0`.
+
+| Metric | Value |
 |---|---|
-| Proposals inspected | 390 |
-| Listings considered | 402 |
-| Changed decisions | 456 |
-| OpenAI calls | 0 |
+| Decision bag | **5611 → 3590** (duplicate synonym rows removed, not invented) |
+| auto_applied | **1730** |
+| rejected | **1605** |
+| redundant | **222** |
+| needs_attention | **7** |
+| skipped | **26** |
+| openai_calls | **0** |
+| Checksums | Unchanged |
+| Public eligibility | Unchanged (KW88 / Moret71 / RE/MAX118 / Monumentenzorg2) |
 
-**Before → after status totals (field decisions):**
+---
 
-| Status | Before | After |
-|---|---:|---:|
-| auto_applied | 3216 | 3455 |
-| rejected | 1989 | 1690 |
-| needs_attention | 45 | 94 |
-| redundant | 279 | 343 |
-| missing | 53 | *(cleared into other buckets)* |
-| skipped | 29 | 29 |
+## Phase 2 — Decision statuses & review UX
 
-**Main transitions:** `rejected→auto_applied` 215; `rejected→needs_attention` 70; `rejected→redundant` 63; `missing→auto_applied` 35; `auto_applied→needs_attention` 17; `needs_attention→rejected` 32; `needs_attention→auto_applied` 6.
+| Status | Meaning |
+|---|---|
+| `auto_applied` | Evidence-grounded, above confidence bar, safe to project |
+| `redundant` | Already represented by stronger source/map/same value — not an error |
+| `needs_attention` | Genuine human conflict/ambiguity; current review queue only |
+| `rejected` | Unsupported, noisy, forbidden, or ungounded — no ops attention |
+| `skipped` | Out of policy / not evaluated for apply |
 
-Example listings (dry-run, not yet persisted):
+Policy notes applied this pass:
 
-| Listing | Field | Transition |
-|---|---|---|
-| `e6885eab-…` | `sea_view` | rejected → auto_applied (`uitzicht op zee`) |
-| `872abe4a-…` | `furnished` | rejected → auto_applied (`gemeubileerde`) |
-| `872abe4a-…` | `gated_community` | rejected → auto_applied (Blue Bay curated location) |
+- Same proposed value as current → **redundant**
+- Empty protected bedrooms/bathrooms may gap-fill when grounded
+- `price_period` month normalization
+- Pets `false` only with explicit negative evidence
+- Conflict override when a curated/grounded rule wins (e.g. Blue Bay gated)
 
-(`waterfront` on `e6885eab-…` was already auto_applied in stored decisions; public allowlist migration now projects it when applied attributes include it.)
+Dashboard:
 
-### Apply status
+- Retained **current review** first; History / Advanced for audit
+- Humanized **reason + code**
+- Copy: high confidence can still need review
 
-**DB apply SKIPPED.** Write path refused while `property_pipeline_runs` had `status=running` (apply is blocked when a pipeline run is active). Dry-run only; proposal rows in Labs were not rematerialized yet.
+---
 
-## Neighbourhood canonicalization (display only)
+## Phase 3 — Image identity / gallery dedup
 
-Safe display aliases (source/map/AI evidence strings preserved elsewhere):
+- RE/MAX fixture gallery slots **82 → 42** (identity/dedup)
+- `build_gallery` wired in the adapter path
+- Labs cleanup removed **5705** duplicate image slots: RE/MAX **5526**, KW **110**, Monumentenzorg **69**, Moret **0**
 
-- Blue Bay marketing variants → **Blue Bay**
-- Island suffixes (`… Curaçao` / `… Curacao`) stripped or aliased where reviewed
-- **St. Joris** → **Sint Joris**
-- Ambiguous multi-place / uncertain forms kept separate (no forced merge)
+No image binary copy or scrape required.
 
-Implementation: `src/merkado_labs/enrichment/neighbourhood_canonical.py` + dashboard `neighbourhood-aliases.ts`.
+---
 
-## UI (Labs dashboard)
+## Phase 4 / 5 — Source-official currency & presentation timeline
 
-- **Indicative price:** tip/icon beside primary XCG when original currency is foreign → XCG (not a repeated inline disclaimer sentence).
-- **MapPin** on browse/listing location affordances.
-- Enrichment review shows **humanized reason-code labels** (not raw snake_case alone).
+### Currency
 
-## Fixes applied in code vs pending DB
+- Model: `source_official_conversion` for source-published alternate currencies
+- Prefer official ANG/XCG for the public XCG figure when present; else Merkado conversion
+- Never invent `source_official_conversion` from a Merkado/ECB rate
+- **RE/MAX listing ~1350 blocker:** official NAF/XCG amount not in stored EUR-page evidence without a NAF-view fetch (out of scope this pass)
 
-| Area | In code / migrations (repo) | Labs DB |
-|---|---|---|
-| Policy `enrichment_policy_v4_2`, bilingual evidence, Dutch synonyms, Blue Bay curated gated rule, reason codes | Yes | Rematerialize pending (apply after pipeline idle) |
-| Neighbourhood display aliases | Yes | Display-layer; no asset merge |
-| Indicative tip icon, MapPin, reason labels | Yes | N/A (frontend) |
-| Waterfront on public attribute allowlist | Migration file(s) under `supabase/migrations/` | Apply migration when approved; then rematerialize proposals |
-| Zero-cost reeval script | `scripts/reeval_stored_proposals_zero_cost.py` | Dry-run done; `--apply` pending |
+### Timeline / events
 
-## Remaining manual review / limitations
+- Dual-writer `price_changed` duplication fixed (import pipeline sole writer for price/currency/benchmark events)
+- Presentation timeline filters rate-only, enrichment-only, and policy rematerialization noise at read-time (events retained)
+- Timeline dry-run sample: **1000** events → **557** visible default, **443** suppressed
 
-- Higher `needs_attention` after dry-run (45 → 133) — expected: more conflicts/ambiguity surface for human review rather than quiet reject.
-- Waterfront still requires careful evidence (proximity-to-sea language must not prove waterfront).
-- Uncertain neighbourhood strings stay unmerged by design.
-- Public Browse only reflects allowlisted `auto_applied` attributes after DB apply + view migration.
-- Sotheby's / CHH / scrapers / cron / production remain out of scope for this pass.
+See `05` (events + presentation) and `06` (currency rules).
 
-## Confirmations
+---
 
-- **Zero AI cost** for policy reeval (`openai_calls: 0`, `ai_cost_usd: 0`).
-- **Billable input checksums untouched** — rematerialization does not create billable AI work; policy alone does not enqueue OpenAI.
-- No scrape, cron, production (`jkrfyvukhhsapoivntms`), Sotheby's, or CHH changes in this pass.
+## Phase 6 — Map gaps vs neighbourhood-search gaps
 
-## Recommended monitoring checks
+Keep these separate:
 
-1. When pipeline is idle: re-run zero-cost reeval with `--apply`; confirm `openai_calls` stays 0 and billable skip/checksum behaviour unchanged.
-2. Spot-check Blue Bay listings for `gated_community` auto-apply + curated-location reason codes.
-3. Spot-check Dutch copy for `furnished` / `sea_view` / `waterfront` after apply.
-4. After waterfront migration: confirm `public_property_listings.public_attributes` can include waterfront; Browse filters/detail show the label.
-5. Neighbourhood filters: Blue Bay / Sint Joris / suffix variants collapse correctly; uncertain labels still distinct.
-6. Price UX: foreign→XCG shows tip icon only; XCG/ANG/NAf identity cases do not.
-7. Enrichment review queue size and true attention rate after rematerialization.
-8. No unexpected `property_pipeline_runs` interaction (apply only when idle).
+| Gap | Meaning |
+|---|---|
+| **Map gap** | Missing coordinates — **28** listings (cannot PIP-assign) |
+| **Neighbourhood-search gap** | Filter/search coverage where source neighbourhood can still help |
+
+Rules:
+
+- Source neighbourhood remains a **fallback for filter/search**
+- Point-in-polygon (PIP) is **authoritative when coordinates exist**
+- Display aliases (Blue Bay, Sint Joris, island suffixes) are display-only; no asset merge
+
+---
+
+## Earlier policy gains (still in force)
+
+These remain part of `enrichment_policy_v4_2` and the public contract:
+
+- Dutch/English bilingual evidence (`uitzicht op zee`, `gemeubileerde`, waterfront provenance rules)
+- Blue Bay curated gated-community rule
+- Waterfront on public attribute allowlist / view projection
+- Neighbourhood display aliases (code + dashboard)
+- Indicative price tip/icon for true foreign→XCG; MapPin on location affordances
+
+## Artifacts / tooling
+
+- Zero-cost reeval: `scripts/reeval_stored_proposals_zero_cost.py`
+- Dry-run artifact (pre-fixed-point history): `data/processed/zero_cost_policy_reeval_dry_run.json`
+- Presentation counts: `merkado_labs.scrapers.presentation.dry_run_presentation_counts`
+
+## Recommended monitoring
+
+1. Spot-check Blue Bay `gated_community` and Dutch `furnished` / `sea_view` / `waterfront` on Browse.
+2. Confirm `needs_attention` stays near **7** unless new proposals arrive.
+3. Re-run zero-cost dry-run periodically; expect `changed=0` at fixed point when policy/inputs unchanged.
+4. Map Quality: track the **28** missing-coord listings separately from neighbourhood filter gaps.
+5. RE/MAX official NAF capture remains blocked without NAF-view fetch evidence.
+6. No unexpected interaction with active `property_pipeline_runs` during apply.

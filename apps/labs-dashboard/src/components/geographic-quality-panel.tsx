@@ -25,8 +25,14 @@ const QUALITY_ITEMS: {
   {
     key: "missingCoords",
     label: "No map pin",
-    hint: "The listing has no latitude/longitude, so it cannot appear on the map.",
+    hint: "Missing latitude/longitude only — the listing cannot appear on the map. This is not the same as a neighbourhood-search gap.",
     href: "/listings?coordQuality=missing_coords&from=quality",
+  },
+  {
+    key: "missingNeighbourhoodSearch",
+    label: "No neighbourhood for search",
+    hint: "After effective neighbourhood resolve + canonicalize, there is no usable area label for filters. Map polygon wins when coords exist; otherwise source text is the fallback. Source labels that only need alias cleanup are not counted here.",
+    href: "/listings?from=quality",
   },
   {
     key: "invalidCoords",
@@ -43,7 +49,7 @@ const QUALITY_ITEMS: {
   {
     key: "sourceNeighbourhood",
     label: "Area from the website",
-    hint: "Neighbourhood name came from the listing site. We never silently overwrite it.",
+    hint: "Neighbourhood name came from the listing site. We never silently overwrite it. Present-but-uncanonicalized source text is still location evidence, not a missing-location gap.",
   },
   {
     key: "geographicallyInferred",

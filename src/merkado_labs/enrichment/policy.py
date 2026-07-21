@@ -25,6 +25,7 @@ from merkado_labs.enrichment.evidence import (
 )
 from merkado_labs.enrichment.fields import (
     ATTRIBUTE_DISPLAY_LABELS,
+    DESCRIPTION_FILLABLE_PROTECTED_FIELDS,
     FORBIDDEN_AI_FIELDS,
     PROTECTED_AI_PROPOSAL_FIELDS,
     PROTECTED_SOURCE_STRUCTURED_FIELDS,
@@ -355,6 +356,32 @@ def _validate_bounds(key: str, value: Any) -> str | None:
             return "parking_spaces_not_integer"
         if n < 0 or n > MAX_PARKING_SPACES:
             return "parking_spaces_out_of_bounds"
+    if key in {"bedrooms", "bathrooms"}:
+        try:
+            n = float(value)
+        except (TypeError, ValueError):
+            return f"{key}_not_numeric"
+        if n < 0 or n > 30:
+            return f"{key}_out_of_bounds"
+        if key == "bedrooms" and n != int(n):
+            return "bedrooms_not_integer"
+    if key == "price_period":
+        allowed = {
+            "month",
+            "monthly",
+            "week",
+            "weekly",
+            "day",
+            "daily",
+            "night",
+            "nightly",
+            "year",
+            "yearly",
+            "sale",
+            "total",
+        }
+        if str(value).strip().casefold() not in allowed:
+            return "price_period_unsupported"
     return None
 
 
@@ -445,18 +472,25 @@ def decide_field(
     }
 
     if normalized_key in PROTECTED_AI_PROPOSAL_FIELDS:
-        return FieldDecision(
-            key=normalized_key, proposed_value=coerced, value_type=value_type,
-            confidence=confidence, evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source, extraction_reason=extraction_reason,
-            classification=classification, conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.REJECTED,
-            conflict_status=ConflictStatus.FORBIDDEN,
-            reasons=(ReasonCode.PROTECTED_SOURCE_FIELD,),
-            previous_effective=previous_effective, resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
-        )
+        source_protected = source_values.get(normalized_key)
+        source_present = source_protected is not None and source_protected != ""
+        # Empty protected columns may be gap-filled from direct description
+        # evidence for bedrooms/bathrooms. Non-null source values stay immutable.
+        # floor_area_m2 remains hard-protected even when empty.
+        if source_present or normalized_key not in DESCRIPTION_FILLABLE_PROTECTED_FIELDS:
+            return FieldDecision(
+                key=normalized_key, proposed_value=coerced, value_type=value_type,
+                confidence=confidence, evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source, extraction_reason=extraction_reason,
+                classification=classification, conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.FORBIDDEN,
+                reasons=(ReasonCode.PROTECTED_SOURCE_FIELD,),
+                previous_effective=previous_effective, resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+        reasons.append("description_gap_fill_empty_source")
 
     if is_forbidden_field(normalized_key) or normalized_key in FORBIDDEN_AI_FIELDS:
         return FieldDecision(
@@ -856,6 +890,38 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
+    # Same-value proposals against an existing explicit source fact are
+    # redundant, not conflicts or review work.
+    source_same = source_values.get(normalized_key)
+    if source_same is not None and source_same != "":
+        try:
+            same_as_source = float(source_same) == float(coerced)
+        except (TypeError, ValueError):
+            same_as_source = (
+                str(source_same).strip().casefold() == str(coerced).strip().casefold()
+            )
+        if same_as_source:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REDUNDANT,
+                conflict_status=ConflictStatus.NONE,
+                reasons=(ReasonCode.REDUNDANT_SOURCE_VALUE,),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
+
     # Direct structured source terrace=false always beats AI terrace=true.
     if normalized_key == "terrace" and coerced is True:
         structured_terrace = source_values.get("terrace")
@@ -941,7 +1007,21 @@ def decide_field(
                 )
             )
         )
-        if not curated_gated:
+        # Clear grounded evidence (including explicit negative amenity evidence)
+        # must not be forced into needs_attention solely by a sticky model
+        # conflict flag from a prior rematerialization.
+        grounded_override = (
+            ReasonCode.SOURCE_NEGATION_CONFIRMS_FALSE in reasons
+            or "evidence_span_in_source" in reasons
+            or "paraphrased_evidence_with_synonym" in reasons
+            or "description_gap_fill_empty_source" in reasons
+        )
+        if curated_gated:
+            reasons.append(ReasonCode.CURATED_LOCATION_KNOWLEDGE)
+            reasons.append("model_conflict_indicator_overridden_by_curated_location")
+        elif grounded_override:
+            reasons.append("model_conflict_indicator_overridden_by_grounded_evidence")
+        else:
             return FieldDecision(
                 key=normalized_key,
                 proposed_value=coerced,
@@ -962,8 +1042,6 @@ def decide_field(
                     normalized_key, normalized_key
                 ),
             )
-        reasons.append(ReasonCode.CURATED_LOCATION_KNOWLEDGE)
-        reasons.append("model_conflict_indicator_overridden_by_curated_location")
 
     bounds_error = _validate_bounds(normalized_key, coerced)
     if bounds_error:
@@ -1115,18 +1193,28 @@ def evaluate_proposal_attributes(
     previous_effective: dict[str, Any] | None = None,
     source_text: str | None = None,
 ) -> PolicyEvaluation:
-    """Evaluate a list of structured attribute proposals from the model."""
+    """Evaluate a list of structured attribute proposals from the model.
+
+    At most one decision is produced per canonical attribute key. First-seen
+    proposal wins so synonym duplicates (pets_allowed / pet_suitability) cannot
+    inflate the decision bag or oscillate statuses across rematerializations.
+    """
 
     previous_effective = previous_effective or {}
     source_values = source_values or {}
     corpus = source_text if source_text is not None else _build_source_corpus(source_values)
     evaluation = PolicyEvaluation()
+    seen_keys: set[str] = set()
     for item in attributes:
         key = str(item.get("key") or item.get("attribute") or "")
         if not key:
             continue
+        canonical = normalize_attribute_key(key)
+        if not canonical or canonical in seen_keys:
+            continue
+        seen_keys.add(canonical)
         decision = decide_field(
-            key=key,
+            key=canonical,
             proposed_value=item.get("value"),
             confidence=item.get("confidence"),
             evidence_snippet=item.get("evidence_snippet") or item.get("evidence"),
@@ -1140,7 +1228,7 @@ def evaluate_proposal_attributes(
                 item.get("recommended_action") or "needs_attention"
             ),
             source_values=source_values,
-            previous_effective=previous_effective.get(normalize_attribute_key(key)),
+            previous_effective=previous_effective.get(canonical),
             source_text=corpus,
         )
         evaluation.decisions.append(decision)

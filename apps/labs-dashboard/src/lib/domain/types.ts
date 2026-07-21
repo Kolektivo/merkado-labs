@@ -24,7 +24,16 @@ export type ConversionMethod =
   | "identity"
   | "legacy_1_to_1"
   | "usd_fixed_peg"
-  | "eur_api";
+  | "eur_api"
+  | "source_official_conversion";
+
+export type OfficialAlternatePrice = {
+  amount: number | string;
+  currency: string;
+  provenance?: string | null;
+  evidence?: string | null;
+  source_label?: string | null;
+};
 
 export type PublicExclusionReason =
   | "eligible"
@@ -370,6 +379,7 @@ export type PriceObservation = {
   conversionProvider?: string | null;
   conversionRate?: number | null;
   conversionRateAt?: string | null;
+  officialAlternatePrices?: OfficialAlternatePrice[] | null;
   /** How many consecutive identical raw rows were folded into this UI point. */
   suppressedDuplicateCount?: number;
 };
@@ -403,6 +413,9 @@ export type ListingActivityEvent = {
   newValue: unknown;
   derivationType: "source_fact" | "system_calculated" | "inferred" | string;
   notes: string | null;
+  presentationClass?: string | null;
+  suppressedReason?: string | null;
+  presentationMetadata?: Record<string, unknown> | null;
 };
 
 export type ListingFilters = {
@@ -493,6 +506,8 @@ export type GeographicQualitySummary = {
   invalidCoords: number;
   outsideCuracao: number;
   validCoords: number;
+  /** No searchable neighbourhood after effective resolve + canonicalize. */
+  missingNeighbourhoodSearch: number;
   sourceNeighbourhood: number;
   geographicallyInferred: number;
   sourceGeographyConflict: number;

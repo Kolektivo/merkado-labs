@@ -47,28 +47,29 @@ function isSoldStatus(listingStatus?: string | null, isSold?: boolean) {
   return Boolean(isSold) || (listingStatus ?? "").toLowerCase() === "sold";
 }
 
+function formatAmount(amount: number): string {
+  // Keep amount formatting locale-stable so SSR and the browser never diverge.
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
+}
+
+/**
+ * Canonical XCG primary label. Do not use `Intl` currency style for XCG —
+ * Node and browsers disagree on the symbol (`Cg.` vs `XCG`), which breaks
+ * hydration in client components.
+ */
 export function formatXcgPrimary(amount: number): string {
-  try {
-    return new Intl.NumberFormat("en-CW", {
-      style: "currency",
-      currency: "XCG",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `Cg ${new Intl.NumberFormat("en").format(Math.round(amount))}`;
-  }
+  return `Cg ${formatAmount(amount)}`;
 }
 
 export function formatOriginalPrice(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-CW", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${currency} ${new Intl.NumberFormat("en").format(amount)}`;
+  const code = currency.trim().toUpperCase();
+  if (!code) return formatAmount(amount);
+  if (code === "XCG" || code === "ANG" || code === "NAF") {
+    return formatXcgPrimary(amount);
   }
+  return `${code} ${formatAmount(amount)}`;
 }
 
 export function buildPriceDisplay(input: {

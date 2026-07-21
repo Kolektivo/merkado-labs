@@ -128,3 +128,37 @@ INDEX_PAGE_RENT = """
 </ul>
 </body></html>
 """
+
+# Synthetic hr2066-style case: EUR display + listed-in EUR + official XCG 1350.
+# Live RE/MAX EUR pages do not include the NAF/XCG selector amount; this fixture
+# proves the capture path via stored evidence hooks (meta + comment).
+DETAIL_EUR_OFFICIAL_XCG = """
+<html><head>
+<title>HR2066 Synthetic Official XCG</title>
+<meta name="remax-official-xcg" content="1350" />
+</head><body>
+<div itemscope itemtype="http://schema.org/Product">
+<h1 itemprop="name">Synthetic Rent EUR with official XCG</h1>
+<p class="area">Willemstad Curacao</p>
+<p itemprop="price" class="price">&euro; 664</p>
+<table>
+<tr><td>Bedrooms:</td><td>2</td></tr>
+<tr><td>Bathrooms:</td><td>1</td></tr>
+</table>
+<ul class="dropdown">
+<li class='active'><a href="/currency/EUR/">EUR</a></li>
+<li><a href="/currency/USD/">USD</a></li>
+<li><a href="/currency/NAF/">XCG</a></li>
+</ul>
+<small><i>
+In an international environment like Curacao, objects are listed in various currencies.
+For your convenience, you are able to adjust the currency in which the objects&#039; listing price is shown.
+In case the currency displayed differs from the currency the object was listed in,
+the listing price may seem to change on a daily basis. No rights may be derived from these recalculated numbers.
+This specific object is listed in EUR.
+</i></small>
+<!-- remax-currency-evidence currency=XCG amount=1350 -->
+<span data-remax-official-currency="XCG" data-remax-official-amount="1350">XCG 1.350</span>
+</div>
+</body></html>
+"""

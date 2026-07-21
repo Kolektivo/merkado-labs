@@ -10,7 +10,7 @@ from typing import Any
 
 from merkado_labs.config import get_settings
 from merkado_labs.geo import apply_listing_neighbourhood_assignments
-from merkado_labs.normalization.currency import to_benchmark_xcg
+from merkado_labs.normalization.currency import resolve_public_benchmark_xcg
 from merkado_labs.normalization.eligibility import evaluate_public_eligibility
 from merkado_labs.scrapers.contracts import (
     SOURCE_DISPLAY_NAMES,
@@ -19,13 +19,16 @@ from merkado_labs.scrapers.contracts import (
     DerivationType,
     EurRateProvider,
     ListingLifecycleStatus,
+    OfficialAlternatePrice,
     SourceRunOutcome,
     SourceRunRecord,
 )
+from merkado_labs.scrapers.images import build_gallery
 from merkado_labs.scrapers.lifecycle import (
     ListingLifecycleState,
     compare_complete_success_snapshots,
 )
+from merkado_labs.scrapers.presentation import classify_activity_event
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,9 @@ def _snapshot_normalized_payload(snapshot: AdapterListingSnapshot) -> dict[str, 
                 if snapshot.original_price
                 else None
             ),
+            "official_alternate_prices": [
+                alt.as_dict() for alt in snapshot.official_alternate_prices
+            ],
             "bedrooms": snapshot.bedrooms,
             "bathrooms": snapshot.bathrooms,
             "floor_area_m2": snapshot.floor_area_m2,
@@ -131,6 +137,24 @@ def _snapshot_normalized_payload(snapshot: AdapterListingSnapshot) -> dict[str, 
             "evidence_storage_bucket": snapshot.evidence_storage_bucket,
         }
     )
+
+
+def _official_alts_payload(
+    alts: tuple[OfficialAlternatePrice, ...] | list[OfficialAlternatePrice],
+) -> list[dict[str, Any]]:
+    return [_jsonable(alt.as_dict()) for alt in alts]
+
+
+def _with_presentation(event: dict[str, Any]) -> dict[str, Any]:
+    """Stamp additive presentation classification at insert time."""
+
+    decision = classify_activity_event(event)
+    event["presentation_class"] = decision.presentation_class
+    if decision.suppressed_reason:
+        event["suppressed_reason"] = decision.suppressed_reason
+    if decision.presentation_metadata:
+        event["presentation_metadata"] = decision.presentation_metadata
+    return event
 
 
 def create_labs_client() -> Any:
@@ -327,7 +351,11 @@ def import_snapshots(
 
         benchmark = None
         if snapshot.original_price is not None:
-            benchmark = to_benchmark_xcg(snapshot.original_price, eur_provider=provider)
+            benchmark = resolve_public_benchmark_xcg(
+                snapshot.original_price,
+                eur_provider=provider,
+                official_alternates=snapshot.official_alternate_prices,
+            )
 
         status = (
             snapshot.lifecycle_hint.value
@@ -349,11 +377,15 @@ def import_snapshots(
             has_source_attribution=True,
         )
 
-        image_urls = list(snapshot.image_urls) or list(
+        raw_image_urls = list(snapshot.image_urls) or list(
             snapshot.raw_payload.get("image_urls") or []
         )
-        if snapshot.primary_image_url and snapshot.primary_image_url not in image_urls:
-            image_urls.insert(0, snapshot.primary_image_url)
+        gallery = build_gallery(
+            raw_image_urls,
+            primary_url=snapshot.primary_image_url,
+        )
+        image_urls = gallery.urls
+        primary_image_url = gallery.primary_url
 
         realtor_name = (
             snapshot.raw_payload.get("realtor_name")
@@ -406,7 +438,7 @@ def import_snapshots(
             if snapshot.lot_area_value is not None
             else None,
             "lot_area_unit": snapshot.lot_area_unit,
-            "primary_image_url": snapshot.primary_image_url,
+            "primary_image_url": primary_image_url,
             "description": snapshot.effective_source_description(),
             "source_description_checksum": snapshot.source_description_checksum,
             "amenities": list(snapshot.amenities),
@@ -427,6 +459,9 @@ def import_snapshots(
                     "original_currency": snapshot.original_price.currency,
                     "currency_inferred": snapshot.original_price.inferred,
                     "currency_inference_reason": snapshot.original_price.inference_reason,
+                    "official_alternate_prices": _official_alts_payload(
+                        snapshot.official_alternate_prices
+                    ),
                 }
             )
             if benchmark is not None and not benchmark.pending:
@@ -630,6 +665,9 @@ def import_snapshots(
                     "price_evidence": evidence,
                     "currency_inferred": snapshot.original_price.inferred,
                     "currency_inference_reason": snapshot.original_price.inference_reason,
+                    "official_alternate_prices": _official_alts_payload(
+                        snapshot.official_alternate_prices
+                    ),
                 }
                 if benchmark is not None and not benchmark.pending:
                     price_row.update(
@@ -806,7 +844,9 @@ def import_snapshots(
                 )
 
         if events:
-            client.table("listing_activity_events").insert(events).execute()
+            client.table("listing_activity_events").insert(
+                [_with_presentation(event) for event in events]
+            ).execute()
             event_count += len(events)
 
     # Absence transitions only for complete successful runs.
@@ -818,12 +858,18 @@ def import_snapshots(
             run=run,
             removal_threshold=removal_threshold,
         )
+        # Import loop is the sole writer for asking/currency/benchmark events.
+        _lifecycle_skip = {
+            ActivityEventType.FIRST_SEEN,
+            ActivityEventType.PRICE_CHANGED,
+            ActivityEventType.CURRENCY_CHANGED,
+        }
         for transition in transitions:
-            # Import loop already writes first_seen (+ correct status) for new rows.
-            # Re-applying FIRST_SEEN here duplicated events and forced status=active.
-            if transition.event_type == ActivityEventType.FIRST_SEEN:
+            # Import loop already writes first_seen / price_changed / currency_changed.
+            # Re-applying those here duplicated events (and first_seen forced active).
+            if transition.event_type in _lifecycle_skip:
                 notes.append(
-                    f"skipped_duplicate_first_seen_transition:{transition.external_id}"
+                    f"skipped_duplicate_{transition.event_type.value}:{transition.external_id}"
                 )
                 continue
             listing_rows = (
@@ -873,17 +919,19 @@ def import_snapshots(
             if update:
                 client.table("property_listings").update(update).eq("id", listing_id).execute()
             client.table("listing_activity_events").insert(
-                {
-                    "property_listing_id": listing_id,
-                    "event_type": transition.event_type.value,
-                    "event_at": transition.event_at.isoformat(),
-                    "previous_value": transition.previous_value,
-                    "new_value": transition.new_value,
-                    "source_run_id": source_run_id,
-                    "derivation_type": transition.derivation.value,
-                    "confidence": 1.0,
-                    "notes": transition.notes,
-                }
+                _with_presentation(
+                    {
+                        "property_listing_id": listing_id,
+                        "event_type": transition.event_type.value,
+                        "event_at": transition.event_at.isoformat(),
+                        "previous_value": transition.previous_value,
+                        "new_value": transition.new_value,
+                        "source_run_id": source_run_id,
+                        "derivation_type": transition.derivation.value,
+                        "confidence": 1.0,
+                        "notes": transition.notes,
+                    }
+                )
             ).execute()
             event_count += 1
     else:

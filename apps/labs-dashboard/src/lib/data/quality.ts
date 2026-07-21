@@ -4,6 +4,12 @@ import { cache } from "react";
 
 import { summarizeGeographicQuality } from "@/lib/data/analytics";
 import { getAllListings } from "@/lib/data/queries";
+import {
+  listingHasMapGap,
+  listingHasNeighbourhoodSearchGap,
+} from "@/lib/domain/location-gaps";
+
+export { listingHasMapGap, listingHasNeighbourhoodSearchGap };
 
 export const getQualitySummary = cache(async () => {
   const listings = await getAllListings();
@@ -21,6 +27,11 @@ export const getQualitySummary = cache(async () => {
     }
   }
 
+  const missingCoordinates = listings.filter(listingHasMapGap).length;
+  const missingNeighbourhoodSearch = listings.filter(
+    listingHasNeighbourhoodSearchGap,
+  ).length;
+
   return {
     totalListings: listings.length,
     publicEligible: listings.filter((listing) => listing.publicEligible).length,
@@ -29,10 +40,10 @@ export const getQualitySummary = cache(async () => {
         listing.publicExclusionReason === "missing_price" ||
         (listing.originalPrice ?? listing.currentPrice ?? 0) <= 0,
     ).length,
-    missingCoordinates: listings.filter(
-      (listing) =>
-        listing.latitude === null || listing.longitude === null,
-    ).length,
+    /** Map pin gaps only (missing lat/lng). */
+    missingCoordinates,
+    /** Neighbourhood filter/search gaps after effective resolve + canonicalize. */
+    missingNeighbourhoodSearch,
     missingEvidenceChecksum: listings.filter(
       (listing) => !listing.sourceDescriptionChecksum,
     ).length,

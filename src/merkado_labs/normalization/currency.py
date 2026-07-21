@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
@@ -15,14 +15,17 @@ from merkado_labs.normalization.ecb_rates import (
     derive_eur_to_xcg,
 )
 from merkado_labs.scrapers.contracts import (
+    SOURCE_OFFICIAL_PROVENANCE,
     BenchmarkPrice,
     ConversionMethod,
     EurRateProvider,
     MoneyAmount,
+    OfficialAlternatePrice,
 )
 
 USD_TO_XCG = Decimal("1.79")
 ANG_ALIASES = frozenset({"ANG", "NAF", "XCG"})
+XCG_EQUIVALENT = frozenset({"XCG", "ANG", "NAF"})
 
 __all__ = [
     "USD_TO_XCG",
@@ -37,6 +40,9 @@ __all__ = [
     "looks_like_round_eur_anchor",
     "resolve_original_money",
     "to_benchmark_xcg",
+    "prefer_official_xcg_benchmark",
+    "resolve_public_benchmark_xcg",
+    "pick_official_xcg_alternate",
     "cached_eur_provider",
     "is_approved_production_provider",
     "is_manual_or_test_provider",
@@ -272,6 +278,101 @@ def to_benchmark_xcg(
         conversion_rate_at=None,
         pending=True,
         notes=f"Unsupported currency {code}",
+    )
+
+
+def pick_official_xcg_alternate(
+    alternates: Sequence[OfficialAlternatePrice] | None,
+) -> OfficialAlternatePrice | None:
+    """Return the first source-official XCG/ANG/NAF alternate, if any.
+
+    Never synthesizes an alternate from Merkado rates.
+    """
+
+    if not alternates:
+        return None
+    for alt in alternates:
+        if alt.provenance != SOURCE_OFFICIAL_PROVENANCE:
+            continue
+        code = normalize_currency_code(alt.currency)
+        if code in XCG_EQUIVALENT and alt.amount > 0:
+            return OfficialAlternatePrice(
+                amount=alt.amount,
+                currency="XCG" if code == "XCG" else (code or alt.currency),
+                provenance=SOURCE_OFFICIAL_PROVENANCE,
+                evidence=alt.evidence,
+                source_label=alt.source_label,
+            )
+    return None
+
+
+def prefer_official_xcg_benchmark(
+    *,
+    merkado_benchmark: BenchmarkPrice,
+    official_alternates: Sequence[OfficialAlternatePrice] | None = None,
+) -> BenchmarkPrice:
+    """Prefer a source-official ANG/XCG amount for the public XCG figure.
+
+    Falls back to the Merkado conversion when no official XCG/ANG alternate exists.
+    Never invents ``source_official_conversion`` from the Merkado rate.
+    """
+
+    official = pick_official_xcg_alternate(official_alternates)
+    if official is None:
+        return merkado_benchmark
+
+    method = (
+        ConversionMethod.IDENTITY
+        if official.currency == "XCG"
+        else ConversionMethod.SOURCE_OFFICIAL_CONVERSION
+    )
+    # Public storage uses source_official_conversion whenever the amount came
+    # from a source-published alternate (including identity XCG lines).
+    return BenchmarkPrice(
+        amount_xcg=official.amount,
+        conversion_method=ConversionMethod.SOURCE_OFFICIAL_CONVERSION,
+        conversion_rate=Decimal("1"),
+        conversion_provider="source:official_alternate",
+        conversion_rate_at=datetime.now(UTC),
+        notes=(
+            f"Public XCG from source-official {official.currency} "
+            f"({official.source_label or 'alternate'}); Merkado conversion not used"
+        ),
+        provenance={
+            "provenance": SOURCE_OFFICIAL_PROVENANCE,
+            "official_amount": str(official.amount),
+            "official_currency": official.currency,
+            "source_label": official.source_label,
+            "evidence": official.evidence,
+            "merkado_benchmark_xcg": (
+                str(merkado_benchmark.amount_xcg)
+                if merkado_benchmark.amount_xcg is not None
+                else None
+            ),
+            "merkado_conversion_provider": merkado_benchmark.conversion_provider,
+            "merkado_conversion_method": (
+                merkado_benchmark.conversion_method.value
+                if merkado_benchmark.conversion_method
+                else None
+            ),
+            "preferred_over_merkado": True,
+            "identity_or_legacy": method.value,
+        },
+    )
+
+
+def resolve_public_benchmark_xcg(
+    original: MoneyAmount,
+    *,
+    eur_provider: EurRateProvider | None = None,
+    official_alternates: Sequence[OfficialAlternatePrice] | None = None,
+) -> BenchmarkPrice:
+    """Merkado conversion, then prefer source-official XCG/ANG when present."""
+
+    merkado = to_benchmark_xcg(original, eur_provider=eur_provider)
+    return prefer_official_xcg_benchmark(
+        merkado_benchmark=merkado,
+        official_alternates=official_alternates,
     )
 
 

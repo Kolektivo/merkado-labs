@@ -99,9 +99,13 @@ Sotheby's is excluded.
   galleries were already stored (~12.1k URLs); no lifecycle scrape or image
   binary copy was required. Live `public_property_listings` count ~**279**
   (2026-07-21).
-- Quality pass (2026-07-21): policy **v4.2** zero-cost dry-run on ~402 listings /
-  390 proposals (USD 0.00); DB apply skipped while a pipeline run was active.
-  Waterfront public allowlist migration is in-repo; apply separately. See
+- Quality pass (2026-07-21): policy **v4.2** zero-cost rematerialization
+  completed to a fixed point (`transitions={}`, `changed=0`; openai_calls=0;
+  decision bag 5611→3590 after synonym dedupe). Root-cause fix: immutable
+  proposal inputs + canonical-key dedupe (never FD/audit backfill). Public
+  eligibility unchanged (KW88/Moret71/REMAX118/Monumentenzorg2). Image
+  identity/dedup: RE/MAX fixture 82→42 via `build_gallery`; Labs cleanup
+  removed 5705 duplicate gallery slots. See
   `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
 - v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
@@ -171,9 +175,12 @@ token usage, AI costs, and private HTML must never appear on `/browse`.
 
 **Public attribute allowlist:** pool (+ subtype when known), furnished,
 parking, parking spaces, garage, gated community, air conditioning, garden,
-terrace, balcony, sea view, waterfront (migration pending Labs apply as of
-2026-07-21), solar panels, generator, water heater, security, appliances,
-accessibility, pet suitability.
+terrace, balcony, sea view, waterfront, solar panels, generator, water heater,
+security, appliances, accessibility, pet suitability.
+
+**Image identity / galleries:** adapters extract full galleries into
+`property_listings.image_urls`; RE/MAX uses `build_gallery` with identity
+dedup. Labs cleanup (2026-07-21) removed duplicate slots without scraping.
 
 **Effective neighbourhood priority** (one final value; never generic Curaçao):
 
@@ -233,6 +240,19 @@ not part of automatic deploy.
 - Bounding boxes are guards only.
 - Point-in-polygon assignment is authoritative when valid boundaries and coordinates exist.
 - Track coordinate provenance per source.
+
+### Map gaps vs neighbourhood-search gaps
+
+Do not conflate:
+
+| Gap | Meaning |
+|---|---|
+| **Map gap** | Missing coordinates (Labs snapshot: **28** listings) — no PIP assignment possible |
+| **Neighbourhood-search gap** | Filter/search coverage where source neighbourhood text can still contribute |
+
+PIP is authoritative when valid coordinates and boundaries exist. Source
+neighbourhood remains a fallback for filter/search when map assignment is
+unavailable. Display aliases do not merge assets.
 
 ### Effective neighbourhood (dashboard)
 

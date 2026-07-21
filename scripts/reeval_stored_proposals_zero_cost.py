@@ -104,11 +104,36 @@ def _status_of(decision: dict[str, Any]) -> str:
 
 
 def _prior_decisions(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Latest prior decision per canonical attribute key (last wins)."""
+
+    from merkado_labs.enrichment.fields import normalize_attribute_key
+
     out: dict[str, dict[str, Any]] = {}
     for item in body.get("field_decisions") or []:
-        if isinstance(item, dict) and item.get("key"):
-            out[str(item["key"])] = item
+        if not isinstance(item, dict) or not item.get("key"):
+            continue
+        key = normalize_attribute_key(str(item["key"]))
+        if key:
+            out[key] = item
     return out
+
+
+def _unique_decisions(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Persist at most one decision per canonical key (first wins)."""
+
+    from merkado_labs.enrichment.fields import normalize_attribute_key
+
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for item in decisions:
+        if not isinstance(item, dict):
+            continue
+        key = normalize_attribute_key(str(item.get("key") or ""))
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        unique.append({**item, "key": key})
+    return unique
 
 
 def _billable_public_counts(client: Any, source_ids: list[str]) -> dict[str, int]:
@@ -292,7 +317,7 @@ def main() -> int:
         evaluation = evaluate_proposal_attributes(
             attrs, source_values=source_values, source_text=corpus
         )
-        new_decisions = [d.as_dict() for d in evaluation.decisions]
+        new_decisions = _unique_decisions([d.as_dict() for d in evaluation.decisions])
         prior = _prior_decisions(body)
         source_key = source_by_id.get(listing["property_source_id"], "unknown")
 
