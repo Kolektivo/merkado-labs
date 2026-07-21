@@ -58,9 +58,9 @@ export const SOURCE_READINESS: SourceReadinessConfig[] = [
   {
     sourceKey: "keller_williams_curacao",
     displayName: "Keller Williams Curaçao",
-    adapterVersion: "0.3.0",
+    adapterVersion: "0.3.1",
     readiness: "ready",
-    listingCountExpected: 84,
+    listingCountExpected: 104,
     catalogStatus: "complete",
     currentIssue: null,
     primaryAction: "Refresh & enrich",

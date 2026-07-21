@@ -43,7 +43,7 @@ SOURCE_READINESS: dict[str, SourceReadiness] = {
     "keller_williams_curacao": SourceReadiness(
         source_key="keller_williams_curacao",
         display_name="Keller Williams Curaçao",
-        adapter_version="0.3.0",
+        adapter_version="0.3.1",
         readiness="ready",
         listing_count_expected=84,
         catalog_status="complete",

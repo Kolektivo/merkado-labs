@@ -58,6 +58,17 @@ def test_budget_defaults_and_usage() -> None:
     assert usage.monthly_cost_usd == Decimal("1.75")
 
 
+def test_zero_selection_is_up_to_date_not_budget_deferred() -> None:
+    usage = BudgetUsage(date(2026, 7, 20), Decimal("0"), Decimal("0"), 0, 0)
+    decision = decide_ai_budget(
+        usage=usage, requested_listings=0, estimated_cost_usd=Decimal("0")
+    )
+    assert decision.allowed
+    assert decision.status == "up_to_date"
+    assert decision.approved_listings == 0
+    assert decision.reason is None
+
+
 def test_budget_defers_without_failing_import() -> None:
     usage = BudgetUsage(date(2026, 7, 20), Decimal("1.9"), Decimal("10"), 3, 10)
     decision = decide_ai_budget(

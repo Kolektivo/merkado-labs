@@ -185,6 +185,19 @@ INDEX_SALE_RESIDENTIAL_LOOP_PAGE2 = """
 </body></html>
 """
 
+INDEX_SALE_RESIDENTIAL_WITH_MARKETING = """
+<html><body>
+<a href="/listings/ocean-view-villa-JC-0027">sale</a>
+<a href="/listings/list-with-curacaos-trusted-real-estate-team-RC%20Marketing%20001">marketing</a>
+<a href="/silent-listings/private-home-UJ32">silent</a>
+</body></html>
+"""
+
+MARKETING_NON_LISTING_URL = (
+    "https://kw-curacao.com/listings/"
+    "list-with-curacaos-trusted-real-estate-team-RC%20Marketing%20001"
+)
+
 INDEX_SALE_LOTS = """
 <html><body>
 <a href="/listings/flat-lot-harmonie-PJ009">lot</a>

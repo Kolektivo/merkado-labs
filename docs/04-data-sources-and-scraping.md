@@ -10,11 +10,19 @@ the documented `0 10 * * *` UTC cron is **not enabled** and automatic refresh
 shows **Off** until a separate cron PR. Daily AI limits are USD 2, USD 25 per
 month, and 25 changed listings per run. Sotheby's is blocked and excluded.
 
+Selection uses the shared canonical hash contract
+(`enrichment_input_hash_v1` in `merkado_labs.pipeline.change_hash`). Semantic
+source checksums skip paid AI when content is unchanged, including across
+prompt/schema versions (zero-cost migration). Zero billable selection is
+`up_to_date`, never `budget_deferred`. The `>10` guard trips only on
+**unexpected** matching-checksum invalidations, not legitimate new/changed
+inventory (which continues under listing/cost budgets).
+
 ## 1. Approved sources
 
 | Source key | Display name | Status |
 |---|---|---|
-| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.0; 84-listing complete catalog; 84/84 successful Terra v3 proposals (manual/unscheduled) |
+| `keller_williams_curacao` | Keller Williams Curaçao | [LABS] v0.3.1; marketing non-listing URLs excluded; Terra prompt/schema v4 + policy v4.1 |
 | `sothebys_curacao` | Sotheby's International Realty | [PLANNED] Access route BLOCKED (2026-07-20 recon); not Ready |
 | `remax_curacao` | RE/MAX | [LABS] Complete manual catalog (220); Terra-v3 initial backfill complete; unscheduled |
 | `moret_real_estate` | Moret Real Estate | [LABS] v0.2.0 WPEstate; complete catalog activated (71); Terra-v3 initial backfill complete (71/71) |
@@ -66,13 +74,14 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Item | Value |
 |---|---|
 | Primary domain | `https://kw-curacao.com` |
-| Detail URL | `/listings/{slug}` (e.g. `…-JC-0027`); exclude `/silent-listings` |
+| Detail URL | `/listings/{slug}` (e.g. `…-JC-0027`); exclude `/silent-listings` and marketing/office pages (`excluded_non_listing`) |
 | External ID | Trailing slug token (`JC-0027`, `ID-008`, `UJ32`, …) |
 | Robots | `Crawl-Delay: 20` — sequential detail only; no parallel |
 | Price UI | USD primary with EUR/XCG equivalents; European thousands (`.` ) |
-| Adapter | `keller_williams_curacao.py` **v0.3.0**; CLI `scripts/adapters/run_keller_williams_curacao.py` |
-| Complete catalog import | Offline import from verified Stage-3 artifact (`--import-from-file`); **84** listings; no live website crawl for that import |
-| Public eligibility | 81 public eligible / 3 excluded (no-price / ineligible) |
+| Adapter | `keller_williams_curacao.py` **v0.3.1**; CLI `scripts/adapters/run_keller_williams_curacao.py` |
+| Non-listing exclusion | `list-with-curacaos-trusted-real-estate-team-RC Marketing 001` (and slug patterns) recorded as `excluded_non_listing`; must not block `complete_catalog` |
+| Complete catalog import | Offline import from verified Stage-3 artifact (`--import-from-file`); live supervised catalogs may grow with inventory |
+| Public eligibility | Varies with live inventory; sold/rented/no-price excluded from public |
 | Coordinates | Present for 82/84; missing only `RL-42`, `RL-44` |
 | False-removal repair (earlier) | 35 listings wrongly marked `removed` by bounded runs; restored 2026-07-17 |
 | AI enrichment | **GPT-5.6 Terra** (`OPENAI_ENRICHMENT_MODEL=gpt-5.6-terra`) with automatic policy application; prompt/schema **v4** + policy **v4.1** (`listing_enrichment_v4` / `listing_enrichment_schema_v4` / `enrichment_policy_v4_1`); historical v3/v4 rows retained; policy rematerialization is zero-AI-cost |

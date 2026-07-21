@@ -396,7 +396,29 @@ def run_property_pipeline(
                     requested_listings=len(billable),
                     estimated_cost_usd=Decimal("0.05") * len(billable),
                 )
-                if not decision.allowed or decision.approved_listings <= 0:
+                if len(billable) == 0:
+                    # Zero selection is up-to-date, never budget_deferred.
+                    update_stage(
+                        client,
+                        pipeline_run_id=str(run["id"]),
+                        correlation_id=str(run["correlation_id"]),
+                        source_key=source_key,
+                        stage="ai_enrichment",
+                        status="completed",
+                        metrics={
+                            "status": "up_to_date",
+                            "reason": None,
+                            "billable": 0,
+                            "approved_listings": 0,
+                        },
+                        **_stage_counts(len(rows), succeeded=len(rows)),
+                    )
+                    ai = {
+                        "status": "up_to_date",
+                        "billable": 0,
+                        "reason": None,
+                    }
+                elif not decision.allowed or decision.approved_listings <= 0:
                     update_stage(
                         client,
                         pipeline_run_id=str(run["id"]),

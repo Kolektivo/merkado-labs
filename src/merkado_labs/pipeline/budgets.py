@@ -135,7 +135,12 @@ def decide_ai_budget(
             reason = f"partial_budget:approved={approved}/{requested}"
 
     allowed = approved > 0 or requested == 0
-    status = "approved" if reason is None else "budget_deferred"
+    if requested == 0:
+        status = "up_to_date"
+    elif reason is None:
+        status = "approved"
+    else:
+        status = "budget_deferred"
     if reason and reason.startswith("partial_budget:") and approved > 0:
         status = "partial"
         allowed = True
