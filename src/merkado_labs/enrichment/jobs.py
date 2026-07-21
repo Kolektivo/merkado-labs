@@ -57,11 +57,14 @@ def has_identical_enrichment_attempt(
     prompt_version: str = PROMPT_VERSION,
     schema_version: str = SCHEMA_VERSION,
     alternate_checksums: Sequence[str] | None = None,
+    match_any_prompt_schema: bool = False,
 ) -> bool:
-    """Return True only when the same model/prompt/schema/checksum already succeeded.
+    """Return True when the same model (+ optional prompt/schema) checksum succeeded.
 
-    Historical v1 (or any other model/version) proposals must not block a fresh
-    Terra v3 attempt merely because the listing content checksum matches.
+    By default requires the current prompt/schema. When
+    ``match_any_prompt_schema`` is True, any successful Terra proposal with the
+    same semantic ``input_checksum`` counts — enabling zero-cost prompt/schema
+    migration without a paid AI re-run.
 
     ``alternate_checksums`` allows semantic/legacy dual-match so a coordinate-only
     import does not invalidate an otherwise unchanged Terra proposal.
@@ -75,14 +78,20 @@ def has_identical_enrichment_attempt(
         if not checksum or checksum in seen:
             continue
         seen.add(checksum)
-        rows = (
+        # Keep eq order stable for callers/tests that mock the chain:
+        # listing_id → model → [prompt → schema] → input_checksum → status.
+        query = (
             client.table("ai_enrichment_proposals")
             .select("id,status")
             .eq("property_listing_id", listing_id)
             .eq("model", model)
-            .eq("prompt_version", prompt_version)
-            .eq("schema_version", schema_version)
-            .eq("input_checksum", checksum)
+        )
+        if not match_any_prompt_schema:
+            query = query.eq("prompt_version", prompt_version).eq(
+                "schema_version", schema_version
+            )
+        rows = (
+            query.eq("input_checksum", checksum)
             .in_("status", ["succeeded", "needs_review", "skipped_unchanged"])
             .limit(1)
             .execute()
@@ -192,10 +201,13 @@ def should_skip_unchanged_enrichment(
     """Skip paid AI when checksum matches or only operational geo fields changed.
 
     Dual-match uses the current legacy checksum so a coordinate-only import does
-    not rebill unchanged Terra proposals. The listing's stored
-    ``enrichment_last_input_checksum`` is intentionally NOT an alternate match on
-    its own — a stale last-checksum would incorrectly skip genuine semantic
-    changes (e.g. map effective-neighbourhood gap-fill).
+    not rebill unchanged Terra proposals. Cross-version Terra matches (same
+    semantic checksum, older prompt/schema) are also skipped so a prompt upgrade
+    alone does not create a false billable backlog.
+
+    The listing's stored ``enrichment_last_input_checksum`` is intentionally NOT
+    an alternate match on its own — a stale last-checksum would incorrectly skip
+    genuine semantic changes (e.g. map effective-neighbourhood gap-fill).
     """
 
     listing_id = str(row["id"])
@@ -212,6 +224,18 @@ def should_skip_unchanged_enrichment(
         alternate_checksums=[legacy],
     ):
         return True
+    # Zero-cost prompt/schema migration: identical semantic input already enriched.
+    if has_identical_enrichment_attempt(
+        client,
+        listing_id=listing_id,
+        model=model,
+        input_checksum=checksum,
+        prompt_version=prompt_version,
+        schema_version=schema_version,
+        alternate_checksums=[legacy],
+        match_any_prompt_schema=True,
+    ):
+        return True
     if is_operational_only_enrichment_delta(row) and has_successful_terra_attempt(
         client,
         listing_id=listing_id,
@@ -220,6 +244,21 @@ def should_skip_unchanged_enrichment(
         schema_version=schema_version,
     ):
         return True
+    # Operational-only delta against any prior Terra version.
+    if is_operational_only_enrichment_delta(row):
+        any_terra = (
+            client.table("ai_enrichment_proposals")
+            .select("id")
+            .eq("property_listing_id", listing_id)
+            .eq("model", model)
+            .in_("status", ["succeeded", "needs_review", "skipped_unchanged"])
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if any_terra:
+            return True
     return False
 
 

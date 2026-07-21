@@ -18,7 +18,7 @@ This folder holds the working context for Merkado Labs property work.
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS][WIP] Ops + browse + Search Request / Agent previews |
 | Public browse on merkado.cw | [PLANNED] Labs `/browse` only (**273** public-eligible) |
-| Keller Williams adapter | [LABS] v0.3.0 Ready; 84 catalog / 81 public / Terra 84/84 |
+| Keller Williams adapter | [LABS] v0.3.1 Ready; marketing non-listings excluded; Terra v4 |
 | RE/MAX adapter | [LABS] v0.4.1 Ready; 220 catalog / 119 public / Terra 220/220 |
 | Moret adapter | [LABS] v0.2.0 Ready; 71 catalog / 71 public / Terra 71/71 |
 | Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog / 2 public / Terra 5/5 |

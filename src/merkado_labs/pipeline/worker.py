@@ -158,13 +158,78 @@ def _listing_rows_for_source(client: Any, source_key: str) -> list[dict[str, Any
 def _billable_enrichment_ids(
     client: Any, rows: list[dict[str, Any]], *, model: str
 ) -> list[str]:
+    """Return public-eligible listing IDs that still need paid enrichment."""
+
     billable: list[str] = []
     for row in rows:
+        if not row.get("public_eligible"):
+            continue
         preview = dict(row)
         if should_skip_unchanged_enrichment(client, row=preview, model=model):
             continue
         billable.append(str(row["id"]))
     return billable
+
+
+def _classify_billable_selection(
+    client: Any,
+    rows: list[dict[str, Any]],
+    billable_ids: list[str],
+    *,
+    model: str,
+) -> dict[str, list[str]]:
+    """Split billable IDs into new, changed, and unexpected anomaly buckets.
+
+    - ``new_listings``: never successfully enriched with this model
+    - ``content_changed``: prior Terra result exists but semantic checksum differs
+    - ``unexpected``: still billable despite a matching semantic checksum on a
+      prior Terra proposal (selection/hash bug). These trip the fail-safe guard.
+    """
+
+    from merkado_labs.enrichment import (
+        compute_input_checksum,
+        compute_legacy_input_checksum,
+    )
+    from merkado_labs.enrichment.jobs import listing_to_enrichment_input
+
+    by_id = {str(row["id"]): row for row in rows}
+    new_listings: list[str] = []
+    content_changed: list[str] = []
+    unexpected: list[str] = []
+    for lid in billable_ids:
+        row = by_id.get(lid)
+        if row is None:
+            unexpected.append(lid)
+            continue
+        enrichment_input = listing_to_enrichment_input(row)
+        checksum = compute_input_checksum(enrichment_input)
+        legacy = compute_legacy_input_checksum(enrichment_input)
+        priors = (
+            client.table("ai_enrichment_proposals")
+            .select("id,input_checksum,status")
+            .eq("property_listing_id", lid)
+            .eq("model", model)
+            .in_("status", ["succeeded", "needs_review", "skipped_unchanged"])
+            .execute()
+            .data
+            or []
+        )
+        if not priors:
+            new_listings.append(lid)
+            continue
+        prior_checksums = {
+            str(item.get("input_checksum") or "") for item in priors if item.get("input_checksum")
+        }
+        if checksum in prior_checksums or legacy in prior_checksums:
+            unexpected.append(lid)
+        else:
+            content_changed.append(lid)
+    return {
+        "new_listings": new_listings,
+        "content_changed": content_changed,
+        "unexpected": unexpected,
+        "legitimate": new_listings + content_changed,
+    }
 
 
 def _complete_stage_counts(
@@ -310,7 +375,7 @@ def _run_kw_live_refresh(
     *,
     run: dict[str, Any],
 ) -> dict[str, Any]:
-    """Execute proven KW v0.3.0 five-section catalog scrape + import + geospatial."""
+    """Execute proven KW v0.3.1 five-section catalog scrape + import + geospatial."""
 
     source_key = KW_SOURCE_KEY
     prior_rows = _listing_rows_for_source(client, source_key)
@@ -325,7 +390,7 @@ def _run_kw_live_refresh(
         source_key=source_key,
         stage="scraping",
         status="running",
-        metrics={"adapter_version": "0.3.0", "prior_listing_count": prior_count},
+        metrics={"adapter_version": "0.3.1", "prior_listing_count": prior_count},
     )
     adapter = KellerWilliamsCuracaoAdapter(cache_dir=KW_CACHE_DIR)
     record, snapshots, discovery = adapter.run_catalog(
@@ -614,9 +679,11 @@ def _run_ai_stage(
             status="completed",
             token_usage={},
             estimated_ai_cost_usd=0,
+            metrics={"status": "up_to_date", "billable": 0},
             **_complete_stage_counts(total=len(rows), skipped=skipped, succeeded=0),
         )
         return {
+            "status": "up_to_date",
             "billable": 0,
             "skipped": skipped,
             "exact_cost_usd": 0,
@@ -625,10 +692,15 @@ def _run_ai_stage(
             "selected_listing_ids": [],
         }
 
-    if len(billable) > MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION:
+    classification = _classify_billable_selection(
+        client, rows, billable, model=model
+    )
+    unexpected = classification["unexpected"]
+    if len(unexpected) > MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION:
         msg = (
-            f"Unexpected checksum invalidation: {len(billable)} listings selected "
-            f"for AI (>{MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION}). "
+            f"Unexpected checksum invalidation: {len(unexpected)} listings selected "
+            f"for AI with matching prior semantic checksums "
+            f"(>{MAX_UNEXPECTED_AI_WITHOUT_INVESTIGATION}). "
             "Refusing paid execution — investigate shared input/schema change."
         )
         update_stage(
@@ -641,12 +713,48 @@ def _run_ai_stage(
             error_message=msg,
             metrics={
                 "selected_listing_ids": billable,
+                "unexpected_listing_ids": unexpected,
+                "new_listings": classification["new_listings"],
+                "content_changed": classification["content_changed"],
                 "skipped_unchanged": skipped,
                 "ceiling_usd": PIPELINE_AI_COST_CEILING_USD,
             },
-            **_complete_stage_counts(total=len(rows), failed=len(billable), skipped=skipped),
+            **_complete_stage_counts(
+                total=len(rows), failed=len(unexpected), skipped=skipped
+            ),
         )
         raise RuntimeError(msg)
+    # Legitimate new/changed backlog proceeds under listing/cost budgets; excess
+    # is classified budget_deferred by the orchestrator, not as a checksum failure.
+    # Drop residual unexpected rows (≤ threshold) from paid execution.
+    billable = list(classification["legitimate"])
+    if not billable:
+        update_stage(
+            client,
+            pipeline_run_id=str(run["id"]),
+            correlation_id=str(run["correlation_id"]),
+            source_key=source_key,
+            stage="ai_enrichment",
+            status="completed",
+            token_usage={},
+            estimated_ai_cost_usd=0,
+            metrics={
+                "status": "up_to_date",
+                "billable": 0,
+                "unexpected_excluded": unexpected,
+            },
+            **_complete_stage_counts(total=len(rows), skipped=skipped, succeeded=0),
+        )
+        return {
+            "status": "up_to_date",
+            "billable": 0,
+            "skipped": skipped,
+            "exact_cost_usd": 0,
+            "token_usage": {},
+            "job_id": None,
+            "selected_listing_ids": [],
+            "unexpected_excluded": unexpected,
+        }
 
     if not execute_live:
         update_stage(

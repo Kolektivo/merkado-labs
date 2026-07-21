@@ -15,6 +15,7 @@ from merkado_labs.scrapers.adapters.keller_williams_curacao import (
     external_id_from_url,
     extract_detail_links,
     extract_next_page_url,
+    is_excluded_non_listing_url,
 )
 from merkado_labs.scrapers.contracts import ListingLifecycleStatus, SourceRunOutcome
 from tests.fixtures import kw_html
@@ -85,6 +86,60 @@ def test_silent_listings_are_excluded() -> None:
             listing_url="https://kw-curacao.com/silent-listings/private-home-UJ32",
             raw_sha256="e" * 64,
         )
+
+
+def test_marketing_non_listing_url_is_excluded() -> None:
+    """Exact supervised-run marketing URL must not block complete_catalog."""
+
+    url = kw_html.MARKETING_NON_LISTING_URL
+    assert is_excluded_non_listing_url(url)
+    assert is_excluded_non_listing_url(url.replace("%20", " "))
+    assert external_id_from_url(url) is None
+
+    discovered, stats = extract_detail_links(
+        kw_html.INDEX_SALE_RESIDENTIAL_WITH_MARKETING,
+        index_url="https://kw-curacao.com/listings/for-sale/residential",
+    )
+    assert [item.external_id for item in discovered] == ["JC-0027"]
+    assert stats["skipped_excluded_non_listing"] >= 1
+    assert stats["no_external_id_urls"] == []
+    assert any("list-with-curacaos-trusted" in u for u in stats["excluded_non_listing_urls"])
+
+
+def test_marketing_url_does_not_fail_discovery_complete() -> None:
+    adapter = KellerWilliamsCuracaoAdapter()
+    html_by_url = kw_html.approved_catalog_html_by_url(
+        residential=kw_html.INDEX_SALE_RESIDENTIAL_WITH_MARKETING,
+    )
+    discovery = adapter.discover_catalog(
+        cache_dir=Path("."),
+        honor_delay=False,
+        html_by_url=html_by_url,
+    )
+    assert discovery.skipped_excluded_non_listing >= 1
+    assert discovery.unresolved_no_external_id_urls == []
+    assert discovery.discovery_complete
+
+
+def test_true_listing_missing_id_still_blocks_completeness() -> None:
+    adapter = KellerWilliamsCuracaoAdapter()
+    ambiguous = """
+    <html><body>
+    <a href="/listings/ocean-view-villa-JC-0027">sale</a>
+    <a href="/listings/brand-new-development-without-reference">ambiguous</a>
+    </body></html>
+    """
+    html_by_url = kw_html.approved_catalog_html_by_url(residential=ambiguous)
+    discovery = adapter.discover_catalog(
+        cache_dir=Path("."),
+        honor_delay=False,
+        html_by_url=html_by_url,
+    )
+    assert discovery.unresolved_no_external_id_urls
+    assert not discovery.discovery_complete
+    assert any(
+        error.startswith("unresolved_no_external_id:") for error in discovery.errors
+    )
 
 
 def test_sample_detail_fixture_extracts_known_fields() -> None:

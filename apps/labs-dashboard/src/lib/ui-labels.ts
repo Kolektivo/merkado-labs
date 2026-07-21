@@ -242,8 +242,13 @@ const JOB_STATUS_LABELS: Record<string, string> = {
   succeeded: "Finished",
   completed: "Finished",
   completed_with_errors: "Finished with errors",
+  completed_with_warnings: "Finished with warnings",
   failed: "Failed",
   cancelled: "Cancelled",
+  up_to_date: "Up to date",
+  not_needed: "Not needed",
+  budget_deferred: "Budget deferred",
+  partial_budget: "Partial budget",
 };
 
 export function labelOrTitle(value: string | null | undefined, map: Record<string, string>) {

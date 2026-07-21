@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import parse_qs, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse, urlunparse
 
 from merkado_labs.normalization.currency import parse_decimal_amount, resolve_original_money
 from merkado_labs.scrapers.adapters.base import DirectSourceAdapter
@@ -41,7 +41,7 @@ from merkado_labs.scrapers.robots import USER_AGENT, RobotsDecision
 
 SOURCE_KEY = "keller_williams_curacao"
 ADAPTER_NAME = SOURCE_KEY
-ADAPTER_VERSION = "0.3.0"
+ADAPTER_VERSION = "0.3.1"
 RAW_EVIDENCE_BUCKET = "listing-raw-evidence"
 DOMAINS = frozenset({"kw-curacao.com", "www.kw-curacao.com"})
 BASE_URL = "https://kw-curacao.com"
@@ -166,6 +166,30 @@ ID_FROM_SLUG_RE = re.compile(
     r")$",
     re.I,
 )
+# Deterministic office/marketing pages that appear under /listings/ without a
+# stable property reference ID (live 2026-07-20 supervised run).
+EXCLUDED_NON_LISTING_SLUG_RE = re.compile(
+    r"(?:^|[-_])list-with[-_]"
+    r"|trusted[-_]real[-_]estate[-_]team"
+    r"|rc[\s_-]*marketing"
+    r"|(?:^|[-_])marketing[\s_-]*\d+",
+    re.I,
+)
+# Exact URL observed blocking complete_catalog proof.
+_KW_MARKETING_SLUG = "list-with-curacaos-trusted-real-estate-team-RC Marketing 001"
+KNOWN_EXCLUDED_NON_LISTING_URLS = frozenset(
+    {
+        f"https://kw-curacao.com/listings/{_KW_MARKETING_SLUG}",
+        (
+            "https://kw-curacao.com/listings/"
+            "list-with-curacaos-trusted-real-estate-team-RC%20Marketing%20001"
+        ),
+        (
+            "https://kw-curacao.com/listings/"
+            "list-with-curacaos-trusted-real-estate-team-rc-marketing-001"
+        ),
+    }
+)
 REL_NEXT_RE = re.compile(
     r'<a[^>]+rel=["\']next["\'][^>]*href=["\'](?P<href>[^"\']+)["\']'
     r'|<a[^>]+href=["\'](?P<href2>[^"\']+)["\'][^>]*rel=["\']next["\']',
@@ -204,7 +228,9 @@ class CatalogDiscoveryResult:
     skipped_silent: int = 0
     skipped_off_domain: int = 0
     skipped_no_external_id: int = 0
+    skipped_excluded_non_listing: int = 0
     unresolved_no_external_id_urls: list[str] = field(default_factory=list)
+    excluded_non_listing_urls: list[str] = field(default_factory=list)
     page_loops: int = 0
     unexpected_empty_pages: int = 0
     truncated: bool = False
@@ -233,6 +259,23 @@ def _text(value: str) -> str:
 
 def is_silent_listing_url(url: str) -> bool:
     return "/silent-listings" in urlparse(url).path.casefold()
+
+
+def is_excluded_non_listing_url(url: str) -> bool:
+    """True for marketing/office pages incorrectly linked under /listings/.
+
+    These must not block ``discovery_complete`` / ``complete_catalog`` proof.
+    Classification is recorded as ``excluded_non_listing``.
+    """
+
+    absolute = url.strip()
+    if absolute in KNOWN_EXCLUDED_NON_LISTING_URLS:
+        return True
+    parsed = urlparse(absolute)
+    slug = unquote(parsed.path.rstrip("/").rsplit("/", 1)[-1])
+    if absolute.replace("%20", " ") in KNOWN_EXCLUDED_NON_LISTING_URLS:
+        return True
+    return bool(EXCLUDED_NON_LISTING_SLUG_RE.search(slug))
 
 
 def category_key_from_url(url: str) -> str | None:
@@ -359,9 +402,11 @@ def extract_detail_links(
         "skipped_silent": 0,
         "skipped_off_domain": 0,
         "skipped_no_external_id": 0,
+        "skipped_excluded_non_listing": 0,
         "duplicate_external_ids": 0,
         "duplicate_canonical_urls": 0,
         "no_external_id_urls": [],
+        "excluded_non_listing_urls": [],
     }
     resolved_category = category_key or category_key_from_url(index_url)
     section = None
@@ -385,11 +430,19 @@ def extract_detail_links(
         if not url:
             # Category/nav links and malformed detail paths are ignored quietly.
             continue
+        if is_excluded_non_listing_url(url):
+            stats["skipped_excluded_non_listing"] += 1
+            stats["excluded_non_listing_urls"].append(url)
+            continue
         if url in seen_urls:
             stats["duplicate_canonical_urls"] += 1
             continue
         external_id = external_id_from_url(url)
         if not external_id:
+            if is_excluded_non_listing_url(url):
+                stats["skipped_excluded_non_listing"] += 1
+                stats["excluded_non_listing_urls"].append(url)
+                continue
             stats["skipped_no_external_id"] += 1
             stats["no_external_id_urls"].append(url)
             continue
@@ -819,8 +872,14 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
                 result.skipped_silent += stats["skipped_silent"]
                 result.skipped_off_domain += stats["skipped_off_domain"]
                 result.skipped_no_external_id += stats["skipped_no_external_id"]
+                result.skipped_excluded_non_listing += stats[
+                    "skipped_excluded_non_listing"
+                ]
                 result.duplicate_canonical_urls += stats["duplicate_canonical_urls"]
                 result.unresolved_no_external_id_urls.extend(stats["no_external_id_urls"])
+                result.excluded_non_listing_urls.extend(
+                    stats["excluded_non_listing_urls"]
+                )
 
                 new_on_page = 0
                 for item in page_listings:
@@ -890,12 +949,20 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
         discovered_urls = {item.url for item in result.listings}
         unresolved: list[str] = []
         for no_id_url in dict.fromkeys(result.unresolved_no_external_id_urls):
+            if is_excluded_non_listing_url(no_id_url):
+                result.skipped_excluded_non_listing += 1
+                result.excluded_non_listing_urls.append(no_id_url)
+                result.warnings.append(f"excluded_non_listing:{no_id_url}")
+                continue
             prefix = no_id_url.rstrip("/") + "-"
             if any(found.startswith(prefix) for found in discovered_urls):
                 result.warnings.append(f"no_id_prefix_duplicate:{no_id_url}")
                 continue
             unresolved.append(no_id_url)
         result.unresolved_no_external_id_urls = unresolved
+        result.excluded_non_listing_urls = list(
+            dict.fromkeys(result.excluded_non_listing_urls)
+        )
         if unresolved:
             result.errors.append(
                 "unresolved_no_external_id:" + ",".join(unresolved)
@@ -1459,6 +1526,8 @@ class KellerWilliamsCuracaoAdapter(DirectSourceAdapter):
                     "skipped_silent": discovery.skipped_silent,
                     "skipped_off_domain": discovery.skipped_off_domain,
                     "skipped_no_external_id": discovery.skipped_no_external_id,
+                    "skipped_excluded_non_listing": discovery.skipped_excluded_non_listing,
+                    "excluded_non_listing_urls": discovery.excluded_non_listing_urls,
                     "page_loops": discovery.page_loops,
                     "unexpected_empty_pages": discovery.unexpected_empty_pages,
                     "categories_seen": sorted(discovery.categories_seen),

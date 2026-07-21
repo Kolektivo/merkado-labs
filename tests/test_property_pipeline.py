@@ -413,10 +413,12 @@ def test_worker_refuses_unexpected_checksum_invalidation(
             "id": f"listing-{i}",
             "external_id": f"EXT{i}",
             "title": f"Listing {i}",
-            "enrichment_status": "not_run",
+            "public_eligible": True,
+            "enrichment_status": "succeeded",
         }
         for i in range(11)
     ]
+    unexpected_ids = [row["id"] for row in fake_rows]
     monkeypatch.setattr(
         "merkado_labs.pipeline.worker.resolve_property_source",
         lambda _c, key: {"id": "src-kw", "source_key": key},
@@ -427,7 +429,16 @@ def test_worker_refuses_unexpected_checksum_invalidation(
     )
     monkeypatch.setattr(
         "merkado_labs.pipeline.worker._billable_enrichment_ids",
-        lambda *_a, **_k: [row["id"] for row in fake_rows],
+        lambda *_a, **_k: list(unexpected_ids),
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._classify_billable_selection",
+        lambda *_a, **_k: {
+            "new_listings": [],
+            "content_changed": [],
+            "unexpected": list(unexpected_ids),
+            "legitimate": [],
+        },
     )
     from merkado_labs.pipeline.worker import _run_ai_stage
 
@@ -438,6 +449,88 @@ def test_worker_refuses_unexpected_checksum_invalidation(
             source_key="keller_williams_curacao",
             execute_live=True,
         )
+
+
+def test_worker_allows_legitimate_new_listing_backlog(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """>10 legitimate new listings must not trip the unexpected-checksum guard."""
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.assert_labs_project_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    client = _FakeClient()
+    run = {
+        "id": "run-ai-legit",
+        "correlation_id": "corr-ai-legit",
+        "status": "running",
+        "source_keys": ["keller_williams_curacao"],
+        "progress": {},
+    }
+    for stage in PIPELINE_STAGES:
+        client.tables["property_pipeline_source_stages"].append(
+            {
+                "pipeline_run_id": "run-ai-legit",
+                "correlation_id": "corr-ai-legit",
+                "source_key": "keller_williams_curacao",
+                "stage": stage,
+                "status": "waiting",
+            }
+        )
+    fake_rows = [
+        {
+            "id": f"listing-{i}",
+            "external_id": f"EXT{i}",
+            "title": f"Listing {i}",
+            "public_eligible": True,
+            "enrichment_status": "not_run",
+        }
+        for i in range(11)
+    ]
+    legit_ids = [row["id"] for row in fake_rows]
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.resolve_property_source",
+        lambda _c, key: {"id": "src-kw", "source_key": key},
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._listing_rows_for_source",
+        lambda *_a, **_k: fake_rows,
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._billable_enrichment_ids",
+        lambda *_a, **_k: list(legit_ids),
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker._classify_billable_selection",
+        lambda *_a, **_k: {
+            "new_listings": list(legit_ids),
+            "content_changed": [],
+            "unexpected": [],
+            "legitimate": list(legit_ids),
+        },
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.create_enrichment_job",
+        lambda *_a, **_k: "job-1",
+    )
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.worker.process_enrichment_job",
+        lambda *_a, **_k: {
+            "results": [],
+            "token_usage": {"input_tokens": 0, "output_tokens": 0},
+        },
+    )
+    from merkado_labs.pipeline.worker import _run_ai_stage
+
+    result = _run_ai_stage(
+        client,
+        run=run,
+        source_key="keller_williams_curacao",
+        execute_live=True,
+    )
+    assert result["billable"] == 11
+    assert result.get("job_id") == "job-1"
 
 
 def test_trigger_type_allowlist_and_order(monkeypatch: pytest.MonkeyPatch) -> None:
