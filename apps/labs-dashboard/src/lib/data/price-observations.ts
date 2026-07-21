@@ -106,8 +106,14 @@ export function describeConversionLabel(input: {
   if (input.conversionMethod === "identity") {
     return "Identity (XCG/ANG)";
   }
+  if (input.conversionMethod === "source_official_conversion") {
+    return "Source-official XCG/ANG amount (not Merkado FX)";
+  }
   if (input.conversionMethod === "eur_api") {
     return "EUR→XCG via exchange provider";
+  }
+  if (provider === "source:official_alternate") {
+    return "Source-official XCG/ANG amount (not Merkado FX)";
   }
   return input.conversionMethod ?? "Conversion provenance unknown";
 }

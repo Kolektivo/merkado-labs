@@ -2,6 +2,14 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  POLICY_VERSION,
+  PROMPT_VERSION,
+  SCHEMA_VERSION,
+} from "@/lib/enrichment/versions";
+
+export { PROMPT_VERSION, SCHEMA_VERSION, POLICY_VERSION };
+
 export type EnrichmentScope =
   | "listing"
   | "listings"
@@ -26,11 +34,6 @@ export type EnrichmentPreview = {
   listingIdsSample: string[];
   force: boolean;
 };
-
-/** Exactly one production Labs enrichment scope value for each dimension. */
-export const PROMPT_VERSION = "listing_enrichment_v4";
-export const SCHEMA_VERSION = "listing_enrichment_schema_v4";
-export const POLICY_VERSION = "enrichment_policy_v4_1";
 
 export function enrichmentModel(): string {
   const model = process.env.OPENAI_ENRICHMENT_MODEL?.trim();

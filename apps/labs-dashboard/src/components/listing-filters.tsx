@@ -62,6 +62,7 @@ type DraftFilters = {
   maxPrice: string;
   coordQuality: string;
   assignment: string;
+  locationGap: string;
   publicEligible: string;
   exclusion: string;
   priceAvailability: string;
@@ -84,6 +85,7 @@ const DRAFT_KEYS = [
   "maxPrice",
   "coordQuality",
   "assignment",
+  "locationGap",
   "publicEligible",
   "exclusion",
   "priceAvailability",
@@ -99,6 +101,7 @@ const ADVANCED_KEYS = [
   "lifecycle",
   "coordQuality",
   "assignment",
+  "locationGap",
   "publicEligible",
   "exclusion",
   "priceAvailability",
@@ -307,7 +310,12 @@ export function ListingFilters({
                   allLabel="Buy or rent"
                   options={options.listingTypes.map((type) => ({
                     value: type,
-                    label: titleCase(type),
+                    label:
+                      type === "sale"
+                        ? "For sale"
+                        : type === "rent"
+                          ? "For rent"
+                          : titleCase(type),
                   }))}
                 />
                 <SelectFilter
@@ -346,6 +354,84 @@ export function ListingFilters({
                     { value: "failed", label: "Failed" },
                   ]}
                 />
+                <p className="border-t pt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Data quality
+                </p>
+                <SelectFilter
+                  label="Asking price"
+                  value={draft.priceAvailability}
+                  onChange={(value) => update({ priceAvailability: value })}
+                  allLabel="Any price availability"
+                  options={[
+                    { value: "available", label: "Has a usable price" },
+                    { value: "missing", label: "Missing or unusable price" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Realtor info"
+                  tip={TIPS.attribution.tip}
+                  tipLabel={TIPS.attribution.label}
+                  value={draft.attribution}
+                  onChange={(value) => update({ attribution: value })}
+                  allLabel="Any realtor info"
+                  options={[
+                    { value: "attributed", label: "Has original realtor" },
+                    { value: "missing", label: "Missing realtor name" },
+                    { value: "conflicts", label: "Conflicting realtor info" },
+                  ]}
+                />
+                <SelectFilter
+                  label="Why hidden"
+                  tip={TIPS.publicEligibility.tip}
+                  tipLabel={TIPS.publicEligibility.label}
+                  value={draft.exclusion}
+                  onChange={(value) => update({ exclusion: value })}
+                  allLabel="Any exclusion reason"
+                  options={(options.exclusionReasons ?? []).map((reason) => ({
+                    value: reason,
+                    label: exclusionReasonLabel(reason),
+                  }))}
+                />
+                <SelectFilter
+                  label="Neighbourhood search"
+                  tip={TIPS.missingNeighbourhoodSearch.tip}
+                  tipLabel={TIPS.missingNeighbourhoodSearch.label}
+                  value={draft.locationGap}
+                  onChange={(value) => update({ locationGap: value })}
+                  allLabel="Any search coverage"
+                  options={[
+                    {
+                      value: "missing_neighbourhood",
+                      label: "Missing from neighbourhood search",
+                    },
+                  ]}
+                />
+                {showGeoFilters ? (
+                  <>
+                    <SelectFilter
+                      label="Map pin quality"
+                      tip={TIPS.coordinateQuality.tip}
+                      tipLabel={TIPS.coordinateQuality.label}
+                      value={draft.coordQuality}
+                      onChange={(value) => update({ coordQuality: value })}
+                      allLabel="Any pin quality"
+                      options={(options.coordinateQualities ?? []).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                    <SelectFilter
+                      label="Neighbourhood match"
+                      tip={TIPS.assignmentStatus.tip}
+                      tipLabel={TIPS.assignmentStatus.label}
+                      value={draft.assignment}
+                      onChange={(value) => update({ assignment: value })}
+                      allLabel="Any neighbourhood match"
+                      options={(options.assignmentStatuses ?? []).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
+                  </>
+                ) : null}
                 {showSort ? (
                   <SelectFilter
                     label="Sort by"
@@ -431,7 +517,12 @@ export function ListingFilters({
               allLabel="All listing types"
               options={options.listingTypes.map((type) => ({
                 value: type,
-                label: titleCase(type),
+                label:
+                  type === "sale"
+                    ? "For sale"
+                    : type === "rent"
+                      ? "For rent"
+                      : titleCase(type),
               }))}
             />
           </div>
@@ -501,7 +592,7 @@ export function ListingFilters({
             <button
               type="button"
               onClick={() => setShowAdvanced((current) => !current)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-expanded={showAdvanced}
               aria-controls="listing-advanced-filters"
             >
@@ -654,6 +745,20 @@ export function ListingFilters({
                       options={(options.assignmentStatuses ?? []).map(
                         ([value, label]) => ({ value, label }),
                       )}
+                    />
+                    <SelectFilter
+                      label="Neighbourhood search"
+                      tip={TIPS.missingNeighbourhoodSearch.tip}
+                      tipLabel={TIPS.missingNeighbourhoodSearch.label}
+                      value={draft.locationGap}
+                      onChange={(value) => update({ locationGap: value })}
+                      allLabel="Any search coverage"
+                      options={[
+                        {
+                          value: "missing_neighbourhood",
+                          label: "Missing from neighbourhood search",
+                        },
+                      ]}
                     />
                   </>
                 ) : null}

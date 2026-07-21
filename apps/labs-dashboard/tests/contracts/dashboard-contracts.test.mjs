@@ -26,7 +26,10 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(browse, /benchmarkPriceXcg/);
   assert.match(passport, /Property features/);
   assert.match(passport, /Source description/);
-  assert.match(passport, /effectiveSummary|Concise listing summary/);
+  assert.match(passport, /AboutPropertyDescription/);
+  assert.match(passport, /resolvePublicDisplayTitle|displayTitle/);
+  assert.match(passport, /resolvePublicDisplaySummary|displaySummary/);
+  assert.match(passport, /buildPublicListingJsonLd|application\/ld\+json/);
   assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
 });
@@ -143,7 +146,7 @@ test("listing detail surfaces cumulative AI usage and cost alongside changes", (
   const changes = source("src/components/listing-ai-changes.tsx");
   assert.match(changes, /Cumulative attempts/);
   assert.match(changes, /Cumulative estimated cost/);
-  assert.match(changes, /Latest run tokens . cost/);
+  assert.match(changes, /Current run tokens . cost/);
 });
 
 test("prototype and server-only configuration boundaries stay explicit", () => {
@@ -193,4 +196,39 @@ test("v4 public-effective migration prefers v4 and adds display_description", ()
   assert.match(migration, /public_property_listings_v3_projection/);
   assert.doesNotMatch(migration, /supporting_evidence/);
   assert.doesNotMatch(migration, /token_usage/);
+});
+
+test("v5 english presentation migration prefers v5 and exposes display_title", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../../../supabase/migrations/20260721131309_english_presentation_public_effective.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /listing_enrichment_v5/);
+  assert.match(migration, /listing_enrichment_v4/);
+  assert.match(migration, /listing_enrichment_v3/);
+  assert.match(migration, /display_title/);
+  assert.match(migration, /display_summary/);
+  assert.match(migration, /display_description/);
+  assert.match(migration, /security_invoker = false/);
+  assert.doesNotMatch(migration, /supporting_evidence/);
+  assert.doesNotMatch(migration, /token_usage/);
+});
+
+test("bilingual migration adds Dutch locales table and display_description_nl", () => {
+  const migration = readFileSync(
+    new URL(
+      "../../../../supabase/migrations/20260721155626_bilingual_display_descriptions.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /listing_display_description_locales/);
+  assert.match(migration, /display_description_nl/);
+  assert.match(migration, /presentation_input_hash/);
+  assert.match(migration, /locale = 'nl'/);
+  assert.match(migration, /security_invoker = false/);
+  assert.doesNotMatch(migration, /supporting_evidence/);
 });

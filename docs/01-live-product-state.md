@@ -6,12 +6,12 @@
 **Labs automation foundation:** the four Ready property sources share a Labs-only
 orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
 `run_property_pipeline.py` / `run_property_pipeline_worker.py` and GHA
-`property-pipeline-labs.yml`. **Automatic daily cron is temporarily Off**
-(`AUTOMATIC_REFRESH_ENABLED = false`) pending post-hash-repair supervised
-verification; intended schedule remains `0 10 * * *` UTC = 06:00 America/Curacao.
-Manual/`workflow_dispatch` and dashboard Data Operations dispatch remain available.
-Sotheby's remains blocked and excluded. This does not change production or deploy
-anything.
+`property-pipeline-labs.yml`. **Automatic daily cron is On**
+(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
+gates; schedule `0 10 * * *` UTC = 06:00 America/Curacao begins only when this
+workflow reaches the default branch. Manual/`workflow_dispatch` and dashboard
+Data Operations dispatch remain available. Sotheby's remains blocked and excluded.
+This does not change production or deploy anything.
 
 ## 1. Production today `[LIVE]`
 
@@ -43,40 +43,73 @@ The isolated Labs project currently has:
   preview (separate from Prototypes);
 - internal routes protected by the signed Labs admin cookie; public
   Browse/Passport reads `public_property_listings` / public-effective projection;
+- **English is the default public website language** for Browse / Passport /
+  titles, summaries, filters, navigation, and SEO. Stable public URLs are
+  `/browse/{uuid}`. Scrapers keep raw source title/description; AI generates
+  English `display_title` / `display_summary` / description. Deterministic
+  English fallbacks never leave a blank public title. **About this property**
+  additionally supports Dutch (`display_description_nl`) via a compact
+  English/Nederlands toggle — not full-site localization. Dutch↔English search
+  synonyms are deterministic (no AI per query).
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
   **220**; Labs DB may show **222** — operational drift; adapter **v0.4.1**;
   **199/220** coordinates; Terra initial backfill complete; pipeline ready /
-  cron Off / dispatch available; normal Refresh & enrich = new/changed only);
-- Keller Williams: Labs inventory **104** listings (offline import artifact still
-  gates at **84** in import preview). Crawl-Delay 20 sequential. Earlier
+  cron On / dispatch available; normal Refresh & enrich = new/changed only);
+- Keller Williams: Labs inventory **104** listings; live complete catalogs
+  discover ~**102** (offline import preview still gates the historical **84**
+  artifact only — not a scheduled input). Crawl-Delay 20 sequential. Earlier
   bounded/partial adapter runs had falsely marked 35 KW listings `removed` on
   2026-07-17; restored from last valid pre-absence status without deleting
-  immutable events. Pipeline ready / cron Off / dispatch available.
+  immutable events. Pipeline ready / cron On / dispatch available.
 - Moret Real Estate adapter **v0.2.0**: **71** listings; coordinates 71/71;
-  Terra coverage complete; pipeline ready / cron Off / dispatch available;
-  Refresh & enrich = new/changed only;
-- AI enrichment **v4 / v4.1** is current in Labs across KW, RE/MAX, Moret, and
-  Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
-  `listing_enrichment_v4` / `listing_enrichment_schema_v4` /
-  `enrichment_policy_v4_1` with v3/v4 history retained. Decisions distinguish
-  accepted / redundant / rejected / needs_attention. Public listings (~**279**)
-  expose effective neighbourhood, feature attrs, `effective_summary`,
-  same-language `display_description`, and image galleries. Dashboard AI job
-  execution is disabled; pipeline AI runs under budgets (USD 2/day, USD 25/month,
-  25 listings/run) when the worker executes. Exception-based review only.
-  Labs public-effective migrations are **applied**; production merkado.cw
-  property migration remains **paused**.
+  Terra coverage complete; pipeline ready / cron On / dispatch available;
+  Refresh & enrich = new/changed only; live Dutch `/properties/` catalog;
+- AI enrichment **v5 / policy v5** is current in Labs across KW, RE/MAX, Moret,
+  and Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
+  `listing_enrichment_v5` / `listing_enrichment_schema_v5` /
+  `enrichment_policy_v5` with v3/v4 history retained. English public presentation
+  fields (`display_title`, `display_summary`, English overview) are part of the
+  v5 contract. Title convention: `N-Bedroom Type [feature] in Neighbourhood`.
+  AI never overwrites protected facts (price, currency, beds/baths, areas,
+  coords, IDs, status, raw source title/description). Human review is
+  exceptional — genuine conflicts only. Decisions distinguish auto_applied /
+  redundant / rejected / needs_attention (v5 field decisions:
+  auto_applied **3679** / rejected **386** / redundant **361** /
+  needs_attention **9** across **9** listings). Public view rows (snapshot
+  2026-07-21 / `d2abb557`: **286**) expose English `display_title` /
+  `display_summary` / `display_description`, optional Dutch
+  `display_description_nl` (EN/NL About coverage **283**), effective
+  neighbourhood, feature attrs, and image galleries. SEO / JSON-LD use English
+  presentation + XCG when available. Dashboard AI job execution is disabled;
+  pipeline AI runs under budgets (USD 2/day, USD 25/month, 25 listings/run)
+  when the worker executes. One-time English presentation migration **applied**
+  for **289** active Ready listings (~USD **7.83**, under USD **15** /
+  **320**-call caps) and was **not rerun** for bilingual work. Targeted
+  one-time Dutch description backfill **applied** for **285** public listings
+  (~USD **2.42**, under USD **5** / **320**-call caps); post-run selection is
+  zero-billable (`selected_count=0` / `already_complete=285`). Unchanged
+  bilingual hashes skip at zero cost. Future new/changed enrichment generates
+  English presentation then Dutch description in the same job pass (Dutch
+  failure does not remove English). Zero-cost policy rematerialization does not
+  create billable AI work. Labs public + bilingual view migrations are applied
+  in Labs; production merkado.cw property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
 after a verified rollback export. Monumentenzorg adapter **v0.2.0** is Ready
-(5 imported, coordinates 0/5; pipeline ready / cron Off / dispatch available).
-Live Labs inventory (2026-07-21): KW **104**, Remax **222**, Moret **71**,
-Monumentenzorg **5**; `public_property_listings` **279**. Next active source
-task: **Sotheby's** remains access-route **BLOCKED** after 2026-07-20 recon
-(not Ready; excluded from Ready pipelines; official feed/partner API required).
+(5 imported, coordinates 0/5; pipeline ready / cron On / dispatch available).
+Live Labs inventory (post supervised automation gates 2026-07-21): KW **104**,
+Remax **222** (live complete discover **220**; two IDs removed via two-absence
+rule), Moret **71**, Monumentenzorg **5**; `public_property_listings` **286**
+(KW **88** / Remax **125** / Moret **71** / Monumentenzorg **2**) with EN/NL
+About-this-property on **283** (3 newly public Remax deferred under the 25/day
+AI cap). Supervised run `e34eb779-…` spent ~USD **0.96** on **25** Remax
+new/changed; idempotent rerun spent **USD 0** (budget-deferred remainder **71**).
+Next active source task: **Sotheby's** remains access-route **BLOCKED** after
+2026-07-20 recon (not Ready; excluded from Ready pipelines; official
+feed/partner API required).
 
 ## 3. Current property MVP direction `[WIP]`
 
@@ -95,11 +128,11 @@ Core MVP rules:
 - Show only active listings with a known positive price.
 - Preserve the original amount and original currency.
 - Display XCG as the primary displayed, search, and filter price; show the
-  original amount and currency as secondary, with disclaimer: indicative
-  equivalent based on known information.
+  original amount and currency as secondary. For true foreign→XCG conversions,
+  show an indicative tip/icon (not a repeated inline disclaimer sentence).
 - Convert USD at `1 USD = 1.79 XCG`.
 - Convert EUR using ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`).
-- Show `Indicative equivalent based on known information.` for converted values.
+- Tip copy for converted values: `Indicative equivalent based on known information.`
 - Preserve source listing dates separately from Merkado detection dates.
 - Append lifecycle events instead of only overwriting current values.
 - Keep `sold` separate from `removed`.
@@ -109,8 +142,13 @@ Core MVP rules:
 
 - Production-ready live-crawl adapters for all five sources (KW/Moret/
   Monumentenzorg catalogs were activated from verified offline complete-catalog
-  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED)
-- Re-enabled GitHub daily cron for property pipeline (implemented but temporarily Off)
+  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED).
+  Shared pipeline scrapes with HTTP disk cache under `data/raw/<source_key>/cache`
+  (`use_cache=True`) — not frozen `data/processed` catalogs as scheduled input.
+- Scheduled GitHub Actions runs for the property pipeline on the **default
+  branch** (code flag and workflow schedule are already On; feature-branch
+  schedules do not fire — see § intro)
+- Production merkado.cw property surface (Labs English Browse preview is ready)
 - Public property browse/detail UI on `merkado.cw` (Labs `/browse` public preview exists)
 - Reliable multi-source property entity resolution
 - Confirmed sale prices

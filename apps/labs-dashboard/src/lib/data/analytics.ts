@@ -6,12 +6,43 @@ import type {
   NeighbourhoodSummary,
   PropertyListing,
 } from "@/lib/domain/types";
+import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
+import { listingHasNeighbourhoodSearchGap } from "@/lib/domain/location-gaps";
+import { neighbourhoodKeysMatch } from "@/lib/domain/neighbourhood-aliases";
 import {
   ASSIGNMENT_STATUS_LABELS,
   COORDINATE_QUALITY_LABELS,
   hasMappableCoordinates,
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
+import { matchesSynonymSearch } from "@/lib/search/synonyms";
+
+function listingCanonicalNeighbourhood(listing: {
+  neighbourhoodName?: string | null;
+  neighbourhood?: { id: string; name: string } | null;
+  inferredNeighbourhoodName?: string | null;
+  sourceNeighbourhoodText?: string | null;
+  inferredNeighbourhood?: { name: string } | null;
+}): string | null {
+  return resolveEffectiveNeighbourhood({
+    sourceName:
+      listing.sourceNeighbourhoodText ??
+      listing.neighbourhood?.name ??
+      listing.neighbourhoodName ??
+      null,
+    mapName:
+      listing.inferredNeighbourhood?.name ??
+      listing.inferredNeighbourhoodName ??
+      null,
+  }).name;
+}
+
+function markerCanonicalNeighbourhood(marker: MapListingMarker): string | null {
+  return resolveEffectiveNeighbourhood({
+    sourceName: marker.sourceNeighbourhoodText ?? marker.neighbourhoodName,
+    mapName: marker.inferredNeighbourhoodName,
+  }).name;
+}
 
 export function median(values: number[]): number | null {
   if (!values.length) return null;
@@ -59,6 +90,7 @@ export function parseListingFilters(
     maxPrice: number("maxPrice"),
     coordinateQuality: value("coordQuality"),
     assignmentStatus: value("assignment"),
+    locationGap: value("locationGap"),
     publicEligible: value("publicEligible"),
     exclusionReason: value("exclusion"),
     priceAvailability: value("priceAvailability"),
@@ -80,6 +112,8 @@ function matchesSharedFilters(
     originalPrice?: number | null;
     coordinateQuality: string;
     neighbourhoodAssignmentStatus: string;
+    sourceNeighbourhoodText?: string | null;
+    inferredNeighbourhood?: { name: string } | null;
     originalRealtorName?: string | null;
     amenities?: { label: string | null }[];
     attributionMethod?: string | null;
@@ -95,21 +129,32 @@ function matchesSharedFilters(
   },
   filters: ListingFilters,
 ) {
-  const query = filters.query.toLocaleLowerCase();
+  const query = filters.query;
   const neighbourhoodName =
     listing.neighbourhood?.name ?? listing.neighbourhoodName ?? "";
   const inferredName = listing.inferredNeighbourhoodName ?? "";
   const realtorName = listing.originalRealtorName ?? "";
+  // Synonym-aware text match so Dutch queries (e.g. gemeubileerd) hit English copy.
   const matchesQuery =
     !query ||
-    listing.title?.toLocaleLowerCase().includes(query) ||
-    listing.externalId?.toLocaleLowerCase().includes(query) ||
-    neighbourhoodName.toLocaleLowerCase().includes(query) ||
-    inferredName.toLocaleLowerCase().includes(query) ||
-    realtorName.toLocaleLowerCase().includes(query);
+    matchesSynonymSearch(
+      [
+        listing.title,
+        listing.externalId,
+        neighbourhoodName,
+        inferredName,
+        realtorName,
+        listing.listingType,
+        listing.sourceKey,
+      ],
+      query,
+    );
   const matchesNeighbourhood =
     !filters.neighbourhood ||
-    listing.neighbourhood?.id === filters.neighbourhood;
+    neighbourhoodKeysMatch(
+      listingCanonicalNeighbourhood(listing),
+      filters.neighbourhood,
+    );
   const matchesType =
     !filters.listingType || listing.listingType === filters.listingType;
   const matchesSource =
@@ -153,6 +198,18 @@ function matchesSharedFilters(
   const matchesAssignment =
     !filters.assignmentStatus ||
     listing.neighbourhoodAssignmentStatus === filters.assignmentStatus;
+  const matchesLocationGap =
+    !filters.locationGap ||
+    (filters.locationGap === "missing_neighbourhood" &&
+      listingHasNeighbourhoodSearchGap({
+        latitude: null,
+        longitude: null,
+        sourceNeighbourhoodText:
+          listing.sourceNeighbourhoodText ?? neighbourhoodName,
+        inferredNeighbourhood:
+          listing.inferredNeighbourhood ??
+          (inferredName ? { name: inferredName } : null),
+      }));
   const matchesPublicEligible =
     !filters.publicEligible ||
     (filters.publicEligible === "eligible" && listing.publicEligible === true) ||
@@ -182,6 +239,7 @@ function matchesSharedFilters(
     matchesMax &&
     matchesCoordQuality &&
     matchesAssignment &&
+    matchesLocationGap &&
     matchesPublicEligible &&
     matchesExclusionReason &&
     matchesPriceAvailability
@@ -250,9 +308,9 @@ export function filterMapMarkers(
     )
     .filter((marker) => {
       if (!filters.neighbourhood) return true;
-      return (
-        marker.neighbourhoodName === filters.neighbourhood ||
-        marker.inferredNeighbourhoodName === filters.neighbourhood
+      return neighbourhoodKeysMatch(
+        markerCanonicalNeighbourhood(marker),
+        filters.neighbourhood,
       );
     });
 }
@@ -270,12 +328,14 @@ export function listingFilterOptions(listings: PropertyListing[]) {
       ),
     ).sort((a, b) => a[1].localeCompare(b[1])),
     neighbourhoods: Array.from(
-      new Map(
+      new Set(
         listings
-          .filter((item) => item.neighbourhood)
-          .map((item) => [item.neighbourhood!.id, item.neighbourhood!.name]),
+          .map((item) => listingCanonicalNeighbourhood(item))
+          .filter((value): value is string => Boolean(value)),
       ),
-    ).sort((a, b) => a[1].localeCompare(b[1])),
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => [name, name] as [string, string]),
     listingTypes: Array.from(
       new Set(listings.flatMap((item) => item.listingType ?? [])),
     ).sort(),
@@ -390,11 +450,9 @@ export function summarizeRealtors(listings: PropertyListing[]) {
 export function mapFilterOptions(markers: MapListingMarker[]) {
   const neighbourhoodNames = Array.from(
     new Set(
-      markers.flatMap((marker) =>
-        [marker.neighbourhoodName, marker.inferredNeighbourhoodName].filter(
-          (value): value is string => Boolean(value),
-        ),
-      ),
+      markers
+        .map((marker) => markerCanonicalNeighbourhood(marker))
+        .filter((value): value is string => Boolean(value)),
     ),
   ).sort((a, b) => a.localeCompare(b));
 
@@ -443,6 +501,9 @@ export function summarizeGeographicQuality(
     ).length,
     validCoords: listings.filter((item) =>
       hasMappableCoordinates(item.latitude, item.longitude),
+    ).length,
+    missingNeighbourhoodSearch: listings.filter(
+      listingHasNeighbourhoodSearchGap,
     ).length,
     sourceNeighbourhood: listings.filter((item) => item.neighbourhood).length,
     geographicallyInferred: listings.filter(

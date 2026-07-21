@@ -24,7 +24,16 @@ export type ConversionMethod =
   | "identity"
   | "legacy_1_to_1"
   | "usd_fixed_peg"
-  | "eur_api";
+  | "eur_api"
+  | "source_official_conversion";
+
+export type OfficialAlternatePrice = {
+  amount: number | string;
+  currency: string;
+  provenance?: string | null;
+  evidence?: string | null;
+  source_label?: string | null;
+};
 
 export type PublicExclusionReason =
   | "eligible"
@@ -193,7 +202,18 @@ export type PublicPropertyListing = {
   listingType: string | null;
   sourceListingStatus: string | null;
   propertyType: string | null;
+  /** Raw source title — keep for provenance; prefer displayTitle in public UI. */
   title: string | null;
+  /**
+   * English public title when the view exposes it (v5 migration).
+   * Use resolvePublicDisplayTitle() for cards/SEO — never blank.
+   */
+  displayTitle: string | null;
+  /**
+   * English public summary when the view exposes it (v5 migration).
+   * Prefer over raw Dutch source description as primary copy.
+   */
+  displaySummary: string | null;
   originalPrice: number | null;
   originalCurrency: string | null;
   benchmarkPriceXcg: number | null;
@@ -208,6 +228,7 @@ export type PublicPropertyListing = {
   primaryImageUrl: string | null;
   /** Ordered public gallery URLs; primary is usually index 0. */
   imageUrls: string[];
+  /** Raw source description — collapsed under “Original source description”. */
   description: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
@@ -226,6 +247,11 @@ export type PublicPropertyListing = {
   effectiveSummary: string | null;
   /** Public-safe structured copy for the Passport; source text remains available separately. */
   displayDescription: PublicDisplayDescription | null;
+  /**
+   * Optional Dutch About-this-property description.
+   * English remains canonical for SEO; UI toggles client-side only.
+   */
+  displayDescriptionNl: PublicDisplayDescription | null;
 };
 
 export type EnrichmentComparisonStatus =
@@ -352,6 +378,7 @@ export type MapListingMarker = {
   originalRealtorUrl: string | null;
   originalRealtorName: string | null;
   neighbourhoodName: string | null;
+  sourceNeighbourhoodText: string | null;
   inferredNeighbourhoodName: string | null;
   neighbourhoodAssignmentStatus: NeighbourhoodAssignmentStatus;
   coordinateQuality: CoordinateQuality;
@@ -370,6 +397,7 @@ export type PriceObservation = {
   conversionProvider?: string | null;
   conversionRate?: number | null;
   conversionRateAt?: string | null;
+  officialAlternatePrices?: OfficialAlternatePrice[] | null;
   /** How many consecutive identical raw rows were folded into this UI point. */
   suppressedDuplicateCount?: number;
 };
@@ -403,6 +431,9 @@ export type ListingActivityEvent = {
   newValue: unknown;
   derivationType: "source_fact" | "system_calculated" | "inferred" | string;
   notes: string | null;
+  presentationClass?: string | null;
+  suppressedReason?: string | null;
+  presentationMetadata?: Record<string, unknown> | null;
 };
 
 export type ListingFilters = {
@@ -420,6 +451,7 @@ export type ListingFilters = {
   maxPrice: number | null;
   coordinateQuality: string;
   assignmentStatus: string;
+  locationGap: string;
   publicEligible: string;
   exclusionReason: string;
   priceAvailability: string;
@@ -493,6 +525,8 @@ export type GeographicQualitySummary = {
   invalidCoords: number;
   outsideCuracao: number;
   validCoords: number;
+  /** No searchable neighbourhood after effective resolve + canonicalize. */
+  missingNeighbourhoodSearch: number;
   sourceNeighbourhood: number;
   geographicallyInferred: number;
   sourceGeographyConflict: number;

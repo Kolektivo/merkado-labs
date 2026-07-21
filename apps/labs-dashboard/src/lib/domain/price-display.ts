@@ -6,8 +6,8 @@
  * - Primary: XCG benchmark, prefixed `Cg`.
  * - Secondary: original source amount when its currency differs from
  *   XCG/ANG/NAf (ANG/NAf are 1:1 with XCG, so they are not "different").
- * - Disclaimer for any converted amount: "Indicative equivalent based on
- *   known information."
+ * - True foreign-currency conversions expose an indicative tip (not inline
+ *   disclaimer text): "Indicative equivalent based on known information."
  * - Sold listings additionally show: "Last known listing price. The actual
  *   sale price may differ."
  * - If an original price exists but no XCG benchmark is available, show the
@@ -15,8 +15,10 @@
  *   fabricated conversion.
  */
 
-const INDICATIVE_DISCLAIMER =
+/** Tip content for true foreign-currency → XCG conversions. */
+export const INDICATIVE_PRICE_TIP =
   "Indicative equivalent based on known information.";
+
 const SOLD_DISCLAIMER =
   "Last known listing price. The actual sale price may differ.";
 const BENCHMARK_UNAVAILABLE_LABEL = "XCG equivalent currently unavailable";
@@ -32,6 +34,11 @@ export type PriceDisplayModel = {
   disclaimer: string | null;
   soldDisclaimer: string | null;
   benchmarkUnavailable: boolean;
+  /**
+   * True only for a real foreign-currency conversion (original differs from
+   * XCG/ANG/NAF and an XCG benchmark exists). Identity XCG/ANG/NAF cases are false.
+   */
+  showIndicativeTip: boolean;
   /** Null excludes the listing from mixed-currency sort. */
   sortKeyXcg: number | null;
 };
@@ -40,28 +47,29 @@ function isSoldStatus(listingStatus?: string | null, isSold?: boolean) {
   return Boolean(isSold) || (listingStatus ?? "").toLowerCase() === "sold";
 }
 
+function formatAmount(amount: number): string {
+  // Keep amount formatting locale-stable so SSR and the browser never diverge.
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
+}
+
+/**
+ * Canonical XCG primary label. Do not use `Intl` currency style for XCG —
+ * Node and browsers disagree on the symbol (`Cg.` vs `XCG`), which breaks
+ * hydration in client components.
+ */
 export function formatXcgPrimary(amount: number): string {
-  try {
-    return new Intl.NumberFormat("en-CW", {
-      style: "currency",
-      currency: "XCG",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `Cg ${new Intl.NumberFormat("en").format(Math.round(amount))}`;
-  }
+  return `Cg ${formatAmount(amount)}`;
 }
 
 export function formatOriginalPrice(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-CW", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${currency} ${new Intl.NumberFormat("en").format(amount)}`;
+  const code = currency.trim().toUpperCase();
+  if (!code) return formatAmount(amount);
+  if (code === "XCG" || code === "ANG" || code === "NAF") {
+    return formatXcgPrimary(amount);
   }
+  return `${code} ${formatAmount(amount)}`;
 }
 
 export function buildPriceDisplay(input: {
@@ -84,6 +92,7 @@ export function buildPriceDisplay(input: {
   const originalCurrencyCode = (input.originalCurrency ?? "").toUpperCase();
   const originalDiffersFromXcg =
     hasOriginal && !XCG_EQUIVALENT_CURRENCIES.has(originalCurrencyCode);
+  const showIndicativeTip = Boolean(hasBenchmark && originalDiffersFromXcg);
 
   if (hasBenchmark) {
     const secondaryLabel =
@@ -98,9 +107,11 @@ export function buildPriceDisplay(input: {
       primaryAmount: input.benchmarkPriceXcg as number,
       primaryCurrency: "XCG",
       secondaryLabel,
-      disclaimer: INDICATIVE_DISCLAIMER,
+      // Tip covers indicative conversion; identity XCG/ANG/NAF need no text.
+      disclaimer: null,
       soldDisclaimer,
       benchmarkUnavailable: false,
+      showIndicativeTip,
       sortKeyXcg: input.benchmarkPriceXcg as number,
     };
   }
@@ -114,6 +125,7 @@ export function buildPriceDisplay(input: {
       disclaimer: BENCHMARK_UNAVAILABLE_LABEL,
       soldDisclaimer,
       benchmarkUnavailable: true,
+      showIndicativeTip: false,
       sortKeyXcg: null,
     };
   }
@@ -126,6 +138,7 @@ export function buildPriceDisplay(input: {
     disclaimer: null,
     soldDisclaimer,
     benchmarkUnavailable: true,
+    showIndicativeTip: false,
     sortKeyXcg: null,
   };
 }

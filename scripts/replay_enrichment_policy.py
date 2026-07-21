@@ -53,13 +53,40 @@ def _attrs_from_proposal(
     body: dict[str, Any],
     supporting_evidence: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """Build immutable proposal inputs for policy evaluation.
+
+    Only raw model surfaces are used (features, attributes, top-level
+    neighbourhood). Previously materialized ``field_decisions`` and
+    ``run_audit.policy.decisions`` must never feed back as proposal truth —
+    that created synonym-key duplicates and sticky conflict flags that
+    prevented one-pass rematerialization from reaching a fixed point.
+
+    ``supporting_evidence`` is accepted for call-site compatibility but is
+    intentionally unused as an evaluation input.
+    """
+
+    del supporting_evidence  # immutable snapshot: never re-ingest audit/FD bags
+    from merkado_labs.enrichment.fields import normalize_attribute_key
+
     items: list[dict[str, Any]] = []
+    seen_canonical: set[str] = set()
+
+    def _append(item: dict[str, Any]) -> None:
+        key = str(item.get("key") or "").strip()
+        if not key:
+            return
+        canonical = normalize_attribute_key(key)
+        if not canonical or canonical in seen_canonical:
+            return
+        seen_canonical.add(canonical)
+        items.append({**item, "key": canonical})
+
     features = body.get("features") or {}
     if isinstance(features, dict):
         for key, assessment in features.items():
             if not isinstance(assessment, dict):
                 continue
-            items.append(
+            _append(
                 {
                     "key": key,
                     "value": assessment.get("value"),
@@ -79,7 +106,7 @@ def _attrs_from_proposal(
     for attr in body.get("attributes") or []:
         if not isinstance(attr, dict):
             continue
-        items.append(
+        _append(
             {
                 "key": attr.get("key"),
                 "value": attr.get("value"),
@@ -96,7 +123,7 @@ def _attrs_from_proposal(
             }
         )
     if body.get("neighbourhood_candidate"):
-        items.append(
+        _append(
             {
                 "key": "neighbourhood_candidate",
                 "value": body.get("neighbourhood_candidate"),
@@ -109,45 +136,26 @@ def _attrs_from_proposal(
                 "recommended_action": "needs_attention",
             }
         )
-
-    decision_bags: list[list[dict[str, Any]]] = []
-    # Prefer original enrichment audit decisions when present — they survive
-    # accidental partial rewrites of proposal.field_decisions.
-    audit = (supporting_evidence or {}).get("run_audit") or {}
-    policy = audit.get("policy") or {}
-    if isinstance(policy.get("decisions"), list):
-        decision_bags.append(policy["decisions"])
-    if isinstance(body.get("field_decisions"), list):
-        decision_bags.append(body["field_decisions"])
-
-    seen = {
-        str(item.get("key") or "")
-        for item in items
-        if item.get("key")
-    }
-    for bag in decision_bags:
-        for decision in bag:
-            if not isinstance(decision, dict):
-                continue
-            key = str(decision.get("key") or "")
-            if not key or key in seen:
-                continue
-            seen.add(key)
-            items.append(
-                {
-                    "key": key,
-                    "value": decision.get("proposed_value"),
-                    "confidence": decision.get("confidence"),
-                    "evidence_snippet": decision.get("evidence_snippet"),
-                    "evidence_source": decision.get("evidence_source"),
-                    "extraction_reason": decision.get("extraction_reason"),
-                    "classification": decision.get("classification")
-                    or "ai_extracted_from_source",
-                    "conflict": bool(decision.get("conflict")),
-                    "recommended_action": decision.get("model_recommended_action")
-                    or "needs_attention",
-                }
-            )
+    # Top-level gated/resort candidate is a raw model surface (not a
+    # rematerialized decision). Include it so curated Blue Bay rules still fire
+    # without feeding field_decisions back as proposal truth.
+    resort = body.get("resort_or_gated_candidate")
+    if resort not in (None, "", "unknown"):
+        _append(
+            {
+                "key": "gated_community",
+                "value": resort,
+                "confidence": body.get("overall_confidence")
+                or body.get("resort_or_gated_confidence")
+                or 0.9,
+                "evidence_snippet": body.get("resort_or_gated_evidence"),
+                "evidence_source": "description",
+                "extraction_reason": "resort_or_gated_candidate",
+                "classification": "ai_extracted_from_source",
+                "conflict": False,
+                "recommended_action": "needs_attention",
+            }
+        )
     return items
 
 

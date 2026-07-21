@@ -1,7 +1,15 @@
 # Merkado V1 — Supabase Architecture Reference
 
+> **HISTORICAL / PRODUCTION V1 CARS ONLY.** This document describes the live
+> merkado.cw **vehicle** marketplace schema. It is **not** the Merkado Labs
+> property model (`property_listings`, `public_property_listings`, pipeline /
+> AI enrichment tables). Production project ref `jkrfyvukhhsapoivntms` is
+> forbidden from Labs work. For Labs property schema use
+> `docs/05-data-model-and-listing-lifecycle.md` and
+> `docs/07-labs-architecture-and-geospatial.md`.
+
 **Version:** V2 (updated to match deployed workflows)
-**Purpose:** Complete database overview for AI agents and developers
+**Purpose:** Historical complete database overview for production V1 cars.
 
 ---
 

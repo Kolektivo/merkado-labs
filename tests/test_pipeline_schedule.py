@@ -27,15 +27,15 @@ def test_ready_order_and_schedule_metadata() -> None:
     ]
     assert CURACAO_TZ == "America/Curacao"
     assert DAILY_CRON_UTC == "0 10 * * *"
-    assert AUTOMATIC_REFRESH_ENABLED is False
+    assert AUTOMATIC_REFRESH_ENABLED is True
     meta = schedule_metadata()
-    assert meta["automatic_refresh"] == "Off"
-    assert meta["enabled"] is False
+    assert meta["automatic_refresh"] == "On"
+    assert meta["enabled"] is True
     assert meta["documented_cron_utc"] == "0 10 * * *"
     assert "sothebys_curacao" in meta["excluded_sources"]
-    meta_on = schedule_metadata(enabled=True)
-    assert meta_on["automatic_refresh"] == "On"
-    assert meta_on["enabled"] is True
+    meta_off = schedule_metadata(enabled=False)
+    assert meta_off["automatic_refresh"] == "Off"
+    assert meta_off["enabled"] is False
 
 
 def test_next_scheduled_run_is_next_1000_utc() -> None:
@@ -49,9 +49,12 @@ def test_workflow_has_daily_cron_and_dispatch() -> None:
     workflow_path = Path(".github/workflows/property-pipeline-labs.yml")
     workflow = workflow_path.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
-    # Cron temporarily disabled pending supervised post-repair verification.
-    assert "\n  schedule:" not in workflow
-    assert "0 10 * * *" in workflow  # documented intended schedule remains
+    assert "\n  schedule:" in workflow
+    assert 'cron: "0 10 * * *"' in workflow
     assert 'trigger="scheduled"' in workflow
     assert "cancel-in-progress: false" in workflow
     assert "github.event_name" in workflow
+    assert "csaefdkpwukshtouyixg" in workflow
+    assert "jkrfyvukhhsapoivntms" in workflow  # production forbid guard
+    assert "sothebys" not in workflow.lower()
+    assert "caribbeanhousehunt" not in workflow.lower()

@@ -346,26 +346,32 @@ def _parse_size(value: str | None) -> Decimal | None:
 
 
 def _extract_images(html: str) -> tuple[str, ...]:
+    from merkado_labs.scrapers.images import canonicalize_image_url, image_identity_key
+
     images: list[str] = []
     seen: set[str] = set()
+
+    def _add(raw: str | None, *, require_uploads: bool) -> None:
+        if not raw:
+            return
+        low = raw.lower()
+        if any(x in low for x in ("logo", "icon", "avatar", "emoji", "sprite")):
+            return
+        if require_uploads and "/wp-content/uploads/" not in low:
+            return
+        # WordPress -NxM intermediates share identity with the full upload.
+        canonical = canonicalize_image_url(raw)
+        identity = image_identity_key(canonical)
+        if identity in seen:
+            return
+        seen.add(identity)
+        images.append(canonical)
+
     og = OG_IMAGE_RE.search(html)
     if og:
-        url = og.group("url") or og.group("url2")
-        if url and url not in seen:
-            seen.add(url)
-            images.append(url)
+        _add(og.group("url") or og.group("url2"), require_uploads=False)
     for match in GALLERY_IMG_RE.finditer(html):
-        url = match.group("url")
-        low = url.lower()
-        if any(x in low for x in ("logo", "icon", "avatar", "emoji", "sprite")):
-            continue
-        if "/wp-content/uploads/" not in low:
-            continue
-        # Prefer full-size over resized when both present; keep first stable order
-        if url in seen:
-            continue
-        seen.add(url)
-        images.append(url)
+        _add(match.group("url"), require_uploads=True)
         if len(images) >= 30:
             break
     return tuple(images)

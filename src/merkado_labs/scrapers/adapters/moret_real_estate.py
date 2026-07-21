@@ -151,6 +151,12 @@ TAG_RE = re.compile(r"<[^>]+>")
 WS_RE = re.compile(r"\s+")
 VANAF_RE = re.compile(r"\bvanaf\b|\bfrom\b", re.I)
 MONTHLY_RE = re.compile(r"\b(?:per\s*maand|per\s*month|/maand|/month|p\.?m\.?)\b", re.I)
+# Widget currency coefs are site UI evidence only — not Merkado conversion rates.
+SIDEBAR_CURRENCY_COEF_RE = re.compile(
+    r"data-coef=[\"'](?P<coef>[^\"']*)[\"'][^>]*data-value=[\"'](?P<code>[^\"']+)[\"']"
+    r"|data-value=[\"'](?P<code2>[^\"']+)[\"'][^>]*data-coef=[\"'](?P<coef2>[^\"']*)[\"']",
+    re.I,
+)
 SITEMAP_RE = re.compile(r"(?im)^[ \t]*Sitemap:[ \t]*(?P<url>\S+)")
 DISALLOW_RE = re.compile(r"(?im)^[ \t]*Disallow:[ \t]*(?P<path>\S*)[ \t]*$")
 CRAWL_DELAY_RE = re.compile(r"(?im)^[ \t]*Crawl-delay:[ \t]*(?P<n>[\d.]+)")
@@ -589,6 +595,25 @@ def _extract_price(
         return None, None, match.group(0), warnings + ["no_trusted_price"], meta
 
     return None, None, raw_block or None, warnings + ["no_price_extracted"], meta
+
+
+def _extract_sidebar_currency_coefs(html: str) -> list[dict[str, str]]:
+    """Record Moret sidebar widget coefs as evidence notes (not Merkado rates)."""
+
+    notes: list[dict[str, str]] = []
+    for match in SIDEBAR_CURRENCY_COEF_RE.finditer(html):
+        code = (match.group("code") or match.group("code2") or "").upper()
+        coef = (match.group("coef") or match.group("coef2") or "").strip()
+        if not code:
+            continue
+        notes.append(
+            {
+                "currency": code,
+                "coef": coef,
+                "note": "moret_sidebar_widget_coef_evidence_not_merkado_rate",
+            }
+        )
+    return notes
 
 
 def _amount_currency_from_match(match: re.Match[str]) -> tuple[Decimal | None, str | None]:
@@ -1030,6 +1055,7 @@ class MoretRealEstateAdapter(DirectSourceAdapter):
                 "slug_diagnostic": slug_diag,
                 "coordinates_source": coord_source,
                 "index_category_hint": index_category_hint,
+                "sidebar_currency_coefs": _extract_sidebar_currency_coefs(html),
             },
             raw_sha256=raw_sha256,
             title=title,

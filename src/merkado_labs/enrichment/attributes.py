@@ -28,7 +28,14 @@ from merkado_labs.enrichment.values import (
 # Phrase patterns for local (non-AI) candidate discovery from descriptions.
 _DETECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("pool", re.compile(r"\b(swimming\s+)?pool\b|\bzwembad\b", re.I)),
-    ("furnished", re.compile(r"\b(fully\s+)?furnished\b|\bgemeubileerd\b", re.I)),
+    (
+        "furnished",
+        re.compile(
+            r"\b(fully\s+|turn[\s-]?key\s+)?furnished\b"
+            r"|\b(volledig\s+)?gemeubileerd(?:e|en)?\b",
+            re.I,
+        ),
+    ),
     (
         "parking_spaces",
         re.compile(
@@ -40,13 +47,28 @@ _DETECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("garage", re.compile(r"\bgarage\b", re.I)),
     (
         "gated_community",
-        re.compile(r"\bgated\s+(community|resort|complex)\b|\bgated\b", re.I),
+        re.compile(
+            r"\bgated(\s+(community|resort|complex|entrance))?\b"
+            r"|\bcontrolled\s+access\b"
+            r"|\bbeveiligd(e)?\s+(terrein|resort)\b"
+            r"|\bafgesloten\s+(terrein|resort)\b"
+            r"|\bbewaakte\s+toegang\b",
+            re.I,
+        ),
     ),
     (
         "air_conditioning",
         re.compile(r"\bair\s*conditioning\b|\bairco\b|\ba/?c\b", re.I),
     ),
-    ("sea_view", re.compile(r"\b(sea|ocean)\s+view\b|\bzeezicht\b", re.I)),
+    (
+        "sea_view",
+        re.compile(
+            r"\b(sea|ocean)\s+views?\b"
+            r"|\bzeezicht\b"
+            r"|\buitzicht\s+op\s+(de\s+)?zee\b",
+            re.I,
+        ),
+    ),
     ("garden", re.compile(r"\bgarden\b|\btuin\b", re.I)),
     ("balcony", re.compile(r"\bbalcony\b|\bbalkon\b", re.I)),
     (
@@ -56,7 +78,17 @@ _DETECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("solar_panels", re.compile(r"\bsolar(\s+panels?)?\b|\bzonnepanelen\b", re.I)),
     ("generator", re.compile(r"\bgenerator\b|\bnoodstroom\b", re.I)),
     ("water_heater", re.compile(r"\bwater\s+heater\b|\bboiler\b", re.I)),
-    ("waterfront", re.compile(r"\bwaterfront\b|\beach\s+front\b", re.I)),
+    (
+        "waterfront",
+        re.compile(
+            r"\bwaterfront\b|\bseafront\b|\boceanfront\b|\bbeach[\s-]?front\b"
+            r"|\b(?:appartement|woning|villa|huis)\s+aan\s+(de\s+)?zee\b"
+            r"|\bdirect\s+aan\s+(de\s+)?zee\b"
+            r"|\baan\s+(de\s+)?zee\b"
+            r"|\baan\s+het\s+water\b",
+            re.I,
+        ),
+    ),
     ("pet_suitability", re.compile(r"\bpets?\s+(allowed|welcome|friendly)\b", re.I)),
 ]
 

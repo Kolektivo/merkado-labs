@@ -124,6 +124,30 @@ def test_image_only_change_does_not_flip_hash() -> None:
     assert compute_enrichment_input_hash(base) == compute_enrichment_input_hash(changed)
 
 
+def test_currency_and_price_only_changes_do_not_flip_hash() -> None:
+    """Asking money / official alts must not rebill presentation copy."""
+
+    base = _row(
+        original_price=664,
+        original_currency="EUR",
+        benchmark_price_xcg=1350,
+        official_alternate_prices=[{"currency": "XCG", "amount": 1350}],
+    )
+    money_only = {
+        **base,
+        "original_price": 700,
+        "original_currency": "USD",
+        "benchmark_price_xcg": 9999,
+        "official_alternate_prices": [{"currency": "XCG", "amount": 9999}],
+    }
+    assert compute_semantic_source_checksum(base) == compute_semantic_source_checksum(
+        money_only
+    )
+    assert compute_enrichment_input_hash(base) == compute_enrichment_input_hash(
+        money_only
+    )
+
+
 def test_run_metadata_and_timestamps_do_not_feed_hash() -> None:
     base = _row()
     noisy = {
@@ -151,21 +175,50 @@ def test_genuine_description_change_flips_hash() -> None:
     assert compute_enrichment_input_hash(base) != compute_enrichment_input_hash(changed)
 
 
+def _complete_english_proposal(**overrides: Any) -> dict[str, Any]:
+    row = {
+        "id": "prop-1",
+        "property_listing_id": "listing-1",
+        "model": "gpt-5.6-terra",
+        "prompt_version": PROMPT_VERSION,
+        "schema_version": SCHEMA_VERSION,
+        "status": "succeeded",
+        # Nested under proposal — matches find_matching_enrichment_attempt shape.
+        "proposal": {
+            "field_decisions": [
+                {
+                    "key": "display_title",
+                    "final_status": "auto_applied",
+                    "resulting_effective": "3-Bedroom Villa in Jan Thiel",
+                },
+                {
+                    "key": "display_summary",
+                    "final_status": "auto_applied",
+                    "resulting_effective": "A bright villa with pool near the beach.",
+                },
+                {
+                    "key": "display_overview",
+                    "final_status": "auto_applied",
+                    "resulting_effective": "This villa offers a pool and garden.",
+                },
+            ]
+        },
+    }
+    row.update(overrides)
+    return row
+
+
 def test_cross_version_terra_match_is_zero_cost_skip() -> None:
     row = _row()
     enrichment_input = listing_to_enrichment_input(row)
     checksum = compute_input_checksum(enrichment_input)
     client = _Client(
         [
-            {
-                "id": "prop-1",
-                "property_listing_id": "listing-1",
-                "model": "gpt-5.6-terra",
-                "prompt_version": "listing_enrichment_v3",
-                "schema_version": "listing_enrichment_schema_v3",
-                "input_checksum": checksum,
-                "status": "succeeded",
-            }
+            _complete_english_proposal(
+                prompt_version="listing_enrichment_v3",
+                schema_version="listing_enrichment_schema_v3",
+                input_checksum=checksum,
+            )
         ]
     )
     assert has_identical_enrichment_attempt(
@@ -195,15 +248,10 @@ def test_current_version_match_still_skips() -> None:
     legacy = compute_legacy_input_checksum(enrichment_input)
     client = _Client(
         [
-            {
-                "id": "prop-2",
-                "property_listing_id": "listing-1",
-                "model": "gpt-5.6-terra",
-                "prompt_version": PROMPT_VERSION,
-                "schema_version": SCHEMA_VERSION,
-                "input_checksum": checksum,
-                "status": "succeeded",
-            }
+            _complete_english_proposal(
+                id="prop-2",
+                input_checksum=checksum,
+            )
         ]
     )
     assert should_skip_unchanged_enrichment(client, row=row, model="gpt-5.6-terra")

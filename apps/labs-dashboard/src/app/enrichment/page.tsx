@@ -17,12 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { listingDetailHref } from "@/lib/breadcrumbs";
 import {
   filterEnrichmentProposals,
@@ -38,11 +32,16 @@ import {
   formatPercent,
   totalTokenCount,
 } from "@/lib/enrichment/cost";
+import {
+  explainAttentionReview,
+  humanizeReasonCode,
+} from "@/lib/enrichment/display";
 import { formatDateTime, formatDuration, formatNumber } from "@/lib/format";
 import {
   jobStatusLabel,
   jobStatusTone,
   proposalStatusLabel,
+  TIPS,
 } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +78,45 @@ function parseView(value: string | string[] | undefined): "overview" | "runs" | 
   return "overview";
 }
 
+function EnrichmentViewNav({
+  view,
+}: {
+  view: "overview" | "runs" | "attention";
+}) {
+  const items = [
+    { id: "overview", label: "Overview", href: "/enrichment?view=overview" },
+    { id: "runs", label: "Runs", href: "/enrichment?view=runs" },
+    {
+      id: "attention",
+      label: "Needs review",
+      href: "/enrichment?view=attention&filter=needs_attention",
+    },
+  ] as const;
+
+  return (
+    <div role="tablist" aria-label="AI enrichment views" className="flex flex-wrap border-b">
+      {items.map((item) => {
+        const active = view === item.id;
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            role="tab"
+            aria-selected={active}
+            className={
+              active
+                ? "border-b-2 border-foreground px-3 py-2 text-sm font-medium text-foreground"
+                : "border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            }
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function displayValue(value: unknown) {
   if (value === null || value === undefined || value === "") return "Not set";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -112,16 +150,15 @@ export default async function EnrichmentPage({
     );
   }
 
-  const attentionProposals = filterEnrichmentProposals(
-    dashboard.proposals,
-    "needs_attention",
-  );
+  const attentionProposals = dashboard.attentionQueue;
   const visibleProposals =
     filter === "never_enriched"
       ? []
       : filter === "all" && view === "attention"
         ? attentionProposals
-        : filterEnrichmentProposals(dashboard.proposals, filter);
+        : filter === "needs_attention" || filter === "conflicts"
+          ? filterEnrichmentProposals(attentionProposals, filter)
+          : filterEnrichmentProposals(dashboard.proposals, filter);
   const cost = dashboard.costSummary;
   const latestRun = dashboard.runRows[0] ?? null;
 
@@ -129,34 +166,30 @@ export default async function EnrichmentPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="AI enrichment"
-        description="Coverage, cost, run outcomes, and the small number of suggestions that need a person."
+        description="Track AI coverage and review only suggestions that need a person. Source facts are never overwritten."
         icon={Sparkles}
       />
-      <p className="-mt-2 max-w-3xl text-sm text-muted-foreground">
-        AI adds structured details from listing descriptions. Source prices,
-        statuses, and other protected facts are never overwritten.
-      </p>
 
-      <Tabs defaultValue={view} className="gap-4">
-        <TabsList variant="line" className="w-full flex-wrap justify-start">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="runs">Runs</TabsTrigger>
-          <TabsTrigger value="attention">Needs review</TabsTrigger>
-        </TabsList>
+      <EnrichmentViewNav view={view} />
 
-        <TabsContent value="overview" className="space-y-4">
+      {view === "overview" ? (
+        <div role="tabpanel" aria-label="Overview" className="space-y-4">
           <SummaryStrip
             items={[
               {
                 label: "Listings enriched",
                 value: formatNumber(cost.distinctListingsAttempted),
                 helper: "At least one recorded AI attempt",
+                tip: TIPS.enrichmentStatus.tip,
+                tipLabel: TIPS.enrichmentStatus.label,
                 icon: Sparkles,
               },
               {
                 label: "Needs review",
                 value: formatNumber(dashboard.needsAttentionListings),
                 helper: "Genuine decisions only",
+                tip: TIPS.aiNeedsReview.tip,
+                tipLabel: TIPS.aiNeedsReview.label,
                 href: "/enrichment?view=attention&filter=needs_attention",
                 icon: Sparkles,
               },
@@ -164,12 +197,16 @@ export default async function EnrichmentPage({
                 label: "Failures",
                 value: formatNumber(dashboard.failed),
                 helper: "Latest attempt could not finish",
+                tip: "Listings whose latest recorded AI attempt failed before producing a usable result.",
+                tipLabel: "AI failures",
                 icon: Sparkles,
               },
               {
                 label: "Estimated spend",
                 value: formatUsd(cost.grossSpendUsd),
                 helper: "All recorded paid attempts",
+                tip: TIPS.grossAiSpend.tip,
+                tipLabel: TIPS.grossAiSpend.label,
                 icon: Coins,
               },
             ]}
@@ -201,9 +238,11 @@ export default async function EnrichmentPage({
             </div>
           </dl>
           <p className="text-xs text-muted-foreground">{COST_ESTIMATE_LABEL}</p>
-        </TabsContent>
+        </div>
+      ) : null}
 
-        <TabsContent value="runs" className="space-y-4">
+      {view === "runs" ? (
+        <div role="tabpanel" aria-label="Runs" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>
@@ -222,17 +261,20 @@ export default async function EnrichmentPage({
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      ) : null}
 
-        <TabsContent value="attention" className="space-y-4">
+      {view === "attention" ? (
+        <div role="tabpanel" aria-label="Needs review" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>
                 <h2>Needs review</h2>
               </CardTitle>
               <CardDescription>
-                Real exceptions requiring a decision. Rejected noise stays in
-                advanced audit below.
+                Current retained results only — historical runs and skipped noise
+                are not counted here. Rejected technical detail stays in advanced
+                audit below.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -267,12 +309,19 @@ export default async function EnrichmentPage({
                           {proposal.needsAttentionCount}{" "}
                           {proposal.needsAttentionCount === 1 ? "field" : "fields"}
                         </Badge>
+                        <Badge variant="secondary">Current result</Badge>
                         <StatusBadge tone="warning">Needs review</StatusBadge>
                       </div>
                     </div>
-                    {proposal.attentionFields.slice(0, 2).map((field) => (
+                    {proposal.attentionFields.slice(0, 2).map((field, fieldIndex) => {
+                      const why =
+                        explainAttentionReview(field) ??
+                        (field.reasons.length
+                          ? field.reasons.map(humanizeReasonCode).join("; ")
+                          : "A person needs to decide this field.");
+                      return (
                       <dl
-                        key={field.label}
+                        key={`${field.key || field.label}-${fieldIndex}`}
                         className="grid gap-3 rounded-lg bg-muted/35 p-3 text-sm sm:grid-cols-2"
                       >
                         <div>
@@ -283,7 +332,12 @@ export default async function EnrichmentPage({
                           <dt className="text-xs text-muted-foreground">
                             Why attention is required
                           </dt>
-                          <dd>Evidence or confidence needs a person to decide.</dd>
+                          <dd>{why}</dd>
+                          {field.reasons.length ? (
+                            <dd className="mt-1 font-mono text-[10px] text-muted-foreground">
+                              {field.reasons.join(", ")}
+                            </dd>
+                          ) : null}
                         </div>
                         <div>
                           <dt className="text-xs text-muted-foreground">
@@ -308,7 +362,8 @@ export default async function EnrichmentPage({
                           </div>
                         ) : null}
                       </dl>
-                    ))}
+                      );
+                    })}
                     <Button variant="outline" size="sm" asChild className="w-fit">
                       <Link
                         href={listingDetailHref(proposal.listingId, {
@@ -324,8 +379,8 @@ export default async function EnrichmentPage({
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      ) : null}
 
       <details className="rounded-lg border p-4">
         <summary className="cursor-pointer font-medium">
@@ -353,12 +408,16 @@ export default async function EnrichmentPage({
                   value={formatUsd(cost.retainedResultCostUsd)}
                   hint="Only the result currently in effect per listing"
                   icon={Coins}
+                  tip={TIPS.retainedResultCost.tip}
+                  tipLabel={TIPS.retainedResultCost.label}
                 />
                 <MetricCard
                   label="Wasted / failed attempt cost"
                   value={formatUsd(cost.wastedAttemptCostUsd)}
                   hint="Paid attempts that were not retained"
                   icon={Coins}
+                  tip={TIPS.wastedAttemptCost.tip}
+                  tipLabel={TIPS.wastedAttemptCost.label}
                 />
                 <MetricCard
                   label="Total API attempts"
@@ -371,6 +430,8 @@ export default async function EnrichmentPage({
                   value={formatPercent(cost.structuredOutputFailureRate)}
                   hint={`${formatNumber(cost.structuredOutputFailureCount)} unparseable outputs`}
                   icon={Coins}
+                  tip={TIPS.structuredOutputFailureRate.tip}
+                  tipLabel={TIPS.structuredOutputFailureRate.label}
                 />
               </div>
               <dl className="grid gap-3 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">

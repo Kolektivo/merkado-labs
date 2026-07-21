@@ -2,6 +2,16 @@
 
 **Purpose:** Practical implementation order and the ready-to-paste first Cursor task.
 
+**Status (as of 2026-07-21 / tip `d2abb557`):** This file is the **historical
+execution kickoff** for CHH removal → direct-source activation. Phases 1–4 are
+largely complete for four Ready sources (KW, RE/MAX, Moret, Monumentenzorg);
+Sotheby's remains BLOCKED. Phase 5 shared-pipeline automation is **armed On**
+in code (`AUTOMATIC_REFRESH_ENABLED = true`) with GHA schedule pending merge of
+`property-pipeline-labs.yml` to the default branch. For current product, schema,
+sources, and ops state use `01-live-product-state.md`, `04`, `05`, `09`, and
+`LABS_DASHBOARD_GUIDE.md` — do not treat the imperative phase checklists below
+as the live backlog.
+
 ## 1. Working approach
 
 Refactor the existing repository and Labs app in place.

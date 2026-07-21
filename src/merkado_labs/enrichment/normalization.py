@@ -232,8 +232,70 @@ def normalize_proposed_value(key: str, value: Any) -> Any:
 
     if key == "property_type":
         return normalize_property_type(value) or value
+    if key in {"bedrooms", "bathrooms"}:
+        try:
+            if isinstance(value, str):
+                cleaned = value.strip().replace(",", ".")
+                match = re.search(r"(\d+(?:\.\d+)?)", cleaned)
+                if match:
+                    number = float(match.group(1))
+                    return int(number) if key == "bedrooms" else number
+            if isinstance(value, (int, float)):
+                return int(value) if key == "bedrooms" else float(value)
+        except (TypeError, ValueError):
+            return value
+    if key == "price_period" and isinstance(value, str):
+        lowered = value.strip().casefold()
+        aliases = {
+            "mo": "month",
+            "month": "month",
+            "monthly": "month",
+            "/mo": "month",
+            "/month": "month",
+            "per month": "month",
+            "per maand": "month",
+            "maandelijks": "month",
+            "week": "week",
+            "weekly": "week",
+            "day": "day",
+            "daily": "day",
+            "night": "night",
+            "nightly": "night",
+            "year": "year",
+            "yearly": "year",
+            "sale": "sale",
+            "for sale": "sale",
+            "total": "total",
+        }
+        return aliases.get(lowered, lowered)
     if isinstance(value, str):
         lowered = value.strip().casefold()
+        if key == "pet_suitability":
+            if lowered in {
+                "false",
+                "no",
+                "not allowed",
+                "no pets",
+                "niet toegestaan",
+                "huisdieren niet toegestaan",
+                "pets not allowed",
+            }:
+                return False
+            if lowered in {
+                "true",
+                "yes",
+                "allowed",
+                "toegestaan",
+                "pets allowed",
+                "pet friendly",
+            }:
+                return True
+            # Conditional / unknown pet language must not coerce to bool.
+            if any(
+                token in lowered
+                for token in ("to be agreed", "negotiable", "upon request", "optional")
+            ):
+                return value
         if key in {
             "furnished",
             "pool",
@@ -267,20 +329,6 @@ def normalize_proposed_value(key: str, value: Any) -> Any:
                 "fully furnished",
                 "gemeubileerd",
                 "volledig gemeubileerd",
-            }:
-                return True
-            if key == "pet_suitability" and lowered in {
-                "false",
-                "no",
-                "not allowed",
-                "niet toegestaan",
-            }:
-                return False
-            if key == "pet_suitability" and lowered in {
-                "true",
-                "yes",
-                "allowed",
-                "toegestaan",
             }:
                 return True
     return value

@@ -4,27 +4,50 @@ export function formatCurrency(
   compact = false,
 ) {
   if (value === null || !currency) return "Not available";
+  const code = currency.trim().toUpperCase();
+  // XCG/ANG/NAf: avoid Intl currency style — Node vs browser symbols diverge
+  // (`Cg.` vs `XCG`) and break hydration. ANG/NAf are 1:1 with XCG.
+  if (code === "XCG" || code === "ANG" || code === "NAF") {
+    const amount = compact
+      ? new Intl.NumberFormat("en", {
+          notation: "compact",
+          maximumFractionDigits: 0,
+        }).format(Math.round(value))
+      : new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(
+          Math.round(value),
+        );
+    return `Cg ${amount}`;
+  }
   try {
-    return new Intl.NumberFormat("en-CW", {
+    return new Intl.NumberFormat("en", {
       style: "currency",
-      currency,
+      currency: code,
       notation: compact ? "compact" : "standard",
       maximumFractionDigits: 0,
     }).format(value);
   } catch {
-    return `${currency} ${Intl.NumberFormat("en").format(value)}`;
+    return `${code} ${Intl.NumberFormat("en").format(Math.round(value))}`;
   }
+}
+
+/** Stable original-amount label for tooltips (avoids Intl XCG symbol drift). */
+export function formatOriginalPriceLabel(amount: number, currency: string) {
+  return formatCurrency(amount, currency);
 }
 
 export function formatNumber(value: number) {
   return Intl.NumberFormat("en").format(value);
 }
 
+/** Fixed zone so SSR and the browser render the same clock for hydration. */
+const DISPLAY_TIME_ZONE = "America/Curacao";
+
 export function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-CW", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(value));
 }
 
@@ -36,6 +59,7 @@ export function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
     timeZoneName: "short",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(value));
 }
 

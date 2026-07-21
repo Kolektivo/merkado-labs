@@ -113,6 +113,7 @@ export default async function ListingsPage({
       filters.maxPrice !== null ||
       filters.coordinateQuality ||
       filters.assignmentStatus ||
+      filters.locationGap ||
       filters.publicEligible ||
       filters.exclusionReason ||
       filters.priceAvailability,

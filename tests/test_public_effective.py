@@ -211,14 +211,14 @@ def test_source_conflict_ai_neighbourhood_not_used_for_gap_fill() -> None:
     assert effective["name"] is None
 
 
-def test_gated_resort_wording_without_gate_synonym_is_rejected() -> None:
+def test_blue_bay_curated_location_grounds_gated_community() -> None:
     grounding = ground_evidence(
         key="gated_community",
         evidence_snippet="Blue Bay Golf & Beach Resort Curacao",
         source_text="Apartment at Blue Bay Golf & Beach Resort Curacao with pool.",
     )
-    assert grounding.ok_for_auto_apply is False
-    assert grounding.ok_for_attention is False
+    assert grounding.ok_for_auto_apply is True
+    assert grounding.reason == "curated_location_knowledge_gated_community"
 
     decision = decide_field(
         key="gated_community",
@@ -227,7 +227,17 @@ def test_gated_resort_wording_without_gate_synonym_is_rejected() -> None:
         evidence_snippet="Blue Bay Golf & Beach Resort Curacao",
         source_text="Apartment at Blue Bay Golf & Beach Resort Curacao with pool.",
     )
-    assert decision.final_status == AutoApplyStatus.REJECTED
+    assert decision.final_status == AutoApplyStatus.AUTO_APPLIED
+
+
+def test_unrelated_resort_name_without_gate_synonym_is_rejected() -> None:
+    grounding = ground_evidence(
+        key="gated_community",
+        evidence_snippet="Santa Barbara Resort Curacao",
+        source_text="Apartment at Santa Barbara Resort Curacao with pool.",
+    )
+    assert grounding.ok_for_auto_apply is False
+    assert grounding.reason == "gated_without_gate_synonym_rejected"
 
 
 def test_gated_with_surrounding_gate_can_auto_apply() -> None:
@@ -304,6 +314,22 @@ def test_v4_migration_prefers_v4_and_exposes_display_description() -> None:
     assert "token_usage" not in sql
     assert "grant select on table public.public_property_listings" in sql
     assert "public_property_listings_v3_projection" in sql
+
+
+def test_v5_migration_prefers_v5_and_exposes_english_presentation() -> None:
+    sql = Path(
+        "supabase/migrations/20260721131309_english_presentation_public_effective.sql"
+    ).read_text(encoding="utf-8")
+    assert "listing_enrichment_v5" in sql
+    assert "listing_enrichment_v4" in sql
+    assert "listing_enrichment_v3" in sql
+    assert "display_title" in sql
+    assert "display_summary" in sql
+    assert "display_description" in sql
+    assert "security_invoker = false" in sql
+    assert "supporting_evidence" not in sql
+    assert "token_usage" not in sql
+    assert "grant select on table public.public_property_listings" in sql
 
 
 def test_replay_script_is_bounded_and_openai_free() -> None:

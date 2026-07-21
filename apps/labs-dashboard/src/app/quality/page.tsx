@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getQualitySummary } from "@/lib/data/quality";
 import { formatNumber } from "@/lib/format";
-import { exclusionReasonLabel, lifecycleLabel } from "@/lib/ui-labels";
+import { exclusionReasonLabel, lifecycleLabel, TIPS } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Data quality" };
@@ -127,12 +127,20 @@ export default async function QualityPage() {
 
   const important: Issue[] = [
     {
-      title: "No map location available",
+      title: "Missing map coordinates",
       count: quality.missingCoordinates,
       impact:
-        "These listings cannot appear on the map and may have weaker neighbourhood matching.",
-      action: "View affected listings",
+        "No latitude/longitude — these listings cannot appear on the map. They may still be findable by neighbourhood filter when source or map area text exists.",
+      action: "View map gaps",
       href: "/listings?coordQuality=missing_coords&from=quality",
+    },
+    {
+      title: "Missing neighbourhood for search",
+      count: quality.missingNeighbourhoodSearch,
+      impact:
+        "No usable neighbourhood could be found from either the website or the map pin, so filters and search cannot place these listings.",
+      action: "View search gaps",
+      href: "/listings?locationGap=missing_neighbourhood&from=quality",
     },
   ].filter((issue) => issue.count > 0);
 
@@ -161,6 +169,8 @@ export default async function QualityPage() {
             label: "Public-ready",
             value: formatNumber(quality.publicEligible),
             helper: `of ${formatNumber(quality.totalListings)} listings`,
+            tip: TIPS.publicEligibility.tip,
+            tipLabel: TIPS.publicEligibility.label,
             href: "/listings?publicEligible=eligible&from=quality",
             icon: ShieldAlert,
           },
@@ -170,16 +180,30 @@ export default async function QualityPage() {
               quality.missingPrice + quality.unresolvedConflicts,
             ),
             helper: "Can affect trust or public display",
+            tip: "Listings with no usable asking price or unresolved conflicting information.",
+            tipLabel: "critical issues",
             icon: TriangleAlert,
           },
           {
-            label: "Important location gaps",
+            label: "Map location gaps",
             value: formatNumber(quality.missingCoordinates),
-            helper: "Affect maps and neighbourhood search",
+            helper: "Missing lat/lng — cannot appear on the map",
+            tip: TIPS.missingCoordinates.tip,
+            tipLabel: TIPS.missingCoordinates.label,
+            href: "/listings?coordQuality=missing_coords&from=quality",
+            icon: Info,
+          },
+          {
+            label: "Neighbourhood search gaps",
+            value: formatNumber(quality.missingNeighbourhoodSearch),
+            helper: "No canonical area for filter/search",
+            tip: TIPS.missingNeighbourhoodSearch.tip,
+            tipLabel: TIPS.missingNeighbourhoodSearch.label,
+            href: "/listings?locationGap=missing_neighbourhood&from=quality",
             icon: Info,
           },
         ]}
-        className="xl:grid-cols-3"
+        className="xl:grid-cols-4"
       />
 
       {critical.length ? (

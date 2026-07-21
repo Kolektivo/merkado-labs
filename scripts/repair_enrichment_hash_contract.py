@@ -35,6 +35,7 @@ from merkado_labs.enrichment import (  # noqa: E402
     compute_legacy_input_checksum,
 )
 from merkado_labs.enrichment.jobs import (  # noqa: E402
+    hydrate_map_neighbourhood_names,
     listing_to_enrichment_input,
     should_skip_unchanged_enrichment,
 )
@@ -121,12 +122,13 @@ def main() -> int:
         )
         repaired = 0
         billable = 0
+        # Hydrate map neighbourhood names so checksums match enrichment jobs /
+        # English migration selection (both hydrate before checksum).
+        rows = hydrate_map_neighbourhood_names(client, rows)
         for row in rows:
             row["source_key"] = source_key
             if not row.get("public_eligible"):
                 continue
-            # Selection parity: do not hydrate map names here. Pipeline billable
-            # selection also skips hydrate so checksums stay comparable.
             enrichment_input = listing_to_enrichment_input(row)
             semantic = compute_input_checksum(enrichment_input)
             legacy = compute_legacy_input_checksum(enrichment_input)

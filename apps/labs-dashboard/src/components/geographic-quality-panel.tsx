@@ -1,13 +1,8 @@
 import Link from "next/link";
 
+import { HelpTip } from "@/components/help-tip";
 import type { GeographicQualitySummary } from "@/lib/domain/types";
 import { formatNumber } from "@/lib/format";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -25,8 +20,14 @@ const QUALITY_ITEMS: {
   {
     key: "missingCoords",
     label: "No map pin",
-    hint: "The listing has no latitude/longitude, so it cannot appear on the map.",
+    hint: "Missing latitude/longitude only — the listing cannot appear on the map. This is not the same as a neighbourhood-search gap.",
     href: "/listings?coordQuality=missing_coords&from=quality",
+  },
+  {
+    key: "missingNeighbourhoodSearch",
+    label: "No neighbourhood for search",
+    hint: "No usable area could be found from either the website or the map pin, so neighbourhood filters cannot place these listings.",
+    href: "/listings?locationGap=missing_neighbourhood&from=quality",
   },
   {
     key: "invalidCoords",
@@ -43,7 +44,7 @@ const QUALITY_ITEMS: {
   {
     key: "sourceNeighbourhood",
     label: "Area from the website",
-    hint: "Neighbourhood name came from the listing site. We never silently overwrite it.",
+    hint: "Neighbourhood name came from the listing site. We never silently overwrite it. Present-but-uncanonicalized source text is still location evidence, not a missing-location gap.",
   },
   {
     key: "geographicallyInferred",
@@ -81,51 +82,46 @@ export function GeographicQualityPanel({
       <CardHeader>
         <CardTitle>Location health check</CardTitle>
         <CardDescription>
-          Quick counts for {formatNumber(summary.totalListings)} listings.
-          Click a card to browse matching listings. Each card explains what its
-          count means.
+          Quick counts for {formatNumber(summary.totalListings)} listings. Open a
+          card to see matching listings; use the help icons for definitions.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {QUALITY_ITEMS.map((item) => {
             const content = (
-              <>
-                <div className="flex items-center justify-between gap-2">
+              <div className="pointer-events-none">
+                <div className="flex items-center gap-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
                     {item.label}
                   </p>
-                  <Badge variant="outline">?</Badge>
+                  <HelpTip
+                    label={item.label}
+                    className="pointer-events-auto relative z-10"
+                  >
+                    {item.hint}
+                  </HelpTip>
                 </div>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">
                   {formatNumber(summary[item.key])}
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {item.hint}
-                </p>
-              </>
+              </div>
             );
 
             return (
-              <Tooltip key={item.key}>
-                <TooltipTrigger asChild>
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      className="rounded-lg border bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40"
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <div className="cursor-help rounded-lg border bg-muted/20 p-3 text-left">
-                      {content}
-                    </div>
-                  )}
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[240px] text-left leading-relaxed">
-                  {item.hint}
-                </TooltipContent>
-              </Tooltip>
+              <div
+                key={item.key}
+                className="relative rounded-lg border bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring"
+              >
+                {content}
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className="absolute inset-0 z-0 rounded-lg outline-none"
+                    aria-label={`${item.label}: ${formatNumber(summary[item.key])}. View matching listings`}
+                  />
+                ) : null}
+              </div>
             );
           })}
         </div>

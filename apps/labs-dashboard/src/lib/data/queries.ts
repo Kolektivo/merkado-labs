@@ -22,6 +22,7 @@ import {
   hasMappableCoordinates,
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
+import { uniqueListingImages } from "@/lib/listing-gallery-urls";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 /** Internal Labs reads use service-role; anon cannot SELECT property_listings. */
@@ -118,6 +119,7 @@ const MAP_MARKER_SELECT = [
   "source_url",
   "original_realtor_url",
   "original_realtor_name",
+  "source_neighbourhood_text",
   "neighbourhood_assignment_status",
   SOURCE_EMBED,
   "neighbourhood:neighbourhoods!property_listings_neighbourhood_id_fkey(name)",
@@ -357,7 +359,7 @@ function normalizeListing(
       if (!urls.length && row.primary_image_url) {
         urls.push(String(row.primary_image_url));
       }
-      return [...new Set(urls)];
+      return uniqueListingImages(urls);
     })(),
     description: row.description ? String(row.description) : null,
     street: row.street ? String(row.street) : null,
@@ -443,6 +445,9 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
       : null,
     neighbourhoodName: neighbourhood?.name
       ? String(neighbourhood.name)
+      : null,
+    sourceNeighbourhoodText: row.source_neighbourhood_text
+      ? String(row.source_neighbourhood_text)
       : null,
     inferredNeighbourhoodName: inferred?.name ? String(inferred.name) : null,
     neighbourhoodAssignmentStatus: normalizeAssignmentStatus(
@@ -552,13 +557,23 @@ export const getPriceObservations = cache(
     if (!listing) return [];
 
     const client = createInternalDataClient();
-    const { data, error } = await client
+    const withAlts = await client
       .from("price_observations")
       .select(
-        "id,property_listing_id,observed_at,price,currency,original_price,original_currency,benchmark_price_xcg,conversion_method,conversion_provider,conversion_rate,conversion_rate_at",
+        "id,property_listing_id,observed_at,price,currency,original_price,original_currency,benchmark_price_xcg,conversion_method,conversion_provider,conversion_rate,conversion_rate_at,official_alternate_prices",
       )
       .eq("property_listing_id", listingId)
       .order("observed_at", { ascending: true });
+
+    const { data, error } = withAlts.error
+      ? await client
+          .from("price_observations")
+          .select(
+            "id,property_listing_id,observed_at,price,currency,original_price,original_currency,benchmark_price_xcg,conversion_method,conversion_provider,conversion_rate,conversion_rate_at",
+          )
+          .eq("property_listing_id", listingId)
+          .order("observed_at", { ascending: true })
+      : withAlts;
 
     if (error) {
       throw publicReadError("Unable to load price history", error.message);
@@ -568,37 +583,47 @@ export const getPriceObservations = cache(
       "@/lib/data/price-observations"
     );
 
-    const rows = (data ?? []).map((row) => ({
-      id: String(row.id),
-      propertyListingId: String(row.property_listing_id),
-      observedAt: String(row.observed_at),
-      price: Number(row.price),
-      currency: String(row.currency),
-      originalPrice:
-        row.original_price !== null && row.original_price !== undefined
-          ? Number(row.original_price)
+    const rows = (data ?? []).map((row) => {
+      const alts = (row as { official_alternate_prices?: unknown })
+        .official_alternate_prices;
+      return {
+        id: String(row.id),
+        propertyListingId: String(row.property_listing_id),
+        observedAt: String(row.observed_at),
+        price: Number(row.price),
+        currency: String(row.currency),
+        originalPrice:
+          row.original_price !== null && row.original_price !== undefined
+            ? Number(row.original_price)
+            : null,
+        originalCurrency: row.original_currency
+          ? String(row.original_currency)
           : null,
-      originalCurrency: row.original_currency
-        ? String(row.original_currency)
-        : null,
-      benchmarkPriceXcg:
-        row.benchmark_price_xcg !== null && row.benchmark_price_xcg !== undefined
-          ? Number(row.benchmark_price_xcg)
+        benchmarkPriceXcg:
+          row.benchmark_price_xcg !== null &&
+          row.benchmark_price_xcg !== undefined
+            ? Number(row.benchmark_price_xcg)
+            : null,
+        conversionMethod: row.conversion_method
+          ? (String(
+              row.conversion_method,
+            ) as PriceObservation["conversionMethod"])
           : null,
-      conversionMethod: row.conversion_method
-        ? (String(row.conversion_method) as PriceObservation["conversionMethod"])
-        : null,
-      conversionProvider: row.conversion_provider
-        ? String(row.conversion_provider)
-        : null,
-      conversionRate:
-        row.conversion_rate !== null && row.conversion_rate !== undefined
-          ? Number(row.conversion_rate)
+        conversionProvider: row.conversion_provider
+          ? String(row.conversion_provider)
           : null,
-      conversionRateAt: row.conversion_rate_at
-        ? String(row.conversion_rate_at)
-        : null,
-    }));
+        conversionRate:
+          row.conversion_rate !== null && row.conversion_rate !== undefined
+            ? Number(row.conversion_rate)
+            : null,
+        conversionRateAt: row.conversion_rate_at
+          ? String(row.conversion_rate_at)
+          : null,
+        officialAlternatePrices: Array.isArray(alts)
+          ? (alts as PriceObservation["officialAlternatePrices"])
+          : [],
+      };
+    });
 
     // Default UI path collapses identical consecutive asking amounts so
     // pre-fix duplicate immutable rows do not appear as fake price changes.
@@ -768,14 +793,35 @@ export const getListingActivityEvents = cache(
     const { data, error } = await client
       .from("listing_activity_events")
       .select(
-        "id,property_listing_id,event_type,event_at,previous_value,new_value,derivation_type,notes",
+        "id,property_listing_id,event_type,event_at,previous_value,new_value,derivation_type,notes,presentation_class,suppressed_reason,presentation_metadata",
       )
       .eq("property_listing_id", listingId)
       .order("event_at", { ascending: false })
       .limit(100);
 
     if (error) {
-      throw publicReadError("Unable to load activity events", error.message);
+      // Forward-compatible: older DBs without presentation columns still load.
+      const fallback = await client
+        .from("listing_activity_events")
+        .select(
+          "id,property_listing_id,event_type,event_at,previous_value,new_value,derivation_type,notes",
+        )
+        .eq("property_listing_id", listingId)
+        .order("event_at", { ascending: false })
+        .limit(100);
+      if (fallback.error) {
+        throw publicReadError("Unable to load activity events", error.message);
+      }
+      return (fallback.data ?? []).map((row) => ({
+        id: String(row.id),
+        propertyListingId: String(row.property_listing_id),
+        eventType: String(row.event_type),
+        eventAt: String(row.event_at),
+        previousValue: row.previous_value,
+        newValue: row.new_value,
+        derivationType: String(row.derivation_type),
+        notes: row.notes ? String(row.notes) : null,
+      }));
     }
 
     return (data ?? []).map((row) => ({
@@ -787,6 +833,18 @@ export const getListingActivityEvents = cache(
       newValue: row.new_value,
       derivationType: String(row.derivation_type),
       notes: row.notes ? String(row.notes) : null,
+      presentationClass: row.presentation_class
+        ? String(row.presentation_class)
+        : null,
+      suppressedReason: row.suppressed_reason
+        ? String(row.suppressed_reason)
+        : null,
+      presentationMetadata:
+        row.presentation_metadata &&
+        typeof row.presentation_metadata === "object" &&
+        !Array.isArray(row.presentation_metadata)
+          ? (row.presentation_metadata as Record<string, unknown>)
+          : null,
     }));
   },
 );

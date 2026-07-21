@@ -21,7 +21,10 @@ from merkado_labs.enrichment import (
     EnrichmentResult,
     compute_input_checksum,
     compute_legacy_input_checksum,
+    compute_prior_compatible_input_checksum,
     enrich_listing,
+    has_complete_english_presentation,
+    requires_english_presentation_migration,
 )
 from merkado_labs.enrichment.policy import POLICY_VERSION
 from merkado_labs.enrichment.pricing import (
@@ -48,7 +51,7 @@ def _require_labs() -> None:
         raise RuntimeError(f"Refusing non-Labs project ref {settings.supabase_project_ref!r}")
 
 
-def has_identical_enrichment_attempt(
+def find_matching_enrichment_attempt(
     client: Any,
     *,
     listing_id: str,
@@ -58,13 +61,13 @@ def has_identical_enrichment_attempt(
     schema_version: str = SCHEMA_VERSION,
     alternate_checksums: Sequence[str] | None = None,
     match_any_prompt_schema: bool = False,
-) -> bool:
-    """Return True when the same model (+ optional prompt/schema) checksum succeeded.
+) -> dict[str, Any] | None:
+    """Return the newest matching proposal row, or None.
 
     By default requires the current prompt/schema. When
     ``match_any_prompt_schema`` is True, any successful Terra proposal with the
-    same semantic ``input_checksum`` counts — enabling zero-cost prompt/schema
-    migration without a paid AI re-run.
+    same semantic ``input_checksum`` matches — callers must still decide whether
+    English presentation is complete enough to skip a paid re-run.
 
     ``alternate_checksums`` allows semantic/legacy dual-match so a coordinate-only
     import does not invalidate an otherwise unchanged Terra proposal.
@@ -82,7 +85,7 @@ def has_identical_enrichment_attempt(
         # listing_id → model → [prompt → schema] → input_checksum → status.
         query = (
             client.table("ai_enrichment_proposals")
-            .select("id,status")
+            .select("id,status,proposal,prompt_version,schema_version")
             .eq("property_listing_id", listing_id)
             .eq("model", model)
         )
@@ -99,8 +102,36 @@ def has_identical_enrichment_attempt(
             or []
         )
         if rows:
-            return True
-    return False
+            return rows[0] if isinstance(rows[0], dict) else dict(rows[0])
+    return None
+
+
+def has_identical_enrichment_attempt(
+    client: Any,
+    *,
+    listing_id: str,
+    model: str,
+    input_checksum: str,
+    prompt_version: str = PROMPT_VERSION,
+    schema_version: str = SCHEMA_VERSION,
+    alternate_checksums: Sequence[str] | None = None,
+    match_any_prompt_schema: bool = False,
+) -> bool:
+    """Return True when the same model (+ optional prompt/schema) checksum succeeded."""
+
+    return (
+        find_matching_enrichment_attempt(
+            client,
+            listing_id=listing_id,
+            model=model,
+            input_checksum=input_checksum,
+            prompt_version=prompt_version,
+            schema_version=schema_version,
+            alternate_checksums=alternate_checksums,
+            match_any_prompt_schema=match_any_prompt_schema,
+        )
+        is not None
+    )
 
 
 def has_successful_terra_attempt(
@@ -198,12 +229,15 @@ def should_skip_unchanged_enrichment(
     prompt_version: str = PROMPT_VERSION,
     schema_version: str = SCHEMA_VERSION,
 ) -> bool:
-    """Skip paid AI when checksum matches or only operational geo fields changed.
+    """Skip paid AI when checksum matches a complete English presentation.
 
-    Dual-match uses the current legacy checksum so a coordinate-only import does
-    not rebill unchanged Terra proposals. Cross-version Terra matches (same
-    semantic checksum, older prompt/schema) are also skipped so a prompt upgrade
-    alone does not create a false billable backlog.
+    Same checksum + complete current English contract (display_title,
+    display_summary, display overview/description auto-applied) → skip.
+    Same checksum but missing those fields → repair required (billable once).
+    Older prompt/schema without the English contract → one-time migration
+    (``match_any_prompt_schema`` alone is not enough unless presentation is
+    already complete). Currency/coordinate/operational-only deltas remain
+    zero-cost.
 
     The listing's stored ``enrichment_last_input_checksum`` is intentionally NOT
     an alternate match on its own — a stale last-checksum would incorrectly skip
@@ -214,51 +248,75 @@ def should_skip_unchanged_enrichment(
     enrichment_input = listing_to_enrichment_input(row)
     checksum = compute_input_checksum(enrichment_input)
     legacy = compute_legacy_input_checksum(enrichment_input)
-    if has_identical_enrichment_attempt(
-        client,
-        listing_id=listing_id,
-        model=model,
-        input_checksum=checksum,
-        prompt_version=prompt_version,
-        schema_version=schema_version,
-        alternate_checksums=[legacy],
-    ):
-        return True
-    # Zero-cost prompt/schema migration: identical semantic input already enriched.
-    if has_identical_enrichment_attempt(
-        client,
-        listing_id=listing_id,
-        model=model,
-        input_checksum=checksum,
-        prompt_version=prompt_version,
-        schema_version=schema_version,
-        alternate_checksums=[legacy],
-        match_any_prompt_schema=True,
-    ):
-        return True
-    if is_operational_only_enrichment_delta(row) and has_successful_terra_attempt(
-        client,
-        listing_id=listing_id,
-        model=model,
-        prompt_version=prompt_version,
-        schema_version=schema_version,
-    ):
-        return True
-    # Operational-only delta against any prior Terra version.
+    # Pre-fix semantic checksum (money still inside protected_known_fields).
+    prior_compatible = compute_prior_compatible_input_checksum(enrichment_input)
+    skip_alternates = [legacy, prior_compatible]
+
+    # Coordinate/currency/operational-only deltas are zero-cost only when a
+    # complete English presentation already exists. Incomplete / pre-v5
+    # presentation still requires a one-time billable migration.
     if is_operational_only_enrichment_delta(row):
-        any_terra = (
-            client.table("ai_enrichment_proposals")
-            .select("id")
-            .eq("property_listing_id", listing_id)
-            .eq("model", model)
-            .in_("status", ["succeeded", "needs_review", "skipped_unchanged"])
-            .limit(1)
-            .execute()
-            .data
-            or []
+        ops_match = find_matching_enrichment_attempt(
+            client,
+            listing_id=listing_id,
+            model=model,
+            input_checksum=checksum,
+            prompt_version=prompt_version,
+            schema_version=schema_version,
+            alternate_checksums=skip_alternates,
+            match_any_prompt_schema=True,
         )
-        if any_terra:
+        if ops_match is None:
+            # No checksum match — fall through. Successful Terra alone is not
+            # enough when presentation is incomplete.
+            pass
+        else:
+            proposal = ops_match.get("proposal")
+            if isinstance(proposal, dict) and has_complete_english_presentation(
+                proposal
+            ):
+                return True
+
+    current_match = find_matching_enrichment_attempt(
+        client,
+        listing_id=listing_id,
+        model=model,
+        input_checksum=checksum,
+        prompt_version=prompt_version,
+        schema_version=schema_version,
+        alternate_checksums=skip_alternates,
+    )
+    if current_match is not None:
+        proposal = current_match.get("proposal")
+        if isinstance(proposal, dict) and has_complete_english_presentation(proposal):
             return True
+        # Incomplete current-contract proposal → do not skip (repair).
+        return False
+
+    # Cross-version match only skips when English presentation is already complete.
+    any_match = find_matching_enrichment_attempt(
+        client,
+        listing_id=listing_id,
+        model=model,
+        input_checksum=checksum,
+        prompt_version=prompt_version,
+        schema_version=schema_version,
+        alternate_checksums=skip_alternates,
+        match_any_prompt_schema=True,
+    )
+    if any_match is not None:
+        proposal = any_match.get("proposal")
+        if isinstance(proposal, dict) and not requires_english_presentation_migration(
+            prompt_version=any_match.get("prompt_version"),
+            schema_version=any_match.get("schema_version"),
+            proposal=proposal if isinstance(proposal, dict) else None,
+            current_prompt_version=prompt_version,
+            current_schema_version=schema_version,
+        ):
+            return True
+        # Old/incomplete contract → one-time billable English migration.
+        return False
+
     return False
 
 
@@ -1089,6 +1147,54 @@ def process_enrichment_job(
                 elif result.status in {"succeeded", "needs_review"}:
                     succeeded += 1
                     consecutive_infra_failures = 0
+                    # Future path: after a new/changed English enrichment, also
+                    # generate Dutch description. Failed Dutch must not fail the
+                    # English result or remove English presentation.
+                    try:
+                        from merkado_labs.enrichment.nl_description import (
+                            ensure_dutch_description_for_listing,
+                        )
+
+                        proposal_rows = (
+                            client.table("ai_enrichment_proposals")
+                            .select(
+                                "id,proposal,prompt_version,schema_version,status"
+                            )
+                            .eq("property_listing_id", listing_id)
+                            .eq("input_checksum", result.input_checksum)
+                            .in_("status", ["succeeded", "needs_review"])
+                            .order("generated_at", desc=True)
+                            .limit(1)
+                            .execute()
+                            .data
+                            or []
+                        )
+                        if proposal_rows and api_key:
+                            nl_result = ensure_dutch_description_for_listing(
+                                client,
+                                listing_id=listing_id,
+                                proposal_row=proposal_rows[0],
+                                listing_row=row,
+                                api_key=api_key,
+                                model=model_name,
+                                force=False,
+                            )
+                            listing_results[-1]["dutch_status"] = nl_result.status
+                            listing_results[-1]["dutch_cost_usd"] = nl_result.cost_usd
+                            for key in (
+                                "input_tokens",
+                                "cached_input_tokens",
+                                "output_tokens",
+                                "total_tokens",
+                            ):
+                                value = nl_result.token_usage.get(key)
+                                if isinstance(value, int):
+                                    token_totals[key] = (
+                                        int(token_totals.get(key) or 0) + value
+                                    )
+                    except Exception as nl_error:  # noqa: BLE001
+                        listing_results[-1]["dutch_status"] = "failed"
+                        listing_results[-1]["dutch_error"] = type(nl_error).__name__
                 else:
                     failed += 1
                     err = result.error_message or result.status

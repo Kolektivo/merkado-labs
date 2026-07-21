@@ -29,6 +29,7 @@ import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourh
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import type { PropertyListing } from "@/lib/domain/types";
 import { formatDate, titleCase } from "@/lib/format";
+import { resolveListingPrimaryImageUrl } from "@/lib/listing-gallery-urls";
 import {
   enrichmentStatusLabel,
   enrichmentStatusTone,
@@ -96,11 +97,15 @@ function ListingImage({
   title: string;
   priority?: boolean;
 }) {
+  const imageUrl = resolveListingPrimaryImageUrl({
+    imageUrls: listing.imageUrls,
+    primaryImageUrl: listing.primaryImageUrl,
+  });
   return (
     <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-muted md:h-12 md:w-20">
-      {listing.primaryImageUrl ? (
+      {imageUrl ? (
         <Image
-          src={listing.primaryImageUrl}
+          src={imageUrl}
           alt=""
           fill
           className="object-cover"

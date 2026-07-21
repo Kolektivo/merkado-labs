@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CircleHelp } from "lucide-react";
 
 import {
@@ -21,8 +22,10 @@ export function HelpTip({
   className?: string;
   side?: "top" | "right" | "bottom" | "left";
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Tooltip>
+    <Tooltip open={open} onOpenChange={setOpen}>
       <TooltipTrigger asChild>
         <button
           type="button"
@@ -31,11 +34,27 @@ export function HelpTip({
             className,
           )}
           aria-label={`What is ${label}?`}
+          aria-expanded={open}
+          onPointerDown={(event) => {
+            // Keep tips inside Links from navigating; toggle open on touch.
+            event.stopPropagation();
+            if (event.pointerType === "touch") {
+              event.preventDefault();
+              setOpen((current) => !current);
+            }
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
         >
           <CircleHelp className="size-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-[300px] text-left text-xs leading-relaxed">
+      <TooltipContent
+        side={side}
+        className="max-w-[300px] text-left text-xs leading-relaxed"
+      >
         {children}
       </TooltipContent>
     </Tooltip>

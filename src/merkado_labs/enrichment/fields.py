@@ -38,6 +38,8 @@ ALLOWED_AI_FIELDS: frozenset[str] = frozenset(
         "garden_maintenance_included",
         "normalized_amenities",
         "concise_summary",
+        "display_title",
+        "display_summary",
         "display_overview",
         "display_layout",
         "display_location",
@@ -46,14 +48,23 @@ ALLOWED_AI_FIELDS: frozenset[str] = frozenset(
         "title_normalization",
         "waterfront",
         "renovation_or_maintenance_mention",
+        # Gap-fill only when the structured source value is empty/null.
+        "bedrooms",
+        "bathrooms",
+        "price_period",
     }
 )
 
-# Fields retained as immutable listing facts. They are deliberately not
-# allowlisted, so proposed values receive a protected-field rejection rather
-# than being treated as a new flexible attribute.
+# Fields retained as immutable listing facts when a non-null source value
+# already exists. Empty source bedrooms/bathrooms may be filled from direct
+# description evidence; floor_area_m2 stays hard-protected either way.
 PROTECTED_AI_PROPOSAL_FIELDS: frozenset[str] = frozenset(
     {"bedrooms", "bathrooms", "floor_area_m2"}
+)
+
+# Protected fields that may be gap-filled when the source column is null/empty.
+DESCRIPTION_FILLABLE_PROTECTED_FIELDS: frozenset[str] = frozenset(
+    {"bedrooms", "bathrooms"}
 )
 
 # Identity / money / legal facts AI must never change or invent.
@@ -129,10 +140,15 @@ CANONICAL_ATTRIBUTE_KEYS: frozenset[str] = frozenset(
         "gas_included",
         "garden_maintenance_included",
         "waterfront",
+        "price_period",
     }
 )
 
 ATTRIBUTE_DISPLAY_LABELS: dict[str, str] = {
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "price_period": "Price period",
+    "floor_area_m2": "Floor area",
     "pool": "Pool",
     "furnished": "Furnished",
     "parking": "Parking",
@@ -162,6 +178,8 @@ ATTRIBUTE_DISPLAY_LABELS: dict[str, str] = {
     "property_type": "Property type",
     "neighbourhood_candidate": "Neighbourhood (AI)",
     "concise_summary": "Summary",
+    "display_title": "Display title",
+    "display_summary": "Display summary",
     "display_overview": "Overview",
     "display_layout": "Layout",
     "display_location": "Location",
@@ -179,7 +197,10 @@ ATTRIBUTE_SYNONYMS: dict[str, str] = {
     "private_pool": "pool",
     "zwembad": "pool",
     "fully furnished": "furnished",
+    "turn-key furnished": "furnished",
+    "turnkey furnished": "furnished",
     "gemeubileerd": "furnished",
+    "gemeubileerde": "furnished",
     "volledig gemeubileerd": "furnished",
     "unfurnished": "furnished",
     "ongemeubileerd": "furnished",
@@ -199,6 +220,22 @@ ATTRIBUTE_SYNONYMS: dict[str, str] = {
     "air conditioning": "air_conditioning",
     "ocean view": "sea_view",
     "sea view": "sea_view",
+    "zeezicht": "sea_view",
+    "uitzicht op zee": "sea_view",
+    "panoramisch zeezicht": "sea_view",
+    "waterfront": "waterfront",
+    "seafront": "waterfront",
+    "oceanfront": "waterfront",
+    "beachfront": "waterfront",
+    "beach front": "waterfront",
+    "aan zee": "waterfront",
+    "appartement aan zee": "waterfront",
+    "woning aan zee": "waterfront",
+    "aan het water": "waterfront",
+    "beveiligd resort": "gated_community",
+    "afgesloten resort": "gated_community",
+    "controlled access": "gated_community",
+    "bewaakte toegang": "gated_community",
     "zonnepanelen": "solar_panels",
     "solar panels": "solar_panels",
     "solar": "solar_panels",

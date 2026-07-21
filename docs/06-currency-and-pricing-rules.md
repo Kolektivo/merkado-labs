@@ -1,14 +1,16 @@
 # 06 - Currency and Pricing Rules
 
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
-**Last updated:** July 17, 2026
+**Last updated:** July 21, 2026
 
 ## 1. Principles
 
 - Preserve the original asking amount and original currency as source truth.
 - Store a separate XCG benchmark for comparison.
 - Never present the XCG figure as a bank conversion quote, transaction rate, appraisal, or contractual amount.
-- Display disclaimer: **Indicative equivalent based on known information.**
+- For true foreign-currency → XCG conversions, surface an **indicative tip/icon**
+  (copy: **Indicative equivalent based on known information.**). Do not repeat
+  that sentence inline under every price.
 
 ## 2. Fixed conversions
 
@@ -74,7 +76,9 @@ events (not `price_changed`). Current dashboard listing values use the ECB provi
 ## 6. XCG-primary display (Labs dashboard)
 
 - XCG is the **primary** price wherever a price is displayed — listing
-  detail, browse cards, listing table — formatted with the `Cg` prefix.
+  detail, browse cards, listing table — formatted with the `Cg` prefix
+  (literal `Cg 1,927`, not `Intl` currency style — Node and browsers
+  disagree on the XCG symbol and that breaks hydration).
 - The original source amount is shown as a **secondary** line only when its
   currency differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG, so they
   are not treated as a "different" currency).
@@ -84,8 +88,60 @@ events (not `price_changed`). Current dashboard listing values use the ECB provi
 - If an original price exists but no XCG benchmark is available yet, show
   the original amount with **"XCG equivalent currently unavailable"**
   instead of fabricating a conversion.
-- Every converted amount carries the disclaimer: **Indicative equivalent
-  based on known information.**
+- True foreign→XCG conversions show an indicative **tip/icon** beside the
+  primary XCG amount (HelpTip); XCG/ANG/NAf identity cases omit it. Do not
+  repeat the indicative sentence as always-visible body text under the price.
 - Sold listings additionally show: **Last known listing price. The actual
   sale price may differ.**
-- Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts`.
+- Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts` +
+  `apps/labs-dashboard/src/components/price-display.tsx`.
+
+## 7. Source-official alternate currencies (Phase 4)
+
+Preserve the **asking anchor** (original amount + currency) separately from any
+source-published alternate currency lines. Precedence for the public XCG figure:
+
+1. Source-official ANG/XCG alternate when present (`conversion_method =
+   source_official_conversion`)
+2. Else Merkado conversion (`identity` / ANG 1:1 / USD peg / ECB EUR path)
+
+| Rule | Detail |
+|---|---|
+| Anchor | Exact asking amount/currency from the source |
+| Official alternates | Stored on `official_alternate_prices` with provenance **`source_official_conversion`** |
+| Never invent | Do **not** derive `source_official_conversion` from Merkado/ECB rates |
+| Public XCG preference | Prefer official XCG/ANG when available; else Merkado conversion |
+| RE/MAX | Parse “listed in {CUR}” from the disclaimer. Live EUR pages typically omit the NAF/XCG selector amount — capture via **NAF cookie session** (`GET /currency/NAF/` then re-fetch detail; `remax_naf_session` / `capture_naf_official_alternate`). Do not invent amounts from Merkado/ECB |
+| KW | First currency code remains the anchor; following EUR/XCG **inline** lines are official alternates |
+| Moret | Sidebar widget `data-coef` values are evidence notes only — not Merkado rates |
+| Monumentenzorg | Single currency; no official alts required |
+
+### Confirmed example — RE/MAX `hr2066` (2026-07-21)
+
+Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
+`mode=apply`):
+
+| Field | Value |
+|---|---|
+| Asking anchor | **EUR 664** (unchanged) |
+| Official alternate | **XCG 1350** (`source_official_conversion`, evidence `XCG 1.350 / mo.`, label `remax_naf_session`) |
+| Public XCG benchmark | **Cg 1350** (official precedence over prior ECB ~1358) |
+| Timeline | No `price_changed` / `currency_changed` (official alt backfill is provenance-only) |
+
+### Event semantics
+
+- `price_changed` — asking **amount** changed
+- `currency_changed` — asking **currency** changed
+- `benchmark_recalculated` — FX/rate/provider context only (anchor unchanged)
+- Official alternate capture/backfill with unchanged anchor ≠ `price_changed`
+- Import pipeline is the sole writer for these three; lifecycle must not duplicate them
+  (dual-writer `price_changed` fixed in the 2026-07-21 quality pass)
+- Tiny RE/MAX display jitter (±1) may be flagged `suspected_display_fx_jitter` in presentation metadata; do not delete
+- Presentation timeline suppresses rate-only / enrichment / policy-rematerialization
+  noise at read-time (see `05`)
+
+### XCG price-over-time chart
+
+Dashboard chart points come from **material asking-price changes** only.
+Y-value = source-official XCG when stored, else Merkado benchmark at that event.
+Tooltips show original amount/currency + provenance. Rate-only changes do not move the chart.

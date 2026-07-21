@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
+import { canonicalizeNeighbourhood } from "@/lib/domain/neighbourhood-aliases";
 import {
   normalizePublicAttributes,
   PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS,
@@ -11,9 +12,93 @@ import type {
   PublicDisplayDescription,
   PublicPropertyListing,
 } from "@/lib/domain/types";
+import { uniqueListingImages } from "@/lib/listing-gallery-urls";
 import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
 
 const PUBLIC_SELECT = [
+  "id",
+  "external_id",
+  "source_url",
+  "original_realtor_url",
+  "listing_type",
+  "source_listing_status",
+  "property_type",
+  "title",
+  // English presentation (optional until v5 public view migration).
+  "display_title",
+  "display_summary",
+  "original_price",
+  "original_currency",
+  "benchmark_price_xcg",
+  "conversion_method",
+  "conversion_provider",
+  "conversion_rate_at",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
+  "primary_image_url",
+  "image_urls",
+  "description",
+  "first_seen_at",
+  "last_seen_at",
+  "source_listed_at",
+  "source_key",
+  "source_display_name",
+  // Effective fields (optional during migration rollout — fail safe if absent).
+  "effective_neighbourhood",
+  "effective_neighbourhood_provenance",
+  "effective_neighbourhood_provenance_label",
+  "effective_property_type",
+  "public_attributes",
+  "effective_summary",
+  "display_description",
+  "display_description_nl",
+].join(",");
+
+/** English presentation without Dutch column (pre-bilingual view). */
+const PUBLIC_SELECT_WITHOUT_NL = [
+  "id",
+  "external_id",
+  "source_url",
+  "original_realtor_url",
+  "listing_type",
+  "source_listing_status",
+  "property_type",
+  "title",
+  "display_title",
+  "display_summary",
+  "original_price",
+  "original_currency",
+  "benchmark_price_xcg",
+  "conversion_method",
+  "conversion_provider",
+  "conversion_rate_at",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_m2",
+  "lot_area_value",
+  "lot_area_unit",
+  "primary_image_url",
+  "image_urls",
+  "description",
+  "first_seen_at",
+  "last_seen_at",
+  "source_listed_at",
+  "source_key",
+  "source_display_name",
+  "effective_neighbourhood",
+  "effective_neighbourhood_provenance",
+  "effective_neighbourhood_provenance_label",
+  "effective_property_type",
+  "public_attributes",
+  "effective_summary",
+  "display_description",
+].join(",");
+
+/** Effective fields without English presentation columns (pre-v5 view). */
+const PUBLIC_SELECT_WITHOUT_PRESENTATION = [
   "id",
   "external_id",
   "source_url",
@@ -41,7 +126,6 @@ const PUBLIC_SELECT = [
   "source_listed_at",
   "source_key",
   "source_display_name",
-  // Effective fields (optional during migration rollout — fail safe if absent).
   "effective_neighbourhood",
   "effective_neighbourhood_provenance",
   "effective_neighbourhood_provenance_label",
@@ -101,8 +185,16 @@ function publicQueryError(message: string) {
   return new Error(`Public listing query failed: ${message}`);
 }
 
+function isMissingNlColumnError(message: string): boolean {
+  return /display_description_nl/i.test(message);
+}
+
+function isMissingPresentationColumnError(message: string): boolean {
+  return /display_title|display_summary/i.test(message);
+}
+
 function isMissingEffectiveColumnError(message: string): boolean {
-  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description|image_urls|column .* does not exist/i.test(
+  return /effective_neighbourhood|public_attributes|effective_summary|effective_property_type|display_description_nl|display_description|display_title|display_summary|image_urls|column .* does not exist/i.test(
     message,
   );
 }
@@ -118,7 +210,7 @@ function normalizeImageUrls(
     }
   }
   if (!urls.length && primaryImageUrl) urls.push(primaryImageUrl);
-  return [...new Set(urls)];
+  return uniqueListingImages(urls);
 }
 
 function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
@@ -167,8 +259,12 @@ export function normalizePublicListing(
   const provenance = normalizeProvenance(
     row.effective_neighbourhood_provenance,
   );
-  const neighbourhood = row.effective_neighbourhood
+  const rawNeighbourhood = row.effective_neighbourhood
     ? String(row.effective_neighbourhood).trim() || null
+    : null;
+  // Canonical display for cards/detail; DB/source evidence stays elsewhere.
+  const neighbourhood = rawNeighbourhood
+    ? canonicalizeNeighbourhood(rawNeighbourhood).canonicalDisplay
     : null;
   const provenanceLabel = row.effective_neighbourhood_provenance_label
     ? String(row.effective_neighbourhood_provenance_label)
@@ -195,6 +291,9 @@ export function normalizePublicListing(
       : null,
     propertyType: row.property_type ? String(row.property_type) : null,
     title: row.title ? String(row.title) : null,
+    // TODO(parallel-v5): populated once public_property_listings exposes columns.
+    displayTitle: textOrNull(row.display_title),
+    displaySummary: textOrNull(row.display_summary),
     originalPrice: numberOrNull(row.original_price),
     originalCurrency: row.original_currency
       ? String(row.original_currency)
@@ -240,6 +339,9 @@ export function normalizePublicListing(
       ? String(row.effective_summary).trim() || null
       : null,
     displayDescription: normalizeDisplayDescription(row.display_description),
+    displayDescriptionNl: normalizeDisplayDescription(
+      row.display_description_nl,
+    ),
   };
 }
 
@@ -273,6 +375,35 @@ export const getPublicListings = cache(
       return rows.map(normalizePublicListing);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Fail soft when Dutch column is not applied yet.
+      if (isMissingNlColumnError(message)) {
+        try {
+          const rows = await fetchPublicListingPages(PUBLIC_SELECT_WITHOUT_NL);
+          return rows.map(normalizePublicListing);
+        } catch (nlInner) {
+          const nlMessage =
+            nlInner instanceof Error ? nlInner.message : String(nlInner);
+          if (!isMissingPresentationColumnError(nlMessage)) throw nlInner;
+        }
+      }
+      // Fail soft when the v5 view columns are not applied yet.
+      if (
+        isMissingPresentationColumnError(message) ||
+        isMissingNlColumnError(message)
+      ) {
+        try {
+          const rows = await fetchPublicListingPages(
+            PUBLIC_SELECT_WITHOUT_PRESENTATION,
+          );
+          return rows.map(normalizePublicListing);
+        } catch (inner) {
+          const innerMessage =
+            inner instanceof Error ? inner.message : String(inner);
+          if (!isMissingEffectiveColumnError(innerMessage)) throw inner;
+          const rows = await fetchPublicListingPages(PUBLIC_SELECT_BASIC);
+          return rows.map(normalizePublicListing);
+        }
+      }
       if (!isMissingEffectiveColumnError(message)) throw error;
       // Pre-migration rollout: serve basic public fields safely.
       const rows = await fetchPublicListingPages(PUBLIC_SELECT_BASIC);

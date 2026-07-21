@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FlaskConical, Search } from "lucide-react";
+import { FlaskConical, MapPin, Search } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicListings } from "@/lib/data/public-listings";
+import {
+  canonicalizeNeighbourhood,
+  neighbourhoodKeysMatch,
+} from "@/lib/domain/neighbourhood-aliases";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import {
@@ -20,14 +24,32 @@ import {
   selectBrowseAttributeChips,
 } from "@/lib/domain/public-attributes";
 import type { PublicPropertyListing } from "@/lib/domain/types";
+import {
+  publicListingTypeLabel,
+  resolvePublicDisplaySummary,
+  resolvePublicDisplayTitle,
+} from "@/lib/domain/public-presentation";
 import { titleCase } from "@/lib/format";
+import { matchesSynonymSearch } from "@/lib/search/synonyms";
+
+function listingNeighbourhoodLabel(
+  listing: PublicPropertyListing,
+): string | null {
+  return canonicalizeNeighbourhood(listing.effectiveNeighbourhood)
+    .canonicalDisplay;
+}
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Public browse" };
+export const metadata: Metadata = {
+  title: "Public preview",
+  description:
+    "Browse English public-safe property listings from the Merkado Labs Curaçao dataset.",
+};
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const FILTER_KEYS = [
+  "q",
   "type",
   "source",
   "neighbourhood",
@@ -46,22 +68,25 @@ const one = (
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 };
 
-function cardMetaLine(listing: PublicPropertyListing): string {
-  const parts: string[] = [];
-  if (listing.effectiveNeighbourhood) {
-    parts.push(listing.effectiveNeighbourhood);
-  }
+function cardMetaParts(listing: PublicPropertyListing): {
+  neighbourhood: string | null;
+  details: string[];
+} {
+  const details: string[] = [];
   if (listing.bedrooms != null) {
-    parts.push(
+    details.push(
       `${listing.bedrooms} bedroom${listing.bedrooms === 1 ? "" : "s"}`,
     );
   }
   if (listing.bathrooms != null) {
-    parts.push(
+    details.push(
       `${listing.bathrooms} bathroom${listing.bathrooms === 1 ? "" : "s"}`,
     );
   }
-  return parts.join(" · ");
+  return {
+    neighbourhood: listingNeighbourhoodLabel(listing),
+    details,
+  };
 }
 
 function cardAttributeChips(listing: PublicPropertyListing): string[] {
@@ -71,6 +96,7 @@ function cardAttributeChips(listing: PublicPropertyListing): string[] {
 function matchesFilters(
   listing: PublicPropertyListing,
   filters: {
+    query: string;
     type: string;
     source: string;
     neighbourhood: string;
@@ -85,7 +111,10 @@ function matchesFilters(
   if (filters.source && listing.sourceKey !== filters.source) return false;
   if (
     filters.neighbourhood &&
-    listing.effectiveNeighbourhood !== filters.neighbourhood
+    !neighbourhoodKeysMatch(
+      listing.effectiveNeighbourhood,
+      filters.neighbourhood,
+    )
   ) {
     return false;
   }
@@ -107,6 +136,37 @@ function matchesFilters(
       return false;
     }
   }
+  if (filters.query) {
+    const displayTitle = resolvePublicDisplayTitle(listing);
+    const displaySummary = resolvePublicDisplaySummary(listing);
+    const chips = selectBrowseAttributeChips(listing.publicAttributes).join(
+      " ",
+    );
+    if (
+      !matchesSynonymSearch(
+        [
+          displayTitle,
+          displaySummary,
+          listing.displayTitle,
+          listing.displaySummary,
+          listing.effectiveSummary,
+          listing.displayDescription?.overview,
+          listing.effectiveNeighbourhood,
+          listing.effectivePropertyType,
+          listing.propertyType,
+          listing.listingType,
+          listing.sourceDisplayName,
+          chips,
+          // Residual source text so Dutch queries still match pre-migration rows.
+          listing.title,
+          listing.description,
+        ],
+        filters.query,
+      )
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -116,6 +176,7 @@ export default async function BrowsePage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const query = one(params, "q");
   const type = one(params, "type");
   const source = one(params, "source");
   const neighbourhood = one(params, "neighbourhood");
@@ -141,8 +202,8 @@ export default async function BrowsePage({
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Public browse preview"
-          description="Experimental Labs prototype — not live on merkado.cw."
+          title="Public preview"
+          description="Public-safe property listings from the Labs dataset."
           icon={Search}
         />
         <DataError
@@ -155,7 +216,7 @@ export default async function BrowsePage({
   const neighbourhoodOptions = Array.from(
     new Set(
       publicListings
-        .map((listing) => listing.effectiveNeighbourhood)
+        .map((listing) => listingNeighbourhoodLabel(listing))
         .filter((value): value is string => Boolean(value)),
     ),
   ).sort((a, b) => a.localeCompare(b));
@@ -170,6 +231,7 @@ export default async function BrowsePage({
 
   const listings = publicListings.filter((listing) =>
     matchesFilters(listing, {
+      query,
       type,
       source,
       neighbourhood,
@@ -184,16 +246,16 @@ export default async function BrowsePage({
   return (
     <div className="max-w-full space-y-6 overflow-x-hidden">
       <PageHeader
-        title="Public browse preview"
-        description="A simple preview of listings that are clean enough to show publicly. Experimental only."
+        title="Public preview"
+        description="Browse listings that meet the current public-data checks."
         icon={Search}
       />
       <Alert>
         <FlaskConical className="size-4" />
-        <AlertTitle>Experimental Labs prototype</AlertTitle>
+        <AlertTitle>Labs preview · not live</AlertTitle>
         <AlertDescription>
-          This preview is not live on merkado.cw. It only shows public-safe
-          listings — private evidence and AI suggestions are left out.
+          Not live on merkado.cw. Private evidence and internal AI suggestions
+          are excluded.
         </AlertDescription>
       </Alert>
       <form
@@ -201,6 +263,22 @@ export default async function BrowsePage({
         action="/browse"
         className="grid w-full max-w-full items-end gap-3 overflow-hidden rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       >
+        <div className="min-w-0 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+          <label
+            htmlFor="browse-q"
+            className="mb-1.5 block text-xs font-medium text-muted-foreground"
+          >
+            Search
+          </label>
+          <input
+            id="browse-q"
+            name="q"
+            type="search"
+            defaultValue={query}
+            placeholder="e.g. furnished, zwembad, Jan Thiel"
+            className="h-9 w-full max-w-full rounded-md border bg-background px-3 text-sm"
+          />
+        </div>
         <div className="min-w-0">
           <label
             htmlFor="browse-type"
@@ -343,8 +421,10 @@ export default async function BrowsePage({
       </p>
       <div className="grid max-w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {listings.map((listing, index) => {
-          const meta = cardMetaLine(listing);
+          const meta = cardMetaParts(listing);
           const chips = cardAttributeChips(listing);
+          const hasMeta = Boolean(meta.neighbourhood || meta.details.length);
+          const displayTitle = resolvePublicDisplayTitle(listing);
           return (
             <Link
               key={listing.id}
@@ -361,19 +441,19 @@ export default async function BrowsePage({
                     imageUrls: listing.imageUrls,
                     primaryImageUrl: listing.primaryImageUrl,
                   })}
-                  altBase={listing.title ?? `Property ${listing.externalId}`}
+                  altBase={displayTitle}
                   variant="card"
                   priority={index === 0}
                   aspectClassName="relative h-44 bg-muted"
                 />
                 <CardContent className="space-y-2 p-4">
                   <div className="flex flex-wrap gap-2">
-                    <Badge>{titleCase(listing.listingType ?? "Listing")}</Badge>
+                    <Badge>
+                      {publicListingTypeLabel(listing.listingType)}
+                    </Badge>
                     <Badge variant="outline">{listing.sourceDisplayName}</Badge>
                   </div>
-                  <h2 className="line-clamp-2 font-medium">
-                    {listing.title ?? `Property ${listing.externalId}`}
-                  </h2>
+                  <h2 className="line-clamp-2 font-medium">{displayTitle}</h2>
                   <PriceDisplay
                     model={buildPriceDisplay({
                       originalPrice: listing.originalPrice,
@@ -382,9 +462,27 @@ export default async function BrowsePage({
                     })}
                     size="sm"
                   />
-                  {meta ? (
-                    <p className="truncate text-sm text-muted-foreground">
-                      {meta}
+                  {hasMeta ? (
+                    <p className="flex min-w-0 items-center gap-1.5 truncate text-sm text-muted-foreground">
+                      {meta.neighbourhood ? (
+                        <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                          <MapPin
+                            className="size-3.5 shrink-0"
+                            aria-hidden
+                          />
+                          <span className="truncate">{meta.neighbourhood}</span>
+                        </span>
+                      ) : null}
+                      {meta.neighbourhood && meta.details.length ? (
+                        <span className="shrink-0" aria-hidden>
+                          ·
+                        </span>
+                      ) : null}
+                      {meta.details.length ? (
+                        <span className="truncate">
+                          {meta.details.join(" · ")}
+                        </span>
+                      ) : null}
                     </p>
                   ) : null}
                   {chips.length ? (

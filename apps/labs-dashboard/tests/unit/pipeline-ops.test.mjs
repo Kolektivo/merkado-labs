@@ -40,7 +40,7 @@ test("run-all ready filter excludes partial and blocked sources", () => {
     readiness,
     /Adapter v0\.4\.1 deterministic import is pending/,
   );
-  assert.match(readiness, /GitHub daily cron temporarily Off/);
+  assert.match(readiness, /GitHub daily cron On/);
   assert.match(readiness, /listingCountExpected: 104/);
   assert.match(readiness, /sourceKey: "moret_real_estate"[\s\S]*?readiness: "ready"/);
   assert.match(readiness, /First complete catalog established \(71\)/);
@@ -98,13 +98,19 @@ test("data operations page shows schedule flag and budgets", () => {
   assert.match(page, /PipelineRunProgress/);
   assert.match(page, /Automatic refresh/);
   assert.match(page, /AUTOMATIC_REFRESH_ENABLED/);
-  assert.match(page, /Daily cron/);
+  assert.match(page, /begins on default branch/);
   assert.match(page, /06:00 Curaçao/);
   assert.match(page, /USD 2 \/ day/);
   assert.match(page, /GitHub workflow/);
   assert.match(page, /Manual Run now dispatch needs setup/);
+  assert.doesNotMatch(page, /Manual dispatch \(cron Off\)/);
+  assert.match(page, /Daily automation is configured On/);
   const schedule = source("src/lib/pipeline/schedule.ts");
-  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = false/);
+  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = true/);
+  const settings = source("src/app/settings/page.tsx");
+  assert.match(settings, /Daily automation configured/);
+  assert.match(settings, /begins once the workflow is on the default branch/);
+  assert.doesNotMatch(settings, /Manual dispatch \(cron Off\)/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");
@@ -137,25 +143,43 @@ test("dispatch credential stays server-only", () => {
 
 test("enrichment page has Overview / Runs / Needs review", () => {
   const page = source("src/app/enrichment/page.tsx");
-  assert.match(page, /TabsTrigger value="overview"/);
-  assert.match(page, /TabsTrigger value="runs"/);
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /\/enrichment\?view=overview/);
+  assert.match(page, /\/enrichment\?view=runs/);
   assert.match(page, /Needs review/);
   assert.match(page, /Advanced audit detail/);
   assert.match(page, /COST_ESTIMATE_LABEL/);
 });
 
-test("listing overview hides empty optional fields", () => {
+test("listing detail keeps optional diagnostics out of the primary summary", () => {
   const page = source("src/app/listings/[id]/page.tsx");
-  assert.match(page, /optional detail/);
-  assert.match(page, /not available/);
-  assert.match(page, /from this source/);
+  assert.match(page, /<PriceDisplay model=\{priceDisplay\}/);
+  assert.doesNotMatch(page, /Original asking rent/);
+  assert.doesNotMatch(page, /optional detail/);
   assert.match(page, /listing\.bedrooms != null/);
   assert.match(page, /listing\.resort \?/);
 });
 
+test("quality neighbourhood gaps drill into an actual listings filter", () => {
+  const analytics = source("src/lib/data/analytics.ts");
+  const filters = source("src/components/listing-filters.tsx");
+  const quality = source("src/app/quality/page.tsx");
+  assert.match(analytics, /locationGap: value\("locationGap"\)/);
+  assert.match(analytics, /listingHasNeighbourhoodSearchGap/);
+  assert.match(analytics, /neighbourhoodKeysMatch/);
+  assert.match(analytics, /listingCanonicalNeighbourhood/);
+  assert.match(filters, /Missing from neighbourhood search/);
+  assert.match(
+    quality,
+    /locationGap=missing_neighbourhood&from=quality/,
+  );
+});
+
 test("listing AI changes keep audit detail collapsed", () => {
   const changes = source("src/components/listing-ai-changes.tsx");
-  assert.match(changes, /Advanced metadata/);
-  assert.match(changes, /Detailed audit/);
+  assert.match(changes, /History \/ advanced/);
+  assert.match(changes, /Rejected \/ ignored technical audit/);
   assert.match(changes, /Applied changes/);
+  assert.match(changes, /Needs review/);
+  assert.match(changes, /selectRetainedProposal/);
 });

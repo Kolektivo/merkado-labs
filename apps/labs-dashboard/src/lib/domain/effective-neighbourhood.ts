@@ -13,9 +13,17 @@
  * over a conflicting AI candidate because AI is only consulted once both
  * stronger tiers are exhausted.
  *
+ * The winning tier's display `name` is canonicalized for filters/cards;
+ * `sourceName` / `mapName` / `aiName` keep the original evidence strings.
+ *
  * Mirrors `src/merkado_labs/enrichment/neighbourhood.py` — keep both in sync
  * when the priority rules change.
  */
+
+import {
+  canonicalizeNeighbourhood,
+  neighbourhoodKeysMatch,
+} from "./neighbourhood-aliases.ts";
 
 /** Generic island-level mentions that are not a real neighbourhood. */
 const GENERIC_NEIGHBOURHOOD_TERMS = new Set([
@@ -72,7 +80,8 @@ export function isGenericNeighbourhood(
 ): boolean {
   const cleaned = clean(value);
   if (!cleaned) return true;
-  return GENERIC_NEIGHBOURHOOD_TERMS.has(cleaned.toLocaleLowerCase());
+  if (GENERIC_NEIGHBOURHOOD_TERMS.has(cleaned.toLocaleLowerCase())) return true;
+  return canonicalizeNeighbourhood(cleaned).reason === "generic";
 }
 
 /** Specific, non-generic name, or null when missing/generic. */
@@ -80,6 +89,10 @@ function specific(value: string | null | undefined): string | null {
   const cleaned = clean(value);
   if (!cleaned || isGenericNeighbourhood(cleaned)) return null;
   return cleaned;
+}
+
+function displayName(value: string): string {
+  return canonicalizeNeighbourhood(value).canonicalDisplay ?? value;
 }
 
 export function resolveEffectiveNeighbourhood(input: {
@@ -107,15 +120,16 @@ export function resolveEffectiveNeighbourhood(input: {
   const specificMap = specific(mapName);
   const specificAi = specific(aiName);
 
+  // Conflict after canonical keys disagree — never silently merge assets.
   const conflict = Boolean(
     specificSource &&
       specificMap &&
-      specificSource.toLocaleLowerCase() !== specificMap.toLocaleLowerCase(),
+      !neighbourhoodKeysMatch(specificSource, specificMap),
   );
 
   if (specificSource) {
     return {
-      name: specificSource,
+      name: displayName(specificSource),
       provenance: "source",
       sourceName,
       mapName,
@@ -127,7 +141,7 @@ export function resolveEffectiveNeighbourhood(input: {
 
   if (specificMap) {
     return {
-      name: specificMap,
+      name: displayName(specificMap),
       provenance: "map",
       sourceName,
       mapName,
@@ -145,7 +159,7 @@ export function resolveEffectiveNeighbourhood(input: {
 
   if (specificAi && grounded && highConfidence) {
     return {
-      name: specificAi,
+      name: displayName(specificAi),
       provenance: "ai_extracted",
       sourceName,
       mapName,

@@ -21,18 +21,17 @@ import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhoo
 import { HelpTip } from "@/components/help-tip";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
+import { PriceDisplay } from "@/components/price-display";
 import { PriceHistoryChart } from "@/components/price-history-chart";
 import { ListingAiChanges } from "@/components/listing-ai-changes";
 import {
   describeConversionLabel,
   isCurrentProductionBenchmark,
 } from "@/lib/data/price-observations";
+import { filterDefaultTimeline } from "@/lib/domain/activity-presentation";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
-import {
-  buildPriceDisplay,
-  formatOriginalPrice,
-  formatXcgPrimary,
-} from "@/lib/domain/price-display";
+import { buildPriceDisplay } from "@/lib/domain/price-display";
+import { buildXcgPriceSeries } from "@/lib/domain/xcg-price-series";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,16 +57,20 @@ import {
 } from "@/lib/data/queries";
 import { getListingEvidence } from "@/lib/data/listing-detail";
 import {
+  aiCoverageTone,
   effectiveAttributesFromProposal,
   extractFieldDecisions,
   isOperationalAttentionDecision,
   PROVENANCE_LABELS,
+  resolveAiCoverage,
+  selectRetainedProposal,
   type ProvenanceKind,
 } from "@/lib/enrichment/display";
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  formatNumber,
   titleCase,
 } from "@/lib/format";
 import {
@@ -77,8 +80,10 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { listingDetailHref, resolveListingBackNav } from "@/lib/breadcrumbs";
 import {
-  enrichmentStatusLabel,
-  enrichmentStatusTone,
+  buildFallbackDisplayTitle,
+  resolvePublicDisplayTitle,
+} from "@/lib/domain/public-presentation";
+import {
   lifecycleLabel,
   lifecycleTone,
   publicVisibilityLabel,
@@ -167,6 +172,7 @@ function activityLabel(eventType: string, sourceName: string) {
     first_seen: `Listing first found on ${sourceName}`,
     listing_first_seen: `Listing first found on ${sourceName}`,
     price_changed: "Asking price changed",
+    currency_changed: "Asking currency changed",
     status_changed: "Listing status changed",
     missing_from_source: "Listing was not found in a complete source refresh",
     removed_from_source: "Listing was removed from the source website",
@@ -175,6 +181,11 @@ function activityLabel(eventType: string, sourceName: string) {
     enrichment_completed: "AI enrichment completed",
     ai_enrichment_completed: "AI enrichment completed",
     source_refresh_completed: "Source refresh completed",
+    source_marked_sold: "Source marked listing as sold",
+    source_marked_rented: "Source marked listing as rented",
+    source_marked_under_contract: "Source marked listing under contract",
+    source_returned_active: "Listing returned to active on source",
+    source_description_changed: "Source description changed",
   };
   return labels[eventType] ?? titleCase(eventType.replaceAll("_", " "));
 }
@@ -241,13 +252,21 @@ export default async function ListingDetailPage({
   }
 
   const sourceLink = listing.originalRealtorUrl ?? listing.sourceUrl;
-  const chartHistory = history.map((item) => ({
-    date: formatDate(item.observedAt),
-    price: item.price,
-    currency: item.currency,
+  // XCG-over-time from material asking changes only (not rate-only moves).
+  const chartHistory = buildXcgPriceSeries(history).map((point) => ({
+    ...point,
+    date: formatDate(point.observedAt),
   }));
-  const proposal = proposals[0] ?? null;
+  const timelineActivity = filterDefaultTimeline(activity);
+  const proposal = selectRetainedProposal(proposals);
   const proposalBody = asRecord(proposal?.proposal);
+  const aiCoverage = resolveAiCoverage({
+    enrichmentStatus: listing.enrichmentStatus,
+    enrichmentLastInputChecksum: listing.enrichmentLastInputChecksum,
+    proposalStatus: proposal?.status,
+    proposalInputChecksum: proposal?.inputChecksum,
+    proposalBody,
+  });
   const fieldDecisions = extractFieldDecisions(proposalBody, {
     model: proposal?.model,
     generatedAt: proposal?.generatedAt,
@@ -279,6 +298,34 @@ export default async function ListingDetailPage({
       ? neighbourhoodFieldDecision.status === "auto_applied"
       : undefined,
   });
+  const proposalDisplayTitle =
+    typeof proposalBody.display_title === "string"
+      ? proposalBody.display_title.trim() || null
+      : null;
+  const proposalDisplaySummary =
+    typeof proposalBody.display_summary === "string"
+      ? proposalBody.display_summary.trim() || null
+      : typeof proposalBody.concise_summary === "string"
+        ? proposalBody.concise_summary.trim() || null
+        : null;
+  const publicEnglishTitle = resolvePublicDisplayTitle({
+    displayTitle: proposalDisplayTitle,
+    bedrooms: listing.bedrooms,
+    effectivePropertyType: listing.propertyType,
+    propertyType: listing.propertyType,
+    effectiveNeighbourhood: effectiveNeighbourhood.name,
+    listingType: listing.listingType,
+    externalId: listing.externalId,
+  });
+  const deterministicTitle = buildFallbackDisplayTitle({
+    bedrooms: listing.bedrooms,
+    effectivePropertyType: listing.propertyType,
+    propertyType: listing.propertyType,
+    effectiveNeighbourhood: effectiveNeighbourhood.name,
+    listingType: listing.listingType,
+    externalId: listing.externalId,
+  });
+
   const priceDisplay = buildPriceDisplay({
     originalPrice: listing.originalPrice ?? listing.currentPrice,
     originalCurrency: listing.originalCurrency ?? listing.currency,
@@ -301,28 +348,6 @@ export default async function ListingDetailPage({
   const defaultTab = availableTabs.has(normalizedTab)
     ? normalizedTab
     : "overview";
-  const timelineDrafts = (() => {
-    const evidencePayload = proposal?.supportingEvidence;
-    if (
-      !evidencePayload ||
-      typeof evidencePayload !== "object" ||
-      Array.isArray(evidencePayload)
-    ) {
-      return [] as Array<{ summary: string; event_at?: string; event_type?: string }>;
-    }
-    const drafts = (evidencePayload as Record<string, unknown>).timeline_drafts;
-    if (!Array.isArray(drafts)) return [];
-    return drafts.filter(
-      (item): item is { summary: string; event_at?: string; event_type?: string } =>
-        Boolean(item && typeof item === "object" && "summary" in item),
-    );
-  })();
-  const heroMissingCount = [
-    listing.bedrooms == null,
-    listing.bathrooms == null,
-    listing.floorAreaM2 == null,
-    listing.lotAreaValue == null,
-  ].filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -382,16 +407,18 @@ export default async function ListingDetailPage({
                 <StatusBadge tone={lifecycleTone(listing.status)}>
                   {lifecycleLabel(listing.status)}
                 </StatusBadge>
-                <StatusBadge
-                  tone={enrichmentStatusTone(listing.enrichmentStatus ?? "not_run")}
-                >
-                  AI: {enrichmentStatusLabel(listing.enrichmentStatus ?? "not_run")}
+                <StatusBadge tone={aiCoverageTone(aiCoverage.category)}>
+                  {aiCoverage.label}
                 </StatusBadge>
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                   {listing.title ?? `Listing ${listing.externalId}`}
                 </h1>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Source title (unchanged). Public English title is resolved
+                  separately for Browse.
+                </p>
                 <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="size-4 shrink-0" />
                   {effectiveNeighbourhood.name ? (
@@ -415,56 +442,37 @@ export default async function ListingDetailPage({
 
             <div className="flex flex-col gap-5">
               <div>
-                <p className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {listing.listingType === "rent" ? "Rent in XCG" : "Price in XCG"}
-                  <HelpTip label={TIPS.xcgBenchmark.label}>
-                    {TIPS.xcgBenchmark.tip}
-                  </HelpTip>
-                </p>
-                <p className="mt-1 font-mono text-3xl font-semibold tabular-nums">
-                  {priceDisplay.primaryAmount === null
-                    ? "Price not provided"
-                    : priceDisplay.primaryCurrency === "XCG"
-                      ? formatXcgPrimary(priceDisplay.primaryAmount)
-                      : formatOriginalPrice(
-                          priceDisplay.primaryAmount,
-                          priceDisplay.primaryLabel,
-                        )}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {listing.listingType === "rent"
-                    ? "Original asking rent"
-                    : "Original asking price"}
-                  :{" "}
-                  <span className="font-mono text-foreground">
-                    {formatCurrency(
-                      listing.originalPrice ?? listing.currentPrice,
-                      listing.originalCurrency ?? listing.currency,
-                    )}
+                <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <span>
+                    {listing.listingType === "rent"
+                      ? "Asking rent"
+                      : "Asking price"}
                   </span>
-                </p>
+                  <HelpTip
+                    label={
+                      listing.listingType === "rent"
+                        ? TIPS.rentalAmount.label
+                        : TIPS.xcgBenchmark.label
+                    }
+                  >
+                    {listing.listingType === "rent"
+                      ? TIPS.rentalAmount.tip
+                      : TIPS.xcgBenchmark.tip}
+                  </HelpTip>
+                </div>
+                <PriceDisplay model={priceDisplay} size="lg" className="mt-1" />
                 {listing.listingType === "rent" ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Rental amount from the source ad
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {listing.pricePeriod
-                      ? ` · period: ${listing.pricePeriod}`
-                      : " · rental period not stated clearly on the source page"}
-                    . Not a sale price.
-                  </p>
-                ) : null}
-                {priceDisplay.disclaimer ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {priceDisplay.disclaimer}
-                  </p>
-                ) : null}
-                {priceDisplay.soldDisclaimer ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {priceDisplay.soldDisclaimer}
+                      ? `Rental period: ${listing.pricePeriod}`
+                      : "Rental period not stated by the source"}
                   </p>
                 ) : null}
                 {listing.benchmarkPriceXcg !== null ? (
-                  <details className="mt-2 text-xs text-muted-foreground">
-                    <summary className="cursor-pointer">Price calculation details</summary>
+                  <details className="mt-3 text-xs text-muted-foreground">
+                    <summary className="w-fit cursor-pointer rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      Price calculation details
+                    </summary>
                     <p className="mt-1">
                       {describeConversionLabel({
                         conversionMethod: listing.conversionMethod,
@@ -482,7 +490,7 @@ export default async function ListingDetailPage({
                     </p>
                   </details>
                 ) : null}
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
                   <StatusBadge
                     tone={listing.publicEligible ? "success" : "warning"}
                   >
@@ -521,7 +529,7 @@ export default async function ListingDetailPage({
                     value={
                       <span className="inline-flex items-center gap-2">
                         <Maximize2 className="size-4 text-muted-foreground" />
-                        {listing.floorAreaM2.toLocaleString()} m²
+                        {formatNumber(listing.floorAreaM2)} m²
                       </span>
                     }
                   />
@@ -532,7 +540,7 @@ export default async function ListingDetailPage({
                     value={
                       <span className="inline-flex items-center gap-2">
                         <LandPlot className="size-4 text-muted-foreground" />
-                        {listing.lotAreaValue.toLocaleString()}
+                        {formatNumber(listing.lotAreaValue)}
                         {listing.lotAreaUnit ? ` ${listing.lotAreaUnit}` : ""}
                       </span>
                     }
@@ -543,13 +551,6 @@ export default async function ListingDetailPage({
                   value={formatDate(listing.lastSeenAt)}
                 />
               </dl>
-              {heroMissingCount > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {heroMissingCount} optional property{" "}
-                  {heroMissingCount === 1 ? "detail was" : "details were"} not
-                  provided by this source.
-                </p>
-              ) : null}
             </div>
           </div>
         </div>
@@ -575,54 +576,12 @@ export default async function ListingDetailPage({
                     Physical and listing details captured from the public ad.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {(() => {
-                    const optionalMissing = [
-                      listing.bedrooms == null,
-                      listing.bathrooms == null,
-                      listing.floorAreaM2 == null,
-                      listing.lotAreaValue == null,
-                      !listing.resort,
-                      ![listing.street, listing.houseNumber].some(Boolean),
-                      !listing.sourceListingStatus,
-                    ].filter(Boolean).length;
-                    return (
-                      <>
+                <CardContent>
                   <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="Property type"
                       value={titleCase(listing.propertyType)}
                     />
-                    {listing.bedrooms != null ? (
-                      <DetailItem label="Bedrooms" value={listing.bedrooms} />
-                    ) : null}
-                    {listing.bathrooms != null ? (
-                      <DetailItem label="Bathrooms" value={listing.bathrooms} />
-                    ) : null}
-                    {listing.listingType === "rent" && listing.pricePeriod ? (
-                      <DetailItem
-                        label="Rental period"
-                        value={listing.pricePeriod}
-                      />
-                    ) : null}
-                    {listing.floorAreaM2 != null ? (
-                      <DetailItem
-                        label="Floor area"
-                        value={`${listing.floorAreaM2.toLocaleString()} m²`}
-                      />
-                    ) : null}
-                    {listing.lotAreaValue != null ? (
-                      <DetailItem
-                        label="Lot area"
-                        tip="Value taken as written on the website. The unit may be missing or inconsistent across sites."
-                        tipLabel="lot area"
-                        value={`${listing.lotAreaValue.toLocaleString()}${
-                          listing.lotAreaUnit
-                            ? ` ${listing.lotAreaUnit}`
-                            : " (unit unknown)"
-                        }`}
-                      />
-                    ) : null}
                     {listing.resort ? (
                       <DetailItem label="Resort / complex" value={listing.resort} />
                     ) : null}
@@ -645,16 +604,6 @@ export default async function ListingDetailPage({
                       />
                     ) : null}
                   </dl>
-                  {optionalMissing > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      {optionalMissing} optional detail
-                      {optionalMissing === 1 ? " is" : "s are"} not available
-                      from this source.
-                    </p>
-                  ) : null}
-                      </>
-                    );
-                  })()}
                 </CardContent>
               </Card>
 
@@ -671,12 +620,10 @@ export default async function ListingDetailPage({
                 <CardContent>
                   <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
-                      label="Enrichment status"
-                      tip={TIPS.enrichmentStatus.tip}
+                      label="AI coverage"
+                      tip={aiCoverage.tip}
                       tipLabel={TIPS.enrichmentStatus.label}
-                      value={enrichmentStatusLabel(
-                        listing.enrichmentStatus ?? "not_run",
-                      )}
+                      value={aiCoverage.label}
                     />
                     <DetailItem
                       label="Last enriched"
@@ -876,6 +823,7 @@ export default async function ListingDetailPage({
         <TabsContent value="changes" className="space-y-4">
           <ListingAiChanges
             proposals={proposals}
+            selectedChecksum={proposal?.inputChecksum ?? null}
             sourceNeighbourhoodText={listing.sourceNeighbourhoodText}
             mapNeighbourhoodName={listing.inferredNeighbourhood?.name ?? null}
           />
@@ -978,6 +926,57 @@ export default async function ListingDetailPage({
               Source facts & description
             </summary>
             <div className="mt-4 space-y-4">
+              <Card>
+                <CardHeader className="border-b">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle>Source vs public English title</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Source title is preserved. Public Browse prefers AI English
+                    title, then a deterministic English fallback.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Source title
+                    </p>
+                    <p className="mt-1">
+                      {listing.title ?? "No source title stored."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      AI display title
+                    </p>
+                    <p className="mt-1">
+                      {proposalDisplayTitle ??
+                        "Not available yet (awaiting English presentation enrichment)."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Public title used in Browse
+                    </p>
+                    <p className="mt-1 font-medium">{publicEnglishTitle}</p>
+                    {!proposalDisplayTitle ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Deterministic fallback: {deterministicTitle}
+                      </p>
+                    ) : null}
+                  </div>
+                  {proposalDisplaySummary ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        AI display summary
+                      </p>
+                      <p className="mt-1 text-muted-foreground">
+                        {proposalDisplaySummary}
+                      </p>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader className="border-b">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1111,41 +1110,22 @@ export default async function ListingDetailPage({
                 <ProvenanceLabel kind="system" />
               </div>
               <CardDescription>
-                Import, price, lifecycle, and AI enrichment events in plain language.
+                Seller and source activity. Rate-only benchmark updates,
+                enrichment, and duplicate import events stay in storage but are
+                hidden from this default view.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {activity.length === 0 && timelineDrafts.length === 0 ? (
+              {timelineActivity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No activity events yet for this listing.
+                  No seller/source activity events for this listing.
+                  {activity.length > 0
+                    ? ` (${activity.length} system events suppressed from default view)`
+                    : ""}
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {timelineDrafts.map((draft, index) => (
-                    <li
-                      key={`ai-draft-${index}-${draft.summary}`}
-                      className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {draft.event_type
-                            ? activityLabel(draft.event_type, listing.source.name)
-                            : "AI enrichment"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {draft.event_at
-                            ? formatDateTime(draft.event_at)
-                            : proposal?.generatedAt
-                              ? formatDateTime(proposal.generatedAt)
-                              : "—"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {draft.summary}
-                      </p>
-                    </li>
-                  ))}
-                  {activity.map((event) => (
+                  {timelineActivity.map((event) => (
                     <li
                       key={event.id}
                       className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"

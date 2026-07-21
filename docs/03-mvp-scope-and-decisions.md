@@ -14,13 +14,15 @@ Remaining activation gates: Sotheby's access route **BLOCKED** (2026-07-20 recon
 not Ready — official affiliate feed/export or Anywhere partner API with written
 approval required; excluded from Ready pipelines). Four Ready adapters (KW,
 RE/MAX, Moret, Monumentenzorg) share the Labs property pipeline; **daily cron is
-temporarily Off** (`AUTOMATIC_REFRESH_ENABLED = false`) pending supervised
-verification after hash repair; manual/`workflow_dispatch` and dashboard Data
-Operations dispatch remain available. AI proposals use exception-based **v4 /
-v4.1** policy (high-confidence evidenced fields auto-apply; manual attention
-only for conflicts, weak evidence, or new-attribute taxonomy). Labs prototypes
-(Search Request / What Fits Me / Agent / Match Reports) exist in the dashboard;
-production activation on merkado.cw remains out of scope.
+armed On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
+idempotent gates; GHA schedule `0 10 * * *` UTC begins only when
+`property-pipeline-labs.yml` reaches the default branch; manual/`workflow_dispatch`
+and dashboard Data Operations dispatch remain available. AI proposals use
+exception-based **v5** policy (`enrichment_policy_v5`; high-confidence evidenced
+fields auto-apply; manual attention only for conflicts, weak evidence, or
+new-attribute taxonomy). Labs prototypes (Search Request / What Fits Me / Agent /
+Match Reports) exist in the dashboard; production activation on merkado.cw
+remains out of scope.
 
 ## 2. MVP deliverables
 
@@ -57,7 +59,7 @@ production activation on merkado.cw remains out of scope.
 | Sold | Requires explicit source signal |
 | Removed | Requires consecutive successful complete snapshots with absence |
 | Passport | Off-chain listing/property activity log |
-| AI review model | Exception-based (`enrichment_policy_v4_1`): high-confidence evidenced gap-filling fields auto-apply; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused |
+| AI review model | Exception-based (`enrichment_policy_v5`): high-confidence evidenced gap-filling fields auto-apply; English public presentation + optional Dutch About-this-property; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused. Historical v4 / v4.1 / v4.2 retained for audit. |
 | Guided discovery | Users may create a Property Search Request directly or through What Fits Me? |
 | Merkado Agent | Future paid monthly subscription; email delivery first |
 | Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |
@@ -70,7 +72,7 @@ production activation on merkado.cw remains out of scope.
 | Avoided claim | Correct description |
 |---|---|
 | Property marketplace is live | Property is Labs/WIP; cars are live |
-| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron Off / dispatch available; Sotheby's remains BLOCKED |
+| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron On (schedule after default-branch merge) / dispatch available; Sotheby's remains BLOCKED |
 | Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
 | Sold price is known | Last known asking price may be known; sale price is not confirmed |
 | Removed means sold | Removed means absent from the source after confirmation |

@@ -1,17 +1,19 @@
-"""Automatic enrichment application policy (v4.1, exception-based).
+"""Automatic enrichment application policy (v5, exception-based).
 
 The model may recommend auto_apply; the application makes the final decision.
 Human review is exception-based: only genuine unresolved factual conflicts
 reach needs_attention. Confidence-alone gaps, subjective marketing language,
-Dutch/English synonym normalization, and property-type equivalence are handled
-deterministically without creating operational review work.
+Dutch/English synonym normalization, property-type equivalence, and English
+presentation style/wording choices are handled deterministically without
+creating operational review work.
 
 Everything else is either auto-applied (allowed, evidenced, grounded, above
 the field's confidence bar, no conflict, no negation, doesn't overwrite a
-protected source field) or rejected quietly with no operational attention
-required (unsupported, duplicated, forbidden, malformed, noisy, generic
-unhelpful, too-low-confidence, subjective accessibility/marketing, already
-represented by stronger source data, or a partial-word/encoding artifact).
+protected source field) or rejected/redundant quietly with no operational
+attention required (unsupported, duplicated synonyms, forbidden, malformed,
+noisy, generic unhelpful, too-low-confidence, subjective
+accessibility/marketing, already represented by stronger source data, or a
+partial-word/encoding artifact).
 """
 
 from __future__ import annotations
@@ -19,9 +21,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from merkado_labs.enrichment.evidence import ground_evidence
+from merkado_labs.enrichment.evidence import (
+    curated_gated_location_hit,
+    ground_evidence,
+)
 from merkado_labs.enrichment.fields import (
     ATTRIBUTE_DISPLAY_LABELS,
+    DESCRIPTION_FILLABLE_PROTECTED_FIELDS,
     FORBIDDEN_AI_FIELDS,
     PROTECTED_AI_PROPOSAL_FIELDS,
     PROTECTED_SOURCE_STRUCTURED_FIELDS,
@@ -47,7 +53,7 @@ from merkado_labs.enrichment.values import (
     resolve_effective_value,
 )
 
-POLICY_VERSION = "enrichment_policy_v4_1"
+POLICY_VERSION = "enrichment_policy_v5"
 
 
 class ReasonCode:
@@ -91,6 +97,10 @@ class ReasonCode:
     SOURCE_NEGATION_CONFIRMS_FALSE = "source_negation_confirms_false"
     SOURCE_NEGATION_REJECTS_TRUE = "source_negation_rejects_true"
     SOURCE_TERRACE_FALSE_WINS = "source_terrace_false_wins"
+    CURATED_LOCATION_KNOWLEDGE = "curated_location_knowledge_gated_community"
+    WATERFRONT_PROXIMITY_NOT_PROVEN = "waterfront_proximity_not_proven"
+    FURNISHED_OPTIONAL_OR_NEGOTIABLE = "furnished_optional_or_negotiable"
+    DIRECT_BILINGUAL_EVIDENCE = "direct_bilingual_evidence"
 
 
 # Configurable thresholds — not magic numbers sprinkled in call sites.
@@ -348,6 +358,32 @@ def _validate_bounds(key: str, value: Any) -> str | None:
             return "parking_spaces_not_integer"
         if n < 0 or n > MAX_PARKING_SPACES:
             return "parking_spaces_out_of_bounds"
+    if key in {"bedrooms", "bathrooms"}:
+        try:
+            n = float(value)
+        except (TypeError, ValueError):
+            return f"{key}_not_numeric"
+        if n < 0 or n > 30:
+            return f"{key}_out_of_bounds"
+        if key == "bedrooms" and n != int(n):
+            return "bedrooms_not_integer"
+    if key == "price_period":
+        allowed = {
+            "month",
+            "monthly",
+            "week",
+            "weekly",
+            "day",
+            "daily",
+            "night",
+            "nightly",
+            "year",
+            "yearly",
+            "sale",
+            "total",
+        }
+        if str(value).strip().casefold() not in allowed:
+            return "price_period_unsupported"
     return None
 
 
@@ -430,6 +466,8 @@ def decide_field(
     corpus = source_text if source_text is not None else _build_source_corpus(source_values)
     narrative_field = normalized_key in {
         "concise_summary",
+        "display_title",
+        "display_summary",
         "display_overview",
         "display_layout",
         "display_location",
@@ -438,18 +476,25 @@ def decide_field(
     }
 
     if normalized_key in PROTECTED_AI_PROPOSAL_FIELDS:
-        return FieldDecision(
-            key=normalized_key, proposed_value=coerced, value_type=value_type,
-            confidence=confidence, evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source, extraction_reason=extraction_reason,
-            classification=classification, conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.REJECTED,
-            conflict_status=ConflictStatus.FORBIDDEN,
-            reasons=(ReasonCode.PROTECTED_SOURCE_FIELD,),
-            previous_effective=previous_effective, resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
-        )
+        source_protected = source_values.get(normalized_key)
+        source_present = source_protected is not None and source_protected != ""
+        # Empty protected columns may be gap-filled from direct description
+        # evidence for bedrooms/bathrooms. Non-null source values stay immutable.
+        # floor_area_m2 remains hard-protected even when empty.
+        if source_present or normalized_key not in DESCRIPTION_FILLABLE_PROTECTED_FIELDS:
+            return FieldDecision(
+                key=normalized_key, proposed_value=coerced, value_type=value_type,
+                confidence=confidence, evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source, extraction_reason=extraction_reason,
+                classification=classification, conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REJECTED,
+                conflict_status=ConflictStatus.FORBIDDEN,
+                reasons=(ReasonCode.PROTECTED_SOURCE_FIELD,),
+                previous_effective=previous_effective, resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+            )
+        reasons.append("description_gap_fill_empty_source")
 
     if is_forbidden_field(normalized_key) or normalized_key in FORBIDDEN_AI_FIELDS:
         return FieldDecision(
@@ -849,6 +894,38 @@ def decide_field(
             display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
         )
 
+    # Same-value proposals against an existing explicit source fact are
+    # redundant, not conflicts or review work.
+    source_same = source_values.get(normalized_key)
+    if source_same is not None and source_same != "":
+        try:
+            same_as_source = float(source_same) == float(coerced)
+        except (TypeError, ValueError):
+            same_as_source = (
+                str(source_same).strip().casefold() == str(coerced).strip().casefold()
+            )
+        if same_as_source:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=False,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.REDUNDANT,
+                conflict_status=ConflictStatus.NONE,
+                reasons=(ReasonCode.REDUNDANT_SOURCE_VALUE,),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
+
     # Direct structured source terrace=false always beats AI terrace=true.
     if normalized_key == "terrace" and coerced is True:
         structured_terrace = source_values.get("terrace")
@@ -921,24 +998,54 @@ def decide_field(
         )
 
     if conflict_indicator:
-        return FieldDecision(
-            key=normalized_key,
-            proposed_value=coerced,
-            value_type=value_type,
-            confidence=confidence,
-            evidence_snippet=evidence_snippet,
-            evidence_source=evidence_source,
-            extraction_reason=extraction_reason,
-            classification=classification,
-            conflict=True,
-            model_recommended_action=model_recommended_action,
-            final_status=AutoApplyStatus.NEEDS_ATTENTION,
-            conflict_status=ConflictStatus.AMBIGUOUS,
-            reasons=("model_conflict_indicator",),
-            previous_effective=previous_effective,
-            resulting_effective=previous_effective,
-            display_label=ATTRIBUTE_DISPLAY_LABELS.get(normalized_key, normalized_key),
+        # Reviewed location knowledge for gated communities is stronger than an
+        # advisory model conflict flag on an otherwise empty source field.
+        curated_gated = (
+            normalized_key == "gated_community"
+            and coerced is True
+            and (
+                curated_gated_location_hit(corpus)
+                or curated_gated_location_hit(evidence_snippet)
+                or curated_gated_location_hit(
+                    str(source_values.get("source_neighbourhood_text") or "")
+                )
+            )
         )
+        # Clear grounded evidence (including explicit negative amenity evidence)
+        # must not be forced into needs_attention solely by a sticky model
+        # conflict flag from a prior rematerialization.
+        grounded_override = (
+            ReasonCode.SOURCE_NEGATION_CONFIRMS_FALSE in reasons
+            or "evidence_span_in_source" in reasons
+            or "paraphrased_evidence_with_synonym" in reasons
+            or "description_gap_fill_empty_source" in reasons
+        )
+        if curated_gated:
+            reasons.append(ReasonCode.CURATED_LOCATION_KNOWLEDGE)
+            reasons.append("model_conflict_indicator_overridden_by_curated_location")
+        elif grounded_override:
+            reasons.append("model_conflict_indicator_overridden_by_grounded_evidence")
+        else:
+            return FieldDecision(
+                key=normalized_key,
+                proposed_value=coerced,
+                value_type=value_type,
+                confidence=confidence,
+                evidence_snippet=evidence_snippet,
+                evidence_source=evidence_source,
+                extraction_reason=extraction_reason,
+                classification=classification,
+                conflict=True,
+                model_recommended_action=model_recommended_action,
+                final_status=AutoApplyStatus.NEEDS_ATTENTION,
+                conflict_status=ConflictStatus.AMBIGUOUS,
+                reasons=("model_conflict_indicator",),
+                previous_effective=previous_effective,
+                resulting_effective=previous_effective,
+                display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                    normalized_key, normalized_key
+                ),
+            )
 
     bounds_error = _validate_bounds(normalized_key, coerced)
     if bounds_error:
@@ -963,7 +1070,12 @@ def decide_field(
 
     # Below the attention bar there is nothing for a human to usefully
     # decide — reject as too-low-confidence noise instead of queuing it.
-    if confidence is None or confidence < NEEDS_ATTENTION_CONFIDENCE_THRESHOLD:
+    # English presentation/narrative style fields are exempt: wording and
+    # translation never create operational review work.
+    if (
+        not narrative_field
+        and (confidence is None or confidence < NEEDS_ATTENTION_CONFIDENCE_THRESHOLD)
+    ):
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -989,7 +1101,11 @@ def decide_field(
     auto_apply_threshold = FIELD_AUTO_APPLY_THRESHOLDS.get(
         normalized_key, AUTO_APPLY_CONFIDENCE_THRESHOLD
     )
-    if confidence < auto_apply_threshold and not narrative_field:
+    if (
+        not narrative_field
+        and confidence is not None
+        and confidence < auto_apply_threshold
+    ):
         return FieldDecision(
             key=normalized_key,
             proposed_value=coerced,
@@ -1090,18 +1206,62 @@ def evaluate_proposal_attributes(
     previous_effective: dict[str, Any] | None = None,
     source_text: str | None = None,
 ) -> PolicyEvaluation:
-    """Evaluate a list of structured attribute proposals from the model."""
+    """Evaluate a list of structured attribute proposals from the model.
+
+    First-seen proposal per canonical key is evaluated. Later synonym
+    duplicates (pets_allowed / pet_suitability, gemeubileerd / furnished) are
+    recorded as redundant — never rejected as conflicts and never queued for
+    human review.
+    """
 
     previous_effective = previous_effective or {}
     source_values = source_values or {}
     corpus = source_text if source_text is not None else _build_source_corpus(source_values)
     evaluation = PolicyEvaluation()
+    seen_keys: set[str] = set()
     for item in attributes:
         key = str(item.get("key") or item.get("attribute") or "")
         if not key:
             continue
+        canonical = normalize_attribute_key(key)
+        if not canonical:
+            continue
+        if canonical in seen_keys:
+            coerced = _tri_state_to_bool(
+                normalize_proposed_value(canonical, item.get("value"))
+            )
+            evaluation.decisions.append(
+                FieldDecision(
+                    key=canonical,
+                    proposed_value=coerced,
+                    value_type=_infer_value_type(canonical, coerced),
+                    confidence=item.get("confidence"),
+                    evidence_snippet=item.get("evidence_snippet")
+                    or item.get("evidence"),
+                    evidence_source=item.get("evidence_source"),
+                    extraction_reason=item.get("extraction_reason")
+                    or item.get("reason"),
+                    classification=str(
+                        item.get("classification") or "ai_extracted_from_source"
+                    ),
+                    conflict=False,
+                    model_recommended_action=str(
+                        item.get("recommended_action") or "needs_attention"
+                    ),
+                    final_status=AutoApplyStatus.REDUNDANT,
+                    conflict_status=ConflictStatus.NONE,
+                    reasons=(ReasonCode.REDUNDANT_DUPLICATE_PROPOSAL,),
+                    previous_effective=previous_effective.get(canonical),
+                    resulting_effective=previous_effective.get(canonical),
+                    display_label=ATTRIBUTE_DISPLAY_LABELS.get(
+                        canonical, canonical.replace("_", " ").title()
+                    ),
+                )
+            )
+            continue
+        seen_keys.add(canonical)
         decision = decide_field(
-            key=key,
+            key=canonical,
             proposed_value=item.get("value"),
             confidence=item.get("confidence"),
             evidence_snippet=item.get("evidence_snippet") or item.get("evidence"),
@@ -1115,8 +1275,16 @@ def evaluate_proposal_attributes(
                 item.get("recommended_action") or "needs_attention"
             ),
             source_values=source_values,
-            previous_effective=previous_effective.get(normalize_attribute_key(key)),
+            previous_effective=previous_effective.get(canonical),
             source_text=corpus,
         )
         evaluation.decisions.append(decision)
     return evaluation
+
+
+def listing_has_presentation_current(proposal: dict[str, Any] | None) -> bool:
+    """True when English presentation fields are present and auto-applied."""
+
+    from merkado_labs.enrichment.presentation import has_complete_english_presentation
+
+    return has_complete_english_presentation(proposal)

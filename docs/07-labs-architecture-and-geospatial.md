@@ -45,9 +45,9 @@ DIRECT SOURCE ADAPTER
 ```
 
 Four Ready sources share the Labs property pipeline (orchestrator/worker/locks/
-anomaly/budgets/`change_hash`). **Daily cron is temporarily Off**;
-manual/`workflow_dispatch` and Data Operations dispatch remain available.
-Sotheby's is excluded.
+anomaly/budgets/`change_hash`). **Daily cron remains Off** until activation
+gates pass; manual/`workflow_dispatch` and Data Operations dispatch remain
+available. Sotheby's is excluded.
 
 ### Evidence layers
 
@@ -78,31 +78,56 @@ Sotheby's is excluded.
 - Why prior batch used `gpt-4.1-mini`: hardcoded in `run_ai_enrichment_batch25.py` +
   former `DEFAULT_MODEL` / config default before env-only hardening
 - After complete successful scrape: enqueue new/changed only via property pipeline;
-  daily cron temporarily Off (`AUTOMATIC_REFRESH_ENABLED = false`)
+  daily cron armed On (`AUTOMATIC_REFRESH_ENABLED = true`); GHA schedule begins
+  on default branch only
 
-#### Prompt / schema / policy v4
+#### Prompt / schema / policy v5 (current)
 
-- Current combination: prompt `listing_enrichment_v4`, JSON schema
-  `listing_enrichment_schema_v4`, application policy `enrichment_policy_v4_1`
-  (deterministic Dutch/English normalization; operational UI label **Needs review**
-  for current unresolved conflicts only; historical v3/v4 rows stay in advanced audit).
-  Public Browse/Passport expose `image_urls` galleries with card/detail carousels;
-  adapters already extract full galleries into `property_listings.image_urls`.
-- Labs activation (2026-07-20): policy v4.1 rematerialized on 346 retained v4
+- Current combination: prompt `listing_enrichment_v5`, JSON schema
+  `listing_enrichment_schema_v5`, application policy `enrichment_policy_v5`
+  (English-default public presentation: `display_title` / `display_summary` /
+  English overview + optional Dutch `display_description_nl` for About this
+  property; scrapers keep raw source title/description; AI never
+  overwrites protected facts; deterministic bilingual Dutch/English evidence;
+  curated Blue Bay gated rule; operational UI label **Needs review** for
+  current unresolved conflicts only; historical v3/v4 rows stay in advanced
+  audit). Dashboard `POLICY_VERSION = enrichment_policy_v5`
+  (`apps/labs-dashboard/src/lib/enrichment/versions.ts`). Public Browse/Passport
+  expose English presentation (AI or deterministic fallbacks), SEO/JSON-LD in
+  English, stable URLs `/browse/{uuid}`, and `image_urls` galleries.
+- One-time English migration (`scripts/migrate_english_presentation.py`) was
+  **applied** 2026-07-21 for **289** active Ready listings (~USD **7.83** under
+  USD **15** / **320**-call caps). Dutch About-this-property backfill
+  (`scripts/migrate_dutch_descriptions.py`) **applied** for **285** public
+  listings (~USD **2.42**). Unchanged bilingual hashes skip at zero cost. See
+  `labs/PROPERTY_DATA_QUALITY_REPORT.md` and `01-live-product-state.md`.
+- Prior Labs activation (2026-07-20, v4.1): rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
   151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
-  idempotent. Public view / gallery migrations
-  (`public_property_listings_effective`, enrichment quality v4, review_v41
-  galleries) are **applied** in Labs and expose `image_urls`. Ready-source
-  galleries were already stored (~12.1k URLs); no lifecycle scrape or image
-  binary copy was required. Live `public_property_listings` count ~**279**
-  (2026-07-21).
-- v4 preserves replay parsing for v3 proposal JSON, marks echoed source/map
+  idempotent. Public view name is `public.public_property_listings` (migration
+  filename `20260720140000_public_property_listings_effective.sql` replaced that
+  view; there is no separate `*_effective` relation). Gallery / English /
+  bilingual view migrations are in Labs and expose `image_urls` +
+  `display_description_nl`. Ready-source galleries were already stored
+  (~12.1k URLs); no lifecycle scrape or image binary copy was required.
+- Quality pass (2026-07-21): prior policy **v4.2** zero-cost rematerialization
+  completed to a fixed point (`transitions={}`, `changed=0`; openai_calls=0;
+  decision bag 5611→3590 after synonym dedupe). Root-cause fix: immutable
+  proposal inputs + canonical-key dedupe (never FD/audit backfill). Historical
+  Phase-0 public eligibility snap was KW88/Moret71/REMAX118/Monumentenzorg2;
+  post-validation snapshot (same day / tip `d2abb557`): public view **286**
+  (KW **88** / Remax **125** / Moret **71** / Monumentenzorg **2**); EN/NL
+  About-this-property on **283**. Image identity/dedup: RE/MAX fixture 82→42
+  via `build_gallery`; Labs cleanup removed 5705 duplicate gallery slots;
+  frontend mirror in `apps/labs-dashboard/src/lib/listing-gallery-urls.ts`;
+  later one confirmed RE/MAX residual cleaned idempotently (`d2abb557`). See
+  `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
+- v5 preserves replay parsing for v3/v4 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
-  neighbourhood gap-fills, and adds source-language display-description blocks.
-- Labs public-effective view prefers retained v4 proposals (fallback v3)
-  and exposes `effective_summary` + `display_description` + `image_urls`
-  (never evidence/tokens/cost).
+  neighbourhood gap-fills, and adds English public presentation fields.
+- Labs public-effective view prefers retained v5 proposals (fallback v4 then v3)
+  and exposes `display_title` / `display_summary` / English description +
+  `image_urls` (never evidence/tokens/cost).
 - Cross-source v4 canary (20 public) + public backfill (254; 253 succeeded)
   completed under the USD 25 hard ceiling (~USD 7.42 total exact). Production
   Merkado migration remains paused.
@@ -165,8 +190,12 @@ token usage, AI costs, and private HTML must never appear on `/browse`.
 
 **Public attribute allowlist:** pool (+ subtype when known), furnished,
 parking, parking spaces, garage, gated community, air conditioning, garden,
-terrace, balcony, sea view, solar panels, generator, water heater, security,
-appliances, accessibility, pet suitability.
+terrace, balcony, sea view, waterfront, solar panels, generator, water heater,
+security, appliances, accessibility, pet suitability.
+
+**Image identity / galleries:** adapters extract full galleries into
+`property_listings.image_urls`; RE/MAX uses `build_gallery` with identity
+dedup. Labs cleanup (2026-07-21) removed duplicate slots without scraping.
 
 **Effective neighbourhood priority** (one final value; never generic Curaçao):
 
@@ -177,9 +206,10 @@ appliances, accessibility, pet suitability.
 4. Otherwise unavailable
 
 Migration `20260720140000_public_property_listings_effective.sql` replaces the
-public view with this projection (owner security definer; SELECT-only grants).
-**Applied in Labs**; production merkado.cw property projection remains paused /
-not part of automatic deploy.
+view `public.public_property_listings` with this projection (owner security
+definer; SELECT-only grants). Filename says “effective”; there is no separate
+`public_property_listings_effective` relation. **Applied in Labs**; production
+merkado.cw property projection remains paused / not part of automatic deploy.
 
 ### Security model (Labs read access)
 
@@ -215,7 +245,7 @@ not part of automatic deploy.
 - Initial AI validation: 5 listings succeeded; unchanged rerun skipped (0 tokens)
 - Adapter `0.4.1` (2026-07-20): parse `google.maps.LatLng` (199/220 on cache reparse), listing agent, filter agent headshots; Labs rows not updated (no import this task)
 - Terra v3 five-listing canary executed 2026-07-20 (`gpt-5.6-terra` + v3): **5/5** after `hs2467` retry
-- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron Off / dispatch available; normal Refresh & enrich stays new/changed only
+- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron On (schedule after default-branch merge) / dispatch available; normal Refresh & enrich stays new/changed only
 
 ## 4. Geospatial principles
 
@@ -226,6 +256,19 @@ not part of automatic deploy.
 - Bounding boxes are guards only.
 - Point-in-polygon assignment is authoritative when valid boundaries and coordinates exist.
 - Track coordinate provenance per source.
+
+### Map gaps vs neighbourhood-search gaps
+
+Do not conflate:
+
+| Gap | Meaning |
+|---|---|
+| **Map gap** | Missing coordinates (Labs snapshot: **28** listings) — no PIP assignment possible |
+| **Neighbourhood-search gap** | Filter/search coverage where source neighbourhood text can still contribute |
+
+PIP is authoritative when valid coordinates and boundaries exist. Source
+neighbourhood remains a fallback for filter/search when map assignment is
+unavailable. Display aliases do not merge assets.
 
 ### Effective neighbourhood (dashboard)
 
@@ -250,6 +293,26 @@ specific neighbourhood.
 Implementation: `apps/labs-dashboard/src/lib/domain/effective-neighbourhood.ts`,
 mirrored in `src/merkado_labs/enrichment/neighbourhood.py` — keep both in
 sync when the priority rules change.
+
+### Canonical neighbourhood display aliases
+
+After effective resolution, **display-only** canonicalization collapses safe
+duplicate labels without merging property assets:
+
+- Blue Bay resort / marketing variants → **Blue Bay**
+- Reviewed `… Curaçao` / `… Curacao` island suffixes → base neighbourhood
+- **St. Joris** → **Sint Joris**
+- **Salina** / **Salinja** / **Saliña** → **Saliña** (not Salinja Abou / Saliña Ariba)
+- **Marie Pompoen** / dual-label source forms → **Marie Pampoen**
+- Ambiguous multi-place or uncertain forms stay **separate** (no invented merge)
+
+Source evidence (`source_neighbourhood_text`, map assignment names) stays raw.
+Filter options and filter matching use the canonical display key so each
+neighbourhood appears once and selecting it returns every mapped variant.
+
+Python: `src/merkado_labs/enrichment/neighbourhood_canonical.py`  
+Dashboard: `apps/labs-dashboard/src/lib/domain/neighbourhood-aliases.ts`  
+Keep the alias tables in sync.
 
 ## 5. Assignment operations
 
@@ -307,7 +370,7 @@ The dashboard retains views for:
 - activity timeline;
 - coordinate quality and assignment status;
 - safe map filtering by source and lifecycle state;
-- Data Operations dispatch status (cron Off until re-enabled).
+- Data Operations dispatch status (cron On; schedule after default-branch merge).
 
 Sold and removed records may appear in admin/history views, but not active inventory.
 

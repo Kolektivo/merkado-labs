@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, FlaskConical } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FlaskConical, MapPin } from "lucide-react";
 
+import { AboutPropertyDescription } from "@/components/about-property-description";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -11,18 +12,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceDisplay } from "@/components/price-display";
 import { getPublicListingById } from "@/lib/data/public-listings";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  publicListingTypeLabel,
+  resolvePublicDisplaySummary,
+  resolvePublicDisplayTitle,
+  resolvePublicMetaDescription,
+} from "@/lib/domain/public-presentation";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import {
   groupPublicAttributes,
   publicAttributeChipLabel,
 } from "@/lib/domain/public-attributes";
 import { formatDateTime, titleCase } from "@/lib/format";
+import {
+  buildPublicListingJsonLd,
+  publicListingCanonicalPath,
+  publicListingCanonicalUrl,
+  publicSiteOrigin,
+} from "@/lib/seo/public-listing-jsonld";
 
 export const dynamic = "force-dynamic";
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const FILTER_KEYS = [
+  "q",
   "type",
   "source",
   "neighbourhood",
@@ -55,7 +69,49 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const listing = await getPublicListingById((await params).id).catch(() => null);
-  return { title: listing?.title ?? "Property" };
+  if (!listing) {
+    return { title: "Property" };
+  }
+
+  const title = resolvePublicDisplayTitle(listing);
+  const description = resolvePublicMetaDescription(listing);
+  const canonicalPath = publicListingCanonicalPath(listing.id);
+  const canonicalUrl = publicListingCanonicalUrl(listing.id);
+  const origin = publicSiteOrigin();
+  const image =
+    listing.primaryImageUrl ?? listing.imageUrls[0] ?? undefined;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: origin ? canonicalUrl : canonicalPath,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: origin ? canonicalUrl : canonicalPath,
+      locale: "en",
+      siteName: "Merkado Labs",
+      ...(image
+        ? {
+            images: [
+              {
+                url: image,
+                alt: title,
+              },
+            ],
+          }
+        : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
 }
 
 export default async function PublicListingPage({
@@ -72,14 +128,17 @@ export default async function PublicListingPage({
   const propertyType =
     listing.effectivePropertyType ?? listing.propertyType ?? null;
   const displayDescription = listing.displayDescription;
-  const missingOptional = [
-    listing.bedrooms == null,
-    listing.bathrooms == null,
-    listing.floorAreaM2 == null,
-  ].filter(Boolean).length;
+  const displayDescriptionNl = listing.displayDescriptionNl;
+  const displayTitle = resolvePublicDisplayTitle(listing);
+  const displaySummary = resolvePublicDisplaySummary(listing);
+  const jsonLd = buildPublicListingJsonLd(listing);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 overflow-x-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" asChild>
           <Link href={backHref}>
@@ -101,10 +160,10 @@ export default async function PublicListingPage({
       </div>
       <Alert className="border-primary/20 bg-primary/[0.03]">
         <FlaskConical className="size-4" />
-        <AlertTitle>Experimental Labs Passport preview</AlertTitle>
+        <AlertTitle>Labs preview · not live</AlertTitle>
         <AlertDescription>
-          Not live on merkado.cw. This page uses only the public-safe listing
-          projection and is not proof of ownership, value, or sale.
+          This uses only public-safe listing data and is not proof of ownership,
+          value, or sale. Public copy is English.
         </AlertDescription>
       </Alert>
 
@@ -114,20 +173,20 @@ export default async function PublicListingPage({
             imageUrls: listing.imageUrls,
             primaryImageUrl: listing.primaryImageUrl,
           })}
-          altBase={listing.title ?? `Property ${listing.externalId}`}
+          altBase={displayTitle}
           variant="detail"
           priority
         />
         <CardContent className="space-y-5 p-5 md:p-7">
           <div className="flex flex-wrap gap-2">
-            <Badge>{titleCase(listing.listingType)}</Badge>
+            <Badge>{publicListingTypeLabel(listing.listingType)}</Badge>
             <Badge variant="outline">{listing.sourceDisplayName}</Badge>
             {propertyType ? (
               <Badge variant="secondary">{titleCase(propertyType)}</Badge>
             ) : null}
           </div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {listing.title ?? `Property ${listing.externalId}`}
+            {displayTitle}
           </h1>
           <PriceDisplay
             model={buildPriceDisplay({
@@ -139,21 +198,30 @@ export default async function PublicListingPage({
           />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {listing.effectiveNeighbourhood ? (
-              <span className="min-w-0 max-w-full truncate">
-                {listing.effectiveNeighbourhood}
-                {listing.effectiveNeighbourhoodProvenanceLabel ? (
-                  <span className="text-xs">
-                    {" "}
-                    · {listing.effectiveNeighbourhoodProvenanceLabel}
-                  </span>
-                ) : null}
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate">
+                <MapPin className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">
+                  {listing.effectiveNeighbourhood}
+                  {listing.effectiveNeighbourhoodProvenanceLabel ? (
+                    <span className="text-xs">
+                      {" "}
+                      · {listing.effectiveNeighbourhoodProvenanceLabel}
+                    </span>
+                  ) : null}
+                </span>
               </span>
             ) : null}
             {listing.bedrooms != null ? (
-              <span>{listing.bedrooms} bedrooms</span>
+              <span>
+                {listing.bedrooms} bedroom
+                {listing.bedrooms === 1 ? "" : "s"}
+              </span>
             ) : null}
             {listing.bathrooms != null ? (
-              <span>{listing.bathrooms} bathrooms</span>
+              <span>
+                {listing.bathrooms} bathroom
+                {listing.bathrooms === 1 ? "" : "s"}
+              </span>
             ) : null}
             {listing.floorAreaM2 != null ? (
               <span>{listing.floorAreaM2} m² floor</span>
@@ -165,13 +233,6 @@ export default async function PublicListingPage({
               </span>
             ) : null}
           </div>
-          {missingOptional > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {missingOptional} optional property{" "}
-              {missingOptional === 1 ? "detail was" : "details were"} not
-              provided by this source.
-            </p>
-          ) : null}
         </CardContent>
       </Card>
 
@@ -209,60 +270,18 @@ export default async function PublicListingPage({
           <CardTitle>About this property</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {listing.effectiveSummary ? (
+          {displaySummary ? (
             <section>
-              <h2 className="text-sm font-medium">Concise listing summary</h2>
+              <h2 className="text-sm font-medium">Summary</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {listing.effectiveSummary}
+                {displaySummary}
               </p>
             </section>
           ) : null}
-          {displayDescription ? (
-            <>
-              {displayDescription.overview ? (
-                <section>
-                  <h2 className="text-sm font-medium">Overview</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.overview}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.layout ? (
-                <section>
-                  <h2 className="text-sm font-medium">Layout</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.layout}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.location ? (
-                <section>
-                  <h2 className="text-sm font-medium">Location</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.location}
-                  </p>
-                </section>
-              ) : null}
-              {displayDescription.highlights.length ? (
-                <section>
-                  <h2 className="text-sm font-medium">Highlights</h2>
-                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {displayDescription.highlights.map((highlight) => (
-                      <li key={highlight}>{highlight}</li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-              {displayDescription.practical ? (
-                <section>
-                  <h2 className="text-sm font-medium">Practical details</h2>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {displayDescription.practical}
-                  </p>
-                </section>
-              ) : null}
-            </>
-          ) : null}
+          <AboutPropertyDescription
+            english={displayDescription}
+            dutch={displayDescriptionNl}
+          />
           <details>
             <summary className="cursor-pointer text-sm font-medium">
               Original source description
@@ -271,6 +290,16 @@ export default async function PublicListingPage({
               {listing.description ?? "Source description is not available."}
             </p>
           </details>
+          {listing.title && listing.title.trim() !== displayTitle ? (
+            <details>
+              <summary className="cursor-pointer text-sm font-medium">
+                Original source title
+              </summary>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {listing.title}
+              </p>
+            </details>
+          ) : null}
         </CardContent>
       </Card>
 
