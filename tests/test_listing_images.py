@@ -110,10 +110,48 @@ def test_remax_prefers_larger_when_primary_is_thumb() -> None:
     assert gallery.primary_url == full
 
 
-def test_transform_query_variants_kept_distinct() -> None:
+def test_transform_query_variants_collapse_prefer_larger() -> None:
     urls = [
-        "https://cdn.example.com/photo.jpg?w=800",
-        "https://cdn.example.com/photo.jpg?w=400",
+        "https://cdn.example.com/photo.jpg?w=400&h=300",
+        "https://cdn.example.com/photo.jpg?w=800&h=600",
+        "https://cdn.example.com/photo.jpg?w=400&h=300&q=60",
+    ]
+    gallery = build_gallery(urls)
+    assert gallery.urls == ["https://cdn.example.com/photo.jpg?w=800&h=600"]
+    assert gallery.duplicates_removed == 2
+
+
+def test_transform_query_keeps_distinct_paths() -> None:
+    urls = [
+        "https://cdn.example.com/photo-a.jpg?w=800",
+        "https://cdn.example.com/photo-b.jpg?w=800",
+    ]
+    gallery = build_gallery(urls)
+    assert len(gallery.urls) == 2
+    assert gallery.duplicates_removed == 0
+
+
+def test_remax_empty_body_near_aspect_collapses() -> None:
+    """CDN names with no image id: only collapse near-identical aspects."""
+
+    urls = [
+        "https://cdn.remax-abc.com/img/cache/-1761237153-1000x559.jpg",
+        "https://cdn.remax-abc.com/img/cache/-1761237153-1000x561.jpg",
+        "https://cdn.remax-abc.com/img/cache/-1761237153-1000x480.jpg",  # different aspect
+    ]
+    gallery = build_gallery(urls)
+    assert len(gallery.urls) == 2
+    assert "1000x561" in gallery.urls[0]  # larger area of the ~1.78 pair
+    assert "1000x480" in gallery.urls[1]
+    assert gallery.duplicates_removed == 1
+
+
+def test_remax_empty_body_adjacent_timestamp_kept() -> None:
+    """Do not merge empty-body photos across neighboring timestamps."""
+
+    urls = [
+        "https://cdn.remax-abc.com/img/cache/-1723103975-1000x563.jpg",
+        "https://cdn.remax-abc.com/img/cache/-1723103976-1000x562.jpg",
     ]
     gallery = build_gallery(urls)
     assert len(gallery.urls) == 2

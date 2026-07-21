@@ -22,6 +22,7 @@ import {
   hasMappableCoordinates,
   type NeighbourhoodAssignmentStatus,
 } from "@/lib/geo/coordinates";
+import { uniqueListingImages } from "@/lib/listing-gallery-urls";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 /** Internal Labs reads use service-role; anon cannot SELECT property_listings. */
@@ -357,7 +358,7 @@ function normalizeListing(
       if (!urls.length && row.primary_image_url) {
         urls.push(String(row.primary_image_url));
       }
-      return [...new Set(urls)];
+      return uniqueListingImages(urls);
     })(),
     description: row.description ? String(row.description) : null,
     street: row.street ? String(row.street) : null,

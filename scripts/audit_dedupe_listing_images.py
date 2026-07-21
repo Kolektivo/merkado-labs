@@ -8,7 +8,9 @@ Safety:
 - Never touches production ``jkrfyvukhhsapoivntms``
 - Never removes a sole valid cover
 - Preserves stable first-seen gallery order / primary via ``build_gallery``
+- High-confidence URL/identity cleanup only (no binary / perceptual downloads)
 - No scrape, OpenAI, or binary download
+- Idempotent: re-running after apply yields zero changes
 """
 
 from __future__ import annotations
@@ -20,12 +22,16 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from merkado_labs.scrapers.images import (  # noqa: E402
+    _remax_cache_meta,
     build_gallery,
+    canonicalize_image_url,
+    image_identity_key,
     is_plausible_image_url,
 )
 from merkado_labs.scrapers.import_pipeline import create_labs_client  # noqa: E402
@@ -41,8 +47,9 @@ READY = (
 
 
 def _load_env() -> None:
-    env = ROOT / "apps" / "labs-dashboard" / ".env.local"
-    if env.is_file():
+    for env in (ROOT / ".env", ROOT / "apps" / "labs-dashboard" / ".env.local"):
+        if not env.is_file():
+            continue
         for line in env.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -94,6 +101,70 @@ def _protect_sole_cover(
     return [], None
 
 
+def _classify_removed(original: list[str], cleaned: list[str]) -> Counter[str]:
+    """Best-effort classification of removed gallery slots."""
+
+    counts: Counter[str] = Counter()
+    cleaned_set = set(cleaned)
+    cleaned_identities = {image_identity_key(u) for u in cleaned}
+    for url in original:
+        if url in cleaned_set:
+            continue
+        identity = image_identity_key(url)
+        canon = canonicalize_image_url(url)
+        meta = _remax_cache_meta(canon)
+        path = urlparse(canon).path
+        if meta is not None and meta.empty_body:
+            counts["remax_empty_body_aspect_variant"] += 1
+        elif meta is not None:
+            counts["remax_named_cache_size_variant"] += 1
+        elif "/wp-content/uploads/" in path and identity in cleaned_identities:
+            counts["wordpress_size_suffix"] += 1
+        elif identity in cleaned_identities and canon not in cleaned_set:
+            if "?" in url or "?" in next(
+                (c for c in cleaned if image_identity_key(c) == identity), ""
+            ):
+                counts["resize_or_tracking_query_variant"] += 1
+            else:
+                counts["canonical_url_variant"] += 1
+        elif identity in cleaned_identities:
+            counts["exact_or_canonical_duplicate"] += 1
+        else:
+            counts["other_identity_collapse"] += 1
+    return counts
+
+
+def _uncertain_empty_body_multi_aspect(urls: list[str]) -> list[dict[str, Any]]:
+    """Empty-body RE/MAX groups kept distinct due to aspect mismatch."""
+
+    groups: dict[int, list[str]] = defaultdict(list)
+    for url in urls:
+        meta = _remax_cache_meta(canonicalize_image_url(url))
+        if meta is None or not meta.empty_body:
+            continue
+        groups[meta.timestamp].append(url)
+    uncertain: list[dict[str, Any]] = []
+    for ts, group in groups.items():
+        if len(group) < 2:
+            continue
+        aspects = sorted(
+            {
+                round(_remax_cache_meta(canonicalize_image_url(u)).aspect, 3)  # type: ignore[union-attr]
+                for u in group
+            }
+        )
+        if len(aspects) > 1:
+            uncertain.append(
+                {
+                    "timestamp": ts,
+                    "urls": group,
+                    "aspects": aspects,
+                    "reason": "empty_body_same_timestamp_distinct_aspects",
+                }
+            )
+    return uncertain
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -132,11 +203,21 @@ def main(argv: list[str] | None = None) -> int:
     if not source_ids:
         raise SystemExit("No matching property_sources in Labs")
 
+    public_before = (
+        client.table("property_listings")
+        .select("id", count="exact")
+        .in_("property_source_id", list(source_ids))
+        .eq("public_eligible", True)
+        .neq("status", "removed")
+        .execute()
+    )
+    public_eligible_before = public_before.count or 0
+
     query = (
         client.table("property_listings")
         .select(
             "id,property_source_id,listing_type,property_type,"
-            "primary_image_url,image_urls,status"
+            "primary_image_url,image_urls,status,public_eligible"
         )
         .in_("property_source_id", list(source_ids))
         .neq("status", "removed")
@@ -147,8 +228,12 @@ def main(argv: list[str] | None = None) -> int:
 
     by_source: dict[str, Counter[str]] = {key: Counter() for key in source_filter}
     by_category: dict[str, Counter[str]] = defaultdict(Counter)
+    classification: Counter[str] = Counter()
     samples: list[dict[str, Any]] = []
+    uncertain_cases: list[dict[str, Any]] = []
     updates: list[dict[str, Any]] = []
+    retained = 0
+    removed = 0
 
     for row in listings:
         source = source_ids[row["property_source_id"]]
@@ -169,25 +254,38 @@ def main(argv: list[str] | None = None) -> int:
             cleaned_primary=gallery.primary_url,
         )
         after_count = len(cleaned_urls)
-        removed = max(0, before_count - after_count)
+        slots_removed = max(0, before_count - after_count)
         changed = cleaned_urls != original or cleaned_primary != primary
+
+        class_counts = _classify_removed(original, cleaned_urls) if slots_removed else Counter()
+        classification.update(class_counts)
+
+        for item in _uncertain_empty_body_multi_aspect(cleaned_urls):
+            uncertain_cases.append(
+                {
+                    "id": row["id"],
+                    "source_key": source,
+                    **item,
+                }
+            )
 
         stats = by_source[source]
         stats["listings"] += 1
         stats["images_before"] += before_count
         stats["images_after"] += after_count
-        stats["duplicate_slots_removed"] += removed
-        stats["listings_with_dupes"] += int(removed > 0)
+        stats["duplicate_slots_removed"] += slots_removed
+        stats["listings_with_dupes"] += int(slots_removed > 0)
         stats["listings_changed"] += int(changed)
-        stats["build_gallery_duplicates_removed"] += gallery.duplicates_removed
+        retained += after_count
+        removed += slots_removed
 
         cat = by_category[category]
         cat["listings"] += 1
         cat["images_before"] += before_count
         cat["images_after"] += after_count
-        cat["duplicate_slots_removed"] += removed
+        cat["duplicate_slots_removed"] += slots_removed
 
-        if removed > 0 and len(samples) < 25:
+        if slots_removed > 0 and len(samples) < 25:
             samples.append(
                 {
                     "id": row["id"],
@@ -197,8 +295,9 @@ def main(argv: list[str] | None = None) -> int:
                     "after": after_count,
                     "primary_before": primary,
                     "primary_after": cleaned_primary,
-                    "urls_before_head": original[:3],
-                    "urls_after_head": cleaned_urls[:3],
+                    "classification": dict(class_counts),
+                    "urls_before_head": original[:4],
+                    "urls_after_head": cleaned_urls[:4],
                 }
             )
 
@@ -213,23 +312,29 @@ def main(argv: list[str] | None = None) -> int:
 
     applied = 0
     if args.apply and updates:
-        # Small batches; service-role Labs only.
-        batch_size = 50
-        for offset in range(0, len(updates), batch_size):
-            batch = updates[offset : offset + batch_size]
-            for item in batch:
-                (
-                    client.table("property_listings")
-                    .update(
-                        {
-                            "image_urls": item["image_urls"],
-                            "primary_image_url": item["primary_image_url"],
-                        }
-                    )
-                    .eq("id", item["id"])
-                    .execute()
+        for item in updates:
+            (
+                client.table("property_listings")
+                .update(
+                    {
+                        "image_urls": item["image_urls"],
+                        "primary_image_url": item["primary_image_url"],
+                    }
                 )
-                applied += 1
+                .eq("id", item["id"])
+                .execute()
+            )
+            applied += 1
+
+    public_after = (
+        client.table("property_listings")
+        .select("id", count="exact")
+        .in_("property_source_id", list(source_ids))
+        .eq("public_eligible", True)
+        .neq("status", "removed")
+        .execute()
+    )
+    public_eligible_after = public_after.count or 0
 
     report = {
         "project_ref": LABS,
@@ -239,18 +344,28 @@ def main(argv: list[str] | None = None) -> int:
         "ai_cost_usd": 0.0,
         "sources": list(source_filter),
         "listings_scanned": len(listings),
+        "listings_affected": sum(c["listings_with_dupes"] for c in by_source.values()),
         "listings_changed": sum(c["listings_changed"] for c in by_source.values()),
         "duplicate_slots_removed_total": sum(
             c["duplicate_slots_removed"] for c in by_source.values()
         ),
+        "rows_retained_total": retained,
+        "rows_removed_total": removed,
+        "classification": dict(classification),
         "by_source": {k: dict(v) for k, v in by_source.items()},
         "by_category": {k: dict(v) for k, v in sorted(by_category.items())},
         "samples": samples,
+        "uncertain_cases": uncertain_cases[:50],
+        "uncertain_case_count": len(uncertain_cases),
+        "public_eligible_before": public_eligible_before,
+        "public_eligible_after": public_eligible_after,
+        "public_eligible_unchanged": public_eligible_before == public_eligible_after,
         "applied_updates": applied,
         "note": (
             "Dry-run by default. --apply rewrites property_listings.image_urls "
             "and primary_image_url using build_gallery identity rules. "
-            "Sole valid covers are preserved."
+            "Sole valid covers are preserved. Uncertain empty-body multi-aspect "
+            "RE/MAX groups are left unchanged."
         ),
     }
     print(json.dumps(report, indent=2))

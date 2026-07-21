@@ -12,6 +12,7 @@ import type {
   PublicDisplayDescription,
   PublicPropertyListing,
 } from "@/lib/domain/types";
+import { uniqueListingImages } from "@/lib/listing-gallery-urls";
 import { createReadOnlySupabaseClient } from "@/lib/supabase/client";
 
 const PUBLIC_SELECT = [
@@ -209,7 +210,7 @@ function normalizeImageUrls(
     }
   }
   if (!urls.length && primaryImageUrl) urls.push(primaryImageUrl);
-  return [...new Set(urls)];
+  return uniqueListingImages(urls);
 }
 
 function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
