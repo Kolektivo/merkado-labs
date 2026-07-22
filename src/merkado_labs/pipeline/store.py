@@ -15,7 +15,7 @@ from merkado_labs.pipeline.readiness import (
     filter_run_all_ready,
     resolve_source_readiness,
 )
-from merkado_labs.pipeline.schedule import schedule_metadata
+from merkado_labs.pipeline.schedule import AUTOMATIC_REFRESH_ENABLED, schedule_metadata
 from merkado_labs.pipeline.sources import ordered_ready_keys
 from merkado_labs.scrapers.kw_import_preview import assert_labs_project_ref as assert_ref
 
@@ -142,8 +142,8 @@ def build_preflight(
         "cost_disclaimer": (
             "Estimated from recorded token usage and configured model pricing."
         ),
-        "schedule": "on",
-        "schedule_metadata": schedule_metadata(enabled=True),
+        "schedule": "on" if AUTOMATIC_REFRESH_ENABLED else "off",
+        "schedule_metadata": schedule_metadata(enabled=AUTOMATIC_REFRESH_ENABLED),
     }
 
 
@@ -193,6 +193,8 @@ def enqueue_pipeline_run(
                 "trigger_type": trigger_type,
                 "status": "queued",
                 "requested_by": requested_by,
+                # Snapshot must match preflight schedule_metadata.enabled.
+                "automatic_refresh_enabled": AUTOMATIC_REFRESH_ENABLED,
                 "source_keys": keys,
                 "preflight": preflight,
                 "progress": {

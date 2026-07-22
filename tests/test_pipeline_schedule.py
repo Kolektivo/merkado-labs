@@ -59,3 +59,16 @@ def test_workflow_has_daily_cron_and_dispatch() -> None:
     assert "jkrfyvukhhsapoivntms" in workflow  # production forbid guard
     assert "sothebys" not in workflow.lower()
     assert "caribbeanhousehunt" not in workflow.lower()
+
+
+def test_workflow_sets_enrichment_model_and_budget_caps() -> None:
+    """Regression: scheduled RE/MAX failed when OPENAI_ENRICHMENT_MODEL was unset."""
+
+    workflow = Path(".github/workflows/property-pipeline-labs.yml").read_text(
+        encoding="utf-8"
+    )
+    assert 'OPENAI_ENRICHMENT_MODEL: "gpt-5.6-terra"' in workflow
+    assert 'PROPERTY_AI_DAILY_BUDGET_USD: "2.00"' in workflow
+    assert 'PROPERTY_AI_MONTHLY_BUDGET_USD: "25.00"' in workflow
+    assert 'MAX_LISTINGS_PER_DAILY_RUN: "25"' in workflow
+    assert 'PROPERTY_AI_MAX_LISTINGS_PER_DAILY_RUN: "25"' in workflow

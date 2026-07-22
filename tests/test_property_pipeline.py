@@ -200,6 +200,35 @@ def test_enqueue_is_queued_waiting_for_worker(monkeypatch: pytest.MonkeyPatch) -
     assert events[0]["message"] == "Queued — waiting for worker"
 
 
+def test_enqueue_automatic_refresh_matches_preflight_schedule(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Column must not stay false while preflight schedule metadata is On."""
+
+    monkeypatch.setattr(
+        "merkado_labs.pipeline.store.assert_ref",
+        lambda: LABS_PROJECT_REF,
+    )
+    client = _FakeClient()
+    run = enqueue_pipeline_run(
+        client,
+        source_keys=["remax_curacao"],
+        trigger_mode="single_source",
+        trigger_type="scheduled",
+        requested_by="github_actions",
+        project_ref=LABS_PROJECT_REF,
+    )
+    assert run["trigger_type"] == "scheduled"
+    assert run["requested_by"] == "github_actions"
+    assert run["automatic_refresh_enabled"] is True
+    assert run["preflight"]["schedule"] == "on"
+    assert run["preflight"]["schedule_metadata"]["enabled"] is True
+    assert run["preflight"]["schedule_metadata"]["automatic_refresh"] == "On"
+    assert run["automatic_refresh_enabled"] == run["preflight"]["schedule_metadata"][
+        "enabled"
+    ]
+
+
 def test_enqueue_blocked_source_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "merkado_labs.pipeline.store.assert_ref",
