@@ -51,7 +51,7 @@ def test_workflow_has_daily_cron_and_dispatch() -> None:
     workflow = workflow_path.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
     assert "\n  schedule:" in workflow
-    assert 'cron: "45 13 * * *"' in workflow
+    assert 'cron: "0 4 * * *"' in workflow
     assert 'trigger="scheduled"' in workflow
     assert "cancel-in-progress: false" in workflow
     assert "github.event_name" in workflow
