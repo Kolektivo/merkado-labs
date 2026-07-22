@@ -1,11 +1,11 @@
 name: Property pipeline (Labs)
 
 on:
-  # 04:00 UTC = 00:00 America/Curacao = 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET).
-  # Begins only after this workflow reaches the default branch
+  # TEMP operational test: 11:35 UTC = 07:35 America/Curacao = 13:35 Amsterdam (CEST).
+  # Permanent cron remains 0 4 * * *; restore after supervised July 22 test.
   # (Labs-only; no production / deploy / Sotheby's / CHH).
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "35 11 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:
