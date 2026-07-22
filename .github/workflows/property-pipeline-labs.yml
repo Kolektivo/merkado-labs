@@ -1,11 +1,11 @@
 name: Property pipeline (Labs)
 
 on:
-  # TEMP operational test: 11:35 UTC = 07:35 America/Curacao = 13:35 Amsterdam (CEST).
+  # TEMP operational test: 13:45 UTC = 09:45 America/Curacao = 15:45 Amsterdam (CEST).
   # Permanent cron remains 0 4 * * *; restore after supervised July 22 test.
   # (Labs-only; no production / deploy / Sotheby's / CHH).
   schedule:
-    - cron: "35 11 * * *"
+    - cron: "45 13 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:
