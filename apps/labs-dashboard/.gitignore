@@ -26,6 +26,9 @@
 .DS_Store
 *.pem
 
+# Local UX / agent screenshot dumps (never commit)
+/tmp-screenshots/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

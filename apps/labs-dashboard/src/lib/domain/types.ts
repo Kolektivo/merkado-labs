@@ -370,17 +370,6 @@ export type ListingObservationEvidence = {
   fetchWarnings: unknown;
 };
 
-export type RealtorSummary = {
-  name: string;
-  domain: string | null;
-  externalId: string | null;
-  listingCount: number;
-  activeCount: number;
-  withOriginalUrl: number;
-  averageCompleteness: number | null;
-  missingAttributionCount: number;
-};
-
 export type MapListingMarker = {
   id: string;
   title: string | null;
@@ -537,20 +526,6 @@ export type ListingSort =
   | "price-asc"
   | "price-desc"
   | "title";
-
-export type NeighbourhoodSummary = {
-  id: string;
-  name: string;
-  listingCount: number;
-  pricedCount: number;
-  currency: string | null;
-  averagePrice: number | null;
-  medianPrice: number | null;
-  averagePricePerM2: number | null;
-  pricePerM2SampleSize: number;
-  hasMixedCurrencies: boolean;
-  isSmallSample: boolean;
-};
 
 export type GeographicQualitySummary = {
   totalListings: number;

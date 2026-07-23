@@ -304,7 +304,6 @@ export function normalizePublicListing(
       : null,
     propertyType: row.property_type ? String(row.property_type) : null,
     title: row.title ? String(row.title) : null,
-    // TODO(parallel-v5): populated once public_property_listings exposes columns.
     displayTitle: textOrNull(row.display_title),
     displaySummary: textOrNull(row.display_summary),
     originalPrice: numberOrNull(row.original_price),

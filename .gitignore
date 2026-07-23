@@ -55,6 +55,9 @@ experiments/caribbeanhousehunt_sample/pilot_contract.json
 .DS_Store
 Thumbs.db
 
+# Local UX / agent screenshot dumps (never commit)
+**/tmp-screenshots/
+
 # Playwright / local test artifacts (repo root or nested)
 test-results/
 **/test-results/
