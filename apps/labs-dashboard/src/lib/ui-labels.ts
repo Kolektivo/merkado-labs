@@ -189,9 +189,11 @@ const RUN_OUTCOME_LABELS: Record<string, string> = {
 };
 
 const LIFECYCLE_LABELS: Record<string, string> = {
+  draft: "Draft",
   active: "Active (still listed)",
   sold: "Sold",
   inactive: "Inactive",
+  unpublished: "Unpublished",
   missing: "Missing from latest full check",
   removed: "Removed from website",
   unknown: "Unknown",
@@ -232,6 +234,9 @@ const EXCLUSION_REASON_LABELS: Record<string, string> = {
   low_completeness: "Too little information",
   source_disabled: "Website is disabled",
   not_classified: "Not classified",
+  missing_required_fields: "Missing required fields",
+  missing_image: "Missing image",
+  missing_contact: "Missing contact details",
 };
 
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
@@ -351,6 +356,8 @@ export function lifecycleTone(value: string | null | undefined): UiStatusTone {
       return "success";
     case "sold":
       return "info";
+    case "draft":
+    case "unpublished":
     case "inactive":
     case "missing":
       return "warning";

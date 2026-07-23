@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Building2, List, MapPinned, SearchX } from "lucide-react";
+import { Building2, List, MapPinned, Plus, SearchX } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { ListingFilters } from "@/components/listing-filters";
@@ -128,6 +128,14 @@ export default async function ListingsPage({
         title="Listings"
         description="Find a property, narrow the inventory, or focus on listings that need attention."
         icon={Building2}
+        actions={
+          <Button asChild>
+            <Link href="/listings/new">
+              <Plus data-icon="inline-start" />
+              Add property
+            </Link>
+          </Button>
+        }
       />
       <Suspense>
         <ListingFilters key={JSON.stringify(params)} options={options} />

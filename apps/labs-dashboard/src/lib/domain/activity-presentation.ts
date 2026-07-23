@@ -43,6 +43,12 @@ const PRIMARY_EVENT_TYPES = new Set([
   "relisted",
   "source_attribution_changed",
   "material_field_changed",
+  "submitted",
+  "published",
+  "unpublished",
+  "marked_sold",
+  "marked_rented",
+  "republished",
 ]);
 
 const RATE_ONLY_TYPES = new Set(["benchmark_recalculated"]);

@@ -146,17 +146,20 @@ export default async function PublicListingPage({
             Back to browse
           </Link>
         </Button>
-        <Button variant="outline" asChild>
-          <a
-            href={listing.originalRealtorUrl ?? listing.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open original listing
-            <ArrowUpRight data-icon="inline-end" />
-            <span className="sr-only"> (opens in new tab)</span>
-          </a>
-        </Button>
+        {listing.listingOrigin !== "manual" &&
+        (listing.originalRealtorUrl || listing.sourceUrl) ? (
+          <Button variant="outline" asChild>
+            <a
+              href={listing.originalRealtorUrl ?? listing.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open original listing
+              <ArrowUpRight data-icon="inline-end" />
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          </Button>
+        ) : null}
       </div>
       <Alert className="border-primary/20 bg-primary/[0.03]">
         <FlaskConical className="size-4" />
@@ -180,7 +183,11 @@ export default async function PublicListingPage({
         <CardContent className="space-y-5 p-5 md:p-7">
           <div className="flex flex-wrap gap-2">
             <Badge>{publicListingTypeLabel(listing.listingType)}</Badge>
-            <Badge variant="outline">{listing.sourceDisplayName}</Badge>
+            <Badge variant="outline">
+              {listing.listingOrigin === "manual"
+                ? "User provided"
+                : listing.sourceDisplayName}
+            </Badge>
             {propertyType ? (
               <Badge variant="secondary">{titleCase(propertyType)}</Badge>
             ) : null}
@@ -282,24 +289,37 @@ export default async function PublicListingPage({
             english={displayDescription}
             dutch={displayDescriptionNl}
           />
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">
-              Original source description
-            </summary>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-              {listing.description ?? "Source description is not available."}
-            </p>
-          </details>
-          {listing.title && listing.title.trim() !== displayTitle ? (
-            <details>
-              <summary className="cursor-pointer text-sm font-medium">
-                Original source title
-              </summary>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {listing.title}
-              </p>
-            </details>
-          ) : null}
+          {listing.listingOrigin === "manual" ? (
+            listing.description ? (
+              <section>
+                <h2 className="text-sm font-medium">Description</h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {listing.description}
+                </p>
+              </section>
+            ) : null
+          ) : (
+            <>
+              <details>
+                <summary className="cursor-pointer text-sm font-medium">
+                  Original source description
+                </summary>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {listing.description ?? "Source description is not available."}
+                </p>
+              </details>
+              {listing.title && listing.title.trim() !== displayTitle ? (
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Original source title
+                  </summary>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {listing.title}
+                  </p>
+                </details>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -308,39 +328,73 @@ export default async function PublicListingPage({
           <CardTitle>Property activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            First detected by Merkado: {formatDateTime(listing.firstSeenAt)}
-          </p>
-          <p>
-            Last detected by Merkado: {formatDateTime(listing.lastSeenAt)}
-          </p>
-          {listing.sourceListedAt ? (
-            <p>
-              Source listing date: {formatDateTime(listing.sourceListedAt)}
-            </p>
-          ) : null}
+          {listing.listingOrigin === "manual" ? (
+            <>
+              <p>Submitted: {formatDateTime(listing.firstSeenAt)}</p>
+              {listing.publishedAt ? (
+                <p>Published: {formatDateTime(listing.publishedAt)}</p>
+              ) : null}
+              <p>Last updated: {formatDateTime(listing.lastSeenAt)}</p>
+            </>
+          ) : (
+            <>
+              <p>
+                First detected by Merkado: {formatDateTime(listing.firstSeenAt)}
+              </p>
+              <p>
+                Last detected by Merkado: {formatDateTime(listing.lastSeenAt)}
+              </p>
+              {listing.sourceListedAt ? (
+                <p>
+                  Source listing date: {formatDateTime(listing.sourceListedAt)}
+                </p>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Source</CardTitle>
+          <CardTitle>
+            {listing.listingOrigin === "manual" ? "Provenance" : "Source"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Listed by {listing.sourceDisplayName}
-            {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
-          </p>
-          <Button asChild>
-            <a
-              href={listing.originalRealtorUrl ?? listing.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open original listing
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-          </Button>
+          {listing.listingOrigin === "manual" ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                User provided · Labs admin native listing prototype. Facts on
+                this Passport are owner-entered, not scraped from a realtor
+                website.
+              </p>
+              {listing.contactMethod && listing.contactValue ? (
+                <p className="text-sm">
+                  Contact via {listing.contactMethod}: {listing.contactValue}
+                  {listing.contactName ? ` (${listing.contactName})` : ""}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Listed by {listing.sourceDisplayName}
+                {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
+              </p>
+              {listing.originalRealtorUrl || listing.sourceUrl ? (
+                <Button asChild>
+                  <a
+                    href={listing.originalRealtorUrl ?? listing.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open original listing
+                    <span className="sr-only"> (opens in new tab)</span>
+                  </a>
+                </Button>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

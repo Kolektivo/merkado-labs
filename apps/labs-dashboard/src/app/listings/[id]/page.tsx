@@ -20,6 +20,7 @@ import { DataError } from "@/components/data-error";
 import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
 import { HelpTip } from "@/components/help-tip";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
+import { NativeListingActions } from "@/components/native-listing/native-listing-actions";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceDisplay } from "@/components/price-display";
 import { PriceHistoryChart } from "@/components/price-history-chart";
@@ -186,6 +187,13 @@ function activityLabel(eventType: string, sourceName: string) {
     source_marked_under_contract: "Source marked listing under contract",
     source_returned_active: "Listing returned to active on source",
     source_description_changed: "Source description changed",
+    submitted: "Native listing submitted",
+    published: "Native listing published",
+    unpublished: "Native listing unpublished",
+    marked_sold: "Marked as sold by admin",
+    marked_rented: "Marked as rented by admin",
+    republished: "Native listing republished",
+    material_field_changed: "Material fields changed",
   };
   return labels[eventType] ?? titleCase(eventType.replaceAll("_", " "));
 }
@@ -374,15 +382,25 @@ export default async function ListingDetailPage({
               </Link>
             </Button>
           ) : null}
-          <Button asChild>
-            <a href={sourceLink} target="_blank" rel="noreferrer">
-              Open original ad
-              <ArrowUpRight data-icon="inline-end" />
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-          </Button>
+          {listing.listingOrigin === "manual" ? (
+            <Button variant="outline" asChild>
+              <Link href={`/listings/${id}/edit`}>Edit native listing</Link>
+            </Button>
+          ) : sourceLink ? (
+            <Button asChild>
+              <a href={sourceLink} target="_blank" rel="noreferrer">
+                Open original ad
+                <ArrowUpRight data-icon="inline-end" />
+                <span className="sr-only"> (opens in new tab)</span>
+              </a>
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {listing.listingOrigin === "manual" ? (
+        <NativeListingActions listingId={id} status={listing.status} />
+      ) : null}
 
       <Card className="gap-0 py-0">
         <div className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
@@ -402,14 +420,23 @@ export default async function ListingDetailPage({
               <div className="flex flex-wrap gap-2">
                 <Badge>{titleCase(listing.listingType)}</Badge>
                 <Badge variant="outline">
-                  {titleCase(listing.propertyType)}
+                  {titleCase(
+                    listing.realEstateType ?? listing.propertyType ?? "property",
+                  )}
+                </Badge>
+                <Badge variant="secondary">
+                  {listing.listingOrigin === "manual"
+                    ? "Native / manual"
+                    : "Scraped"}
                 </Badge>
                 <StatusBadge tone={lifecycleTone(listing.status)}>
                   {lifecycleLabel(listing.status)}
                 </StatusBadge>
-                <StatusBadge tone={aiCoverageTone(aiCoverage.category)}>
-                  {aiCoverage.label}
-                </StatusBadge>
+                {listing.listingOrigin !== "manual" ? (
+                  <StatusBadge tone={aiCoverageTone(aiCoverage.category)}>
+                    {aiCoverage.label}
+                  </StatusBadge>
+                ) : null}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">

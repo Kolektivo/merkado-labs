@@ -24,14 +24,35 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(browse, /effectiveNeighbourhood/);
   assert.match(browse, /minPrice/);
   assert.match(browse, /benchmarkPriceXcg/);
+  assert.match(browse, /listingOrigin === "manual"|User provided/);
   assert.match(passport, /Property features/);
-  assert.match(passport, /Source description/);
+  assert.match(passport, /Source description|User provided/);
   assert.match(passport, /AboutPropertyDescription/);
   assert.match(passport, /resolvePublicDisplayTitle|displayTitle/);
   assert.match(passport, /resolvePublicDisplaySummary|displaySummary/);
   assert.match(passport, /buildPublicListingJsonLd|application\/ld\+json/);
+  assert.match(passport, /listingOrigin === "manual"/);
   assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
+});
+
+test("native listing APIs require Labs admin session cookie", () => {
+  for (const path of [
+    "src/app/api/native-listings/route.ts",
+    "src/app/api/native-listings/[id]/route.ts",
+    "src/app/api/native-listings/[id]/actions/route.ts",
+    "src/app/api/native-listings/[id]/images/route.ts",
+  ]) {
+    const route = source(path);
+    assert.match(route, /assertLabsAdminSession/);
+    assert.doesNotMatch(route, /readAdminSecretFromBody/);
+  }
+});
+
+test("listings inventory exposes Add property entry point", () => {
+  const listings = source("src/app/listings/page.tsx");
+  assert.match(listings, /\/listings\/new/);
+  assert.match(listings, /Add property/);
 });
 
 test("internal routes use one signed-cookie proxy gate", () => {

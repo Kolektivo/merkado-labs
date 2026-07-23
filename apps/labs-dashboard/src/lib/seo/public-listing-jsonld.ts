@@ -83,7 +83,12 @@ export function buildPublicListingJsonLd(listing: PublicPropertyListing) {
       },
     };
   }
-  if (listing.sourceDisplayName) {
+  if (listing.listingOrigin === "manual") {
+    jsonLd.seller = {
+      "@type": "Person",
+      name: listing.contactName?.trim() || "User provided",
+    };
+  } else if (listing.sourceDisplayName) {
     jsonLd.seller = {
       "@type": "RealEstateAgent",
       name: listing.sourceDisplayName,
