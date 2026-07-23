@@ -30,9 +30,10 @@ default.
 
 Remember:
 
-- docs/research/historical-* and legacy cars guides are historical, not the live roadmap
+- Detailed meeting notes, research, and task ledgers are local-only under docs/private/ and are not the live roadmap
 - Current state is docs/09-current-state.md
 - Approved remaining work is docs/10-execution-roadmap.md (Now/Next/Later/Blocked)
+- Approved non-sensitive outcomes must be summarized into docs/00–12; leave confidential detail in docs/private/
 - Labs-only Supabase csaefdkpwukshtouyixg; production jkrfyvukhhsapoivntms is forbidden
 
 Return:

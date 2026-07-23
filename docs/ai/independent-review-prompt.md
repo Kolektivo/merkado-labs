@@ -24,8 +24,9 @@ Review for:
 5. Documentation Synchronization Protocol gaps
 6. UX / a11y / responsive risks when UI changed
 7. Security / RLS / secrets risks when data changed
+8. Accidental commit of docs/private/ or restoration of tracked docs/meetings/, docs/research/, or docs/tasks/
 
-Do not treat docs/research/historical-* as the current roadmap.
+Do not treat local-only private research or detailed task ledgers as the current roadmap.
 
 Return:
 

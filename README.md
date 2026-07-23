@@ -23,8 +23,8 @@ automatically.
   public preview + filtered Property Passport activity + Enrichment review +
   native listing and guided-search prototypes — **not** read-only.
 - **Labs dataset:** inventory, public-eligible, and pricing readiness figures
-  change over time — see **`docs/09-current-state.md`** only (dated audits
-  under `docs/research/` are historical evidence, not the live snapshot).
+  change over time — see **`docs/09-current-state.md`** only (dated audits under
+  local `docs/private/research/` are historical evidence, not the live snapshot).
 
 Property MVP docs (`docs/00`–`12`) are the current source of truth. Start at
 `docs/00-docs-index.md`. Agent operating rules: root `AGENTS.md` (Claude:

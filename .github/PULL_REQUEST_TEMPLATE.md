@@ -53,7 +53,7 @@ Results:
 - [ ] Canonical docs updated for approved direction changes
 - [ ] Current state (`docs/09-current-state.md`) updated only if work is
       completed and verified — or N/A
-- [ ] `docs/10-execution-roadmap.md` / tasks updated if approved remaining work
+- [ ] `docs/10-execution-roadmap.md` updated if approved remaining work
       changed — or N/A
 - [ ] `docs/11-testing-and-uat.md` updated if flows, acceptance criteria,
       permissions, or risks changed — or N/A
@@ -61,8 +61,11 @@ Results:
       — or N/A
 - [ ] Stated "No documentation update needed" with reason when nothing changed
 - [ ] No duplicate or stale docs introduced
-- [ ] Historical research under `docs/research/` not treated as live roadmap
-- [ ] Meeting notes (if any) processed with a "Processed into" section
+- [ ] Local-only private research/tasks not treated as live roadmap
+- [ ] No `docs/private/` files committed; no tracked `docs/meetings/`,
+      `docs/research/`, or `docs/tasks/` restored
+- [ ] Meeting notes (if any) stayed in `docs/private/meetings/` and were
+      processed with a "Processed into" section when syncing approved outcomes
 
 ## Risks and rollback
 

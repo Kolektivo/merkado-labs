@@ -118,7 +118,7 @@ source runs, or absence/removal logic. AI enrichment is not auto-run for manuals
   USD **15** / **320**-call caps). Dutch About-this-property backfill
   (`scripts/migrate_dutch_descriptions.py`) **applied** for **285** public
   listings (~USD **2.42**). Unchanged bilingual hashes skip at zero cost. See
-  `docs/research/property-data-quality-report-2026-07-21.md` and
+  local `docs/private/research/` quality-pass notes (gitignored) and
   `09-current-state.md`.
 - Prior Labs activation (2026-07-20, v4.1): rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
@@ -140,7 +140,7 @@ source runs, or absence/removal logic. AI enrichment is not auto-run for manuals
   via `build_gallery`; Labs cleanup removed 5705 duplicate gallery slots;
   frontend mirror in `apps/labs-dashboard/src/lib/listing-gallery-urls.ts`;
   later one confirmed RE/MAX residual cleaned idempotently (`d2abb557`). See
-  `docs/research/property-data-quality-report-2026-07-21.md`.
+  local `docs/private/research/` quality-pass notes (gitignored).
 - v5 preserves replay parsing for v3/v4 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds English public presentation fields.

@@ -15,7 +15,7 @@ Before complex work, read:
 1. `docs/00-docs-index.md` (documentation index and canonical source map)
 2. Relevant canonical docs under `docs/01`–`12`
 3. `docs/09-current-state.md` (canonical **current implementation state**)
-4. Any file under `docs/tasks/active/`
+4. `docs/10-execution-roadmap.md` for approved remaining work
 5. Relevant code, schemas, configuration, and migrations
 6. `docs/08-security-and-privacy.md` before any write, deploy, or credential use
 
@@ -29,22 +29,15 @@ contains the needed context.
 3. `docs/00-docs-index.md`
 4. Approved canonical documentation and decisions (`docs/01`–`12`, ADRs, safety)
 5. `docs/09-current-state.md` (current state snapshot)
-6. Active approved task plan under `docs/tasks/active/`
+6. `docs/10-execution-roadmap.md` (approved remaining work)
 7. AI chat summaries or proposals
 
 Report conflicts before implementation.
 
-**Historical only — not the live backlog or current roadmap:**
-
-- `docs/research/historical-chh-direct-source-execution-plan-2026.md`
-- `docs/research/experiment-log.md`
-- `docs/research/legacy-v1-cars-supabase-architecture.md` and
-  `docs/research/legacy-v1-cars-n8n-guide-v3.md` (production v1 **cars**, not
-  Labs property)
-- Other dated audits under `docs/research/` (HISTORICAL banners)
-
-Prefer `docs/02-scope-and-decisions.md` for scope and gates, and `docs/09`
-for what is actually built. Approved remaining work: `docs/10-execution-roadmap.md`.
+Detailed meeting notes, research files, and task ledgers are **local-only** under
+`docs/private/` and are not part of the GitHub source of truth. Prefer
+`docs/02-scope-and-decisions.md` for scope and gates, `docs/09` for what is
+actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
 
 ## Working rules
 
@@ -87,10 +80,14 @@ for what is actually built. Approved remaining work: `docs/10-execution-roadmap.
 ## Private local material
 
 - `docs/private/` is local-only working material and must never be committed.
+- All meeting notes, research files, detailed task files, and scratch material
+  live under `docs/private/` only. Do **not** keep tracked
+  `docs/meetings/`, `docs/research/`, or `docs/tasks/` folders.
 - Do not copy private content into tracked documentation unless the Product
   Lead explicitly approves that content for the repository.
-- Approved decisions and safe summaries still belong in the appropriate
-  canonical documentation (`docs/01`–`12`, ADRs, meetings, research, tasks).
+- Approved, non-sensitive decisions and safe summaries still belong in the
+  appropriate canonical documentation (`docs/00`–`12` and `docs/decisions/`).
+- Keep `docs/ai/` and `docs/decisions/` tracked.
 - The project must remain understandable from tracked docs alone — never
   require access to `docs/private/` to understand product intent or state.
 
@@ -98,12 +95,13 @@ for what is actually built. Approved remaining work: `docs/10-execution-roadmap.
 
 - Each durable fact or decision has one canonical home (see `docs/00-docs-index.md`).
 - Update existing canonical docs rather than creating duplicates.
-- Meeting notes and research are evidence, not automatically approved
-  requirements.
-- Use `docs/tasks/active/` only for meaningful multi-step tasks.
-- Move durable outcomes from completed tasks into canonical docs.
-- Canonical product docs are `docs/00`–`docs/12` (see ADR-0001). Do not invent
-  parallel numbering.
+- Meeting notes, research, and detailed tasks are local evidence, not
+  automatically approved requirements.
+- Use `docs/private/tasks/` for detailed local task ledgers; summarize approved
+  remaining work in `docs/10-execution-roadmap.md`.
+- Move durable outcomes from completed private tasks into canonical docs.
+- Canonical product docs are `docs/00`–`docs/12` (see ADR-0001 / ADR-0002). Do
+  not invent parallel numbering.
 - App-scoped `apps/labs-dashboard/AGENTS.md` and `CLAUDE.md` are Next.js
   instructions for that app, not duplicates of this file.
 
@@ -125,9 +123,10 @@ Keep documentation continuous with Product Lead decisions:
    (`docs/01`, `02`, `03`, `05`, ADRs).
 7. Update `docs/09-current-state.md` **only after** implementation is
    completed and verified. Never describe unfinished work as live.
-8. Update `docs/10-execution-roadmap.md` and `docs/tasks/active/` for planned
-   approved work (Now / Next / Later / Blocked). Do not auto-promote every
-   unimplemented idea into the roadmap.
+8. Update `docs/10-execution-roadmap.md` for planned approved work
+   (Now / Next / Later / Blocked). Keep detailed task ledgers in
+   `docs/private/tasks/` only. Do not auto-promote every unimplemented idea
+   into the roadmap.
 9. Update `docs/11-testing-and-uat.md` when flows, acceptance criteria,
    permissions, or risks change.
 10. Update `docs/12-deployment-runbook.md` for operational / env / deploy changes.
@@ -138,8 +137,8 @@ Keep documentation continuous with Product Lead decisions:
 
 ### Meeting Notes Workflow
 
-1. Store raw notes as `docs/meetings/YYYY-MM-DD-topic.md` (use
-   `docs/meetings/meeting-template.md` as a starting shape).
+1. Store raw notes as `docs/private/meetings/YYYY-MM-DD-topic.md` (use
+   `docs/private/meetings/meeting-template.md` as a starting shape).
 2. When asked to process meeting notes, extract:
    - confirmed decisions
    - proposed ideas
@@ -152,7 +151,8 @@ Keep documentation continuous with Product Lead decisions:
 5. Add a **Processed into** section on the meeting note linking to every
    updated canonical doc.
 6. Never treat unclear discussion as confirmed without asking.
-7. Pasteable agent prompt: `docs/ai/meeting-notes-integration-prompt.md`.
+7. Leave unclear or confidential detail in `docs/private/meetings/`.
+8. Pasteable agent prompt: `docs/ai/meeting-notes-integration-prompt.md`.
 
 ## Verification
 

@@ -90,8 +90,9 @@ See also `06-data-model.md` § RLS and public/admin access.
 
 CHH must remain removed from active code, workflows, configuration, UI, tests,
 source registration, and Labs data. Do not restore a runnable CHH fallback.
-Historical evidence only: `docs/research/` (experiment log, richer-harvest audit,
-decision history).
+Historical evidence only: local `docs/private/research/` (gitignored; experiment
+log, richer-harvest audit, decision history). Approved CHH retirement rules remain
+in this file and related canonical docs.
 
 Before any similar data cleanup in future:
 
@@ -142,21 +143,26 @@ code.
 
 ## 9. Private local documentation (`docs/private/`)
 
-`docs/private/` is a **local-only**, **gitignored**, **non-canonical** workspace
-for confidential material. Intended uses:
+`docs/private/` is a **local-only**, **gitignored**, **non-canonical** workspace.
+Per Product Lead decision (ADR-0002), **all** of the following are local-only:
 
-- confidential meeting notes
-- private research
-- rough or sensitive task drafts
-- temporary working notes
+- meeting notes (`docs/private/meetings/`)
+- research / historical evidence files (`docs/private/research/`)
+- detailed task ledgers (`docs/private/tasks/`)
+- scratch material (`docs/private/scratch/`)
+
+Do **not** keep tracked `docs/meetings/`, `docs/research/`, or `docs/tasks/`
+folders. Keep `docs/ai/` and `docs/decisions/` tracked.
 
 Rules:
 
 - Never commit anything under `docs/private/`.
 - Do not copy private content into tracked documentation unless the Product
   Lead explicitly approves that content for the repository.
-- Approved decisions and safe summaries still belong in canonical docs
-  (`docs/00`–`12`, ADRs, and the appropriate tracked evidence folders).
+- Approved, non-sensitive outcomes still belong in canonical docs
+  (`docs/00`–`12` and ADRs).
 - The repository must remain understandable without access to `docs/private/`.
 - Secrets, credentials, and production data still follow the rules above —
   private docs are not a place to store service-role keys or production copies.
+- Deleting tracked files from the working tree does not erase older Git history;
+  do not rewrite history to hide formerly tracked evidence.

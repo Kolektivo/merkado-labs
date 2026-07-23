@@ -4,14 +4,14 @@
 **Last updated:** July 23, 2026
 
 **Not a dump of every unimplemented idea.** Deferred, rejected, speculative, and
-unapproved items stay in `02-scope-and-decisions.md`, `docs/research/`, or
-`docs/decisions/` — not here.
+unapproved items stay in `02-scope-and-decisions.md`, `docs/decisions/`, or
+local-only `docs/private/` notes — not here.
 
-Historical CHH→direct-source kickoff plan:
-`docs/research/historical-chh-direct-source-execution-plan-2026.md` (not this
-roadmap).
+Detailed historical kickoff / audit notes (if present) live only under
+`docs/private/research/` and are not part of this roadmap.
 
-Related: `02-scope-and-decisions.md`, `09-current-state.md`, `tasks/active/`.
+Related: `02-scope-and-decisions.md`, `09-current-state.md`. Detailed task
+ledgers stay in local `docs/private/tasks/` only.
 
 ## Now
 

@@ -55,12 +55,14 @@ project/
     ├── 11-testing-and-uat.md
     ├── 12-deployment-runbook.md
     ├── decisions/
-    ├── meetings/
-    ├── research/
-    ├── tasks/
-    │   ├── active/
-    │   └── archive/
-    └── ai/
+    ├── ai/
+    └── private/          # gitignored; local-only
+        ├── meetings/
+        ├── research/
+        ├── tasks/
+        │   ├── active/
+        │   └── archive/
+        └── scratch/
 
 Also:
 
@@ -73,7 +75,10 @@ Also:
 - docs/09-current-state.md must not claim unfinished work as live
 - docs/10-execution-roadmap.md uses Now / Next / Later / Blocked for approved
   work only
-- Meeting / research / ADR templates as needed
+- .gitignore must include docs/private/
+- Do not create tracked docs/meetings/, docs/research/, or docs/tasks/ folders
+- Meeting / research / task templates live under docs/private/ only; keep ADR
+  templates under docs/decisions/
 - Real install/dev/lint/test/build commands when they exist; placeholders marked
   clearly when they do not
 - Beginner-friendly next-step checklist for the Product Lead
@@ -89,6 +94,8 @@ Also:
 - Prefer reusing existing strong docs over creating parallel homes.
 - One subject → one canonical file inside the 00–12 set.
 - Do not invent alternate numbering schemes.
+- Approved non-sensitive outcomes go into docs/00–12; leave confidential detail
+  in docs/private/.
 
 ## Return
 

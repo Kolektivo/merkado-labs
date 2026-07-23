@@ -2,8 +2,8 @@
 
 Use this in Cursor after a meeting when raw notes exist or were just pasted.
 
-Save raw notes first as `docs/meetings/YYYY-MM-DD-topic.md` when they are not
-already filed.
+Save raw notes first as `docs/private/meetings/YYYY-MM-DD-topic.md` when they
+are not already filed. Meeting notes are local-only and must never be committed.
 
 ```text
 Process these meeting notes into the Merkado Labs documentation system.
@@ -14,7 +14,7 @@ Read:
 - docs/00-docs-index.md
 - docs/09-current-state.md
 - docs/02-scope-and-decisions.md
-- The meeting note file under docs/meetings/
+- The meeting note file under docs/private/meetings/
 - Every canonical document the meeting may affect
 
 Extract and clearly separate:
@@ -29,8 +29,10 @@ Rules:
 
 - Do not treat brainstorming, examples, or unclear discussion as confirmed.
 - Ask before promoting anything ambiguous to approved scope.
-- Update the correct canonical docs with confirmed decisions only.
-- Keep proposals and open questions labeled as such in the meeting note and in any scope doc sections meant for open items.
+- Update the correct canonical docs (docs/00–12 and ADRs) with confirmed, non-sensitive decisions only.
+- Keep proposals and open questions labeled as such in the private meeting note and in any scope doc sections meant for open items.
+- Leave unclear or confidential detail in docs/private/meetings/.
+- Never create or restore tracked docs/meetings/, docs/research/, or docs/tasks/ folders.
 - Do not update docs/09-current-state.md unless something was already implemented and verified.
 - Do not put unapproved ideas into docs/10-execution-roadmap.md.
 - Add a "Processed into" section on the meeting note linking to every updated file.

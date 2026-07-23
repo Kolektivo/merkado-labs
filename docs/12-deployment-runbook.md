@@ -167,8 +167,9 @@ Full UAT format: `11-testing-and-uat.md`.
 - Prefer feature branch for rollback of risky changes; keep one app and one
   architecture
 - Database: forward-only migrations; do not edit applied migrations in place
-- Data cleanup: export + checksum evidence before deletes (see CHH lessons in
-  `docs/research/decision-history-and-chh-lessons.md`)
+- Data cleanup: export + checksum evidence before deletes (CHH retirement rules
+  in `08-security-and-privacy.md`; detailed local notes may exist under
+  `docs/private/research/`)
 - Pipeline: prefer dry-run / bounded runs before widening scope
 - Deploy: only with explicit approval; do not auto-promote
 

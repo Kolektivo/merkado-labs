@@ -17,17 +17,16 @@ follow without losing unique requirements, decisions, or historical evidence.
 Adopt the standard AI Product Development OS documentation tree:
 
 - `docs/00-docs-index.md` through `docs/12-deployment-runbook.md`
-- Supporting folders: `decisions/`, `meetings/`, `research/`, `tasks/active/`,
-  `tasks/archive/`, `ai/`
+- Supporting tracked folders: `decisions/`, `ai/`
+- Local-only (gitignored) working material: `docs/private/` for meetings,
+  research, detailed tasks, and scratch (see **ADR-0002**, which supersedes the
+  earlier tracked `meetings/` / `research/` / `tasks/` layout)
 - Keep app-scoped `AGENTS.md` / `CLAUDE.md` / README beside `apps/labs-dashboard`
 - Keep executable safety enforcement in `.cursor/rules/`
-- Move dated audits, experiment logs, legacy cars guides, and decision history
-  under `docs/research/` with HISTORICAL banners on migrated/restored evidence
-  only
 - Remove `docs/labs/` after verified content coverage
 - Continuous sync: approved intent → vision/scope/flows/architecture; verified
-  implementation → `09`; approved remaining work → `10` + tasks; acceptance →
-  `11`; operations → `12`
+  implementation → `09`; approved remaining work → `10`; acceptance → `11`;
+  operations → `12`
 
 Currency and pricing policy merges into `06-data-model.md` under
 **Currency, pricing, and normalization rules**. Property Passport content is
@@ -61,6 +60,8 @@ hazards, and aligns future bootstrap work with one exact structure.
 - Negative: all path references must be updated; short transition where sources
   remain until coverage passes
 - Follow-up: archive the docs-standardization task after coverage gate
+- Superseded in part by **ADR-0002** (private local evidence): detailed
+  meetings/research/tasks are no longer tracked on GitHub
 
 ## Reversal or migration
 

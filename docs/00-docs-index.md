@@ -5,7 +5,8 @@ This folder holds the working context for Merkado Labs property work.
 **Last updated:** July 23, 2026
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
-**Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`.
+**Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
+and `docs/decisions/ADR-0002-private-local-evidence.md`.
 **Continuous docs:** Documentation Synchronization Protocol in root `AGENTS.md`.
 
 ## Terminology (canonical)
@@ -37,30 +38,42 @@ One subject → one primary home. Link here; do not duplicate content.
 | Execution roadmap (approved only) | `10-execution-roadmap.md` |
 | Testing and Product Lead UAT | `11-testing-and-uat.md` |
 | Deployment and local ops runbook | `12-deployment-runbook.md` |
-| Active multi-step work | `tasks/active/` |
-| Decision records (ADRs) | `decisions/` |
-| Meeting evidence | `meetings/` |
-| Research / historical evidence | `research/` (HISTORICAL banners on migrated evidence only) |
-| AI prompts / bootstrap | `ai/` |
+| Decision records (ADRs) | `decisions/` (tracked) |
+| AI prompts / bootstrap | `ai/` (tracked) |
 | Private local working material | `private/` (gitignored; not canonical) |
+
+Tracked GitHub documentation is `docs/00`–`12`, `docs/decisions/`, and
+`docs/ai/` only. There are **no** tracked `docs/meetings/`, `docs/research/`,
+or `docs/tasks/` folders.
 
 ### Private local material (`docs/private/`)
 
-`docs/private/` is **ignored by Git**, local-only, and **non-canonical**. Use it
-for confidential meetings, private research, rough tasks, and temporary notes
-that must not appear on GitHub.
+`docs/private/` is **ignored by Git**, local-only, and **non-canonical**. All of
+the following live here only:
+
+| Local folder | Use |
+|---|---|
+| `private/meetings/` | All meeting notes |
+| `private/research/` | All research / historical evidence files |
+| `private/tasks/` | All detailed task ledgers (active/archive) |
+| `private/scratch/` | Temporary scratch notes |
+
+Rules:
 
 - Never treat `docs/private/` as a source of truth for the product.
 - Do not copy private content into tracked docs without Product Lead approval.
-- Approved decisions and safe summaries still go into the canonical homes above.
-- Tracked documentation (`00`–`12`, `decisions/`, `meetings/`, `research/`,
-  `tasks/`, `ai/`) must keep the project understandable without this folder.
+- Approved, non-sensitive outcomes must still be summarized in the appropriate
+  `docs/00`–`12` files (and ADRs when needed).
+- Tracked documentation must keep the project understandable without this folder.
+- Detailed private history may still exist in older Git commits; do not rewrite
+  history to erase it.
 
 ## Labs build status (qualitative)
 
 Qualitative maturity only. **Live inventory counts and changing metrics live only
-in [`09-current-state.md`](09-current-state.md).** Dated evidence stays under
-`research/` — do not treat those figures as the live snapshot.
+in [`09-current-state.md`](09-current-state.md).** Dated private research under
+`docs/private/research/` is local evidence only — do not treat those figures as
+the live snapshot.
 
 | Area | Status |
 |---|---|
@@ -68,7 +81,7 @@ in [`09-current-state.md`](09-current-state.md).** Dated evidence stays under
 | Labs admin native listing prototype | [LABS] Implemented; not production Auth seller accounts |
 | Raw evidence + AI enrichment foundation | [LABS] Private Storage; proposals/jobs service-role only |
 | Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
-| CHH harvest / Labs rows | Retired; deleted 2026-07-16; research retained |
+| CHH harvest / Labs rows | Retired; deleted 2026-07-16; private research retained locally |
 | Final Labs data cleanup | [LABS] Completed 2026-07-23 (see `09`) |
 | Labs property schema + RLS | [LABS] Built; public-effective view applied |
 | Geospatial neighbourhoods | [LABS] Built (detail in `09`) |
@@ -95,7 +108,7 @@ in [`09-current-state.md`](09-current-state.md).** Dated evidence stays under
 |---|---|
 | Approved product intent | `01` / `02` / `03` / `05` (+ ADRs) as relevant |
 | Verified implementation | `09-current-state.md` only |
-| Planned approved work | `10-execution-roadmap.md` + `tasks/active/` |
+| Planned approved work | `10-execution-roadmap.md` (detailed ledgers stay in `private/tasks/`) |
 | Acceptance coverage | `11-testing-and-uat.md` |
 | Operational / deploy / env | `12-deployment-runbook.md` |
 | Safety narrative | `08-security-and-privacy.md` + Cursor rule |
@@ -110,8 +123,9 @@ in [`09-current-state.md`](09-current-state.md).** Dated evidence stays under
 6. `12-deployment-runbook.md` and `apps/labs-dashboard/README.md`
 7. `11-testing-and-uat.md` when verifying or accepting work
 
-Historical CHH kickoff and legacy cars docs live under `research/` — not the
-live backlog.
+Detailed CHH kickoff, audits, and legacy cars notes are local-only under
+`docs/private/research/` — not the live backlog and not required to understand
+the project from GitHub.
 
 ## Outside `docs/`
 
@@ -128,19 +142,6 @@ live backlog.
 | `../scripts/cleanup/README.md` | Historical CHH cleanup tooling | Supporting |
 | `../data/processed/chh_cleanup_export/README.md` | Cleanup export verification | Supporting |
 | `../data/geo/cache/**/README.md` | Third-party spatial dataset notes | Not product SoT |
-
-## Historical research (not current state)
-
-| File | Content |
-|---|---|
-| `research/historical-chh-direct-source-execution-plan-2026.md` | Former docs `08` kickoff |
-| `research/historical-chh-richer-harvest-audit-2026-07-16.md` | Restored CHH richer-fields audit |
-| `research/experiment-log.md` | Dated experiments |
-| `research/decision-history-and-chh-lessons.md` | Dated decision log + CHH lessons |
-| `research/property-data-quality-report-2026-07-21.md` | Dated quality pass |
-| `research/price-currency-audit-2026-07-23.md` | Dated price audit |
-| `research/legacy-v1-cars-supabase-architecture.md` | Production v1 **cars** |
-| `research/legacy-v1-cars-n8n-guide-v3.md` | Production v1 **cars** n8n |
 
 ## Tag legend
 

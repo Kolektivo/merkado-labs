@@ -291,7 +291,7 @@ deterministic (`apps/labs-dashboard/src/lib/search/synonyms.ts`).
   **canonical-key** dedupe — never feed materialized field_decisions/audit
   back as proposal inputs (synonym churn). Prior v4.2 corrective apply reached
   fixed point 2026-07-21 (`transitions={}`, `changed=0`); see
-  `docs/research/property-data-quality-report-2026-07-21.md`.
+  local `docs/private/research/` quality-pass notes (gitignored).
 - Decision statuses: `auto_applied` / `redundant` (same-value or already
   represented) / `needs_attention` (current conflicts only) / `rejected` /
   `skipped`.
@@ -473,7 +473,7 @@ automatic rollback.
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
 **Last updated:** July 23, 2026
 
-Canonical home for currency policy (merged from former `06-currency-and-pricing-rules.md`). Dated listing-level audit evidence: `docs/research/price-currency-audit-2026-07-23.md`.
+Canonical home for currency policy (merged from former `06-currency-and-pricing-rules.md`). Dated listing-level audit evidence is local-only under `docs/private/research/` (gitignored).
 
 ## 1. Principles
 
@@ -638,7 +638,7 @@ Audited all **405** Labs listings and the public-effective projection:
 - **385** priced listings have positive original amounts, positive XCG
   benchmarks, and valid current provenance.
 - **20** no-price source listings are public-ineligible; they are listed in
-  `docs/research/price-currency-audit-2026-07-23.md`.
+  local `docs/private/research/` price-currency audit notes (gitignored).
 - **283** public rows therefore display/filter/sort with XCG primary.
 - Current methods: 205 source-official conversions, 160 XCG identity, 11 ECB
   EUR, 7 fixed USD peg, 2 legacy ANG/NAf 1:1, and 20 no-price/no-conversion.
