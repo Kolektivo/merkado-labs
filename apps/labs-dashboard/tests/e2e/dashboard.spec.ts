@@ -173,7 +173,10 @@ test("authenticated core routes load real data without browser errors", async ({
   await expect(page.getByText("Next scheduled run", { exact: true })).toHaveCount(0);
 
   await page.goto("/listings?type=rent");
-  const detailHref = await page.locator('a[href^="/listings/"]').first().getAttribute("href");
+  const detailHref = await page
+    .locator('a[href^="/listings/"]:not([href="/listings/new"])')
+    .first()
+    .getAttribute("href");
   expect(detailHref).toBeTruthy();
   const detailResponse = await page.goto(detailHref!);
   expect(detailResponse?.status()).toBe(200);
