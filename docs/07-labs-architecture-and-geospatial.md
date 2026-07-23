@@ -260,13 +260,16 @@ merkado.cw property projection remains paused / not part of automatic deploy.
 - `/browse` + Passport-style detail — **public preview** (eligible active only;
   separate from Prototypes nav)
 - `/data-operations` — Labs-only pipeline enqueue/dispatch (admin + credentials)
-- `/search-requests`, `/what-fits-me`, `/agent`, `/match-reports/[requestId]` —
-  Labs prototypes; guided intake → draft → review/edit → explicit confirmation
-  is demonstrable with the retained request/entitlement/15-report fixture
-- Matcher: `merkado_labs.matching` (`rules_v1`) + `scripts/run_match_preview.py`
+- `/what-fits-me`, `/search-requests`, `/match-reports/[requestId]` — Labs
+  What Fits Me / Property Search / Your matches. Natural-language parse →
+  editable criteria → live matches from `public_property_listings` → optional
+  saved Property Search. Legacy `/agent` route may remain for internal fixtures
+  but is not the user-facing product name.
+- Matcher: dashboard `src/lib/matching` (`rules_v1`) against public listings;
+  Python `merkado_labs.matching` + `scripts/run_match_preview.py` for offline
+  Labs preview. Deterministic only — no runtime AI API for matching.
 - No real email, billing, subscription, entitlement enforcement, paywall, or
-  production merkado.cw connection. “Show three / pay to unlock more” is an
-  open product decision and is not implemented.
+  production merkado.cw connection. There is no locked result limit in Labs.
 - Nothing here is described as live on merkado.cw
 
 ### RE/MAX refresh (2026-07-17) and Terra prep (2026-07-20)
@@ -381,7 +384,7 @@ Operational areas, Data Operations, Explore/public preview, plus prototypes:
 - Data Operations (Labs pipeline enqueue/dispatch)
 - Settings (Automatic refresh **On**; daily default-branch cron observed)
 - Browse — public preview under Explore (not nested only under Prototypes)
-- Prototypes (Search Request / What Fits Me / Agent / Match Reports)
+- Prototypes (What Fits Me / Property Search / Your matches)
 
 Legacy top-level routes redirect into these areas:
 

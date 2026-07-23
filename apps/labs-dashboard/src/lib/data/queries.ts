@@ -1122,12 +1122,18 @@ export const getPropertySearchRequests = cache(
     const client = createLabsAdminClient();
     const { data, error } = await client
       .from("property_search_requests")
-      .select("id,title,status,transaction_type,min_price,max_price,price_currency,min_bedrooms,preferred_neighbourhoods,renovation_willingness,notes,intake_source,created_at,updated_at,confirmed_at")
+      .select(
+        "id,title,status,transaction_type,min_price,max_price,price_currency,min_bedrooms,min_bathrooms,min_floor_area_m2,property_types,preferred_neighbourhoods,excluded_neighbourhoods,must_haves,preferences,dealbreakers,renovation_willingness,notes,intake_source,created_at,updated_at,confirmed_at",
+      )
       .order("updated_at", { ascending: false })
       .limit(100);
     if (error) {
       throw new Error(`Unable to load search requests: ${error.message}`);
     }
+    const asStringList = (value: unknown) =>
+      Array.isArray(value)
+        ? value.map(String).filter(Boolean)
+        : [];
     return (data ?? []).map((row) => ({
       id: String(row.id),
       title: row.title ? String(row.title) : null,
@@ -1137,7 +1143,14 @@ export const getPropertySearchRequests = cache(
       maxPrice: optionalNumber(row.max_price),
       priceCurrency: row.price_currency ? String(row.price_currency) : null,
       minBedrooms: optionalNumber(row.min_bedrooms),
-      preferredNeighbourhoods: Array.isArray(row.preferred_neighbourhoods) ? row.preferred_neighbourhoods.map(String) : [],
+      minBathrooms: optionalNumber(row.min_bathrooms),
+      minFloorAreaM2: optionalNumber(row.min_floor_area_m2),
+      propertyTypes: asStringList(row.property_types),
+      preferredNeighbourhoods: asStringList(row.preferred_neighbourhoods),
+      excludedNeighbourhoods: asStringList(row.excluded_neighbourhoods),
+      mustHaves: asStringList(row.must_haves),
+      preferences: asStringList(row.preferences),
+      dealbreakers: asStringList(row.dealbreakers),
       renovationWillingness: row.renovation_willingness ? String(row.renovation_willingness) : null,
       notes: row.notes ? String(row.notes) : null,
       intakeSource: row.intake_source ? String(row.intake_source) : null,
@@ -1153,7 +1166,9 @@ export const getMatchReportsForRequest = cache(
     const client = createLabsAdminClient();
     const { data, error } = await client
       .from("listing_match_reports")
-      .select("id,property_search_request_id,property_listing_id,match_score,hard_pass,match_reasons,trade_offs,scoring_version,generated_at,listing:property_listings(title)")
+      .select(
+        "id,property_search_request_id,property_listing_id,match_score,hard_pass,match_reasons,trade_offs,evidence,scoring_version,generated_at,listing:property_listings(title,external_id,benchmark_price_xcg,primary_image_url,source:property_sources(display_name,name),neighbourhood:neighbourhoods!property_listings_neighbourhood_id_fkey(name))",
+      )
       .eq("property_search_request_id", requestId)
       .order("match_score", { ascending: false })
       .limit(100);
@@ -1162,6 +1177,14 @@ export const getMatchReportsForRequest = cache(
     }
     return (data ?? []).map((row) => {
       const listing = oneRelation(row.listing as RawRelation);
+      const neighbourhood = oneRelation(
+        (listing?.neighbourhood as RawRelation) ?? null,
+      );
+      const source = oneRelation((listing?.source as RawRelation) ?? null);
+      const evidence =
+        row.evidence && typeof row.evidence === "object"
+          ? (row.evidence as Record<string, unknown>)
+          : null;
       return {
         id: String(row.id),
         propertySearchRequestId: String(row.property_search_request_id),
@@ -1170,9 +1193,31 @@ export const getMatchReportsForRequest = cache(
         hardPass: Boolean(row.hard_pass),
         matchReasons: row.match_reasons,
         tradeOffs: row.trade_offs,
+        evidence: row.evidence,
         scoringVersion: String(row.scoring_version),
         generatedAt: String(row.generated_at),
         listingTitle: listing?.title ? String(listing.title) : null,
+        listingExternalId: listing?.external_id
+          ? String(listing.external_id)
+          : null,
+        listingNeighbourhood: neighbourhood?.name
+          ? String(neighbourhood.name)
+          : evidence?.neighbourhood
+            ? String(evidence.neighbourhood)
+            : null,
+        listingBenchmarkPriceXcg: optionalNumber(
+          listing?.benchmark_price_xcg ?? evidence?.benchmark_price_xcg,
+        ),
+        listingSourceDisplayName: source?.display_name
+          ? String(source.display_name)
+          : source?.name
+            ? String(source.name)
+            : evidence?.source
+              ? String(evidence.source)
+              : null,
+        listingPrimaryImageUrl: listing?.primary_image_url
+          ? String(listing.primary_image_url)
+          : null,
       };
     });
   },

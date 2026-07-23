@@ -18,9 +18,9 @@ const ROUTE_LABELS: Record<string, string> = {
   "/settings": "Settings",
   "/prototypes": "Prototypes",
   "/browse": "Public preview",
-  "/search-requests": "Search requests",
-  "/what-fits-me": "What Fits Me?",
-  "/agent": "Merkado Agent",
+  "/search-requests": "Property Search",
+  "/what-fits-me": "What Fits Me",
+  "/agent": "Labs access pass",
 };
 
 const PROTOTYPE_ROOTS = [
@@ -42,13 +42,18 @@ const LISTING_FROM_CONTEXTS: Record<
   quality: { label: "Data quality", href: "/quality" },
   sources: { label: "Sources", href: "/sources" },
   "match-reports": {
-    label: "Match report",
+    label: "Your matches",
     href: "/search-requests",
     prototypes: true,
   },
   "search-requests": {
-    label: "Search requests",
+    label: "Property Search",
     href: "/search-requests",
+    prototypes: true,
+  },
+  "what-fits-me": {
+    label: "What Fits Me",
+    href: "/what-fits-me",
     prototypes: true,
   },
   browse: { label: "Public preview", href: "/browse" },

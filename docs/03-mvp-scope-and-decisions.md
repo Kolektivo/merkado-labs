@@ -42,9 +42,9 @@ remains out of scope.
 | P2 | Dashboard updates | Source health, currency, eligibility, lifecycle, and exclusions can be inspected. |
 | P2 | Passport/read model | Safe listing history and provenance are available to the app. |
 | P2 | Labs admin native listing | Admin can draft/publish a manual-origin property with images, preview, and Passport events (not production Auth). |
-| [LABS] Prototype | What Fits Me? | Guided intake creates a draft; criteria can be reviewed/edited and explicitly confirmed. Production account flow remains planned. |
+| [LABS] Working | What Fits Me | Natural-language intake → editable Property Search criteria → live `rules_v1` matches from public-eligible listings → optional save. Production Auth/alerts remain planned. |
 | Planned (production) | Authenticated user listing | merkado.cw seller Auth/RLS flow (`List a property` / My properties). |
-| [LABS] Prototype / planned production | Merkado Agent | Labs test pass + 15 retained `rules_v1` reports demonstrate the handoff; paid subscription and email remain unbuilt. |
+| Future (main repo) | Paid matching / alerts | Formerly framed as “Merkado Agent”; paywall, subscriptions, email, and production Auth remain unbuilt. Labs uses Property Search + Your matches. |
 | Deferred | Broader reports, alerts, AVM | Start only after the data-history activation gate is met. |
 
 ## 3. Resolved decisions
@@ -65,8 +65,8 @@ remains out of scope.
 | Removed | Requires consecutive successful complete snapshots with absence |
 | Passport | Off-chain listing/property activity log |
 | AI review model | Exception-based (`enrichment_policy_v5`): high-confidence evidenced gap-filling fields auto-apply; English public presentation + optional Dutch About-this-property; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused. Historical v4 / v4.1 / v4.2 retained for audit. |
-| Guided discovery | Labs prototype supports direct or What Fits Me intake, draft review/edit, and explicit confirmation. Production user accounts remain planned. |
-| Merkado Agent | Future paid monthly subscription; email delivery first |
+| Guided discovery | Labs What Fits Me parses EN/NL text into editable criteria, matches live public listings, then optionally saves a Property Search. Production user accounts remain planned. |
+| Paid matching / alerts | Future main-repository work (not Labs user-facing “Merkado Agent”) |
 | Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |
 | Professional help | Future referral CTA from a match; provider types and commercial model still open |
 | Intelligence | Deferred until enough reliable history exists |
@@ -97,27 +97,27 @@ remains out of scope.
 - Kadaster/title verification
 - KYC/AML, escrow, checkout, or asset payments
 - blockchain Passport
-- Production What Fits Me? customer journey (Labs structured prototype exists)
-- Production Property Search Request account ownership/consent flow (Labs admin prototype exists)
-- monthly Merkado Agent subscription and billing
-- personalized email matching
-- production Match Report delivery (15 Labs `rules_v1` fixtures exist)
+- Production What Fits Me customer journey (Labs matching flow works; production Auth does not)
+- Production Property Search account ownership/consent flow (Labs admin session exists)
+- monthly paid matching subscription and billing
+- personalized email matching / alerts
+- production Match Report delivery (Labs live matching + 15 retained fixtures exist)
 - professional-help referral marketplace
 - weekly reports
 - sold-probability models
 
-These are not rejected ideas. Labs demonstrates the guided-search handoff; the
-customer-facing Agent flow remains planned after the data activation gate and a
-separate product/monetization specification.
+These are not rejected ideas. Labs What Fits Me matching works against real
+public listings; paywall, alerts, email, billing, and production Auth remain
+future main-repository work after the data activation gate.
 
-### Labs prototype readiness (audited 2026-07-23)
+### Labs What Fits Me readiness (updated 2026-07-23)
 
 | Demonstration step | Labs status | Production boundary |
 |---|---|---|
-| 1. Start with What Fits Me | Ready: structured, optional criteria form with guidance disclaimer | No customer profile, consent or financial-advice workflow |
-| 2. Ask Property Search | Ready: creates an internal draft with `intake_source=what_fits_me` | No production account ownership |
-| 3. Review/edit criteria | Ready: match-report page shows criteria and supports edits; edits reset confirmed requests to draft | No versioned customer preference history |
-| 4. Confirm and inspect Agent matches | Ready: explicit confirm, retained test entitlement, 15 `rules_v1` Match Reports | No billing, paywall, entitlement enforcement, continuous monitor or email |
+| 1. Describe what you want | Ready: natural-language EN/NL intake | No customer profile or financial-advice workflow |
+| 2. Review Property Search criteria | Ready: editable hard requirements vs soft preferences | No production account ownership |
+| 3. See live matches | Ready: deterministic `rules_v1` against `public_property_listings` | No paywall or locked result limit |
+| 4. Save Property Search / Your matches | Ready: confirm persists request + match reports; reopen preserves results | No billing, email alerts, or continuous monitor |
 
 The fixture request `4ec62242-3921-4aa5-be9c-97e557f32585`, entitlement
 `3c6f97f7-9e30-4738-ac36-1f3a1af45067`, and its 15 reports are retained Labs

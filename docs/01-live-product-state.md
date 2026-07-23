@@ -104,13 +104,16 @@ The isolated Labs project currently has:
   failure does not remove English). Zero-cost policy rematerialization does not
   create billable AI work. Labs public + bilingual view migrations are applied
   in Labs; production merkado.cw property migration remains **paused**.
-- Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
-  **Labs prototypes**, not live on merkado.cw. The demonstrable handoff is
-  What Fits Me → create draft Property Search Request → review/edit criteria →
-  explicitly confirm → optional Agent test pass / existing Match Reports.
-  Editing confirmed criteria returns the request to draft for re-confirmation.
-  No subscription, billing, entitlement enforcement, continuous monitoring, or
-  real email exists.
+- Labs **What Fits Me** + Property Search matching (`rules_v1`) — **working in
+  Labs**, not live on merkado.cw. Flow: natural-language intake (EN/NL) →
+  editable criteria → immediate matches from current `public_property_listings`
+  → optional confirm to save a Property Search and reopen **Your matches**.
+  Matching is deterministic and explainable (Strong / Good / Possible). XCG is
+  the only primary matched price. Editing saved criteria returns the request to
+  draft for re-confirmation. “Merkado Agent” is **not** the current user-facing
+  product name. No subscription, billing, paywall, entitlement enforcement,
+  continuous monitoring, or real email exists — those remain future
+  main-repository work.
 - Labs admin **Add property** native listing prototype (`listing_origin=manual`):
   draft/edit/publish/unpublish/sold/rented/republish under the Labs admin cookie;
   ordered images in Storage bucket `listing-images` (max **12** images **per
@@ -206,7 +209,8 @@ Core MVP rules:
 - Confirmed sale prices
 - Automated valuation or sold-probability models
 - Weekly intelligence reports
-- Production What Fits Me / Merkado Agent (Labs preview only)
+- Production What Fits Me / Property Search alerts (Labs matching works; Agent
+  branding, paywall, email, and production Auth remain future work)
 - Matching-listing email notifications / real billing
 - Production account ownership, Auth/RLS, subscriptions, paywall/entitlement
   enforcement, notification delivery, and merkado.cw integration. Whether to

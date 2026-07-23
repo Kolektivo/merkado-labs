@@ -18,28 +18,20 @@ export const metadata: Metadata = { title: "Prototypes" };
 
 const prototypes = [
   {
-    href: "/search-requests",
-    title: "Property Search Request",
-    description:
-      "Internal draft buyer requests for matching tests. No customer accounts or delivery.",
-    data: "Real internal test data",
-    status: "Draft",
-  },
-  {
     href: "/what-fits-me",
-    title: "What Fits Me?",
+    title: "What Fits Me",
     description:
-      "A structured draft questionnaire only. Not mortgage or affordability advice.",
-    data: "Creates internal test data",
-    status: "Draft",
+      "Natural-language Property Search with live matches from public-eligible Labs listings.",
+    data: "Real Labs listings",
+    status: "Working in Labs",
   },
   {
-    href: "/agent",
-    title: "Merkado Agent",
+    href: "/search-requests",
+    title: "Property Search",
     description:
-      "Test access for request-based matching. No billing, subscriptions, or email.",
+      "Create or reopen structured Property Search requests and view saved matches.",
     data: "Real internal test data",
-    status: "Draft",
+    status: "Working in Labs",
   },
 ] as const;
 
@@ -61,7 +53,7 @@ export default function PrototypesPage() {
       />
       <PrototypeNotice>
         No subscriptions, billing, customer email, or financial advice are
-        connected.
+        connected. Matching is deterministic and Labs-only.
       </PrototypeNotice>
       <div className="grid gap-4 sm:grid-cols-2">
         {prototypes.map((prototype) => (
@@ -76,7 +68,7 @@ export default function PrototypesPage() {
                 <CardDescription>{prototype.description}</CardDescription>
               </CardHeader>
               <CardContent className="text-sm font-medium">
-                Open prototype
+                Open
               </CardContent>
             </Card>
           </Link>

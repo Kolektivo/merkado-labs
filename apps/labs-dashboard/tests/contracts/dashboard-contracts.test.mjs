@@ -87,16 +87,32 @@ test("normal admin APIs require the session cookie, not repeated secrets", () =>
 });
 
 test("What Fits Me handoff supports criteria review, edit, and confirmation", () => {
-  const form = source("src/components/search-request-form.tsx");
+  const flow = source("src/components/what-fits-me-flow.tsx");
+  const page = source("src/app/what-fits-me/page.tsx");
   const review = source("src/components/search-request-review.tsx");
   const report = source("src/app/match-reports/[requestId]/page.tsx");
+  const previewRoute = source("src/app/api/what-fits-me/preview/route.ts");
+  const createRoute = source("src/app/api/search-requests/route.ts");
   const updateRoute = source("src/app/api/search-requests/[id]/route.ts");
+  const matchLib = source("src/lib/matching/run-public-match.ts");
 
-  assert.match(form, /intakeSource: guided \? "what_fits_me"/);
-  assert.match(form, /router\.push\(`\/match-reports\/\$\{result\.id\}`\)/);
+  assert.match(page, /WhatFitsMeFlow/);
+  assert.match(flow, /Interpret & review criteria/);
+  assert.match(flow, /Find matching properties/);
+  assert.match(flow, /create a Property Search/);
+  assert.match(flow, /intakeSource: "what_fits_me"/);
+  assert.match(flow, /persistMatches: true/);
+  assert.match(previewRoute, /assertLabsAdminSession/);
+  assert.match(previewRoute, /parsePropertySearchText|criteriaFromBody/);
+  assert.match(matchLib, /getPublicListings|public_property_listings|toMatchCandidate/);
+  assert.match(createRoute, /persistMatchReportsForRequest/);
   assert.match(report, /SearchRequestReview/);
-  assert.match(report, /ConfirmSearchRequestButton/);
-  assert.match(review, /Review property search criteria/);
+  assert.match(report, /Your matches/);
+  assert.match(report, /Open Passport/);
+  assert.doesNotMatch(report, /Merkado Agent/);
+  assert.doesNotMatch(flow, /Merkado Agent/);
+  assert.doesNotMatch(flow, /Subscribe|Unlock more|Enter card|Stripe/i);
+  assert.match(review, /Property Search criteria/);
   assert.match(review, /Edit search/);
   assert.match(updateRoute, /status: "draft"/);
   assert.match(updateRoute, /confirmed_at: null/);

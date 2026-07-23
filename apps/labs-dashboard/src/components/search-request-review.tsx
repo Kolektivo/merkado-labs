@@ -19,6 +19,17 @@ import {
 import type { PropertySearchRequest } from "@/lib/domain/types";
 import { formatCurrency, titleCase } from "@/lib/format";
 
+function listToInput(values: string[]): string {
+  return values.join(", ");
+}
+
+function inputToList(value: string): string[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function SearchRequestReview({
   request,
 }: {
@@ -52,25 +63,33 @@ export function SearchRequestReview({
           minPrice: fields.get("minPrice"),
           maxPrice: fields.get("maxPrice"),
           minBedrooms: fields.get("minBedrooms"),
-          preferredNeighbourhoods: String(fields.get("neighbourhoods") ?? "")
-            .split(",")
-            .map((value) => value.trim()),
+          minBathrooms: fields.get("minBathrooms"),
+          propertyTypes: inputToList(String(fields.get("propertyTypes") ?? "")),
+          preferredNeighbourhoods: inputToList(
+            String(fields.get("neighbourhoods") ?? ""),
+          ),
+          mustHaves: inputToList(String(fields.get("mustHaves") ?? "")),
+          preferences: inputToList(String(fields.get("preferences") ?? "")),
+          dealbreakers: inputToList(String(fields.get("dealbreakers") ?? "")),
           renovationWillingness: renovation,
           notes: fields.get("notes"),
+          persistMatches: true,
         }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error ?? "Unable to update request.");
+        throw new Error(result.error ?? "Unable to update Property Search.");
       }
       setEditing(false);
-      setMessage("Criteria saved as a draft. Review and confirm the search again.");
+      setMessage(
+        "Criteria saved as a draft and matches refreshed. Confirm the Property Search again if needed.",
+      );
       router.refresh();
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Unable to update request.",
+          : "Unable to update Property Search.",
       );
     } finally {
       setBusy(false);
@@ -80,7 +99,7 @@ export function SearchRequestReview({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-3">
-        <CardTitle>Review property search criteria</CardTitle>
+        <CardTitle>Property Search criteria</CardTitle>
         {!editing ? (
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="size-3.5" />
@@ -162,13 +181,58 @@ export function SearchRequestReview({
                 />
               </div>
               <div>
+                <FieldLabel htmlFor="review-bathrooms">
+                  Minimum bathrooms
+                </FieldLabel>
+                <Input
+                  id="review-bathrooms"
+                  name="minBathrooms"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  defaultValue={request.minBathrooms ?? ""}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="review-types">Property types</FieldLabel>
+                <Input
+                  id="review-types"
+                  name="propertyTypes"
+                  defaultValue={listToInput(request.propertyTypes)}
+                />
+              </div>
+              <div>
                 <FieldLabel htmlFor="review-neighbourhoods">
-                  Preferred neighbourhoods
+                  Required locations
                 </FieldLabel>
                 <Input
                   id="review-neighbourhoods"
                   name="neighbourhoods"
-                  defaultValue={request.preferredNeighbourhoods.join(", ")}
+                  defaultValue={listToInput(request.preferredNeighbourhoods)}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="review-must">Must-haves</FieldLabel>
+                <Input
+                  id="review-must"
+                  name="mustHaves"
+                  defaultValue={listToInput(request.mustHaves)}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="review-prefs">Preferences</FieldLabel>
+                <Input
+                  id="review-prefs"
+                  name="preferences"
+                  defaultValue={listToInput(request.preferences)}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="review-deals">Dealbreakers</FieldLabel>
+                <Input
+                  id="review-deals"
+                  name="dealbreakers"
+                  defaultValue={listToInput(request.dealbreakers)}
                 />
               </div>
               <div>
@@ -189,10 +253,8 @@ export function SearchRequestReview({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <FieldLabel htmlFor="review-notes">
-                  Notes or dealbreakers
-                </FieldLabel>
+              <div className="sm:col-span-2">
+                <FieldLabel htmlFor="review-notes">Notes</FieldLabel>
                 <Input
                   id="review-notes"
                   name="notes"
@@ -228,7 +290,7 @@ export function SearchRequestReview({
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Budget</dt>
+              <dt className="text-xs text-muted-foreground">Budget (XCG)</dt>
               <dd className="font-medium">
                 {request.minPrice !== null || request.maxPrice !== null
                   ? `${request.minPrice !== null ? formatCurrency(request.minPrice, "XCG") : "Any"} – ${request.maxPrice !== null ? formatCurrency(request.maxPrice, "XCG") : "Any"}`
@@ -244,9 +306,27 @@ export function SearchRequestReview({
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Neighbourhoods</dt>
+              <dt className="text-xs text-muted-foreground">Locations</dt>
               <dd className="font-medium">
                 {request.preferredNeighbourhoods.join(", ") || "Any"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Types</dt>
+              <dd className="font-medium">
+                {request.propertyTypes.join(", ") || "Any"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Must-haves</dt>
+              <dd className="font-medium">
+                {request.mustHaves.join(", ") || "None"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Preferences</dt>
+              <dd className="font-medium">
+                {request.preferences.join(", ") || "None"}
               </dd>
             </div>
             <div>

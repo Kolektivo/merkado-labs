@@ -47,10 +47,10 @@ Never expose server credentials through `NEXT_PUBLIC_*`.
   default-branch daily cron observed 2026-07-22)
 - `/browse` and `/browse/[id]` — public-safe Labs **public preview** with
   XCG-primary pricing and filtered Passport history
-- `/prototypes`, `/what-fits-me`, `/search-requests`, `/agent`, and
-  `/match-reports/[requestId]` — clearly separated Labs concepts. Guided intake,
-  criteria review/edit, and confirmation are demonstrable; no billing, paywall,
-  real entitlement enforcement, continuous matching, or email.
+- `/prototypes`, `/what-fits-me`, `/search-requests`, and
+  `/match-reports/[requestId]` — What Fits Me natural-language intake, live
+  deterministic matches from public listings, saved Property Search / Your
+  matches. No Agent branding, billing, paywall, or email.
 
 Legacy duplicate routes redirect into the consolidated areas.
 

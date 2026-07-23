@@ -72,11 +72,10 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>New draft request</CardTitle>
+        <CardTitle>New Property Search</CardTitle>
         <CardDescription>
-          Fill in what you know — every field except the name is optional. After
-          creating, you can confirm the draft for Merkado Agent testing. Match
-          scores are not generated automatically.
+          Fill in what you know — every field except the name is optional. For
+          natural-language intake and live matching, use What Fits Me.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,11 +181,10 @@ export function SearchRequestForm({ guided = false }: { guided?: boolean }) {
           <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
             <Button disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              {busy ? "Creating…" : "Create draft request"}
+              {busy ? "Creating…" : "Create Property Search"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Labs prototype — internal test data only, nothing is sent to
-              customers.
+              Labs only — no paywall, billing, or email delivery.
             </p>
           </div>
           </fieldset>

@@ -40,7 +40,7 @@ This folder holds the working context for Merkado Labs property work.
 | Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog |
 | Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (excluded from Ready pipelines; feed/API needed) |
 | AI enrichment (v5 / policy v5) | [LABS] Current: `listing_enrichment_v5` / `listing_enrichment_schema_v5` / `enrichment_policy_v5`; English public presentation fields; dashboard AI execution disabled; pipeline AI under budgets when worker runs; prior v4.2 quality pass retained — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
-| Search Request + Match Reports | [LABS] Retained demo request + entitlement + 15 `rules_v1` matches; What Fits Me → draft → review/edit → confirm demonstrable; no billing/email/paywall |
+| What Fits Me + Property Search | [LABS] Working Labs flow: natural-language → editable criteria → live `rules_v1` matches from `public_property_listings` → optional saved Property Search; retained demo request + 15 matches kept; no Agent/paywall/billing/email UI; production Auth deferred |
 
 ## The files
 

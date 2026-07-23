@@ -54,7 +54,7 @@ Active work is **direct-source property ingestion** for Curaçao:
   preview (English-canonical product language + Dutch About toggle + filtered
   Passport history);
 - Labs dashboard: ops + Data Operations + Enrichment review + native listing +
-  What Fits Me/draft-review-edit-confirm/Agent prototypes (not read-only; no
+  What Fits Me live matching + Property Search / Your matches (not read-only; no
   production billing/email/paywall);
 - geospatial neighbourhood boundaries and assignment.
 

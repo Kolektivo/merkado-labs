@@ -97,11 +97,12 @@ is not live on merkado.cw.
   XCG-primary pricing and the filtered seller/source/native timeline; ±1
   display jitter, benchmark-only FX, AI/ops/repair and duplicate noise remain
   stored but are not presented.
-- **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
-  These are explicitly experimental. What Fits Me can create a draft, the
-  criteria can be reviewed/edited, and the request can be explicitly
-  confirmed. No real subscription, billing, paywall, entitlement enforcement,
-  continuous monitoring, or email exists.
+- **Prototypes** — What Fits Me and Property Search (plus saved **Your matches**).
+  What Fits Me is a working Labs flow: natural-language intake → editable
+  criteria → live deterministic matches from `public_property_listings` →
+  optional saved Property Search. “Merkado Agent” is not the current
+  user-facing product. No real subscription, billing, paywall, entitlement
+  enforcement, continuous monitoring, or email exists.
 
 Data Operations can enqueue and dispatch the Labs-only property workflow when
 admin + credentials are configured. **Automatic refresh is On**

@@ -488,7 +488,14 @@ export type PropertySearchRequest = {
   maxPrice: number | null;
   priceCurrency: string | null;
   minBedrooms: number | null;
+  minBathrooms: number | null;
+  minFloorAreaM2: number | null;
+  propertyTypes: string[];
   preferredNeighbourhoods: string[];
+  excludedNeighbourhoods: string[];
+  mustHaves: string[];
+  preferences: string[];
+  dealbreakers: string[];
   renovationWillingness: string | null;
   notes: string | null;
   intakeSource: string | null;
@@ -505,9 +512,15 @@ export type MatchReport = {
   hardPass: boolean;
   matchReasons: unknown;
   tradeOffs: unknown;
+  evidence: unknown;
   scoringVersion: string;
   generatedAt: string;
   listingTitle: string | null;
+  listingExternalId: string | null;
+  listingNeighbourhood: string | null;
+  listingBenchmarkPriceXcg: number | null;
+  listingSourceDisplayName: string | null;
+  listingPrimaryImageUrl: string | null;
 };
 
 export type MerkadoAgentEntitlement = {
