@@ -67,7 +67,7 @@ npm --prefix apps/labs-dashboard run build
 
 The browser tests use installed Microsoft Edge in desktop and mobile profiles.
 
-See `docs/testing-and-uat.md` for the full verify matrix and Product Lead UAT
-format, and `docs/LABS_DASHBOARD_GUIDE.md` for the full operating and
+See `docs/11-testing-and-uat.md` for the full verify matrix and Product Lead UAT
+format, and `docs/12-deployment-runbook.md` for the full operating and
 troubleshooting guide. Do not run adapters, imports, AI jobs, schedules,
 deployments, or production operations without explicit approval.

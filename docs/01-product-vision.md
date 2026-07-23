@@ -1,4 +1,4 @@
-# 02 - Merkado V2 Vision
+# 01 - Product Vision
 
 **Purpose:** Long-term product direction, separate from current live-product claims.
 
@@ -142,3 +142,25 @@ Merkado's durable advantage is a trustworthy longitudinal dataset combined with 
 - user feedback on which matches were useful.
 
 The moat is not a generic chatbot. It is trusted Curaçao property data plus a transparent matching and advisory layer.
+
+## Passport framing cross-links
+
+The former single Passport & intelligence document was split during docs
+standardization. Complete product framing is preserved across:
+
+| Topic | Home |
+|---|---|
+| Passport vision and future journey | this file (§3–§4) |
+| MVP Passport sections, public copy, Labs Browse detail | `03-user-flows.md` |
+| Identity model, activity events, entities | `06-data-model.md` |
+| User data / privacy principles | `08-security-and-privacy.md` |
+| Activation gate and post-activation order | `02-scope-and-decisions.md`, `10-execution-roadmap.md` |
+| Verified Labs implementation | `09-current-state.md` |
+
+### Passport definition (canonical short form)
+
+A Property Passport is an off-chain, source-traceable activity log for one source
+listing and, later, a reviewed canonical property. It is not a blockchain token,
+proof of ownership, title record, confirmed valuation, confirmed transaction
+record, or legal guarantee. Labs Passport-style pages are prototypes, not
+production merkado.cw surfaces.

@@ -1,14 +1,19 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # Experiment log
 
 > **Archive:** This file is historical. Current Labs ops and inventory live in
-> `docs/01-live-product-state.md` and `docs/09-project-safety-and-history.md`.
+> `docs/09-current-state.md` and `docs/research/decision-history-and-chh-lessons.md`.
 
 Living log of Labs experiments. Newest first.
 
 > **Note (2026-07-16):** CaribbeanHouseHunt is retired. Experiment trees,
 > harvest workflow, and active importer code were removed from the repository.
 > Entries below that reference CHH paths are historical only. Current work is
-> the direct-source foundation (see `docs/01`–`09` and `scripts/cleanup/`).
+> the direct-source foundation (historical doc numbering was `docs/01`–`09`;
+> current OS is `docs/00`–`12` — start at `docs/00-docs-index.md` and
+> `docs/09-current-state.md`; cleanup tooling under `scripts/cleanup/`).
 
 ---
 
@@ -54,7 +59,7 @@ per-domain enrichment PoC, and surface source-chain quality in the Labs dashboar
 
 ### Method
 
-- Audited bulk payload vs normalized index (`docs/labs/CHH_RICHER_HARVEST_AUDIT.md`).
+- Audited bulk payload vs normalized index (`docs/research/historical-chh-richer-harvest-audit-2026-07-16.md`).
 - Snapshot extractor bumped to `0.3.0` with provenance-aware normalized fields.
 - Forward-only migration `20260716120000_enrich_chh_listing_attribution.sql`.
 - Importer backfills from raw evidence so older 0.2 snapshots remain importable.

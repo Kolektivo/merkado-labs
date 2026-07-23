@@ -37,7 +37,7 @@ Source:
 | | | |
 
 Meeting notes do not change product scope until the relevant decision is
-approved and added to its canonical document (see `docs/README.md`).
+approved and added to its canonical document (see `docs/00-docs-index.md`).
 
 ## Processed into
 

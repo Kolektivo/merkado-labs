@@ -23,13 +23,13 @@ automatically.
   public preview + filtered Property Passport activity + Enrichment review +
   native listing and guided-search prototypes — **not** read-only.
 - **Labs dataset:** inventory, public-eligible, and pricing readiness figures
-  change over time — see **`docs/01-live-product-state.md`** only (dated audits
-  under `docs/labs/` are historical evidence, not the live snapshot).
+  change over time — see **`docs/09-current-state.md`** only (dated audits
+  under `docs/research/` are historical evidence, not the live snapshot).
 
-Property MVP docs (`docs/01`–`07` + `09`; `08` historical) and
-`docs/LABS_DASHBOARD_GUIDE.md` are the current source of truth. Start at
-`docs/README.md`. Agent operating rules: root `AGENTS.md` (Claude: `CLAUDE.md`).
-Verification and Product Lead UAT: `docs/testing-and-uat.md`.
+Property MVP docs (`docs/00`–`12`) are the current source of truth. Start at
+`docs/00-docs-index.md`. Agent operating rules: root `AGENTS.md` (Claude:
+`CLAUDE.md`). Verification and Product Lead UAT: `docs/11-testing-and-uat.md`.
+Full ops/deploy guidance: `docs/12-deployment-runbook.md`.
 
 ## Local setup (Python)
 
@@ -50,7 +50,7 @@ python -m pip install -e ".[geo]"
 ```
 
 Only connect `.env` to the Labs Supabase project. Never use production
-service-role credentials. See `docs/labs/SAFETY_RULES.md` before any external write.
+service-role credentials. See `docs/08-security-and-privacy.md` before any external write.
 
 ## Labs dashboard (Next.js)
 
@@ -83,9 +83,10 @@ npm run build
 npm run test:e2e
 ```
 
-Full verify matrix and Product Lead UAT: `docs/testing-and-uat.md`.
+Full verify matrix and Product Lead UAT: `docs/11-testing-and-uat.md`.
 
 ## Docs
 
-Start at `docs/README.md`. Agent entry: `AGENTS.md`. Labs safety notes live
-under `docs/labs/`. Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
+Start at `docs/00-docs-index.md`. Agent entry: `AGENTS.md`. Safety:
+`docs/08-security-and-privacy.md`. Dashboard ops: `docs/12-deployment-runbook.md`
+and `apps/labs-dashboard/README.md`.

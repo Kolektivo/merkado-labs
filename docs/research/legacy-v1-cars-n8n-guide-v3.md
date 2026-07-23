@@ -1,11 +1,14 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # Merkado V1 — n8n Scraping & Supabase Complete Guide
 
 > **HISTORICAL / PRODUCTION V1 CARS ONLY.** This guide documents the live
 > merkado.cw **vehicle** marketplace n8n + Supabase stack. It is **not** the
 > Merkado Labs property pipeline, not Labs Supabase (`csaefdkpwukshtouyixg`),
 > and must not be used as ops guidance for property adapters, enrichment v5,
-> or `property-pipeline-labs.yml`. For Labs property work use `docs/01`–`09`
-> and `docs/LABS_DASHBOARD_GUIDE.md`.
+> or `property-pipeline-labs.yml`. For Labs property work use
+> `docs/09-current-state.md` and `docs/12-deployment-runbook.md`.
 
 **Version:** V3 (updated to match actual deployed workflows)
 **Purpose:** Historical complete reference for building and running production
@@ -104,7 +107,7 @@ Visual:
 ## Tables n8n NEVER writes to:
 
 | Table | Why not |
-|-------|---------| 
+|-------|---------|
 | `profiles` | Real users only — not for scraped data |
 | `public_profiles` | It's a database view, cannot be written to |
 | `listing_favorites` | User action only |
@@ -238,7 +241,7 @@ A scraped listing needs at least `make` + `model` to be imported. Everything els
 This is a 1-to-1 table with `listings` (PK is `listing_id`). These fields are less common on Curaçao websites but should be extracted when available — especially from Autobedrijf Willemstad which often has rich data.
 
 | Field | What it is | Example | Scrape? |
-|-------|-----------|---------|---------| 
+|-------|-----------|---------|---------|
 | `trim` | Model variant / package | "55 TFSI Quattro Proline SE", "Sport", "Limited" | Yes — extract if visible on source |
 | `engine_size` | Engine displacement | "2.0L", "1.5T", "3.0 V6" | Yes — extract if available |
 | `drive_type` | Drivetrain | "FWD", "RWD", "AWD", "4WD" | Yes — extract if available |

@@ -1,4 +1,4 @@
-# 03 - MVP Scope, Decisions & Open Questions
+# 02 - Scope and Decisions
 
 **Purpose:** Single source of truth for the current MVP scope, resolved decisions, accuracy constraints, and remaining partner questions.
 
@@ -189,3 +189,130 @@ It must never fabricate sale prices, condition, renovation costs, legal status, 
 16. **[OPEN]** Should free users see only three matches and pay to unlock more,
     or should the initial product use another trial/value boundary? Labs does
     not implement either behavior.
+
+## Preserved Passport intelligence framing
+
+The following sections are preserved from former `06-property-passport-and-intelligence.md` so unique product rules are not lost. They do not expand current MVP scope beyond what is already approved above.
+
+## 5. Intelligence foundation in MVP
+
+Build now:
+
+- immutable source observations;
+- original and normalized currency data;
+- source and detection dates;
+- current status plus activity events;
+- source-run health;
+- geospatial/neighbourhood assignment where evidence allows;
+- source-neutral entities and relationships;
+- evidence links for future calculations.
+
+The intelligence layer begins with reliable history, not AI features.
+
+## 7. Personalized Match Report
+
+Each recommended listing should have a dedicated report with two layers.
+
+### A. Listing evidence
+
+Grounded in the Property Passport and source data:
+
+- original listing facts and source;
+- asking price and currency provenance;
+- listing age and activity history;
+- price changes;
+- source status;
+- neighbourhood and property-type context;
+- data-quality warnings and missing information.
+
+### B. User-specific perspective
+
+Grounded in the confirmed Property Search Request:
+
+- why the property matches;
+- which needs it satisfies;
+- which preferences it misses;
+- important trade-offs;
+- possible maintenance or renovation implications when evidenced;
+- how the property compares with the user's preferred age, size, location, and budget;
+- whether the user may need professional review before proceeding.
+
+### C. Future evidence-backed signals
+
+Only when the required data and confidence exist:
+
+- `Below typical asking range`, `Within typical asking range`, or `Above typical asking range`;
+- likelihood that comparable listings attract attention or disappear quickly;
+- supply scarcity for the user's requested segment;
+- relevant neighbourhood or property-type trends;
+- confidence level and reason for the assessment.
+
+Example style:
+
+> This property fits your preferred Salinja area and is within your target range. Similar listings in this segment tend to move relatively quickly. The building appears older than your preferred profile, so maintenance or renovation should be reviewed before making a decision.
+
+This example is a writing pattern, not permission to state unsupported facts.
+
+### D. Actions
+
+- `View original listing`
+- `Save or dismiss`
+- `Adjust my Property Search Request`
+- `Get professional help`
+
+Professional-help referrals may later include approved buyer agents, mortgage advisors, property inspectors, contractors, notaries, or other specialists. The provider model and commercial terms require a separate decision.
+
+## 8. Matching and evidence rules
+
+A match should distinguish:
+
+- **Hard filters:** requirements that normally exclude a listing;
+- **Soft preferences:** desirable but negotiable criteria;
+- **Trade-offs:** meaningful differences the user should understand;
+- **Evidence strength:** how much reliable data supports the statement.
+
+Every calculated signal or Match Report must state or retain:
+
+- source set;
+- observation window;
+- included/excluded statuses;
+- conversion method;
+- comparison segment;
+- sample count;
+- calculation timestamp;
+- confidence level;
+- known limitations.
+
+AI may summarize evidence and personalize wording. It must not create missing facts.
+
+Do not claim:
+
+- exact market value without an approved valuation method;
+- confirmed selling speed from one missing listing;
+- confirmed condition from listing age or photos alone;
+- renovation cost without professional evidence;
+- legal/title status without verified records;
+- affordability or mortgage eligibility;
+- guaranteed investment returns.
+
+## 13. Other deferred intelligence products
+
+- automated weekly market reports;
+- sold-probability estimates for removed listings;
+- automated valuation or ROI claims;
+- AI-selected comparables without a reviewed method;
+- automatic cross-source entity resolution.
+
+## 14. Future evolution
+
+Possible later layers:
+
+- reviewed multi-source property linking;
+- confirmed transaction evidence;
+- Kadaster or notary evidence;
+- inspection/condition records;
+- comparables and market signals;
+- user-submitted corrections with review;
+- legal or zoning records.
+
+Blockchain may support separate future contract or investment products. The Passport remains the off-chain evidence and activity record.

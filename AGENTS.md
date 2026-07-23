@@ -12,13 +12,12 @@ and provide beginner-friendly manual steps.
 
 Before complex work, read:
 
-1. `docs/README.md` (documentation index and canonical source map)
-2. Relevant canonical docs under `docs/01`–`07`, `09`, and
-   `docs/LABS_DASHBOARD_GUIDE.md` (`docs/08` is historical only)
-3. `docs/01-live-product-state.md` (canonical **current implementation state**)
+1. `docs/00-docs-index.md` (documentation index and canonical source map)
+2. Relevant canonical docs under `docs/01`–`12`
+3. `docs/09-current-state.md` (canonical **current implementation state**)
 4. Any file under `docs/tasks/active/`
 5. Relevant code, schemas, configuration, and migrations
-6. `docs/labs/SAFETY_RULES.md` before any write, deploy, or credential use
+6. `docs/08-security-and-privacy.md` before any write, deploy, or credential use
 
 Do not require the user to paste previous AI summaries when the repository
 contains the needed context.
@@ -27,9 +26,9 @@ contains the needed context.
 
 1. Current code, schemas, configuration, and migrations on the active branch
 2. This file
-3. `docs/README.md`
-4. Approved canonical documentation and decisions (`docs/01`–`07`, `09`, guide, safety)
-5. `docs/01-live-product-state.md` (current state snapshot)
+3. `docs/00-docs-index.md`
+4. Approved canonical documentation and decisions (`docs/01`–`12`, ADRs, safety)
+5. `docs/09-current-state.md` (current state snapshot)
 6. Active approved task plan under `docs/tasks/active/`
 7. AI chat summaries or proposals
 
@@ -37,13 +36,15 @@ Report conflicts before implementation.
 
 **Historical only — not the live backlog or current roadmap:**
 
-- `docs/08-execution-plan-and-cursor-prompt.md`
-- `docs/labs/EXPERIMENT_LOG.md`
-- `docs/supabase-architecture.md` and `docs/merkado_n8n_complete_guide_v3.md`
-  (production v1 **cars**, not Labs property)
+- `docs/research/historical-chh-direct-source-execution-plan-2026.md`
+- `docs/research/experiment-log.md`
+- `docs/research/legacy-v1-cars-supabase-architecture.md` and
+  `docs/research/legacy-v1-cars-n8n-guide-v3.md` (production v1 **cars**, not
+  Labs property)
+- Other dated audits under `docs/research/` (HISTORICAL banners)
 
-Prefer `docs/03-mvp-scope-and-decisions.md` for scope and gates, and `docs/01`
-for what is actually built.
+Prefer `docs/02-scope-and-decisions.md` for scope and gates, and `docs/09`
+for what is actually built. Approved remaining work: `docs/10-execution-roadmap.md`.
 
 ## Working rules
 
@@ -74,25 +75,25 @@ for what is actually built.
 - Never run destructive SQL without explicit approval.
 - Represent every database change in a reviewed migration file before applying.
 - Enable RLS on every table created in an exposed schema.
-- Use service-role credentials only in local backend scripts; never commit or
-  expose them.
+- Use service-role credentials only in local backend scripts or the Labs-only
+  GitHub Action; never commit, print, log, or expose them to browser code.
 - Preserve scraped source data in raw form before normalization.
 - Do not deploy to Vercel from this repository unless explicitly instructed.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
-- Full rules: `docs/labs/SAFETY_RULES.md` and
+- Full rules: `docs/08-security-and-privacy.md` and
   `.cursor/rules/merkado-labs-safety.mdc`.
 
 ## Documentation
 
-- Each durable fact or decision has one canonical home (see `docs/README.md`).
+- Each durable fact or decision has one canonical home (see `docs/00-docs-index.md`).
 - Update existing canonical docs rather than creating duplicates.
 - Meeting notes and research are evidence, not automatically approved
   requirements.
 - Use `docs/tasks/active/` only for meaningful multi-step tasks.
 - Move durable outcomes from completed tasks into canonical docs.
-- There are two active docs numbered `06` (currency vs Passport). Do not
-  renumber them without Product Lead approval.
+- Canonical product docs are `docs/00`–`docs/12` (see ADR-0001). Do not invent
+  parallel numbering.
 - App-scoped `apps/labs-dashboard/AGENTS.md` and `CLAUDE.md` are Next.js
   instructions for that app, not duplicates of this file.
 
@@ -110,15 +111,19 @@ Keep documentation continuous with Product Lead decisions:
    instruction and update the affected canonical docs.
 5. Do not silently follow outdated documentation over a newer explicit user
    instruction.
-6. Update requirement, scope, architecture, and decision docs when the
-   direction is approved (for example `docs/03`, topic docs `04`–`07`, ADRs).
-7. Update `docs/01-live-product-state.md` **only after** implementation is
+6. Update approved intent in vision/scope/flows/architecture as relevant
+   (`docs/01`, `02`, `03`, `05`, ADRs).
+7. Update `docs/09-current-state.md` **only after** implementation is
    completed and verified. Never describe unfinished work as live.
-8. Update `docs/testing-and-uat.md` when flows, acceptance criteria,
+8. Update `docs/10-execution-roadmap.md` and `docs/tasks/active/` for planned
+   approved work (Now / Next / Later / Blocked). Do not auto-promote every
+   unimplemented idea into the roadmap.
+9. Update `docs/11-testing-and-uat.md` when flows, acceptance criteria,
    permissions, or risks change.
-9. Every completed non-trivial task must either update the relevant docs or
-   explicitly state **No documentation update needed** with a reason.
-10. Production, destructive, database, billing, privacy, and security changes
+10. Update `docs/12-deployment-runbook.md` for operational / env / deploy changes.
+11. Every completed non-trivial task must either update the relevant docs or
+    explicitly state **No documentation update needed** with a reason.
+12. Production, destructive, database, billing, privacy, and security changes
     still require explicit approval before execution.
 
 ### Meeting Notes Workflow
@@ -161,7 +166,7 @@ Labs dashboard (`apps/labs-dashboard`):
 - Build: `npm run build`
 - Browser / e2e: `npm run test:e2e` (build + Playwright)
 
-Product Lead UAT format and critical flows: `docs/testing-and-uat.md`.
+Product Lead UAT format and critical flows: `docs/11-testing-and-uat.md`.
 
 Never claim completion without running relevant available checks and reporting
 actual results.
@@ -175,7 +180,7 @@ actual results.
 - Browser or flow testing is completed where possible
 - Documentation Synchronization Protocol followed (docs updated, or explicit
   “No documentation update needed” with reason)
-- Canonical documentation and current state (`docs/01`) are accurate for
+- Canonical documentation and current state (`docs/09`) are accurate for
   completed verified work
 - Product Lead receives a beginner-friendly UAT checklist
 - Remaining risks and manual actions are explicit

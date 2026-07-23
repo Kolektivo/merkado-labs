@@ -11,9 +11,9 @@ Process these meeting notes into the Merkado Labs documentation system.
 Read:
 
 - AGENTS.md (Documentation Synchronization Protocol and Meeting Notes Workflow)
-- docs/README.md
-- docs/01-live-product-state.md
-- docs/03-mvp-scope-and-decisions.md
+- docs/00-docs-index.md
+- docs/09-current-state.md
+- docs/02-scope-and-decisions.md
 - The meeting note file under docs/meetings/
 - Every canonical document the meeting may affect
 
@@ -31,7 +31,8 @@ Rules:
 - Ask before promoting anything ambiguous to approved scope.
 - Update the correct canonical docs with confirmed decisions only.
 - Keep proposals and open questions labeled as such in the meeting note and in any scope doc sections meant for open items.
-- Do not update docs/01-live-product-state.md unless something was already implemented and verified.
+- Do not update docs/09-current-state.md unless something was already implemented and verified.
+- Do not put unapproved ideas into docs/10-execution-roadmap.md.
 - Add a "Processed into" section on the meeting note linking to every updated file.
 - Report what you changed and what still needs Product Lead confirmation.
 

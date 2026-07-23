@@ -3,9 +3,9 @@
 **Purpose:** Real verification commands for this repository, plus a
 beginner-friendly Product Lead acceptance checklist.
 
-**Current product state:** `docs/01-live-product-state.md`
-**Dashboard ops:** `docs/LABS_DASHBOARD_GUIDE.md`
-**Safety before any write/deploy:** `docs/labs/SAFETY_RULES.md`
+**Current product state:** `docs/09-current-state.md`
+**Dashboard ops:** `docs/12-deployment-runbook.md` + `apps/labs-dashboard/README.md`
+**Safety before any write/deploy:** `docs/08-security-and-privacy.md`
 
 ## Automated checks
 
@@ -54,7 +54,7 @@ dashboard lint/typecheck/e2e. Local and PR verification still matter.
 ## Critical Labs flows (manual)
 
 Use these when the change touches the matching area. Exact routes and env
-setup: `docs/LABS_DASHBOARD_GUIDE.md` and `apps/labs-dashboard/README.md`.
+setup: `docs/12-deployment-runbook.md` and `apps/labs-dashboard/README.md`.
 
 1. **Public Browse** — `/browse` and `/browse/{id}`: listing cards, XCG-primary
    price, English presentation, optional Dutch About, filtered Passport history.

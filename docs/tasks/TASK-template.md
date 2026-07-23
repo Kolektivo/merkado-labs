@@ -15,7 +15,7 @@ Branch or PR:
 
 ## Source of truth
 
-- [Canonical document and section — see docs/README.md]
+- [Canonical document and section — see docs/00-docs-index.md]
 
 ## Included scope
 
@@ -52,7 +52,7 @@ Branch or PR:
 
 ## Verification
 
-See `docs/testing-and-uat.md` for real commands.
+See `docs/11-testing-and-uat.md` for real commands.
 
 - [ ] Python lint / tests (when Python changed)
 - [ ] Dashboard lint / typecheck / unit / contracts (when dashboard changed)
@@ -70,5 +70,5 @@ See `docs/testing-and-uat.md` for real commands.
 - Implemented:
 - Remaining:
 - Canonical docs updated:
-- Current state (`docs/01-live-product-state.md`) updated:
+- Current state (`docs/09-current-state.md`) updated:
 - Verified commit:

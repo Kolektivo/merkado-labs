@@ -4,7 +4,7 @@ import type { HarvestJob } from "@/lib/domain/types";
  * Direct-source adapter jobs for merkado-labs.
  * Pipeline + workflow_dispatch + daily cron On (0 4 * * * UTC) after gates;
  * scheduled execution begins when the workflow reaches the default branch.
- * Keep in sync with docs/04 and src/merkado_labs/scrapers/.
+ * Keep in sync with docs/07-integrations.md and src/merkado_labs/scrapers/.
  */
 export const HARVEST_JOBS: HarvestJob[] = [
   {

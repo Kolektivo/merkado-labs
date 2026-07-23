@@ -1,10 +1,13 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # Property data quality pass — Labs report
 
-**Date:** 2026-07-21 (stabilization complete; English migration + currency follow-on)  
-**Branch:** `fix/property-data-quality-pass`  
-**Labs project only:** `csaefdkpwukshtouyixg`  
-**Current policy version:** `enrichment_policy_v5`  
-**Current prompt/schema:** `listing_enrichment_v5` / `listing_enrichment_schema_v5`  
+**Date:** 2026-07-21 (stabilization complete; English migration + currency follow-on)
+**Branch:** `fix/property-data-quality-pass`
+**Labs project only:** `csaefdkpwukshtouyixg`
+**Current policy version:** `enrichment_policy_v5`
+**Current prompt/schema:** `listing_enrichment_v5` / `listing_enrichment_schema_v5`
 (Earlier same-day stabilization used `enrichment_policy_v4_2` with
 `listing_enrichment_v4` / `listing_enrichment_schema_v4` — retained below.)
 

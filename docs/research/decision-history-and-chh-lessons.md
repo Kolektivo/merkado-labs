@@ -1,83 +1,9 @@
-# 09 - Project Safety, Reading Order & Decision History
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
 
-**Purpose:** Mandatory operating rules, project orientation, and compact historical record.
+# Decision history and CHH lessons
 
-**Not the live status snapshot.** Current implementation state lives in
-`01-live-product-state.md`. Verification and Product Lead UAT:
-`testing-and-uat.md`. Agent entry: repository root `AGENTS.md`.
-
-`08-execution-plan-and-cursor-prompt.md` is **historical** (CHH→direct-source
-kickoff). Do not treat it as the current roadmap or live backlog — use `01`,
-`03`, and this file’s decision history instead.
-
-## 1. Reading order
-
-For every substantial Cursor task, read:
-
-1. `01-live-product-state.md`
-2. `03-mvp-scope-and-decisions.md`
-3. The topic-specific document (`04–07`)
-4. `09-project-safety-and-history.md`
-5. `08-execution-plan-and-cursor-prompt.md` only when you need historical
-   direct-source migration context (not as the live plan)
-
-## 2. Environment safety
-
-Allowed Supabase target only:
-
-- `merkado-labs`
-- project reference `csaefdkpwukshtouyixg`
-
-Forbidden production target:
-
-- `merkado-curaçao`
-- project reference `jkrfyvukhhsapoivntms`
-
-Never:
-
-- access or modify production Supabase;
-- run SQL against production;
-- reset any database;
-- copy production users, credentials, secrets, or private data;
-- use production service-role credentials;
-- expose service-role credentials to browser code or logs;
-- modify or deploy the production Vercel project;
-- edit applied migrations in place;
-- push, deploy, or promote without explicit approval;
-- run unreviewed destructive commands.
-
-## 3. Required workflow
-
-1. Begin with read-only repository and schema inspection.
-2. Verify the exact Labs project before every write.
-3. Use forward-only migrations or reviewed controlled server-side scripts.
-4. Preserve raw evidence for every direct source before normalization.
-5. Run adapters manually and bounded before scheduling.
-6. Never create missing/removal events from failed or partial runs.
-7. Never commit secrets. Keep `.env` files local and ignored.
-8. Use a branch for rollback when useful, but keep one app and one architecture.
-
-## 4. CHH retirement safety
-
-CHH must be removed from active code, workflows, configuration, UI, tests, source records, and Labs data.
-
-Before data cleanup:
-
-- confirm project reference;
-- produce affected counts per table;
-- create export/checksum rollback evidence;
-- delete in dependency-safe order;
-- run integrity, RLS, test, and dashboard checks.
-
-Do not keep a runnable CHH fallback. Keep only this compact decision history and source-neutral reusable patterns.
-
-## 5. Deployment safety
-
-The Labs dashboard may only use a separate Labs Vercel project and Labs publishable environment variables.
-
-Do not connect the Labs directory to the production Merkado Vercel project.
-
-Do not add browser automation, AI frameworks, vector databases, or new graph infrastructure without a concrete source need and explicit approval.
+Extracted from former `docs/09-project-safety-and-history.md` §§6–7 during docs standardization.
 
 ## 6. Decision history
 
@@ -489,13 +415,3 @@ The retired CHH experiment demonstrated:
 - source listing identity and canonical property identity must remain separate.
 
 These lessons justify the direct-source architecture. They do not justify retaining CHH runtime code or data.
-
-## 8. Tag legend
-
-- `[LIVE]` available on `merkado.cw`
-- `[LABS]` built only in isolated Labs
-- `[WIP]` actively being built or scoped
-- `[PLANNED]` agreed future work
-- `[DEFERRED]` intentionally postponed
-- `[OPEN]` unresolved decision
-- `[RISK]` accuracy, legal, or implementation concern

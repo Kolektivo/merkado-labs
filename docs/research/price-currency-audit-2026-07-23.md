@@ -1,3 +1,6 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # Labs Price & Currency Audit — 2026-07-23
 
 Scope: all 405 listings in Labs project `csaefdkpwukshtouyixg`, read against
