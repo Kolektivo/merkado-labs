@@ -6,7 +6,7 @@ alwaysApply: true
 # Merkado Labs Safety
 
 - This repository is the experimental Merkado Labs workspace for Curaçao marketplace research.
-- Product/architecture source of truth: `docs/README.md` (`docs/01`–`09`); dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
+- Product/architecture source of truth: `docs/README.md` (`docs/01`–`07` + `09`; `docs/08` is historical only); dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
 - Supabase operations may target only Labs project reference `csaefdkpwukshtouyixg`.
 - Project reference `jkrfyvukhhsapoivntms` is production and is strictly forbidden.
 - Never access or copy production data, users, schemas, secrets, credentials, or configuration.

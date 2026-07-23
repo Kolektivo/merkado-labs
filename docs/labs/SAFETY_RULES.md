@@ -1,6 +1,7 @@
 # Merkado Labs Safety Rules
 
-Product/architecture source of truth: `docs/README.md` (`docs/01`–`09`).
+Product/architecture source of truth: `docs/README.md`
+(`docs/01`–`07` + `09`; `docs/08` is historical only — not the live backlog).
 Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
 
 The live Merkado system must remain completely untouched.

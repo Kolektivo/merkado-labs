@@ -2,6 +2,14 @@
 
 **Purpose:** Mandatory operating rules, project orientation, and compact historical record.
 
+**Not the live status snapshot.** Current implementation state lives in
+`01-live-product-state.md`. Verification and Product Lead UAT:
+`testing-and-uat.md`. Agent entry: repository root `AGENTS.md`.
+
+`08-execution-plan-and-cursor-prompt.md` is **historical** (CHH→direct-source
+kickoff). Do not treat it as the current roadmap or live backlog — use `01`,
+`03`, and this file’s decision history instead.
+
 ## 1. Reading order
 
 For every substantial Cursor task, read:
@@ -10,7 +18,8 @@ For every substantial Cursor task, read:
 2. `03-mvp-scope-and-decisions.md`
 3. The topic-specific document (`04–07`)
 4. `09-project-safety-and-history.md`
-5. `08-execution-plan-and-cursor-prompt.md` when implementing the direct-source migration
+5. `08-execution-plan-and-cursor-prompt.md` only when you need historical
+   direct-source migration context (not as the live plan)
 
 ## 2. Environment safety
 

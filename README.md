@@ -22,13 +22,14 @@ automatically.
 - **Labs dashboard** (`apps/labs-dashboard`): ops + Data Operations + Browse
   public preview + filtered Property Passport activity + Enrichment review +
   native listing and guided-search prototypes — **not** read-only.
-- **Audited Labs dataset** (2026-07-23): 405 source listings retained; 283
-  public-effective listings; final synthetic cleanup exported with SHA-256
-  rollback evidence before removing only approved demo contract/asset and
-  operations residue. Search/Agent/15 Match Report fixtures were retained.
+- **Labs dataset:** inventory, public-eligible, and pricing readiness figures
+  change over time — see **`docs/01-live-product-state.md`** only (dated audits
+  under `docs/labs/` are historical evidence, not the live snapshot).
 
-Property MVP docs `docs/01`–`09` and `docs/LABS_DASHBOARD_GUIDE.md` are the
-current source of truth. Start at `docs/README.md`.
+Property MVP docs (`docs/01`–`07` + `09`; `08` historical) and
+`docs/LABS_DASHBOARD_GUIDE.md` are the current source of truth. Start at
+`docs/README.md`. Agent operating rules: root `AGENTS.md` (Claude: `CLAUDE.md`).
+Verification and Product Lead UAT: `docs/testing-and-uat.md`.
 
 ## Local setup (Python)
 
@@ -76,10 +77,15 @@ Dashboard checks:
 cd apps/labs-dashboard
 npm run lint
 npm run typecheck
+npm run test:unit
+npm run test:contracts
 npm run build
+npm run test:e2e
 ```
+
+Full verify matrix and Product Lead UAT: `docs/testing-and-uat.md`.
 
 ## Docs
 
-Start at `docs/README.md`. Labs safety notes live under `docs/labs/`.
-Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
+Start at `docs/README.md`. Agent entry: `AGENTS.md`. Labs safety notes live
+under `docs/labs/`. Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.

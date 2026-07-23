@@ -59,12 +59,15 @@ Legacy duplicate routes redirect into the consolidated areas.
 ```powershell
 npm --prefix apps/labs-dashboard run typecheck
 npm --prefix apps/labs-dashboard run lint
+npm --prefix apps/labs-dashboard run test:unit
+npm --prefix apps/labs-dashboard run test:contracts
 npm --prefix apps/labs-dashboard run test:e2e
 npm --prefix apps/labs-dashboard run build
 ```
 
 The browser tests use installed Microsoft Edge in desktop and mobile profiles.
 
-See `docs/LABS_DASHBOARD_GUIDE.md` for the full operating and troubleshooting
-guide. Do not run adapters, imports, AI jobs, schedules, deployments, or
-production operations without explicit approval.
+See `docs/testing-and-uat.md` for the full verify matrix and Product Lead UAT
+format, and `docs/LABS_DASHBOARD_GUIDE.md` for the full operating and
+troubleshooting guide. Do not run adapters, imports, AI jobs, schedules,
+deployments, or production operations without explicit approval.
