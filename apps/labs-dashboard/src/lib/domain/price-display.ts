@@ -78,9 +78,16 @@ export function buildPriceDisplay(input: {
   benchmarkPriceXcg: number | null;
   listingStatus?: string | null;
   isSold?: boolean;
+  /**
+   * `browse` — XCG only (no competing original line on cards).
+   * `detail` — XCG primary; original foreign amount may appear as secondary
+   *            unless suppressed by the caller (Passport provenance section).
+   */
+  surface?: "browse" | "detail";
 }): PriceDisplayModel {
   const sold = isSoldStatus(input.listingStatus, input.isSold);
   const soldDisclaimer = sold ? SOLD_DISCLAIMER : null;
+  const surface = input.surface ?? "detail";
 
   const hasOriginal =
     input.originalPrice !== null &&
@@ -92,11 +99,13 @@ export function buildPriceDisplay(input: {
   const originalCurrencyCode = (input.originalCurrency ?? "").toUpperCase();
   const originalDiffersFromXcg =
     hasOriginal && !XCG_EQUIVALENT_CURRENCIES.has(originalCurrencyCode);
-  const showIndicativeTip = Boolean(hasBenchmark && originalDiffersFromXcg);
+  const showIndicativeTip = Boolean(
+    hasBenchmark && originalDiffersFromXcg && surface !== "browse",
+  );
 
   if (hasBenchmark) {
     const secondaryLabel =
-      hasOriginal && originalDiffersFromXcg
+      surface !== "browse" && hasOriginal && originalDiffersFromXcg
         ? formatOriginalPrice(
             input.originalPrice as number,
             input.originalCurrency as string,

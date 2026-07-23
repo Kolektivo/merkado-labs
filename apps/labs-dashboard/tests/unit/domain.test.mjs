@@ -120,6 +120,18 @@ test("XCG benchmark is primary with original shown as secondary", () => {
   assert.equal(model.sortKeyXcg, 179_000);
 });
 
+test("Browse surface keeps XCG only with no secondary original", () => {
+  const model = buildPriceDisplay({
+    originalPrice: 100_000,
+    originalCurrency: "USD",
+    benchmarkPriceXcg: 179_000,
+    surface: "browse",
+  });
+  assert.equal(model.primaryCurrency, "XCG");
+  assert.equal(model.secondaryLabel, null);
+  assert.equal(model.showIndicativeTip, false);
+});
+
 test("ANG/NAf original does not duplicate as a secondary amount", () => {
   const model = buildPriceDisplay({
     originalPrice: 50_000,

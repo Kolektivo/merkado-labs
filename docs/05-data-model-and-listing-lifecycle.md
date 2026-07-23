@@ -333,14 +333,34 @@ Each event should store:
 
 ### Price events vs benchmark (do not conflate)
 
+Keep three concepts separate:
+
+| Concept | Meaning |
+|---|---|
+| **Asking anchor** | Actual amount + currency set by the seller/source |
+| **Official alternate** | XCG/ANG amount officially published by the same source |
+| **Merkado benchmark** | Calculated XCG equivalent using an approved exchange rate |
+
 | Event | Means |
 |---|---|
-| `price_changed` | Asking **amount** changed (source fact) |
-| `currency_changed` | Asking **currency** changed (source fact) |
+| `price_changed` | Genuine asking-**anchor amount** change only |
+| `currency_changed` | Asking **currency** changed (retained in storage; never public) |
 | `benchmark_recalculated` | FX/rate/provider context only; asking anchor unchanged |
 
+Only a change to the genuine asking anchor may create a public `price_changed`.
+The following must **never** create a public price-change event:
+
+- ECB exchange-rate movement / benchmark recalculation
+- source currency-selector/session differences
+- updated official alternate with unchanged asking anchor
+- formatting or rounding differences / identical before→after
+- repeated imports / legacy dual-writer duplicates
+- foreign display wobble when a source-official XCG alternate is stable
+
 Import pipeline is the sole writer for these three. Dual-writer duplication of
-`price_changed` was fixed in the 2026-07-21 quality pass.
+`price_changed` was fixed in the 2026-07-21 quality pass. From 2026-07-23,
+imports also skip `price_changed` / `currency_changed` when the source-official
+XCG alternate is present and unchanged (RE/MAX display/session drift).
 
 **Official alternate backfill ≠ `price_changed`.** Capturing or refreshing a
 source-official alternate currency (e.g. RE/MAX NAF-session XCG) while the
@@ -348,30 +368,40 @@ asking anchor is unchanged must not emit `price_changed` or `currency_changed`.
 It is provenance/benchmark preference only (see `06` and
 `data/processed/source_official_currency_refresh.json` for hr2066).
 
-### Presentation timeline (Phase 5)
+### Presentation timeline (Passport contract)
 
 Default listing timeline shows genuine seller/source activity. Hide/group at
-read-time (do **not** delete events):
+read-time (do **not** delete immutable events):
 
 - `benchmark_recalculated` (rate-only)
+- `currency_changed` and currency-session `price_changed` (EUR↔XCG switches)
+- non-anchor foreign display observations when an official XCG alternate exists
+- same normalized XCG before/after (rounded whole Cg)
+- ambiguous anchors (publicly suppressed + admin_review flag; never guess)
 - policy rematerialization / enrichment-only / ops noise
 - `SYSTEM_REPAIR` operational notes
-- dual-writer duplicate `price_changed` / `currency_changed` (legacy rows)
-- repeated identical observations (collapsed in price history)
+- dual-writer duplicate `price_changed` / `currency_changed` (numeric-normalized)
+- duplicate `first_seen` (keep earliest “First seen by Merkado” only)
+- repeated identical observations
 - ±1 same-currency display jitter (`suspected_display_fx_jitter`)
 
-The shared TypeScript/Python read contract is used by internal listing detail
-and public `/browse/[id]`. Public rendering exposes a human label, timestamp,
-and genuine asking-price before→after delta only; it does not render raw event
-notes, evidence, confidence, prompt/policy, tokens, costs, or ops metadata.
+The shared TypeScript/Python read contract
+(`activity-presentation.ts` / `presentation.py`, alias `buildPassportTimeline`)
+is used by internal listing detail and public `/browse/[id]`. It is intentionally
+reusable for a future **car Passport** without modifying production Merkado.
 
-Timeline full dry-run (all **6645** events / 405 listings, 2026-07-23):
-**1753** visible default, **4892** suppressed (including 323 benchmark-only,
-4474 enrichment-only, 15 legacy duplicates, 45 jitter, and 35 system-repair).
-Tooling:
-`merkado_labs.scrapers.presentation.dry_run_presentation_counts`
-(and dashboard `dryRunPresentationCounts`). Archive/hide from presentation only
-unless Labs cleanup policy explicitly allows delete with proof.
+Public rendering exposes a human label, timestamp, and **XCG-only** asking
+delta (`Cg 2,500 → Cg 2,750`). It never shows EUR/USD activity deltas, raw
+event notes, evidence, confidence, rates, providers, tokens, or ops metadata.
+“Last updated” on Passport derives from the latest **visible material** timeline
+event, not scraper `last_seen_at`.
+
+Admin-only expandable **Price provenance** retains original amount/currency,
+rate, provider, method, and official-alternate vs Merkado-benchmark labelling.
+
+Genuine history remains immutable. Prefer presentation suppress metadata over
+deletion; delete only provably synthetic test data (none identified in the
+2026-07-23 inventory).
 
 Migration: `20260721140000_source_official_currency_and_presentation.sql`.
 

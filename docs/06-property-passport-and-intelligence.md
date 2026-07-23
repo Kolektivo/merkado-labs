@@ -46,12 +46,16 @@ Uses the same public-effective read model as Browse:
   **[PLANNED]** / paused. See `01-live-product-state.md` and
   `LABS_DASHBOARD_GUIDE.md`.
 - **Property activity** — shared filtered timeline on public `/browse/[id]` and
-  internal detail: first seen, genuine asking-price deltas, source lifecycle,
-  and native submit/publish/availability changes. Benchmark-only FX, AI/ops
-  events, `SYSTEM_REPAIR`, dual-writer duplicates, repeated observations, and
-  ±1 jitter remain immutable but hidden.
-- **Source / Provenance** — scraped: attribution + original listing link;
-  manual: **User provided** (no invented source URL) + contact CTA.
+  internal detail via the Passport presentation contract: one “First seen by
+  Merkado”, genuine **XCG** asking-price deltas (`Cg … → Cg …`), source
+  lifecycle, and native submit/publish/availability changes. Hidden (immutable):
+  currency-session switches, FX/benchmark-only updates, non-anchor foreign
+  display wobble, AI/ops, `SYSTEM_REPAIR`, dual-writer duplicates, duplicate
+  first_seen, identical observations, ±1 jitter, ambiguous anchors.
+- **Source / Provenance** — scraped: attribution + original listing link; original
+  foreign asking amount may appear once here (never as a Browse-card price or
+  public activity delta). Manual: **User provided** (no invented source URL) +
+  contact CTA. Rates/providers stay admin-only under **Price provenance**.
 
 Do not present AI as a consumer-facing feature. Neighbourhood provenance on
 Passport may read: From source / Matched from map / Extracted from listing text /

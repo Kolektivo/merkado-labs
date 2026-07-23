@@ -91,6 +91,66 @@ def is_official_alternate_only_update(
         return False
 
 
+def _pick_official_xcg_amount(alts: Any) -> float | None:
+    """Extract source-official XCG/ANG/NAF amount from stored or snapshot alts."""
+
+    # Local import avoids import cycles with normalization → scrapers.
+    from merkado_labs.normalization.currency import (
+        normalize_currency_code,
+        pick_official_xcg_alternate,
+    )
+    from merkado_labs.scrapers.contracts import (
+        SOURCE_OFFICIAL_PROVENANCE,
+        OfficialAlternatePrice,
+    )
+
+    if not alts:
+        return None
+    if isinstance(alts, (list, tuple)) and alts and isinstance(alts[0], OfficialAlternatePrice):
+        picked = pick_official_xcg_alternate(alts)
+        return float(picked.amount) if picked is not None else None
+    if isinstance(alts, (list, tuple)):
+        for entry in alts:
+            if not isinstance(entry, dict):
+                continue
+            provenance = str(entry.get("provenance") or "")
+            if provenance and provenance != SOURCE_OFFICIAL_PROVENANCE:
+                continue
+            code = normalize_currency_code(str(entry.get("currency") or ""))
+            if code not in {"XCG", "ANG", "NAF"}:
+                continue
+            try:
+                amount = float(entry.get("amount"))
+            except (TypeError, ValueError):
+                continue
+            if amount > 0:
+                return amount
+    return None
+
+
+def is_stable_official_xcg_display_drift(
+    *,
+    previous_official_alts: Any,
+    new_official_alts: Any,
+    price_changed: bool,
+    currency_changed: bool,
+) -> bool:
+    """True when official XCG/ANG alternate is unchanged despite display drift.
+
+    RE/MAX EUR selector wobble and EUR↔XCG session switches must not create
+    public ``price_changed`` / ``currency_changed`` when the source-official
+    XCG alternate is present and stable.
+    """
+
+    if not price_changed and not currency_changed:
+        return False
+    prev_xcg = _pick_official_xcg_amount(previous_official_alts)
+    new_xcg = _pick_official_xcg_amount(new_official_alts)
+    if prev_xcg is None or new_xcg is None:
+        return False
+    return abs(prev_xcg - new_xcg) < 0.5
+
+
 def _require_labs() -> None:
     settings = get_settings()
     if settings.supabase_project_ref != "csaefdkpwukshtouyixg":
@@ -666,6 +726,21 @@ def import_snapshots(
                 new_amount=new_amount,
                 new_currency=new_currency,
             )
+            # Official XCG alternate unchanged ⇒ display/session drift, not asking change.
+            if (
+                not is_new
+                and existing is not None
+                and is_stable_official_xcg_display_drift(
+                    previous_official_alts=existing.get("official_alternate_prices"),
+                    new_official_alts=snapshot.official_alternate_prices,
+                    price_changed=price_changed,
+                    currency_changed=currency_changed,
+                )
+            ):
+                price_changed = False
+                currency_changed = False
+                should_append_price = False
+                notes.append(f"official_xcg_stable_display_drift:{snapshot.external_id}")
             if should_append_price:
                 evidence = snapshot.original_price.evidence
                 if benchmark is not None and benchmark.provenance:

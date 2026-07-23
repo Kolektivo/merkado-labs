@@ -34,7 +34,8 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(passport, /listingOrigin === "manual"/);
   assert.match(passport, /getPublicListingActivityEvents/);
   assert.match(passport, /filterDefaultTimeline/);
-  assert.match(passport, /activityPriceDelta/);
+  assert.match(passport, /activityPublicXcgDelta/);
+  assert.match(passport, /formatXcgPrimary/);
   assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /event\.notes/);

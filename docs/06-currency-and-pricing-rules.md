@@ -85,18 +85,23 @@ events (not `price_changed`). Current dashboard listing values use the ECB provi
   detail, browse cards, listing table — formatted with the `Cg` prefix
   (literal `Cg 1,927`, not `Intl` currency style — Node and browsers
   disagree on the XCG symbol and that breaks hydration).
-- The original source amount is shown as a **secondary** line only when its
-  currency differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG, so they
-  are not treated as a "different" currency).
-- Price search and filter ranges operate on the **XCG benchmark**, not the
-  original currency; a listing without a valid benchmark is excluded from
-  the mixed-currency sort/filter.
+- **Browse cards** show XCG only (no competing original line).
+- Passport overview uses XCG as the primary price; original foreign asking
+  may appear once in the Source/Provenance area, never as a public activity
+  delta.
+- Admin detail may show the original as a secondary line when its currency
+  differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG).
+- Price search and filter ranges operate on the **effective XCG** amount, not
+  the original currency; a listing without a valid benchmark is excluded from
+  the mixed-currency sort/filter. Never fabricate an XCG amount when no valid
+  benchmark exists.
 - If an original price exists but no XCG benchmark is available yet, show
   the original amount with **"XCG equivalent currently unavailable"**
   instead of fabricating a conversion.
 - True foreign→XCG conversions show an indicative **tip/icon** beside the
-  primary XCG amount (HelpTip); XCG/ANG/NAf identity cases omit it. Do not
-  repeat the indicative sentence as always-visible body text under the price.
+  primary XCG amount on detail surfaces (HelpTip); browse cards omit it.
+  XCG/ANG/NAf identity cases omit it. Do not repeat the indicative sentence
+  as always-visible body text under the price.
 - Sold listings additionally show: **Last known listing price. The actual
   sale price may differ.**
 - Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts` +
@@ -136,16 +141,17 @@ Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
 
 ### Event semantics
 
-- `price_changed` — asking **amount** changed
-- `currency_changed` — asking **currency** changed
+- `price_changed` — genuine asking-**anchor amount** changed (not FX, not session)
+- `currency_changed` — asking **currency** changed (stored; never shown publicly)
 - `benchmark_recalculated` — FX/rate/provider context only (anchor unchanged)
 - Official alternate capture/backfill with unchanged anchor ≠ `price_changed`
+- Stable official XCG + foreign display/session drift ≠ `price_changed`
 - Import pipeline is the sole writer for these three; lifecycle must not duplicate them
   (dual-writer `price_changed` fixed in the 2026-07-21 quality pass)
 - Tiny RE/MAX display jitter (±1) is flagged
   `suspected_display_fx_jitter`, retained, and hidden from Passport timelines
-- Presentation timeline suppresses rate-only / enrichment / policy-rematerialization
-  noise at read-time (see `05`)
+- Public Passport activity deltas are **XCG-only** (`Cg A → Cg B`); original
+  currency/rate/provider stay in admin **Price provenance** (see `05`)
 
 ### XCG price-over-time chart
 

@@ -3,15 +3,21 @@ import test from "node:test";
 
 import {
   activityPriceDelta,
+  activityPublicXcgDelta,
   activityTitle,
   dryRunPresentationCounts,
   filterDefaultTimeline,
+  latestVisibleMaterialAt,
+  toNormalizedXcgAmount,
 } from "../../src/lib/domain/activity-presentation.ts";
 import {
   filterPresentationPriceObservations,
 } from "../../src/lib/data/price-observations.ts";
 import { buildXcgPriceSeries } from "../../src/lib/domain/xcg-price-series.ts";
-import { formatXcgPrimary } from "../../src/lib/domain/price-display.ts";
+import {
+  buildPriceDisplay,
+  formatXcgPrimary,
+} from "../../src/lib/domain/price-display.ts";
 
 test("XCG series uses official alternate when present and ignores rate-only drift", () => {
   const series = buildXcgPriceSeries([
@@ -72,6 +78,184 @@ test("XCG series uses official alternate when present and ignores rate-only drif
   assert.equal(series[1].xcgProvenance, "merkado_benchmark");
 });
 
+test("1. same EUR asking + new ECB rate → zero public price changes", () => {
+  const newestFirst = [
+    {
+      id: "rate",
+      eventType: "benchmark_recalculated",
+      previousValue: { benchmark_price_xcg: "1358", conversion_rate: "2.05" },
+      newValue: { benchmark_price_xcg: "1362", conversion_rate: "2.052" },
+      notes: "Asking amount unchanged; conversion context changed",
+    },
+    {
+      id: "seen",
+      eventType: "first_seen",
+      eventAt: "2026-07-01T00:00:00Z",
+      newValue: { source_url: "https://example.com" },
+    },
+  ];
+  const visible = filterDefaultTimeline(newestFirst, {
+    audience: "public",
+    hasOfficialXcgAlternate: true,
+  });
+  assert.deepEqual(
+    visible.map((event) => event.eventType),
+    ["first_seen"],
+  );
+  assert.equal(
+    visible.filter((event) => event.eventType === "price_changed").length,
+    0,
+  );
+});
+
+test("2. same source price imported twice → one visible event maximum", () => {
+  const newestFirst = [
+    {
+      id: "dup",
+      eventType: "price_changed",
+      previousValue: { amount: "2500", currency: "XCG" },
+      newValue: { amount: "2750", currency: "XCG" },
+    },
+    {
+      id: "first",
+      eventType: "price_changed",
+      previousValue: { amount: "2500.0", currency: "XCG" },
+      newValue: { amount: "2750.0", currency: "XCG" },
+    },
+  ];
+  const visible = filterDefaultTimeline(newestFirst);
+  assert.equal(visible.length, 1);
+  assert.equal(visible[0].id, "first");
+});
+
+test("3. duplicate first_seen → one visible First seen by Merkado", () => {
+  const newestFirst = [
+    {
+      id: "later",
+      eventType: "first_seen",
+      eventAt: "2026-07-16T19:29:41Z",
+      newValue: { source_url: "https://example.com" },
+    },
+    {
+      id: "earlier",
+      eventType: "first_seen",
+      eventAt: "2026-07-01T10:00:00Z",
+      notes: "First Labs observation for this source listing",
+      newValue: { source_url: "https://example.com" },
+    },
+  ];
+  const visible = filterDefaultTimeline(newestFirst);
+  assert.deepEqual(visible.map((event) => event.id), ["earlier"]);
+  assert.equal(activityTitle("first_seen"), "First seen by Merkado");
+  const counts = dryRunPresentationCounts(newestFirst);
+  assert.equal(counts.duplicate_first_seen, 1);
+});
+
+test("4. currency-session EUR→XCG with stable official alternate → no public price/currency event", () => {
+  const newestFirst = [
+    {
+      id: "cur",
+      eventType: "currency_changed",
+      previousValue: { currency: "EUR" },
+      newValue: { currency: "XCG" },
+    },
+    {
+      id: "price",
+      eventType: "price_changed",
+      previousValue: { amount: "627.0", currency: "EUR" },
+      newValue: { amount: "1275.0", currency: "XCG" },
+    },
+    {
+      id: "seen",
+      eventType: "first_seen",
+      eventAt: "2026-07-01T00:00:00Z",
+    },
+  ];
+  const visible = filterDefaultTimeline(newestFirst, {
+    audience: "public",
+    hasOfficialXcgAlternate: true,
+  });
+  assert.deepEqual(
+    visible.map((event) => event.eventType),
+    ["first_seen"],
+  );
+});
+
+test("5. genuine asking-price change → exactly one visible XCG delta", () => {
+  const newestFirst = [
+    {
+      id: "change",
+      eventType: "price_changed",
+      eventAt: "2026-07-21T19:54:14Z",
+      previousValue: { amount: "4300.0", currency: "XCG" },
+      newValue: { amount: "4500.0", currency: "XCG" },
+    },
+    {
+      id: "seen",
+      eventType: "first_seen",
+      eventAt: "2026-07-01T00:00:00Z",
+    },
+  ];
+  const visible = filterDefaultTimeline(newestFirst);
+  assert.equal(visible.length, 2);
+  const delta = activityPublicXcgDelta(visible[0]);
+  assert.deepEqual(delta, {
+    previousXcg: 4300,
+    nextXcg: 4500,
+    previousOriginal: { amount: 4300, currency: "XCG" },
+    nextOriginal: { amount: 4500, currency: "XCG" },
+  });
+  assert.equal(
+    `${formatXcgPrimary(delta.previousXcg)} → ${formatXcgPrimary(delta.nextXcg)}`,
+    "Cg 4,300 → Cg 4,500",
+  );
+});
+
+test("6. same normalized XCG before/after → event hidden", () => {
+  const newestFirst = [
+    {
+      id: "same-xcg",
+      eventType: "price_changed",
+      previousValue: { amount: "100", currency: "USD" },
+      newValue: { amount: "100.0001", currency: "USD" },
+    },
+  ];
+  // 100 USD and 100.0001 USD both round to Cg 179
+  assert.equal(toNormalizedXcgAmount(100, "USD"), 179);
+  assert.equal(toNormalizedXcgAmount(100.0001, "USD"), 179);
+  const visible = filterDefaultTimeline(newestFirst);
+  assert.deepEqual(visible, []);
+});
+
+test("7. Browse cards: XCG only", () => {
+  const model = buildPriceDisplay({
+    originalPrice: 100_000,
+    originalCurrency: "EUR",
+    benchmarkPriceXcg: 204_000,
+    surface: "browse",
+  });
+  assert.equal(model.primaryCurrency, "XCG");
+  assert.equal(model.primaryAmount, 204_000);
+  assert.equal(model.secondaryLabel, null);
+  assert.equal(model.showIndicativeTip, false);
+});
+
+test("8. Admin provenance retains original amount/currency; public delta is XCG", () => {
+  const event = {
+    eventType: "price_changed",
+    previousValue: { amount: "2500", currency: "USD" },
+    newValue: { amount: 2750, currency: "USD" },
+  };
+  assert.deepEqual(activityPriceDelta(event), {
+    previous: { amount: 2500, currency: "USD" },
+    next: { amount: 2750, currency: "USD" },
+  });
+  const publicDelta = activityPublicXcgDelta(event);
+  assert.equal(publicDelta.previousXcg, Math.round(2500 * 1.79));
+  assert.equal(publicDelta.nextXcg, Math.round(2750 * 1.79));
+  assert.equal(publicDelta.previousOriginal.currency, "USD");
+});
+
 test("presentation timeline filters rate-only and dual-writer duplicates", () => {
   const newestFirst = [
     {
@@ -90,14 +274,14 @@ test("presentation timeline filters rate-only and dual-writer duplicates", () =>
     {
       id: "2",
       eventType: "price_changed",
-      previousValue: { amount: "100", currency: "EUR" },
-      newValue: { amount: "110", currency: "EUR" },
+      previousValue: { amount: "100", currency: "XCG" },
+      newValue: { amount: "110", currency: "XCG" },
     },
     {
       id: "1",
       eventType: "price_changed",
-      previousValue: { amount: "100", currency: "EUR" },
-      newValue: { amount: "110", currency: "EUR" },
+      previousValue: { amount: "100", currency: "XCG" },
+      newValue: { amount: "110", currency: "XCG" },
     },
   ];
 
@@ -109,10 +293,6 @@ test("presentation timeline filters rate-only and dual-writer duplicates", () =>
   assert.equal(counts.benchmark_rate_only, 1);
   assert.equal(counts.dual_writer_duplicate, 1);
   assert.equal(counts.visible_default, 2);
-});
-
-test("Cg primary formatting stays hydration-stable", () => {
-  assert.equal(formatXcgPrimary(1350), "Cg 1,350");
 });
 
 test("Passport hides ±1 jitter and SYSTEM_REPAIR even when legacy rows were stored visible", () => {
@@ -134,24 +314,71 @@ test("Passport hides ±1 jitter and SYSTEM_REPAIR even when legacy rows were sto
     {
       id: "real",
       eventType: "price_changed",
-      previousValue: { amount: "1100", currency: "EUR" },
-      newValue: { amount: "1200", currency: "EUR" },
+      previousValue: { amount: "4300", currency: "XCG" },
+      newValue: { amount: "4500", currency: "XCG" },
     },
   ]);
   assert.deepEqual(visible.map((event) => event.id), ["real"]);
 });
 
-test("Passport presentation contract provides safe labels and price deltas", () => {
-  const event = {
-    eventType: "price_changed",
-    previousValue: { amount: "1100", currency: "eur" },
-    newValue: { amount: 1200, currency: "EUR" },
-  };
-  assert.equal(activityTitle("first_seen"), "First seen by Merkado");
-  assert.deepEqual(activityPriceDelta(event), {
-    previous: { amount: 1100, currency: "EUR" },
-    next: { amount: 1200, currency: "EUR" },
-  });
+test("non-anchor EUR display wobble with official XCG is suppressed", () => {
+  const visible = filterDefaultTimeline(
+    [
+      {
+        id: "wobble",
+        eventType: "price_changed",
+        previousValue: { amount: "1331231.0", currency: "EUR" },
+        newValue: { amount: "1332398.0", currency: "EUR" },
+      },
+    ],
+    { hasOfficialXcgAlternate: true, audience: "public" },
+  );
+  assert.deepEqual(visible, []);
+});
+
+test("historical EUR wobble on re-anchored XCG listing is suppressed", () => {
+  const visible = filterDefaultTimeline(
+    [
+      {
+        id: "legacy-eur",
+        eventType: "price_changed",
+        previousValue: { amount: "731000", currency: "EUR" },
+        newValue: { amount: "732000", currency: "EUR" },
+      },
+    ],
+    { stableAskingCurrency: "XCG", audience: "public" },
+  );
+  assert.deepEqual(visible, []);
+});
+
+test("Last updated uses latest visible material event", () => {
+  const newestFirst = [
+    {
+      id: "enrich",
+      eventType: "ai_enrichment_completed",
+      eventAt: "2026-07-22T12:00:00Z",
+    },
+    {
+      id: "price",
+      eventType: "price_changed",
+      eventAt: "2026-07-21T19:54:14Z",
+      previousValue: { amount: "4300", currency: "XCG" },
+      newValue: { amount: "4500", currency: "XCG" },
+    },
+    {
+      id: "seen",
+      eventType: "first_seen",
+      eventAt: "2026-07-01T10:00:00Z",
+    },
+  ];
+  assert.equal(
+    latestVisibleMaterialAt(newestFirst),
+    "2026-07-21T19:54:14Z",
+  );
+});
+
+test("Cg primary formatting stays hydration-stable", () => {
+  assert.equal(formatXcgPrimary(1350), "Cg 1,350");
 });
 
 test("historical test-rate price rows stay stored but out of Passport pricing", () => {

@@ -125,13 +125,14 @@ The isolated Labs project currently has:
   **286** public view vs **283** EN/NL About (2026-07-21 / `d2abb557`) was
   About-coverage lag on three newly public Remax rows — not a Browse/UI
   mismatch. Current **283** vs that **286** is expected inventory drift.
-- Passport presentation (2026-07-23): both internal listing detail and public
-  `/browse/[id]` show the shared filtered seller/source activity contract.
-  `First seen by Merkado`, genuine price deltas, lifecycle and native events are
-  shown; benchmark-only FX, enrichment/ops activity, `SYSTEM_REPAIR`, legacy
-  dual-writer duplicates, repeated price observations, and ±1 display jitter
-  remain stored but are suppressed. Raw evidence, confidence, token/cost and
-  operational metadata are not public Passport content.
+- Passport presentation (2026-07-23 cleanup): shared filtered timeline shows one
+  `First seen by Merkado`, genuine **XCG-only** asking deltas, lifecycle and
+  native events. Hidden (immutable): currency-session switches, FX/benchmark-only
+  updates, non-anchor foreign display wobble, enrichment/ops, `SYSTEM_REPAIR`,
+  dual-writer duplicates, duplicate first_seen, identical observations, ±1
+  jitter, ambiguous anchors. Browse cards are XCG-only; original foreign asking
+  may appear once in Passport provenance. Admin **Price provenance** keeps
+  original amount/currency/rate/provider. Public inventory remains **283**.
 - Pricing audit (2026-07-23): all **385/405** priced listings have a positive XCG
   benchmark and reviewed provenance; the other **20** are source no-price rows,
   all public-ineligible. Current providers contain no test/manual rates. The

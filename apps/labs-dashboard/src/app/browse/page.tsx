@@ -463,6 +463,7 @@ export default async function BrowsePage({
                       originalPrice: listing.originalPrice,
                       originalCurrency: listing.originalCurrency,
                       benchmarkPriceXcg: listing.benchmarkPriceXcg,
+                      surface: "browse",
                     })}
                     size="sm"
                   />

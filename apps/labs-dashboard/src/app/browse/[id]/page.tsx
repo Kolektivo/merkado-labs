@@ -13,11 +13,17 @@ import { PriceDisplay } from "@/components/price-display";
 import { getPublicListingActivityEvents } from "@/lib/data/public-listing-activity";
 import { getPublicListingById } from "@/lib/data/public-listings";
 import {
-  activityPriceDelta,
+  activityPublicXcgDelta,
   activityTitle,
   filterDefaultTimeline,
+  latestVisibleMaterialAt,
+  listingHasOfficialXcgAlternate,
 } from "@/lib/domain/activity-presentation";
-import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  buildPriceDisplay,
+  formatOriginalPrice,
+  formatXcgPrimary,
+} from "@/lib/domain/price-display";
 import {
   publicListingTypeLabel,
   resolvePublicDisplaySummary,
@@ -29,7 +35,7 @@ import {
   groupPublicAttributes,
   publicAttributeChipLabel,
 } from "@/lib/domain/public-attributes";
-import { formatCurrency, formatDateTime, titleCase } from "@/lib/format";
+import { formatDateTime, titleCase } from "@/lib/format";
 import {
   buildPublicListingJsonLd,
   publicListingCanonicalPath,
@@ -140,10 +146,18 @@ export default async function PublicListingPage({
 }) {
   const listing = await getPublicListingById((await params).id);
   if (!listing) notFound();
-  const activity = filterDefaultTimeline(
-    await getPublicListingActivityEvents(listing.id),
-    { includeSecondary: false },
-  );
+  const timelineContext = {
+    audience: "public" as const,
+    includeSecondary: false,
+    hasOfficialXcgAlternate: listingHasOfficialXcgAlternate(
+      null,
+      listing.conversionMethod,
+    ),
+    stableAskingCurrency: listing.originalCurrency,
+  };
+  const rawActivity = await getPublicListingActivityEvents(listing.id);
+  const activity = filterDefaultTimeline(rawActivity, timelineContext);
+  const lastUpdatedAt = latestVisibleMaterialAt(rawActivity, timelineContext);
   const backHref = browseBackHref(await searchParams);
   const featureGroups = groupPublicAttributes(listing.publicAttributes);
   const propertyType =
@@ -221,9 +235,15 @@ export default async function PublicListingPage({
               originalPrice: listing.originalPrice,
               originalCurrency: listing.originalCurrency,
               benchmarkPriceXcg: listing.benchmarkPriceXcg,
+              surface: "browse",
             })}
             size="lg"
           />
+          {lastUpdatedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Last updated {formatDateTime(lastUpdatedAt)}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {listing.effectiveNeighbourhood ? (
               <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate">
@@ -352,7 +372,7 @@ export default async function PublicListingPage({
           {activity.length ? (
             <ul className="space-y-3">
               {activity.map((event) => {
-                const delta = activityPriceDelta(event);
+                const delta = activityPublicXcgDelta(event, timelineContext);
                 return (
                   <li
                     key={event.id}
@@ -368,11 +388,8 @@ export default async function PublicListingPage({
                     </div>
                     {delta ? (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {formatCurrency(
-                          delta.previous.amount,
-                          delta.previous.currency,
-                        )}{" "}
-                        → {formatCurrency(delta.next.amount, delta.next.currency)}
+                        {formatXcgPrimary(delta.previousXcg)} →{" "}
+                        {formatXcgPrimary(delta.nextXcg)}
                       </p>
                     ) : null}
                   </li>
@@ -387,9 +404,10 @@ export default async function PublicListingPage({
             </p>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            Operational refreshes, AI processing, benchmark-only FX changes,
-            repeated imports, and display jitter remain in the audit record but
-            are hidden here.
+            Public activity shows XCG asking changes only. Currency-session
+            switches, FX/benchmark updates, AI/ops events, duplicate imports,
+            and identical observations stay in the audit record but are hidden
+            here.
           </p>
         </CardContent>
       </Card>
@@ -459,6 +477,19 @@ export default async function PublicListingPage({
                 Listed by {listing.sourceDisplayName}
                 {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
               </p>
+              {listing.originalPrice != null &&
+              listing.originalCurrency &&
+              !["XCG", "ANG", "NAF"].includes(
+                listing.originalCurrency.toUpperCase(),
+              ) ? (
+                <p className="text-sm text-muted-foreground">
+                  Original asking{" "}
+                  {formatOriginalPrice(
+                    listing.originalPrice,
+                    listing.originalCurrency,
+                  )}
+                </p>
+              ) : null}
               {listing.originalRealtorUrl || listing.sourceUrl ? (
                 <Button asChild>
                   <a

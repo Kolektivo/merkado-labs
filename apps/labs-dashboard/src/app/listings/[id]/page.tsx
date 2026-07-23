@@ -31,11 +31,18 @@ import {
 } from "@/lib/data/price-observations";
 import {
   activityPriceDelta,
+  activityPublicXcgDelta,
   activityTitle,
   filterDefaultTimeline,
+  latestVisibleMaterialAt,
+  listingHasOfficialXcgAlternate,
 } from "@/lib/domain/activity-presentation";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
-import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  buildPriceDisplay,
+  formatOriginalPrice,
+  formatXcgPrimary,
+} from "@/lib/domain/price-display";
 import { buildXcgPriceSeries } from "@/lib/domain/xcg-price-series";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import { Badge } from "@/components/ui/badge";
@@ -239,7 +246,19 @@ export default async function ListingDetailPage({
     ...point,
     date: formatDate(point.observedAt),
   }));
-  const timelineActivity = filterDefaultTimeline(activity);
+  const timelineContext = {
+    audience: "admin" as const,
+    includeSecondary: true,
+    hasOfficialXcgAlternate: listingHasOfficialXcgAlternate(
+      null,
+      listing.conversionMethod,
+    ),
+    stableAskingCurrency: listing.originalCurrency ?? listing.currency,
+    eurToXcgRate:
+      listing.conversionMethod === "eur_api" ? listing.conversionRate : null,
+  };
+  const timelineActivity = filterDefaultTimeline(activity, timelineContext);
+  const lastMaterialAt = latestVisibleMaterialAt(activity, timelineContext);
   const proposal = selectRetainedProposal(proposals);
   const proposalBody = asRecord(proposal?.proposal);
   const aiCoverage = resolveAiCoverage({
@@ -476,26 +495,54 @@ export default async function ListingDetailPage({
                         : "Rental period not stated by the source"}
                   </p>
                 ) : null}
-                {listing.benchmarkPriceXcg !== null ? (
+                {listing.benchmarkPriceXcg !== null ||
+                listing.originalPrice != null ? (
                   <details className="mt-3 text-xs text-muted-foreground">
                     <summary className="w-fit cursor-pointer rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      Price calculation details
+                      Price provenance
                     </summary>
-                    <p className="mt-1">
-                      {describeConversionLabel({
-                        conversionMethod: listing.conversionMethod,
-                        conversionProvider: listing.conversionProvider,
-                        conversionRate: listing.conversionRate,
-                        conversionRateAt: listing.conversionRateAt,
-                      })}
-                      {listing.conversionRateAt
-                        ? ` · rate date ${formatDate(listing.conversionRateAt)}`
-                        : ""}
-                      . The original source price remains authoritative.
-                      {!isCurrentProductionBenchmark(listing.conversionProvider)
-                        ? " This uses an older test/manual rate until an approved recalculation is imported."
-                        : ""}
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      {listing.originalPrice != null &&
+                      listing.originalCurrency ? (
+                        <p>
+                          Asking anchor:{" "}
+                          {formatOriginalPrice(
+                            listing.originalPrice,
+                            listing.originalCurrency,
+                          )}
+                        </p>
+                      ) : null}
+                      {listing.benchmarkPriceXcg != null ? (
+                        <p>
+                          Public XCG:{" "}
+                          {formatXcgPrimary(listing.benchmarkPriceXcg)}
+                          {listing.conversionMethod ===
+                          "source_official_conversion"
+                            ? " (source-official alternate)"
+                            : " (Merkado benchmark)"}
+                        </p>
+                      ) : null}
+                      <p>
+                        {describeConversionLabel({
+                          conversionMethod: listing.conversionMethod,
+                          conversionProvider: listing.conversionProvider,
+                          conversionRate: listing.conversionRate,
+                          conversionRateAt: listing.conversionRateAt,
+                        })}
+                        {listing.conversionRateAt
+                          ? ` · rate date ${formatDate(listing.conversionRateAt)}`
+                          : ""}
+                        {listing.conversionProvider
+                          ? ` · provider ${listing.conversionProvider}`
+                          : ""}
+                        . The original source asking amount remains authoritative.
+                        {!isCurrentProductionBenchmark(
+                          listing.conversionProvider,
+                        )
+                          ? " This uses an older test/manual rate until an approved recalculation is imported."
+                          : ""}
+                      </p>
+                    </div>
                   </details>
                 ) : null}
                 <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
@@ -794,6 +841,14 @@ export default async function ListingDetailPage({
                       }
                       value={formatDate(listing.lastSeenAt)}
                     />
+                    {lastMaterialAt ? (
+                      <DetailItem
+                        label="Last material activity"
+                        tip="Derived from the latest visible Passport timeline event, not the latest scraper refresh."
+                        tipLabel="last material activity"
+                        value={formatDate(lastMaterialAt)}
+                      />
+                    ) : null}
                   </dl>
                   {listing.listingOrigin !== "manual" ? (
                     <details className="rounded-lg bg-muted/35 p-3 text-sm">
@@ -1194,7 +1249,11 @@ export default async function ListingDetailPage({
               ) : (
                 <ul className="space-y-3">
                   {timelineActivity.map((event) => {
-                    const delta = activityPriceDelta(event);
+                    const xcgDelta = activityPublicXcgDelta(
+                      event,
+                      timelineContext,
+                    );
+                    const originalDelta = activityPriceDelta(event);
                     return (
                       <li
                         key={event.id}
@@ -1208,19 +1267,28 @@ export default async function ListingDetailPage({
                             {formatDateTime(event.eventAt)}
                           </span>
                         </div>
-                        {delta ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {formatCurrency(
-                              delta.previous.amount,
-                              delta.previous.currency,
+                        {xcgDelta ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatXcgPrimary(xcgDelta.previousXcg)} →{" "}
+                            {formatXcgPrimary(xcgDelta.nextXcg)}
+                          </p>
+                        ) : null}
+                        {originalDelta &&
+                        (originalDelta.previous.currency !== "XCG" ||
+                          originalDelta.next.currency !== "XCG") ? (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                            Anchor{" "}
+                            {formatOriginalPrice(
+                              originalDelta.previous.amount,
+                              originalDelta.previous.currency,
                             )}{" "}
                             →{" "}
-                            {formatCurrency(
-                              delta.next.amount,
-                              delta.next.currency,
+                            {formatOriginalPrice(
+                              originalDelta.next.amount,
+                              originalDelta.next.currency,
                             )}
-                        </p>
-                      ) : null}
+                          </p>
+                        ) : null}
                       </li>
                     );
                   })}
