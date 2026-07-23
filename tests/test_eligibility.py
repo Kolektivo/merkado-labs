@@ -59,3 +59,37 @@ def test_pending_benchmark_does_not_block_eligibility() -> None:
         source_adapter_status="manual",
     )
     assert ok and reason == "eligible"
+
+
+def test_manual_listing_requires_contact_and_image() -> None:
+    ok, reason = evaluate_public_eligibility(
+        status="active",
+        original_price=Decimal("250000"),
+        source_enabled=True,
+        source_url=None,
+        listing_origin="manual",
+        title="House in Mahaai",
+        real_estate_type="house",
+        listing_type="sale",
+        primary_image_url=None,
+        contact_method="whatsapp",
+        contact_value="+5999",
+    )
+    assert not ok and reason == "missing_image"
+
+
+def test_manual_listing_eligible_without_source_url() -> None:
+    ok, reason = evaluate_public_eligibility(
+        status="active",
+        original_price=Decimal("250000"),
+        source_enabled=False,
+        source_url=None,
+        listing_origin="manual",
+        title="House in Mahaai",
+        real_estate_type="house",
+        listing_type="sale",
+        primary_image_url="https://example.com/a.jpg",
+        contact_method="whatsapp",
+        contact_value="+5999",
+    )
+    assert ok and reason == "eligible"

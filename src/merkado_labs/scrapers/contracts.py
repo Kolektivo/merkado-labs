@@ -29,11 +29,13 @@ class ListingLifecycleStatus(StrEnum):
     canonical states (e.g. rented↛sold, under_contract↛sold, inactive↛removed).
     """
 
+    DRAFT = "draft"
     ACTIVE = "active"
     SOLD = "sold"
     MISSING = "missing"
     REMOVED = "removed"
     INACTIVE = "inactive"
+    UNPUBLISHED = "unpublished"
     UNKNOWN = "unknown"
 
 
@@ -77,12 +79,20 @@ class ActivityEventType(StrEnum):
     AI_ENRICHMENT_AUTO_APPLIED = "ai_enrichment_auto_applied"
     AI_ENRICHMENT_NEEDS_ATTENTION = "ai_enrichment_needs_attention"
     MANUAL_OVERRIDE = "manual_override"
+    # Labs admin native/manual Passport events (never for scraped absence logic)
+    SUBMITTED = "submitted"
+    PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
+    MARKED_SOLD = "marked_sold"
+    MARKED_RENTED = "marked_rented"
+    REPUBLISHED = "republished"
 
 
 class DerivationType(StrEnum):
     SOURCE_FACT = "source_fact"
     SYSTEM_CALCULATED = "system_calculated"
     INFERRED = "inferred"
+    USER_PROVIDED = "user_provided"
 
 
 @dataclass(frozen=True)
@@ -323,4 +333,7 @@ PublicEligibilityReason = Literal[
     "source_disabled",
     "missing_attribution",
     "parser_error",
+    "missing_required_fields",
+    "missing_image",
+    "missing_contact",
 ]
