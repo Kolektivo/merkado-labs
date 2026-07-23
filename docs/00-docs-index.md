@@ -42,6 +42,19 @@ One subject → one primary home. Link here; do not duplicate content.
 | Meeting evidence | `meetings/` |
 | Research / historical evidence | `research/` (HISTORICAL banners on migrated evidence only) |
 | AI prompts / bootstrap | `ai/` |
+| Private local working material | `private/` (gitignored; not canonical) |
+
+### Private local material (`docs/private/`)
+
+`docs/private/` is **ignored by Git**, local-only, and **non-canonical**. Use it
+for confidential meetings, private research, rough tasks, and temporary notes
+that must not appear on GitHub.
+
+- Never treat `docs/private/` as a source of truth for the product.
+- Do not copy private content into tracked docs without Product Lead approval.
+- Approved decisions and safe summaries still go into the canonical homes above.
+- Tracked documentation (`00`–`12`, `decisions/`, `meetings/`, `research/`,
+  `tasks/`, `ai/`) must keep the project understandable without this folder.
 
 ## Labs build status (qualitative)
 

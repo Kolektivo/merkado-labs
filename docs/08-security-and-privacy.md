@@ -139,3 +139,24 @@ profiles.
 Service-role credentials may be used only by local backend scripts or the
 Labs-only GitHub Action. Never commit, print, log, or expose them to browser
 code.
+
+## 9. Private local documentation (`docs/private/`)
+
+`docs/private/` is a **local-only**, **gitignored**, **non-canonical** workspace
+for confidential material. Intended uses:
+
+- confidential meeting notes
+- private research
+- rough or sensitive task drafts
+- temporary working notes
+
+Rules:
+
+- Never commit anything under `docs/private/`.
+- Do not copy private content into tracked documentation unless the Product
+  Lead explicitly approves that content for the repository.
+- Approved decisions and safe summaries still belong in canonical docs
+  (`docs/00`–`12`, ADRs, and the appropriate tracked evidence folders).
+- The repository must remain understandable without access to `docs/private/`.
+- Secrets, credentials, and production data still follow the rules above —
+  private docs are not a place to store service-role keys or production copies.

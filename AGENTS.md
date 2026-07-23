@@ -84,6 +84,16 @@ for what is actually built. Approved remaining work: `docs/10-execution-roadmap.
 - Full rules: `docs/08-security-and-privacy.md` and
   `.cursor/rules/merkado-labs-safety.mdc`.
 
+## Private local material
+
+- `docs/private/` is local-only working material and must never be committed.
+- Do not copy private content into tracked documentation unless the Product
+  Lead explicitly approves that content for the repository.
+- Approved decisions and safe summaries still belong in the appropriate
+  canonical documentation (`docs/01`–`12`, ADRs, meetings, research, tasks).
+- The project must remain understandable from tracked docs alone — never
+  require access to `docs/private/` to understand product intent or state.
+
 ## Documentation
 
 - Each durable fact or decision has one canonical home (see `docs/00-docs-index.md`).
