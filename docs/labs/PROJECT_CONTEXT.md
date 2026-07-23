@@ -35,6 +35,14 @@ Active work is **direct-source property ingestion** for Curaçao:
   **402**; `public_property_listings` **286**; EN/NL About-this-property on
   **283**; Remax deferred enrichment remainder **71** under the 25/day AI cap
   (counts change — see `01-live-product-state.md`);
+- **Current audit (2026-07-23):** 405 retained source listings / 283 public;
+  385 priced with valid XCG provenance and 20 source no-price/public-excluded;
+  public + internal Passport uses the filtered activity contract; 51 historical
+  test-rate price observations remain stored but hidden;
+- final synthetic cleanup exported full rollback payloads + SHA-256 manifest,
+  then removed only the approved demo contract/asset, six dry-run pipeline
+  parents, and one empty queued AI job. Search/Agent/15 Match Report fixtures
+  remain for the guided-discovery demonstration;
 - source-official currency: RE/MAX NAF cookie session; KW inline alts;
   official XCG precedence (hr2066 EUR 664 / Cg 1350 via
   `source_official_conversion`; listing currently inactive/rented);
@@ -43,9 +51,11 @@ Active work is **direct-source property ingestion** for Curaçao:
   timeline, map vs neighbourhood-search gaps — see
   `PROPERTY_DATA_QUALITY_REPORT.md`);
 - Labs public view `public_property_listings` + image galleries; Browse public
-  preview (English-canonical product language + Dutch About toggle);
-- Labs dashboard: ops + Data Operations + Enrichment review + prototypes
-  (not read-only);
+  preview (English-canonical product language + Dutch About toggle + filtered
+  Passport history);
+- Labs dashboard: ops + Data Operations + Enrichment review + native listing +
+  What Fits Me/draft-review-edit-confirm/Agent prototypes (not read-only; no
+  production billing/email/paywall);
 - geospatial neighbourhood boundaries and assignment.
 
 The CaribbeanHouseHunt aggregator workflow is retired and removed from the active

@@ -7,6 +7,7 @@ import { ConfirmSearchRequestButton } from "@/components/confirm-search-request-
 import { HelpTip } from "@/components/help-tip";
 import { PageHeader } from "@/components/page-header";
 import { PrototypeNotice } from "@/components/prototype-notice";
+import { SearchRequestReview } from "@/components/search-request-review";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +57,7 @@ export default async function MatchReportsPage({
         Scores are experimental matching output, not property advice or a
         customer recommendation.
       </PrototypeNotice>
+      <SearchRequestReview request={request} />
       <ConfirmSearchRequestButton
         requestId={request.id}
         initialStatus={request.status}

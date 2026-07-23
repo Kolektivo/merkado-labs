@@ -10,7 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceDisplay } from "@/components/price-display";
+import { getPublicListingActivityEvents } from "@/lib/data/public-listing-activity";
 import { getPublicListingById } from "@/lib/data/public-listings";
+import {
+  activityPriceDelta,
+  activityTitle,
+  filterDefaultTimeline,
+} from "@/lib/domain/activity-presentation";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import {
   publicListingTypeLabel,
@@ -23,7 +29,7 @@ import {
   groupPublicAttributes,
   publicAttributeChipLabel,
 } from "@/lib/domain/public-attributes";
-import { formatDateTime, titleCase } from "@/lib/format";
+import { formatCurrency, formatDateTime, titleCase } from "@/lib/format";
 import {
   buildPublicListingJsonLd,
   publicListingCanonicalPath,
@@ -134,6 +140,10 @@ export default async function PublicListingPage({
 }) {
   const listing = await getPublicListingById((await params).id);
   if (!listing) notFound();
+  const activity = filterDefaultTimeline(
+    await getPublicListingActivityEvents(listing.id),
+    { includeSecondary: false },
+  );
   const backHref = browseBackHref(await searchParams);
   const featureGroups = groupPublicAttributes(listing.publicAttributes);
   const propertyType =
@@ -336,32 +346,51 @@ export default async function PublicListingPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Property activity</CardTitle>
+          <CardTitle>Property Passport activity</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          {listing.listingOrigin === "manual" ? (
-            <>
-              <p>Submitted: {formatDateTime(listing.firstSeenAt)}</p>
-              {listing.publishedAt ? (
-                <p>Published: {formatDateTime(listing.publishedAt)}</p>
-              ) : null}
-              <p>Last updated: {formatDateTime(listing.lastSeenAt)}</p>
-            </>
+        <CardContent>
+          {activity.length ? (
+            <ul className="space-y-3">
+              {activity.map((event) => {
+                const delta = activityPriceDelta(event);
+                return (
+                  <li
+                    key={event.id}
+                    className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {activityTitle(event.eventType)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(event.eventAt)}
+                      </span>
+                    </div>
+                    {delta ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatCurrency(
+                          delta.previous.amount,
+                          delta.previous.currency,
+                        )}{" "}
+                        → {formatCurrency(delta.next.amount, delta.next.currency)}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
-            <>
-              <p>
-                First detected by Merkado: {formatDateTime(listing.firstSeenAt)}
-              </p>
-              <p>
-                Last detected by Merkado: {formatDateTime(listing.lastSeenAt)}
-              </p>
-              {listing.sourceListedAt ? (
-                <p>
-                  Source listing date: {formatDateTime(listing.sourceListedAt)}
-                </p>
-              ) : null}
-            </>
+            <p className="text-sm text-muted-foreground">
+              {listing.listingOrigin === "manual"
+                ? `Submitted to Labs ${formatDateTime(listing.firstSeenAt)}.`
+                : `First seen by Merkado ${formatDateTime(listing.firstSeenAt)}.`}
+            </p>
           )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Operational refreshes, AI processing, benchmark-only FX changes,
+            repeated imports, and display jitter remain in the audit record but
+            are hidden here.
+          </p>
         </CardContent>
       </Card>
 

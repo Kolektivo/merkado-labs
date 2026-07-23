@@ -29,7 +29,11 @@ import {
   describeConversionLabel,
   isCurrentProductionBenchmark,
 } from "@/lib/data/price-observations";
-import { filterDefaultTimeline } from "@/lib/domain/activity-presentation";
+import {
+  activityPriceDelta,
+  activityTitle,
+  filterDefaultTimeline,
+} from "@/lib/domain/activity-presentation";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
 import { buildXcgPriceSeries } from "@/lib/domain/xcg-price-series";
@@ -166,36 +170,6 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function activityLabel(eventType: string, sourceName: string) {
-  const labels: Record<string, string> = {
-    first_seen: `Listing first found on ${sourceName}`,
-    listing_first_seen: `Listing first found on ${sourceName}`,
-    price_changed: "Asking price changed",
-    currency_changed: "Asking currency changed",
-    status_changed: "Listing status changed",
-    missing_from_source: "Listing was not found in a complete source refresh",
-    removed_from_source: "Listing was removed from the source website",
-    relisted: "Listing appeared on the source website again",
-    benchmark_recalculated: "XCG comparison price updated",
-    enrichment_completed: "AI enrichment completed",
-    ai_enrichment_completed: "AI enrichment completed",
-    source_refresh_completed: "Source refresh completed",
-    source_marked_sold: "Source marked listing as sold",
-    source_marked_rented: "Source marked listing as rented",
-    source_marked_under_contract: "Source marked listing under contract",
-    source_returned_active: "Listing returned to active on source",
-    source_description_changed: "Source description changed",
-    submitted: "Native listing submitted",
-    published: "Native listing published",
-    unpublished: "Native listing unpublished",
-    marked_sold: "Marked as sold by admin",
-    marked_rented: "Marked as rented by admin",
-    republished: "Native listing republished",
-    material_field_changed: "Material fields changed",
-  };
-  return labels[eventType] ?? titleCase(eventType.replaceAll("_", " "));
 }
 
 export default async function ListingDetailPage({
@@ -1219,26 +1193,37 @@ export default async function ListingDetailPage({
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {timelineActivity.map((event) => (
-                    <li
-                      key={event.id}
-                      className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {activityLabel(event.eventType, listing.source.name)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(event.eventAt)}
-                        </span>
-                      </div>
-                      {event.notes ? (
+                  {timelineActivity.map((event) => {
+                    const delta = activityPriceDelta(event);
+                    return (
+                      <li
+                        key={event.id}
+                        className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">
+                            {activityTitle(event.eventType)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(event.eventAt)}
+                          </span>
+                        </div>
+                        {delta ? (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {event.notes}
+                            {formatCurrency(
+                              delta.previous.amount,
+                              delta.previous.currency,
+                            )}{" "}
+                            →{" "}
+                            {formatCurrency(
+                              delta.next.amount,
+                              delta.next.currency,
+                            )}
                         </p>
                       ) : null}
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>

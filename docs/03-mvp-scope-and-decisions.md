@@ -42,9 +42,9 @@ remains out of scope.
 | P2 | Dashboard updates | Source health, currency, eligibility, lifecycle, and exclusions can be inspected. |
 | P2 | Passport/read model | Safe listing history and provenance are available to the app. |
 | P2 | Labs admin native listing | Admin can draft/publish a manual-origin property with images, preview, and Passport events (not production Auth). |
-| Planned after activation | What Fits Me? | Guided intake can create a reviewable Property Search Request. |
+| [LABS] Prototype | What Fits Me? | Guided intake creates a draft; criteria can be reviewed/edited and explicitly confirmed. Production account flow remains planned. |
 | Planned (production) | Authenticated user listing | merkado.cw seller Auth/RLS flow (`List a property` / My properties). |
-| Planned after activation | Merkado Agent | Paid monthly agent matches requests to listings and sends explainable email reports. |
+| [LABS] Prototype / planned production | Merkado Agent | Labs test pass + 15 retained `rules_v1` reports demonstrate the handoff; paid subscription and email remain unbuilt. |
 | Deferred | Broader reports, alerts, AVM | Start only after the data-history activation gate is met. |
 
 ## 3. Resolved decisions
@@ -65,7 +65,7 @@ remains out of scope.
 | Removed | Requires consecutive successful complete snapshots with absence |
 | Passport | Off-chain listing/property activity log |
 | AI review model | Exception-based (`enrichment_policy_v5`): high-confidence evidenced gap-filling fields auto-apply; English public presentation + optional Dutch About-this-property; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused. Historical v4 / v4.1 / v4.2 retained for audit. |
-| Guided discovery | Users may create a Property Search Request directly or through What Fits Me? |
+| Guided discovery | Labs prototype supports direct or What Fits Me intake, draft review/edit, and explicit confirmation. Production user accounts remain planned. |
 | Merkado Agent | Future paid monthly subscription; email delivery first |
 | Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |
 | Professional help | Future referral CTA from a match; provider types and commercial model still open |
@@ -77,7 +77,7 @@ remains out of scope.
 | Avoided claim | Correct description |
 |---|---|
 | Property marketplace is live | Property is Labs/WIP; cars are live |
-| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron On (schedule after default-branch merge) / dispatch available; Sotheby's remains BLOCKED |
+| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron On (default-branch schedule observed) / dispatch available; Sotheby's remains BLOCKED |
 | Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
 | Sold price is known | Last known asking price may be known; sale price is not confirmed |
 | Removed means sold | Removed means absent from the source after confirmation |
@@ -97,16 +97,31 @@ remains out of scope.
 - Kadaster/title verification
 - KYC/AML, escrow, checkout, or asset payments
 - blockchain Passport
-- What Fits Me? quiz/chatbot implementation
-- Property Search Request account flow
+- Production What Fits Me? customer journey (Labs structured prototype exists)
+- Production Property Search Request account ownership/consent flow (Labs admin prototype exists)
 - monthly Merkado Agent subscription and billing
 - personalized email matching
-- dedicated Match Reports
+- production Match Report delivery (15 Labs `rules_v1` fixtures exist)
 - professional-help referral marketplace
 - weekly reports
 - sold-probability models
 
-These are not rejected ideas. The guided-search and Agent flow is planned after the data activation gate and a separate product/monetization specification.
+These are not rejected ideas. Labs demonstrates the guided-search handoff; the
+customer-facing Agent flow remains planned after the data activation gate and a
+separate product/monetization specification.
+
+### Labs prototype readiness (audited 2026-07-23)
+
+| Demonstration step | Labs status | Production boundary |
+|---|---|---|
+| 1. Start with What Fits Me | Ready: structured, optional criteria form with guidance disclaimer | No customer profile, consent or financial-advice workflow |
+| 2. Ask Property Search | Ready: creates an internal draft with `intake_source=what_fits_me` | No production account ownership |
+| 3. Review/edit criteria | Ready: match-report page shows criteria and supports edits; edits reset confirmed requests to draft | No versioned customer preference history |
+| 4. Confirm and inspect Agent matches | Ready: explicit confirm, retained test entitlement, 15 `rules_v1` Match Reports | No billing, paywall, entitlement enforcement, continuous monitor or email |
+
+The fixture request `4ec62242-3921-4aa5-be9c-97e557f32585`, entitlement
+`3c6f97f7-9e30-4738-ac36-1f3a1af45067`, and its 15 reports are retained Labs
+demonstration data. They are not customer records.
 
 ## 6. Intelligence activation gate `[DEFERRED]`
 
@@ -171,3 +186,6 @@ It must never fabricate sale prices, condition, renovation costs, legal status, 
 13. Which professional-help categories launch first: buyer agent, mortgage advisor, inspector, contractor, notary, or another provider?
 14. Is professional-help monetization a referral fee, lead fee, partnership, or initially free?
 15. What confidence threshold is required before saying a listing is high/low priced or likely to move quickly?
+16. **[OPEN]** Should free users see only three matches and pay to unlock more,
+    or should the initial product use another trial/value boundary? Labs does
+    not implement either behavior.

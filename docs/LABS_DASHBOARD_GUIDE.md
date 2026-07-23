@@ -93,10 +93,15 @@ is not live on merkado.cw.
   On**, daily cron `0 4 * * *` UTC = 00:00 Curaçao (06:00 Amsterdam during
   CEST / 05:00 Amsterdam during CET; begins when the Labs workflow reaches the
   default branch), and environment boundaries.
-- **Browse** — under Explore / **Public preview** (Passport-style detail). Not
-  only nested under Prototypes.
+- **Browse** — under Explore / **Public preview**. Passport detail uses
+  XCG-primary pricing and the filtered seller/source/native timeline; ±1
+  display jitter, benchmark-only FX, AI/ops/repair and duplicate noise remain
+  stored but are not presented.
 - **Prototypes** — Search Request, What Fits Me?, Agent, and Match Reports.
-  These are explicitly experimental.
+  These are explicitly experimental. What Fits Me can create a draft, the
+  criteria can be reviewed/edited, and the request can be explicitly
+  confirmed. No real subscription, billing, paywall, entitlement enforcement,
+  continuous monitoring, or email exists.
 
 Data Operations can enqueue and dispatch the Labs-only property workflow when
 admin + credentials are configured. **Automatic refresh is On**
@@ -117,12 +122,12 @@ or removed. Manual dispatch and daily schedule share the Labs orchestrator path.
 
 Current maturity:
 
-- RE/MAX: Ready adapter v0.4.1; catalog contract 220 (Labs may show 222; live
+- RE/MAX: Ready adapter v0.4.1; catalog contract 220 (Labs audit 223; live
   discover ~220); Terra coverage complete; pipeline ready / cron On; Refresh &
   enrich bills new/changed only.
-- Keller Williams: Ready adapter v0.3.1; Labs inventory 104; live discover ~102;
+- Keller Williams: Ready adapter v0.3.1; Labs audit 105; live discover ~102;
   marketing non-listing URLs excluded; Terra v5 / policy v5; cron On.
-- Moret: Ready (adapter v0.2.0; live Dutch catalog 71; cron On).
+- Moret: Ready (adapter v0.2.0; catalog contract 71 / Labs audit 72; cron On).
 - Monumentenzorg: Ready (adapter v0.2.0; 5 listings; cron On).
 - Sotheby's: Access route BLOCKED (2026-07-20 recon — affiliate TLS broken;
   network HTTP 202 WAF; app.sir.com office shell has no catalog). Official
@@ -143,7 +148,7 @@ Current maturity:
 - source adapters or listing imports;
 - complete-run lifecycle updates;
 - AI enrichment jobs;
-- schedules or workflows (including re-enabling cron);
+- schedules or workflows (including changing or disabling the active cron);
 - destructive SQL or database resets;
 - production Supabase or Vercel operations;
 - deployments or pushes.

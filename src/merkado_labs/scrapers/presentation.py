@@ -28,6 +28,12 @@ PRIMARY_EVENT_TYPES = frozenset(
         "relisted",
         "source_attribution_changed",
         "material_field_changed",
+        "submitted",
+        "published",
+        "unpublished",
+        "marked_sold",
+        "marked_rented",
+        "republished",
     }
 )
 
@@ -58,6 +64,7 @@ POLICY_REVALIDATION_MARKERS = (
     "zero_cost_reeval",
     "reeval_stored_proposals",
     "policy_rematerialization",
+    "system_repair",
 )
 
 
@@ -95,6 +102,43 @@ def classify_activity_event(
 ) -> PresentationDecision:
     """Classify one activity event for the default presentation timeline."""
 
+    event_type = _event_type(event)
+    notes = _notes_text(event)
+    meta: dict[str, Any] = {}
+
+    # Hard presentation safety rules override legacy stored classifications.
+    if event_type == "price_changed":
+        prev = event.get("previous_value") or event.get("previousValue") or {}
+        new = event.get("new_value") or event.get("newValue") or {}
+        try:
+            jitter = (
+                isinstance(prev, Mapping)
+                and isinstance(new, Mapping)
+                and prev.get("currency") == new.get("currency")
+                and abs(float(prev.get("amount")) - float(new.get("amount"))) <= 1.0
+            )
+        except (TypeError, ValueError):
+            jitter = False
+        if (
+            event.get("suppressed_reason") == "suspected_display_fx_jitter"
+            or event.get("suppressedReason") == "suspected_display_fx_jitter"
+            or jitter
+        ):
+            return PresentationDecision(
+                presentation_class="suppressed",
+                suppressed_reason="suspected_display_fx_jitter",
+                presentation_metadata={"suspected_display_fx_jitter": True},
+                visible_in_default=False,
+            )
+    if any(marker in notes for marker in POLICY_REVALIDATION_MARKERS):
+        reason = "system_repair" if "system_repair" in notes else "policy_revalidation"
+        return PresentationDecision(
+            presentation_class="suppressed",
+            suppressed_reason=reason,
+            presentation_metadata={"event_type": event_type},
+            visible_in_default=False,
+        )
+
     # Prefer stored classification when present.
     stored = event.get("presentation_class") or event.get("presentationClass")
     if stored:
@@ -107,10 +151,6 @@ def classify_activity_event(
             presentation_metadata=dict(meta) if isinstance(meta, Mapping) else None,
             visible_in_default=visible,
         )
-
-    event_type = _event_type(event)
-    notes = _notes_text(event)
-    meta: dict[str, Any] = {}
 
     if event_type in RATE_ONLY_TYPES:
         return PresentationDecision(
@@ -132,14 +172,6 @@ def classify_activity_event(
         return PresentationDecision(
             presentation_class="suppressed",
             suppressed_reason="ops_noise",
-            presentation_metadata={"event_type": event_type},
-            visible_in_default=False,
-        )
-
-    if any(marker in notes for marker in POLICY_REVALIDATION_MARKERS):
-        return PresentationDecision(
-            presentation_class="suppressed",
-            suppressed_reason="policy_revalidation",
             presentation_metadata={"event_type": event_type},
             visible_in_default=False,
         )
@@ -167,27 +199,6 @@ def classify_activity_event(
             },
             visible_in_default=False,
         )
-
-    # Tiny RE/MAX display FX jitter (±1 on asking amount) — keep event, flag it.
-    if event_type == "price_changed":
-        prev = event.get("previous_value") or event.get("previousValue") or {}
-        new = event.get("new_value") or event.get("newValue") or {}
-        try:
-            if (
-                isinstance(prev, Mapping)
-                and isinstance(new, Mapping)
-                and prev.get("currency") == new.get("currency")
-                and abs(float(prev.get("amount")) - float(new.get("amount"))) <= 1.0
-            ):
-                meta["suspected_display_fx_jitter"] = True
-                return PresentationDecision(
-                    presentation_class="secondary",
-                    suppressed_reason="suspected_display_fx_jitter",
-                    presentation_metadata=meta,
-                    visible_in_default=True,
-                )
-        except (TypeError, ValueError):
-            pass
 
     if event_type in PRIMARY_EVENT_TYPES:
         return PresentationDecision(
@@ -264,6 +275,7 @@ def dry_run_presentation_counts(
         "policy_revalidation": 0,
         "ops_noise": 0,
         "suspected_display_fx_jitter": 0,
+        "system_repair": 0,
     }
     for event in chronological:
         decision = classify_activity_event(

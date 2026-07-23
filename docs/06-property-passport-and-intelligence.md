@@ -45,8 +45,11 @@ Uses the same public-effective read model as Browse:
   **exist and are applied**; production merkado.cw property projection remains
   **[PLANNED]** / paused. See `01-live-product-state.md` and
   `LABS_DASHBOARD_GUIDE.md`.
-- **Property activity** — first seen, last seen, source listing date (scraped);
-  submitted / published / last updated for Labs admin manuals.
+- **Property activity** — shared filtered timeline on public `/browse/[id]` and
+  internal detail: first seen, genuine asking-price deltas, source lifecycle,
+  and native submit/publish/availability changes. Benchmark-only FX, AI/ops
+  events, `SYSTEM_REPAIR`, dual-writer duplicates, repeated observations, and
+  ±1 jitter remain immutable but hidden.
 - **Source / Provenance** — scraped: attribution + original listing link;
   manual: **User provided** (no invented source URL) + contact CTA.
 
@@ -82,13 +85,19 @@ User provided.
 ### Activity timeline
 
 - source listing date, if known;
-- first detected by Merkado;
+- `First seen by Merkado`;
 - price and currency changes;
 - status changes;
 - source marked sold;
 - missing and removed events;
 - relisted events;
 - last detected date.
+
+The consumer-facing contract renders only a human label, event date, and
+before→after asking amount for genuine price changes. Never render raw event
+notes, private evidence, confidence, prompt/policy identifiers, token usage,
+costs, or pipeline metadata. Historical `fixed_test`/manual-test price
+observations stay stored but do not appear in Passport pricing.
 
 ### Provenance labels
 

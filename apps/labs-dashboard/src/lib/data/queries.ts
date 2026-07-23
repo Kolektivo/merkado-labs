@@ -622,7 +622,10 @@ export const getPriceObservations = cache(
       throw publicReadError("Unable to load price history", error.message);
     }
 
-    const { collapseUnchangedPriceObservations } = await import(
+    const {
+      collapseUnchangedPriceObservations,
+      filterPresentationPriceObservations,
+    } = await import(
       "@/lib/data/price-observations"
     );
 
@@ -673,7 +676,9 @@ export const getPriceObservations = cache(
     if (options.collapseUnchanged === false) {
       return rows;
     }
-    return collapseUnchangedPriceObservations(rows) as PriceObservation[];
+    return collapseUnchangedPriceObservations(
+      filterPresentationPriceObservations(rows),
+    ) as PriceObservation[];
   },
 );
 

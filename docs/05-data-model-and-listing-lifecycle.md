@@ -355,11 +355,20 @@ read-time (do **not** delete events):
 
 - `benchmark_recalculated` (rate-only)
 - policy rematerialization / enrichment-only / ops noise
+- `SYSTEM_REPAIR` operational notes
 - dual-writer duplicate `price_changed` / `currency_changed` (legacy rows)
 - repeated identical observations (collapsed in price history)
+- ±1 same-currency display jitter (`suspected_display_fx_jitter`)
 
-Timeline dry-run sample (Labs): **1000** events → **557** visible default,
-**443** suppressed. Tooling:
+The shared TypeScript/Python read contract is used by internal listing detail
+and public `/browse/[id]`. Public rendering exposes a human label, timestamp,
+and genuine asking-price before→after delta only; it does not render raw event
+notes, evidence, confidence, prompt/policy, tokens, costs, or ops metadata.
+
+Timeline full dry-run (all **6645** events / 405 listings, 2026-07-23):
+**1753** visible default, **4892** suppressed (including 323 benchmark-only,
+4474 enrichment-only, 15 legacy duplicates, 45 jitter, and 35 system-repair).
+Tooling:
 `merkado_labs.scrapers.presentation.dry_run_presentation_counts`
 (and dashboard `dryRunPresentationCounts`). Archive/hide from presentation only
 unless Labs cleanup policy explicitly allows delete with proof.
@@ -400,6 +409,32 @@ Before deletion:
 
 Do not edit applied migrations. Cleanup tooling under `scripts/cleanup/` is retained
 only for verification against the local export; it is not an active ingestion dependency.
+
+### Final Labs synthetic cleanup (2026-07-23)
+
+`scripts/cleanup/final_labs_data_cleanup.py` performed a second, narrower
+reviewed cleanup. It classified legitimate/keep, confirmed synthetic,
+duplicate-noise/keep, and ambiguous/keep rows; required zero locks and no
+running pipeline; exported complete JSONL payloads; verified the SHA-256
+manifest; deleted only exact allowlisted IDs; and passed an idempotent second
+apply.
+
+- Rollback export:
+  `data/processed/final_labs_cleanup_export/payloads_20260723T150208Z/`
+  (private/gitignored)
+- Manifest SHA-256:
+  `7daa683ff9e45d461ff7d8df790f5074e2a77a8a045a519d9adacc8d2b575d30`
+- Deleted: 1 synthetic rental contract, its 1 unreferenced asset, 1 queued
+  unstarted AI job with 0 proposals, and 6 explicit dry-run pipeline parents
+  cascading 42 stage / 71 item / 68 progress-event rows.
+- Retained: all 405 source listings and their immutable history/evidence,
+  canary AI jobs/proposals, real source runs (including Moret runs with stale
+  notes), duplicate observations, three RE/MAX evidence-folder gaps, and the
+  Search Request / Agent / 15 Match Report Labs fixtures.
+
+The rollback payload contains full deleted rows and the keep-fixture snapshots;
+restoration must be a separate reviewed dependency-order operation, never an
+automatic rollback.
 
 ## 9. RLS and public/admin access
 

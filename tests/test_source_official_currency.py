@@ -268,7 +268,17 @@ def test_presentation_timeline_hides_rate_only_and_dual_writer() -> None:
         }
     )
     assert jitter.suppressed_reason == "suspected_display_fx_jitter"
-    assert jitter.visible_in_default is True
+    assert jitter.visible_in_default is False
+
+    repair = classify_activity_event(
+        {
+            "event_type": "material_field_changed",
+            "notes": "SYSTEM_REPAIR normalized stale value",
+            "presentation_class": "primary",
+        }
+    )
+    assert repair.suppressed_reason == "system_repair"
+    assert repair.visible_in_default is False
 
 
 def test_detail_eur_active_still_parses() -> None:

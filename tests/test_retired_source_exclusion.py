@@ -73,10 +73,11 @@ def test_seed_migration_is_idempotent_on_conflict() -> None:
 
 def test_dashboard_queries_exclude_retired_sources() -> None:
     queries = (ROOT / "apps/labs-dashboard/src/lib/data/queries.ts").read_text(encoding="utf-8")
-    assert "property_sources!inner" in queries
+    assert "source:property_sources(" in queries
     assert 'eq("enabled", true)' in queries or '.eq("enabled", true)' in queries
     assert "adapter_status" in queries
     assert "retired" in queries
+    assert "isInventoryVisible" in queries
 
 
 def test_neighbourhood_slug_helpers_remain_source_neutral() -> None:

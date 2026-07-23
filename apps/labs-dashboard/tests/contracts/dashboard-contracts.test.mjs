@@ -32,8 +32,12 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(passport, /resolvePublicDisplaySummary|displaySummary/);
   assert.match(passport, /buildPublicListingJsonLd|application\/ld\+json/);
   assert.match(passport, /listingOrigin === "manual"/);
+  assert.match(passport, /getPublicListingActivityEvents/);
+  assert.match(passport, /filterDefaultTimeline/);
+  assert.match(passport, /activityPriceDelta/);
   assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
+  assert.doesNotMatch(passport, /event\.notes/);
 });
 
 test("native listing APIs require Labs admin session cookie", () => {
@@ -66,6 +70,7 @@ test("internal routes use one signed-cookie proxy gate", () => {
 test("normal admin APIs require the session cookie, not repeated secrets", () => {
   for (const path of [
     "src/app/api/search-requests/route.ts",
+    "src/app/api/search-requests/[id]/route.ts",
     "src/app/api/search-requests/[id]/confirm/route.ts",
     "src/app/api/agent/entitlements/route.ts",
     "src/app/api/enrichment/preview/route.ts",
@@ -78,6 +83,22 @@ test("normal admin APIs require the session cookie, not repeated secrets", () =>
     assert.match(route, /assertLabsAdminSession/);
     assert.doesNotMatch(route, /readAdminSecretFromBody/);
   }
+});
+
+test("What Fits Me handoff supports criteria review, edit, and confirmation", () => {
+  const form = source("src/components/search-request-form.tsx");
+  const review = source("src/components/search-request-review.tsx");
+  const report = source("src/app/match-reports/[requestId]/page.tsx");
+  const updateRoute = source("src/app/api/search-requests/[id]/route.ts");
+
+  assert.match(form, /intakeSource: guided \? "what_fits_me"/);
+  assert.match(form, /router\.push\(`\/match-reports\/\$\{result\.id\}`\)/);
+  assert.match(report, /SearchRequestReview/);
+  assert.match(report, /ConfirmSearchRequestButton/);
+  assert.match(review, /Review property search criteria/);
+  assert.match(review, /Edit search/);
+  assert.match(updateRoute, /status: "draft"/);
+  assert.match(updateRoute, /confirmed_at: null/);
 });
 
 test("navigation exposes only consolidated top-level areas", () => {

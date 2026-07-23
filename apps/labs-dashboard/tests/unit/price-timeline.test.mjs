@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  activityPriceDelta,
+  activityTitle,
   dryRunPresentationCounts,
   filterDefaultTimeline,
 } from "../../src/lib/domain/activity-presentation.ts";
+import {
+  filterPresentationPriceObservations,
+} from "../../src/lib/data/price-observations.ts";
 import { buildXcgPriceSeries } from "../../src/lib/domain/xcg-price-series.ts";
 import { formatXcgPrimary } from "../../src/lib/domain/price-display.ts";
 
@@ -108,4 +113,63 @@ test("presentation timeline filters rate-only and dual-writer duplicates", () =>
 
 test("Cg primary formatting stays hydration-stable", () => {
   assert.equal(formatXcgPrimary(1350), "Cg 1,350");
+});
+
+test("Passport hides ±1 jitter and SYSTEM_REPAIR even when legacy rows were stored visible", () => {
+  const visible = filterDefaultTimeline([
+    {
+      id: "repair",
+      eventType: "material_field_changed",
+      notes: "SYSTEM_REPAIR normalized stale value",
+      presentationClass: "primary",
+    },
+    {
+      id: "jitter",
+      eventType: "price_changed",
+      previousValue: { amount: "1095", currency: "EUR" },
+      newValue: { amount: "1096", currency: "EUR" },
+      presentationClass: "secondary",
+      suppressedReason: "suspected_display_fx_jitter",
+    },
+    {
+      id: "real",
+      eventType: "price_changed",
+      previousValue: { amount: "1100", currency: "EUR" },
+      newValue: { amount: "1200", currency: "EUR" },
+    },
+  ]);
+  assert.deepEqual(visible.map((event) => event.id), ["real"]);
+});
+
+test("Passport presentation contract provides safe labels and price deltas", () => {
+  const event = {
+    eventType: "price_changed",
+    previousValue: { amount: "1100", currency: "eur" },
+    newValue: { amount: 1200, currency: "EUR" },
+  };
+  assert.equal(activityTitle("first_seen"), "First seen by Merkado");
+  assert.deepEqual(activityPriceDelta(event), {
+    previous: { amount: 1100, currency: "EUR" },
+    next: { amount: 1200, currency: "EUR" },
+  });
+});
+
+test("historical test-rate price rows stay stored but out of Passport pricing", () => {
+  const visible = filterPresentationPriceObservations([
+    {
+      id: "test",
+      observedAt: "2026-07-01T00:00:00Z",
+      price: 100,
+      currency: "EUR",
+      conversionProvider: "fixed_test",
+    },
+    {
+      id: "current",
+      observedAt: "2026-07-02T00:00:00Z",
+      price: 100,
+      currency: "EUR",
+      conversionProvider: "ecb_eur_usd_xcg_peg",
+    },
+  ]);
+  assert.deepEqual(visible.map((point) => point.id), ["current"]);
 });

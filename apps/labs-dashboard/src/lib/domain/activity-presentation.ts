@@ -73,6 +73,7 @@ const POLICY_MARKERS = [
   "zero_cost_reeval",
   "reeval_stored_proposals",
   "policy_rematerialization",
+  "system_repair",
 ];
 
 function moneyKey(value: unknown): string | null {
@@ -82,10 +83,105 @@ function moneyKey(value: unknown): string | null {
   return `${record.amount}|${record.currency}`;
 }
 
+function moneyValue(
+  value: unknown,
+): { amount: number; currency: string } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const amount = Number(record.amount);
+  const currency =
+    typeof record.currency === "string" ? record.currency.toUpperCase() : "";
+  if (!Number.isFinite(amount) || !currency) return null;
+  return { amount, currency };
+}
+
+export type ActivityPriceDelta = {
+  previous: { amount: number; currency: string };
+  next: { amount: number; currency: string };
+};
+
+/** Public-safe asking-price delta; excludes metadata and operational notes. */
+export function activityPriceDelta(
+  event: ActivityEventLike,
+): ActivityPriceDelta | null {
+  if (event.eventType !== "price_changed") return null;
+  const previous = moneyValue(event.previousValue);
+  const next = moneyValue(event.newValue);
+  return previous && next ? { previous, next } : null;
+}
+
+/** Shared human-facing label for internal and public Passport timelines. */
+export function activityTitle(eventType: string): string {
+  const labels: Record<string, string> = {
+    first_seen: "First seen by Merkado",
+    listing_first_seen: "First seen by Merkado",
+    source_listed: "Listed on the source website",
+    price_changed: "Asking price changed",
+    currency_changed: "Asking currency changed",
+    status_changed: "Listing status changed",
+    missing_from_source: "No longer found in a complete source refresh",
+    removed_from_source: "Removed from the source website",
+    relisted: "Listed again on the source website",
+    source_marked_sold: "Marked sold on the source website",
+    source_marked_rented: "Marked rented on the source website",
+    source_marked_under_contract: "Marked under contract on the source website",
+    source_returned_active: "Returned to active on the source website",
+    source_description_changed: "Source description changed",
+    submitted: "Native listing submitted",
+    published: "Native listing published",
+    unpublished: "Native listing unpublished",
+    marked_sold: "Marked as sold",
+    marked_rented: "Marked as rented",
+    republished: "Native listing republished",
+    material_field_changed: "Listing details changed",
+  };
+  return (
+    labels[eventType] ??
+    eventType
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
+}
+
 export function classifyActivityEvent(
   event: ActivityEventLike,
   previousSameType?: ActivityEventLike | null,
 ): PresentationDecision {
+  const eventType = event.eventType;
+  const notes = (event.notes ?? "").toLowerCase();
+
+  // Hard presentation safety rules override legacy stored classifications.
+  if (
+    event.suppressedReason === "suspected_display_fx_jitter" ||
+    (eventType === "price_changed" &&
+      (() => {
+        const previous = moneyValue(event.previousValue);
+        const next = moneyValue(event.newValue);
+        return (
+          previous !== null &&
+          next !== null &&
+          previous.currency === next.currency &&
+          Math.abs(previous.amount - next.amount) <= 1
+        );
+      })())
+  ) {
+    return {
+      presentationClass: "suppressed",
+      suppressedReason: "suspected_display_fx_jitter",
+      presentationMetadata: { suspected_display_fx_jitter: true },
+      visibleInDefault: false,
+    };
+  }
+  if (POLICY_MARKERS.some((marker) => notes.includes(marker))) {
+    return {
+      presentationClass: "suppressed",
+      suppressedReason: notes.includes("system_repair")
+        ? "system_repair"
+        : "policy_revalidation",
+      presentationMetadata: { eventType },
+      visibleInDefault: false,
+    };
+  }
   if (event.presentationClass) {
     const stored = event.presentationClass as PresentationClass;
     return {
@@ -95,9 +191,6 @@ export function classifyActivityEvent(
       visibleInDefault: stored === "primary" || stored === "secondary",
     };
   }
-
-  const eventType = event.eventType;
-  const notes = (event.notes ?? "").toLowerCase();
 
   if (RATE_ONLY_TYPES.has(eventType)) {
     return {
@@ -123,15 +216,6 @@ export function classifyActivityEvent(
       visibleInDefault: false,
     };
   }
-  if (POLICY_MARKERS.some((marker) => notes.includes(marker))) {
-    return {
-      presentationClass: "suppressed",
-      suppressedReason: "policy_revalidation",
-      presentationMetadata: { eventType },
-      visibleInDefault: false,
-    };
-  }
-
   if (
     previousSameType &&
     (eventType === "price_changed" || eventType === "currency_changed") &&
@@ -147,28 +231,6 @@ export function classifyActivityEvent(
       },
       visibleInDefault: false,
     };
-  }
-
-  if (eventType === "price_changed") {
-    const prev = event.previousValue as Record<string, unknown> | null;
-    const next = event.newValue as Record<string, unknown> | null;
-    if (
-      prev &&
-      next &&
-      prev.currency === next.currency &&
-      prev.amount !== undefined &&
-      next.amount !== undefined
-    ) {
-      const delta = Math.abs(Number(prev.amount) - Number(next.amount));
-      if (Number.isFinite(delta) && delta <= 1) {
-        return {
-          presentationClass: "secondary",
-          suppressedReason: "suspected_display_fx_jitter",
-          presentationMetadata: { suspected_display_fx_jitter: true },
-          visibleInDefault: true,
-        };
-      }
-    }
   }
 
   if (PRIMARY_EVENT_TYPES.has(eventType)) {
@@ -234,6 +296,7 @@ export function dryRunPresentationCounts(
     policy_revalidation: 0,
     ops_noise: 0,
     suspected_display_fx_jitter: 0,
+    system_repair: 0,
   };
 
   for (const event of chronological) {

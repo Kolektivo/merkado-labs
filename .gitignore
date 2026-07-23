@@ -26,6 +26,8 @@ data/processed/*
 # CHH cleanup payload exports (complete row dumps) must never be committed
 data/processed/chh_cleanup_export/**
 !data/processed/chh_cleanup_export/README.md
+# Final Labs cleanup payload exports contain complete rollback rows
+data/processed/final_labs_cleanup_export/**
 data/geo/cache/
 *.html
 *.htm

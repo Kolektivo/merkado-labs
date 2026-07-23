@@ -63,6 +63,9 @@ EUR_TO_XCG = ECB_USD_PER_EUR × 1.79
 
 CLI `--fx-provider manual --eur-rate …` is allowed for controlled tests only.
 Provider ids such as `fixed_test` / `manual_test` must be labelled as historical/manual and must not be shown as current production benchmarks after an approved ECB recalculation.
+The 2026-07-23 audit confirmed **0** current listing providers with test/manual
+labels. All **51** immutable historical test-rate `price_observations` remain
+stored for provenance and are filtered from Passport price rows/charts.
 
 ## 4. Public eligibility
 
@@ -139,7 +142,8 @@ Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
 - Official alternate capture/backfill with unchanged anchor ≠ `price_changed`
 - Import pipeline is the sole writer for these three; lifecycle must not duplicate them
   (dual-writer `price_changed` fixed in the 2026-07-21 quality pass)
-- Tiny RE/MAX display jitter (±1) may be flagged `suspected_display_fx_jitter` in presentation metadata; do not delete
+- Tiny RE/MAX display jitter (±1) is flagged
+  `suspected_display_fx_jitter`, retained, and hidden from Passport timelines
 - Presentation timeline suppresses rate-only / enrichment / policy-rematerialization
   noise at read-time (see `05`)
 
@@ -148,3 +152,22 @@ Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
 Dashboard chart points come from **material asking-price changes** only.
 Y-value = source-official XCG when stored, else Merkado benchmark at that event.
 Tooltips show original amount/currency + provenance. Rate-only changes do not move the chart.
+
+## 8. Listing-level price audit (2026-07-23)
+
+Audited all **405** Labs listings and the public-effective projection:
+
+- **385** priced listings have positive original amounts, positive XCG
+  benchmarks, and valid current provenance.
+- **20** no-price source listings are public-ineligible; they are listed in
+  `labs/PRICE_CURRENCY_AUDIT_2026-07-23.md`.
+- **283** public rows therefore display/filter/sort with XCG primary.
+- Current methods: 205 source-official conversions, 160 XCG identity, 11 ECB
+  EUR, 7 fixed USD peg, 2 legacy ANG/NAf 1:1, and 20 no-price/no-conversion.
+- A naive USD×1.79 check flagged **50** rows. Review showed every row uses
+  `source_official_conversion` / `source:official_alternate`: authoritative
+  whole-XCG source amounts with rounded USD secondary amounts. Differences
+  were rounding (≤ XCG 0.50), not stale current benchmarks, so no listing
+  mutation was justified.
+
+No immutable price history was rewritten or deleted.
