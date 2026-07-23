@@ -1,12 +1,15 @@
 # 06 - Currency and Pricing Rules
 
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
-**Last updated:** July 21, 2026
+**Last updated:** July 23, 2026
 
 ## 1. Principles
 
-- Preserve the original asking amount and original currency as source truth.
+- Preserve the original asking amount and original currency as source truth
+  (scraped source text or Labs admin / future user-entered amount).
 - Store a separate XCG benchmark for comparison.
+- Labs admin native listings use the same conversion methods; never invent
+  `source_official_conversion` from a Merkado rate.
 - Never present the XCG figure as a bank conversion quote, transaction rate, appraisal, or contractual amount.
 - For true foreign-currency → XCG conversions, surface an **indicative tip/icon**
   (copy: **Indicative equivalent based on known information.**). Do not repeat

@@ -1,7 +1,7 @@
 # 01 - Merkado Live Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 21, 2026
+**Last updated:** July 23, 2026
 
 **Labs automation foundation:** the four Ready property sources share a Labs-only
 orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
@@ -9,10 +9,18 @@ orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
 `property-pipeline-labs.yml`. **Automatic daily cron is On**
 (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
 gates; schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during
-CEST / 05:00 Amsterdam during CET) begins only when this
-workflow reaches the default branch. Manual/`workflow_dispatch` and dashboard
-Data Operations dispatch remain available. Sotheby's remains blocked and excluded.
-This does not change production or deploy anything.
+CEST / 05:00 Amsterdam during CET). First normal daily cron on the default
+branch was observed 2026-07-22
+(https://github.com/Kolektivo/merkado-labs/actions/runs/29984863341).
+Manual/`workflow_dispatch` and dashboard Data Operations dispatch remain
+available. Sotheby's remains blocked and excluded. This does not change
+production or deploy anything.
+
+**Labs admin native listing prototype `[LABS]` (2026-07-23):** admins can create
+manual-origin real-estate listings via `/listings/new` (draft → review preview →
+publish). Eligible published manuals enter the shared `public_property_listings`
+Browse/Passport read model with **User provided** provenance (no scraper URL).
+This is **not** the production authenticated seller flow on merkado.cw.
 
 ## 1. Production today `[LIVE]`
 
@@ -96,6 +104,12 @@ The isolated Labs project currently has:
   in Labs; production merkado.cw property migration remains **paused**.
 - Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
   **Labs prototypes**, not live on merkado.cw.
+- Labs admin **Add property** native listing prototype (`listing_origin=manual`):
+  draft/edit/publish/unpublish/sold/rented/republish under the Labs admin cookie;
+  ordered images in Storage bucket `listing-images`; immutable activity events
+  (`submitted`, `published`, `material_field_changed`, `price_changed`,
+  `unpublished`, `marked_sold`, `marked_rented`, `republished`). Manual rows are
+  excluded from source-absence / removal logic and do not auto-run AI enrichment.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16

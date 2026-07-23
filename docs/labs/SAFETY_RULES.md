@@ -12,6 +12,10 @@ The only allowed Supabase target is the standalone Labs project:
 
 The production project `merkado-curaçao`, reference `jkrfyvukhhsapoivntms`, is forbidden.
 
+Labs admin native listing writes (create/update/publish) target Labs only via
+service-role server APIs behind the Labs admin cookie. They are not production
+user Auth and must never sync to merkado.cw.
+
 Never:
 
 - access the production Supabase project from this workspace;

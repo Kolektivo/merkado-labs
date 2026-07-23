@@ -16,9 +16,11 @@ approval required; excluded from Ready pipelines). Four Ready adapters (KW,
 RE/MAX, Moret, Monumentenzorg) share the Labs property pipeline; **daily cron is
 armed On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
 idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
-(06:00 Amsterdam during CEST / 05:00 Amsterdam during CET) begins only when
-`property-pipeline-labs.yml` reaches the default branch; manual/`workflow_dispatch`
-and dashboard Data Operations dispatch remain available. AI proposals use
+(06:00 Amsterdam during CEST / 05:00 Amsterdam during CET); first normal daily
+cron on the default branch observed 2026-07-22 (run `29984863341`);
+manual/`workflow_dispatch` and dashboard Data Operations dispatch remain
+available. Labs admin native listing prototype is implemented separately from
+the scraper pipeline; production Auth seller listing remains planned. AI proposals use
 exception-based **v5** policy (`enrichment_policy_v5`; high-confidence evidenced
 fields auto-apply; manual attention only for conflicts, weak evidence, or
 new-attribute taxonomy). Labs prototypes (Search Request / What Fits Me / Agent /
@@ -39,7 +41,9 @@ remains out of scope.
 | P1 | Lifecycle engine | First seen, source listed, price changes, sold, missing, removed, and relisted events are represented safely. |
 | P2 | Dashboard updates | Source health, currency, eligibility, lifecycle, and exclusions can be inspected. |
 | P2 | Passport/read model | Safe listing history and provenance are available to the app. |
+| P2 | Labs admin native listing | Admin can draft/publish a manual-origin property with images, preview, and Passport events (not production Auth). |
 | Planned after activation | What Fits Me? | Guided intake can create a reviewable Property Search Request. |
+| Planned (production) | Authenticated user listing | merkado.cw seller Auth/RLS flow (`List a property` / My properties). |
 | Planned after activation | Merkado Agent | Paid monthly agent matches requests to listings and sends explainable email reports. |
 | Deferred | Broader reports, alerts, AVM | Start only after the data-history activation gate is met. |
 

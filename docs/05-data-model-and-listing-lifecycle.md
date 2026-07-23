@@ -1,8 +1,18 @@
 # 05 - Data Model, Currency & Listing Lifecycle
 
-**Purpose:** Canonical implementation rules for storing source truth, benchmark prices, source-run health, and listing history in Merkado Labs.
+**Purpose:** Canonical implementation rules for storing source truth, benchmark prices, source-run health, listing history, and Labs admin native listings in Merkado Labs.
 
 **Labs project only:** `csaefdkpwukshtouyixg`
+
+## Naming contract
+
+- **Properties** is the umbrella for marketplace assets.
+- Production-boundary discriminator: `property_type` ∈ {`car`, `real_estate`}.
+- Real-estate subtypes use `real_estate_type`.
+- Labs `property_listings.property_type` remains the scraped/legacy **subtype
+  label** (house, apartment, …). Native rows also set `real_estate_type`
+  explicitly and mirror the subtype into `property_type` for existing filters —
+  never reinterpret Labs subtype values as `car|real_estate`.
 
 ## 1. Current foundation `[LABS]`
 
@@ -19,7 +29,8 @@ Existing concepts include:
 - ingestion quarantine;
 - neighbourhoods and geospatial assignment;
 - experimental market signals and contract assessments;
-- Labs dashboard (ops + Data Operations + Browse + Enrichment review — not read-only).
+- Labs dashboard (ops + Data Operations + Browse + Enrichment review — not read-only);
+- Labs admin native/manual listings (`listing_origin=manual`) with Storage images.
 
 Inspect actual migrations before finalizing column names. Use forward-only additive changes.
 
@@ -51,10 +62,25 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
 - `20260721155626_bilingual_display_descriptions.sql` — Dutch
   `listing_display_description_locales` + `display_description_nl` on the
   public view (English description unchanged; raw source preserved)
+- `20260723120000_native_manual_listing_foundation.sql` — origin/contact/publish
+  columns, draft/unpublished statuses, manual activity events, `listing_images`,
+  `listing-images` Storage bucket
+- `20260723120100_native_manual_public_listings_view.sql` — origin-aware
+  `public_property_listings` (manual rows without scraper URL)
 
 Labs public-effective + pipeline migrations above are **applied** (verify with
 `list_migrations` before assuming a new file is live). Production merkado.cw
 property migration remains **paused**.
+
+### Listing origins
+
+| Origin | Who creates | Identity | Media | Absence / removal |
+|---|---|---|---|---|
+| `scraped` | Direct-source adapters | `property_source_id` + `external_id` + `source_url` | External image URLs | Complete successful source snapshots |
+| `manual` | Labs admin cookie (prototype) | Listing id; no source URL required | Merkado Storage `listing-images` | Owner/admin actions only — never `missing_from_source` / `removed_from_source` |
+
+Production authenticated seller accounts (`seller_id = auth.uid()`) remain
+**planned** on merkado.cw and are not this Labs admin prototype.
 
 ### Complete vs partial source runs
 
@@ -78,16 +104,23 @@ new/changed only and must not re-run the one-time backfill.
 
 ## 2. Public eligibility
 
-A listing may appear publicly only when all are true:
+Common rules:
 
 - original price is known and positive;
 - current status is `active`;
-- source is enabled;
-- source attribution and original URL exist;
-- removal threshold has not been reached;
-- no critical identity or price parser error exists.
+- no critical identity or price validation error exists.
+
+Origin-specific rules:
+
+- `scraped`: source enabled/not retired; attribution + original URL; removal
+  threshold not reached;
+- `manual`: required publish fields + ≥1 valid image + valid contact; not
+  unpublished/sold/blocked; **no** scraper URL required.
 
 No-price records may remain in raw evidence or quarantine, but public queries must exclude them.
+
+Manual statuses used by the Labs admin prototype: `draft`, `active`,
+`unpublished`, `sold`, `inactive` (rented). Scraped statuses are unchanged.
 
 ## 3. Price provenance
 

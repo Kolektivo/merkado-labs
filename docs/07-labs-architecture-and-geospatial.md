@@ -45,9 +45,27 @@ DIRECT SOURCE ADAPTER
 ```
 
 Four Ready sources share the Labs property pipeline (orchestrator/worker/locks/
-anomaly/budgets/`change_hash`). **Daily cron remains Off** until activation
-gates pass; manual/`workflow_dispatch` and Data Operations dispatch remain
-available. Sotheby's is excluded.
+anomaly/budgets/`change_hash`). **Daily cron is On**
+(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates; first normal daily
+cron on the default branch observed 2026-07-22 (run `29984863341`).
+Manual/`workflow_dispatch` and Data Operations dispatch remain available.
+Sotheby's is excluded.
+
+### Labs admin native listing path (prototype)
+
+```text
+LABS ADMIN SESSION
+  -> /listings/new wizard (details → features → photos → review preview)
+  -> service-role APIs under assertLabsAdminSession
+  -> property_listings (listing_origin=manual)
+  -> listing_images + Storage bucket listing-images
+  -> immutable activity events (submitted/published/…)
+  -> public_property_listings when eligibility passes
+```
+
+End-user Auth seller accounts are **not** implemented here. Labs must not use
+the admin secret as production user auth. Manual rows never enter adapters,
+source runs, or absence/removal logic. AI enrichment is not auto-run for manuals.
 
 ### Evidence layers
 

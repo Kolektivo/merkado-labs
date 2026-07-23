@@ -2,14 +2,25 @@
 
 This folder holds the working context for Merkado Labs property work.
 
-**Last updated:** July 21, 2026  
+**Last updated:** July 23, 2026  
 **Active set:** `01`–`09` below. Older numbered docs were replaced by this set.
+
+## Terminology (canonical)
+
+- **Properties** = umbrella for all Merkado listed assets.
+- Top-level marketplace discriminator (production boundary): `property_type` ∈
+  {`car`, `real_estate`}.
+- Real-estate subtypes use `real_estate_type` (house, apartment, land, …).
+- Labs `property_listings.property_type` today still means the **real-estate
+  subtype / source label** for scraped rows — map explicitly; never silently
+  reinterpret as `car|real_estate`.
 
 ## Labs build status (this repository)
 
 | Area | Status |
 |---|---|
 | Direct-source foundation (adapters, currency, lifecycle, eligibility) | [LABS] Built; four Ready sources + Sotheby's BLOCKED |
+| Labs admin native listing prototype | [LABS] Implemented: admin Add property wizard, draft/publish/unpublish/sold/rented/republish, Storage images, origin-aware Browse/Passport; **not** production Auth seller accounts |
 | Raw evidence + AI enrichment foundation | [LABS] Private Storage; proposals/jobs service-role only; review UX |
 | Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
 | CHH harvest / importer / workflow | Removed from active repo |
@@ -17,7 +28,7 @@ This folder holds the working context for Merkado Labs property work.
 | Labs property schema + RLS | [LABS] Built; AI tables locked from anon; public-effective view applied |
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
-| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 4 * * *` UTC (00:00 Curaçao; 06:00 Amsterdam CEST / 05:00 CET) + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates — begins on default branch only |
+| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 4 * * *` UTC (00:00 Curaçao; 06:00 Amsterdam CEST / 05:00 CET) + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates; first normal daily cron observed on default branch 2026-07-22 (run `29984863341`) |
 | Public browse on merkado.cw | [PLANNED] Labs `/browse` only (snapshot 2026-07-21 / `d2abb557`: ~**286** `public_property_listings`, EN/NL ~**283**); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
 | English presentation contract | [LABS] v5 applied: **289** migrated (~USD **7.83**); Dutch backfill **285** (~USD **2.42**); unchanged bilingual hashes skip at zero cost — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |

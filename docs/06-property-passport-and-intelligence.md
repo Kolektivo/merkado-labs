@@ -45,11 +45,22 @@ Uses the same public-effective read model as Browse:
   **exist and are applied**; production merkado.cw property projection remains
   **[PLANNED]** / paused. See `01-live-product-state.md` and
   `LABS_DASHBOARD_GUIDE.md`.
-- **Property activity** — first seen, last seen, source listing date.
-- **Source** — attribution + original listing link.
+- **Property activity** — first seen, last seen, source listing date (scraped);
+  submitted / published / last updated for Labs admin manuals.
+- **Source / Provenance** — scraped: attribution + original listing link;
+  manual: **User provided** (no invented source URL) + contact CTA.
 
 Do not present AI as a consumer-facing feature. Neighbourhood provenance on
-Passport may read: From source / Matched from map / Extracted from listing text.
+Passport may read: From source / Matched from map / Extracted from listing text /
+User provided.
+
+### Labs admin manual Passport rules
+
+- Origin `manual` facts are **User provided**, not source facts.
+- Timeline may include `submitted`, `published`, `material_field_changed`,
+  `price_changed`, `unpublished`, `marked_sold`, `marked_rented`, `republished`.
+- Never emit `missing_from_source` or `removed_from_source` for manuals.
+- Production Auth seller Passports remain planned separately.
 
 ### Current listing
 

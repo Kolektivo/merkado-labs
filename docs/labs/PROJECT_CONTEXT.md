@@ -14,9 +14,12 @@ Active work is **direct-source property ingestion** for Curaçao:
   `change_hash`); **daily cron armed On**
   (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
   idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
-  (06:00 Amsterdam during CEST / 05:00 Amsterdam during CET) begins only when
-  `property-pipeline-labs.yml` reaches the default branch;
+  (06:00 Amsterdam during CEST / 05:00 Amsterdam during CET); first normal
+  daily cron on default branch observed 2026-07-22 (run `29984863341`);
   manual/dashboard dispatch available;
+- Labs admin native listing prototype (`/listings/new`, `listing_origin=manual`)
+  with draft/publish lifecycle, Storage images, and User-provided Passport
+  provenance — not production Auth seller accounts;
 - AI enrichment **v5 / policy v5** (`listing_enrichment_v5` /
   `listing_enrichment_schema_v5` / `enrichment_policy_v5`); English-default
   public UI (`display_title` / `display_summary` / English description) with

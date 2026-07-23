@@ -8,9 +8,11 @@
 + TypeScript) after 2026-07-21 supervised + idempotent gates. GitHub Actions
 schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during CEST /
 05:00 Amsterdam during CET) in
-`property-pipeline-labs.yml` begins only when that workflow reaches the
-**default branch**. Manual/`workflow_dispatch` and dashboard Data Operations
-dispatch remain available for the four Ready sources. Entrypoint:
+`property-pipeline-labs.yml` is armed On the default branch; first normal daily
+cron observed 2026-07-22 (run `29984863341`). Manual/`workflow_dispatch` and
+dashboard Data Operations dispatch remain available for the four Ready sources.
+Labs admin native/manual listings never enter adapters, source runs, or
+absence/removal logic. Entrypoint:
 `scripts/run_property_pipeline.py --once --execute-live`. Live scrapes use HTTP
 disk cache under `data/raw/<source_key>/cache` — not frozen
 `data/processed/*` catalogs as scheduled input. Daily AI limits: USD 2/day,
