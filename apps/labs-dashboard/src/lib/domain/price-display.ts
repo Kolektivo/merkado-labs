@@ -1,7 +1,7 @@
 /**
  * XCG-primary price display model for listing detail, browse cards, and the
  * listing table. Canonical rules come from
- * `docs/06-currency-and-pricing-rules.md`:
+ * `docs/06-data-model.md` (Currency, pricing, and normalization rules):
  *
  * - Primary: XCG benchmark, prefixed `Cg`.
  * - Secondary: original source amount when its currency differs from

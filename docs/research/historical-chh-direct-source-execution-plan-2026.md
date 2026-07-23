@@ -1,3 +1,6 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # 08 - Execution Plan & Cursor Prompt
 
 **Purpose:** Practical implementation order and the ready-to-paste first Cursor task.
@@ -10,7 +13,11 @@ daily cron on the default branch was observed 2026-07-22 (run `29984863341`).
 Labs admin native listing prototype (2026-07-23) is a Labs spike precursor to
 production Phase 6 Auth seller listing — it does not replace merkado.cw user
 Auth/RLS. For current product, schema, sources, and ops state use
-`01-live-product-state.md`, `04`, `05`, `09`, and `LABS_DASHBOARD_GUIDE.md` —
+`01-live-product-state.md`, `04`, `05`, `09`, and `LABS_DASHBOARD_GUIDE.md`
+(historical names; now `docs/09-current-state.md`, `docs/07-integrations.md`,
+`docs/06-data-model.md`, `docs/08-security-and-privacy.md` /
+`docs/research/decision-history-and-chh-lessons.md`, and
+`docs/12-deployment-runbook.md`) —
 do not treat the imperative phase checklists below as the live backlog.
 
 ## 1. Working approach
@@ -30,7 +37,9 @@ Current dashboard cleanup state (July 17, 2026): the existing Labs app has been
 stabilized in place. Its operational navigation is Overview, Listings, Sources,
 Enrichment, Quality, and Settings, with experimental buyer concepts grouped
 under Prototypes. Duplicate legacy routes redirect to those owner areas. See
-`LABS_DASHBOARD_GUIDE.md` for local operation and troubleshooting.
+`LABS_DASHBOARD_GUIDE.md` for local operation and troubleshooting
+(historical name; now `docs/12-deployment-runbook.md` and
+`apps/labs-dashboard/README.md`).
 
 ### Phase 1 - Inspect and remove CHH
 
@@ -84,15 +93,15 @@ Goal
 Refactor the existing Merkado Labs property system from the retired CHH workflow to a source-neutral direct-realtor pipeline, then build RE/MAX as the first complete adapter.
 
 Read first
-- docs/01-live-product-state.md
-- docs/02-v2-vision.md
-- docs/03-mvp-scope-and-decisions.md
-- docs/04-data-sources-and-scraping.md
-- docs/05-data-model-and-listing-lifecycle.md
-- docs/06-property-passport-and-intelligence.md
-- docs/07-labs-architecture-and-geospatial.md
-- docs/08-execution-plan-and-cursor-prompt.md
-- docs/09-project-safety-and-history.md
+- docs/09-current-state.md
+- docs/01-product-vision.md
+- docs/02-scope-and-decisions.md
+- docs/07-integrations.md
+- docs/06-data-model.md
+- docs/01-product-vision.md / docs/03-user-flows.md / docs/06-data-model.md
+- docs/05-architecture.md
+- docs/research/historical-chh-direct-source-execution-plan-2026.md
+- docs/research/decision-history-and-chh-lessons.md
 
 Project boundary
 - Work in the existing repository and existing Labs app.

@@ -1,3 +1,6 @@
+> **HISTORICAL EVIDENCE — not current product state.**
+> Do not treat dated metrics, retired workflows, or legacy architecture in this file as live Merkado Labs or merkado.cw reality. Current state: `docs/09-current-state.md`.
+
 # Merkado V1 — Supabase Architecture Reference
 
 > **HISTORICAL / PRODUCTION V1 CARS ONLY.** This document describes the live
@@ -5,8 +8,8 @@
 > property model (`property_listings`, `public_property_listings`, pipeline /
 > AI enrichment tables). Production project ref `jkrfyvukhhsapoivntms` is
 > forbidden from Labs work. For Labs property schema use
-> `docs/05-data-model-and-listing-lifecycle.md` and
-> `docs/07-labs-architecture-and-geospatial.md`.
+> `docs/06-data-model.md` and
+> `docs/05-architecture.md`.
 
 **Version:** V2 (updated to match deployed workflows)
 **Purpose:** Historical complete database overview for production V1 cars.

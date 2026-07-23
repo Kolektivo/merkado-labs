@@ -1,4 +1,4 @@
-# 07 - Labs Architecture & Geospatial Layer
+# 05 - Architecture and Geospatial Layer
 
 **Purpose:** Technical boundaries and source-neutral architecture for the isolated property Labs environment.
 
@@ -118,7 +118,8 @@ source runs, or absence/removal logic. AI enrichment is not auto-run for manuals
   USD **15** / **320**-call caps). Dutch About-this-property backfill
   (`scripts/migrate_dutch_descriptions.py`) **applied** for **285** public
   listings (~USD **2.42**). Unchanged bilingual hashes skip at zero cost. See
-  `labs/PROPERTY_DATA_QUALITY_REPORT.md` and `01-live-product-state.md`.
+  `docs/research/property-data-quality-report-2026-07-21.md` and
+  `09-current-state.md`.
 - Prior Labs activation (2026-07-20, v4.1): rematerialized on 346 retained v4
   proposals with **USD 0.00** OpenAI/Terra cost; field `needs_attention`
   151 → 53 (1.18%); listing review badges 124 → 50; second apply proved
@@ -139,7 +140,7 @@ source runs, or absence/removal logic. AI enrichment is not auto-run for manuals
   via `build_gallery`; Labs cleanup removed 5705 duplicate gallery slots;
   frontend mirror in `apps/labs-dashboard/src/lib/listing-gallery-urls.ts`;
   later one confirmed RE/MAX residual cleaned idempotently (`d2abb557`). See
-  `docs/labs/PROPERTY_DATA_QUALITY_REPORT.md`.
+  `docs/research/property-data-quality-report-2026-07-21.md`.
 - v5 preserves replay parsing for v3/v4 proposal JSON, marks echoed source/map
   values as `redundant` rather than rejected, auto-applies grounded
   neighbourhood gap-fills, and adds English public presentation fields.
@@ -345,8 +346,8 @@ Source evidence (`source_neighbourhood_text`, map assignment names) stays raw.
 Filter options and filter matching use the canonical display key so each
 neighbourhood appears once and selecting it returns every mapped variant.
 
-Python: `src/merkado_labs/enrichment/neighbourhood_canonical.py`  
-Dashboard: `apps/labs-dashboard/src/lib/domain/neighbourhood-aliases.ts`  
+Python: `src/merkado_labs/enrichment/neighbourhood_canonical.py`
+Dashboard: `apps/labs-dashboard/src/lib/domain/neighbourhood-aliases.ts`
 Keep the alias tables in sync.
 
 ## 5. Assignment operations
@@ -419,3 +420,25 @@ Sold and removed records may appear in admin/history views, but not active inven
 - Verify Labs project reference before every write.
 - Clearing inferred fields is safer than dropping PostGIS.
 - Do not deploy Labs to the production Merkado Vercel project.
+
+## Repository map (Labs)
+
+Session orientation facts preserved from former `docs/labs/PROJECT_CONTEXT.md`:
+
+| Piece | Location |
+|---|---|
+| Property schema + RLS migrations | `supabase/migrations/` |
+| Direct-source adapters | `src/merkado_labs/scrapers/` |
+| Property pipeline | `src/merkado_labs/pipeline/`, `scripts/run_property_pipeline*.py` |
+| Currency + eligibility helpers | `src/merkado_labs/normalization/` |
+| Cleanup verification tooling (historical) | `scripts/cleanup/` |
+| Geospatial import/assignment scripts | `scripts/geo/` |
+| Labs dashboard (ops + browse + Data Ops) | `apps/labs-dashboard/` |
+
+Labs identity: project `merkado-labs`, ref `csaefdkpwukshtouyixg`, region `eu-west-3`.
+Production `jkrfyvukhhsapoivntms` is forbidden. See `08-security-and-privacy.md`.
+
+### Labs product surfaces (ops summary)
+
+Dashboard routes and journeys: `03-user-flows.md`. Local run and credentials:
+`12-deployment-runbook.md` and `apps/labs-dashboard/README.md`.

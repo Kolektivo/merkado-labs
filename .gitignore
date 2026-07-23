@@ -75,3 +75,6 @@ playwright-report/
 supabase/.temp/
 supabase/.branches/
 .vercel/
+
+# Temporary AI setup template (reference only — never canonical)
+_ai-setup-template/

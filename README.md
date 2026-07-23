@@ -22,13 +22,14 @@ automatically.
 - **Labs dashboard** (`apps/labs-dashboard`): ops + Data Operations + Browse
   public preview + filtered Property Passport activity + Enrichment review +
   native listing and guided-search prototypes — **not** read-only.
-- **Audited Labs dataset** (2026-07-23): 405 source listings retained; 283
-  public-effective listings; final synthetic cleanup exported with SHA-256
-  rollback evidence before removing only approved demo contract/asset and
-  operations residue. Search/Agent/15 Match Report fixtures were retained.
+- **Labs dataset:** inventory, public-eligible, and pricing readiness figures
+  change over time — see **`docs/09-current-state.md`** only (dated audits
+  under `docs/research/` are historical evidence, not the live snapshot).
 
-Property MVP docs `docs/01`–`09` and `docs/LABS_DASHBOARD_GUIDE.md` are the
-current source of truth. Start at `docs/README.md`.
+Property MVP docs (`docs/00`–`12`) are the current source of truth. Start at
+`docs/00-docs-index.md`. Agent operating rules: root `AGENTS.md` (Claude:
+`CLAUDE.md`). Verification and Product Lead UAT: `docs/11-testing-and-uat.md`.
+Full ops/deploy guidance: `docs/12-deployment-runbook.md`.
 
 ## Local setup (Python)
 
@@ -49,7 +50,7 @@ python -m pip install -e ".[geo]"
 ```
 
 Only connect `.env` to the Labs Supabase project. Never use production
-service-role credentials. See `docs/labs/SAFETY_RULES.md` before any external write.
+service-role credentials. See `docs/08-security-and-privacy.md` before any external write.
 
 ## Labs dashboard (Next.js)
 
@@ -76,10 +77,16 @@ Dashboard checks:
 cd apps/labs-dashboard
 npm run lint
 npm run typecheck
+npm run test:unit
+npm run test:contracts
 npm run build
+npm run test:e2e
 ```
+
+Full verify matrix and Product Lead UAT: `docs/11-testing-and-uat.md`.
 
 ## Docs
 
-Start at `docs/README.md`. Labs safety notes live under `docs/labs/`.
-Dashboard ops: `docs/LABS_DASHBOARD_GUIDE.md`.
+Start at `docs/00-docs-index.md`. Agent entry: `AGENTS.md`. Safety:
+`docs/08-security-and-privacy.md`. Dashboard ops: `docs/12-deployment-runbook.md`
+and `apps/labs-dashboard/README.md`.

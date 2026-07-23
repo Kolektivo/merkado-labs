@@ -1,4 +1,4 @@
-# 01 - Merkado Live Product State
+# 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
 **Last updated:** July 23, 2026
@@ -234,3 +234,19 @@ Never claim:
 - automated property identity resolution;
 - on-chain Property Passports;
 - a CHH partnership or active CHH dependency.
+
+## Local verification notes (docs standardization 2026-07-23)
+
+Read-only filesystem verification (no database or external calls):
+
+- App routes for Browse, native listing wizard, What Fits Me, Data Operations,
+  Enrichment, Quality, Settings match `03-user-flows.md`.
+- **Mismatch:** legacy redirects to `/quality?tab=lifecycle` and
+  `/quality?tab=location` exist, but the Quality page does not currently consume
+  `tab` query params. Behavior: user lands on Quality; tab deep-links are inert.
+- **Mismatch:** `/agent` remains a live internal entitlements page and is not in
+  the primary sidebar. Product naming still treats “Merkado Agent” as non-current
+  user-facing label (`02` / `10`).
+- Live inventory counts in this file were **not** re-queried against Supabase
+  during docs standardization (forbidden for this task). Treat figures as
+  last-documented values from this document’s prior verification dates.

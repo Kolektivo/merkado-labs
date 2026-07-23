@@ -1,4 +1,4 @@
-# 04 - Direct Data Sources & Scraping
+# 07 - Integrations (Data Sources & Scraping)
 
 **Purpose:** Canonical source strategy and adapter rules for the property MVP.
 
@@ -272,7 +272,7 @@ For each source:
 7. Compare repeated complete snapshots.
 8. Include in Ready pipeline only after lifecycle safety passes; keep
    `AUTOMATIC_REFRESH_ENABLED` and default-branch schedule policy aligned with
-   `01-live-product-state.md`.
+   `09-current-state.md`.
 
 ## 7. Per-source QA checklist
 
