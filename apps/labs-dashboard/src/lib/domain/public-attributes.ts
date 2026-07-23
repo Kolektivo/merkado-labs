@@ -19,6 +19,7 @@ export type PublicNeighbourhoodProvenance =
   | "source"
   | "map"
   | "ai_extracted"
+  | "user_provided"
   | "unavailable";
 
 export const PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS: Record<
@@ -28,6 +29,7 @@ export const PUBLIC_NEIGHBOURHOOD_PROVENANCE_LABELS: Record<
   source: "From source",
   map: "Matched from map",
   ai_extracted: "Extracted from listing text",
+  user_provided: "User provided",
   unavailable: "Not specified",
 };
 

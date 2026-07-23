@@ -4,12 +4,16 @@ import type {
 } from "@/lib/geo/coordinates";
 
 export type ListingLifecycleStatus =
+  | "draft"
   | "active"
   | "sold"
   | "missing"
   | "removed"
   | "inactive"
+  | "unpublished"
   | "unknown";
+
+export type ListingOrigin = "scraped" | "manual";
 
 export type EnrichmentStatus =
   | "not_run"
@@ -96,6 +100,15 @@ export type PropertyListing = {
   propertyAssetId: string | null;
   externalId: string;
   externalIdStatus: "provisional" | "verified" | "rejected";
+  /** scraped = adapter inventory; manual = Labs admin native prototype. */
+  listingOrigin: ListingOrigin;
+  /** Explicit real-estate subtype for native/manual rows; null for most scraped. */
+  realEstateType: string | null;
+  contactName: string | null;
+  contactMethod: string | null;
+  contactValue: string | null;
+  publishedAt: string | null;
+  unpublishedAt: string | null;
   sourceUrl: string;
   originalRealtorUrl: string | null;
   originalRealtorName: string | null;
@@ -182,6 +195,7 @@ export type PublicNeighbourhoodProvenance =
   | "source"
   | "map"
   | "ai_extracted"
+  | "user_provided"
   | "unavailable";
 
 /** Public-safe polished copy derived from a listing's source description. */
@@ -199,6 +213,12 @@ export type PublicPropertyListing = {
   externalId: string;
   sourceUrl: string;
   originalRealtorUrl: string | null;
+  listingOrigin: ListingOrigin;
+  realEstateType: string | null;
+  contactName: string | null;
+  contactMethod: string | null;
+  contactValue: string | null;
+  publishedAt: string | null;
   listingType: string | null;
   sourceListingStatus: string | null;
   propertyType: string | null;
@@ -468,7 +488,14 @@ export type PropertySearchRequest = {
   maxPrice: number | null;
   priceCurrency: string | null;
   minBedrooms: number | null;
+  minBathrooms: number | null;
+  minFloorAreaM2: number | null;
+  propertyTypes: string[];
   preferredNeighbourhoods: string[];
+  excludedNeighbourhoods: string[];
+  mustHaves: string[];
+  preferences: string[];
+  dealbreakers: string[];
   renovationWillingness: string | null;
   notes: string | null;
   intakeSource: string | null;
@@ -485,9 +512,15 @@ export type MatchReport = {
   hardPass: boolean;
   matchReasons: unknown;
   tradeOffs: unknown;
+  evidence: unknown;
   scoringVersion: string;
   generatedAt: string;
   listingTitle: string | null;
+  listingExternalId: string | null;
+  listingNeighbourhood: string | null;
+  listingBenchmarkPriceXcg: number | null;
+  listingSourceDisplayName: string | null;
+  listingPrimaryImageUrl: string | null;
 };
 
 export type MerkadoAgentEntitlement = {

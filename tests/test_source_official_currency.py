@@ -32,6 +32,7 @@ from merkado_labs.scrapers.contracts import (
 )
 from merkado_labs.scrapers.import_pipeline import (
     is_official_alternate_only_update,
+    is_stable_official_xcg_display_drift,
     should_append_price_observation,
 )
 from merkado_labs.scrapers.presentation import (
@@ -220,15 +221,15 @@ def test_presentation_timeline_hides_rate_only_and_dual_writer() -> None:
         {
             "id": "1",
             "event_type": "price_changed",
-            "previous_value": {"amount": "100", "currency": "EUR"},
-            "new_value": {"amount": "110", "currency": "EUR"},
+            "previous_value": {"amount": "100", "currency": "XCG"},
+            "new_value": {"amount": "110", "currency": "XCG"},
             "notes": None,
         },
         {
             "id": "2",
             "event_type": "price_changed",
-            "previous_value": {"amount": "100", "currency": "EUR"},
-            "new_value": {"amount": "110", "currency": "EUR"},
+            "previous_value": {"amount": "100.0", "currency": "XCG"},
+            "new_value": {"amount": "110.0", "currency": "XCG"},
             "notes": None,
         },
         {
@@ -268,7 +269,72 @@ def test_presentation_timeline_hides_rate_only_and_dual_writer() -> None:
         }
     )
     assert jitter.suppressed_reason == "suspected_display_fx_jitter"
-    assert jitter.visible_in_default is True
+    assert jitter.visible_in_default is False
+
+    session = classify_activity_event(
+        {
+            "event_type": "price_changed",
+            "previous_value": {"amount": "627", "currency": "EUR"},
+            "new_value": {"amount": "1275", "currency": "XCG"},
+        }
+    )
+    assert session.suppressed_reason == "currency_session_switch"
+
+    non_anchor = classify_activity_event(
+        {
+            "event_type": "price_changed",
+            "previous_value": {"amount": "1331231", "currency": "EUR"},
+            "new_value": {"amount": "1332398", "currency": "EUR"},
+        },
+        has_official_xcg_alternate=True,
+    )
+    assert non_anchor.suppressed_reason == "non_anchor_display_observation"
+
+    dup_first = filter_default_timeline(
+        [
+            {"id": "b", "event_type": "first_seen", "event_at": "2026-07-16T00:00:00Z"},
+            {"id": "a", "event_type": "first_seen", "event_at": "2026-07-01T00:00:00Z"},
+        ]
+    )
+    assert [str(e["id"]) for e in dup_first] == ["a"]
+
+    repair = classify_activity_event(
+        {
+            "event_type": "material_field_changed",
+            "notes": "SYSTEM_REPAIR normalized stale value",
+            "presentation_class": "primary",
+        }
+    )
+    assert repair.suppressed_reason == "system_repair"
+    assert repair.visible_in_default is False
+
+
+def test_stable_official_xcg_blocks_display_drift_events() -> None:
+    alts = [
+        {
+            "amount": "2705600",
+            "currency": "XCG",
+            "provenance": "source_official_conversion",
+        }
+    ]
+    assert is_stable_official_xcg_display_drift(
+        previous_official_alts=alts,
+        new_official_alts=alts,
+        price_changed=True,
+        currency_changed=False,
+    )
+    assert not is_stable_official_xcg_display_drift(
+        previous_official_alts=alts,
+        new_official_alts=[
+            {
+                "amount": "2800000",
+                "currency": "XCG",
+                "provenance": "source_official_conversion",
+            }
+        ],
+        price_changed=True,
+        currency_changed=False,
+    )
 
 
 def test_detail_eur_active_still_parses() -> None:

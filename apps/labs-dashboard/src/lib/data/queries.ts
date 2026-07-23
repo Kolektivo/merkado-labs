@@ -31,7 +31,7 @@ function createInternalDataClient() {
 }
 
 const SOURCE_EMBED =
-  "source:property_sources!inner(id,name,base_url,source_key,display_name,enabled,adapter_status)";
+  "source:property_sources(id,name,base_url,source_key,display_name,enabled,adapter_status)";
 
 const LISTING_SELECT = [
   "id",
@@ -39,6 +39,13 @@ const LISTING_SELECT = [
   "external_id",
   "external_id_status",
   "source_url",
+  "listing_origin",
+  "real_estate_type",
+  "contact_name",
+  "contact_method",
+  "contact_value",
+  "published_at",
+  "unpublished_at",
   "original_realtor_url",
   "original_realtor_name",
   "original_realtor_domain",
@@ -111,6 +118,7 @@ const MAP_MARKER_SELECT = [
   "latitude",
   "longitude",
   "listing_type",
+  "listing_origin",
   "current_price",
   "currency",
   "bedrooms",
@@ -219,22 +227,26 @@ function isActiveSource(source: Record<string, unknown> | null): boolean {
   return enabled && adapterStatus !== "retired";
 }
 
-function applyActiveSourceListingFilter<T>(query: T): T {
-  const withEnabled = (query as { eq: (column: string, value: unknown) => T }).eq(
-    "source.enabled",
-    true,
-  );
-  return (withEnabled as { neq: (column: string, value: unknown) => T }).neq(
-    "source.adapter_status",
-    "retired",
-  );
-}
-
 function normalizeListing(
   row: RawListing,
   conflictCounts: Map<string, number> = new Map(),
 ): PropertyListing {
-  const source = oneRelation(row.source);
+  const listingOrigin =
+    row.listing_origin === "manual" ? "manual" : "scraped";
+  const sourceRelation = oneRelation(row.source);
+  const source =
+    sourceRelation ??
+    (listingOrigin === "manual"
+      ? {
+          id: "merkado-native",
+          name: "User provided",
+          base_url: "",
+          source_key: "merkado_native",
+          display_name: "User provided",
+          enabled: true,
+          adapter_status: "native",
+        }
+      : null);
   const neighbourhood = normalizeNeighbourhood(row.neighbourhood);
   const inferredNeighbourhood = normalizeNeighbourhood(
     row.inferred_neighbourhood ?? null,
@@ -255,7 +267,14 @@ function normalizeListing(
     externalIdStatus: String(
       row.external_id_status,
     ) as PropertyListing["externalIdStatus"],
-    sourceUrl: String(row.source_url),
+    listingOrigin,
+    realEstateType: row.real_estate_type ? String(row.real_estate_type) : null,
+    contactName: row.contact_name ? String(row.contact_name) : null,
+    contactMethod: row.contact_method ? String(row.contact_method) : null,
+    contactValue: row.contact_value ? String(row.contact_value) : null,
+    publishedAt: row.published_at ? String(row.published_at) : null,
+    unpublishedAt: row.unpublished_at ? String(row.unpublished_at) : null,
+    sourceUrl: row.source_url ? String(row.source_url) : "",
     originalRealtorUrl: row.original_realtor_url
       ? String(row.original_realtor_url)
       : null,
@@ -279,6 +298,7 @@ function normalizeListing(
       ? String(row.source_listing_status)
       : null,
     propertyType: row.property_type ? String(row.property_type) : null,
+    // Labs property_type remains the subtype/source label; realEstateType is explicit for manuals.
     title: row.title ? String(row.title) : null,
     currentPrice: optionalNumber(row.current_price),
     currency: row.currency ? String(row.currency) : null,
@@ -412,8 +432,10 @@ function normalizeMapMarker(row: RawListing): MapListingMarker | null {
   const latitude = optionalNumber(row.latitude);
   const longitude = optionalNumber(row.longitude);
   if (!hasMappableCoordinates(latitude, longitude)) return null;
+  const listingOrigin =
+    row.listing_origin === "manual" ? "manual" : "scraped";
   const source = oneRelation(row.source);
-  if (!isActiveSource(source)) return null;
+  if (listingOrigin !== "manual" && !isActiveSource(source)) return null;
   const neighbourhood = oneRelation(row.neighbourhood);
   const inferred = oneRelation(row.inferred_neighbourhood ?? null);
 
@@ -483,6 +505,13 @@ async function loadUnresolvedConflictCounts(): Promise<Map<string, number>> {
   return counts;
 }
 
+function isInventoryVisible(listing: PropertyListing): boolean {
+  if (listing.listingOrigin === "manual") return true;
+  return (
+    listing.source.enabled !== false && listing.source.adapterStatus !== "retired"
+  );
+}
+
 export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
   const client = createInternalDataClient();
   const pageSize = 1000;
@@ -490,14 +519,11 @@ export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
   const conflictCounts = await loadUnresolvedConflictCounts();
 
   for (let from = 0; ; from += pageSize) {
-    const filtered = applyActiveSourceListingFilter(
-      client
-        .from("property_listings")
-        .select(LISTING_SELECT)
-        .order("last_seen_at", { ascending: false })
-        .range(from, from + pageSize - 1),
-    );
-    const { data, error } = await filtered;
+    const { data, error } = await client
+      .from("property_listings")
+      .select(LISTING_SELECT)
+      .order("last_seen_at", { ascending: false })
+      .range(from, from + pageSize - 1);
 
     if (error) throw publicReadError("Unable to load listings", error.message);
     const page = (data ?? []) as unknown as RawListing[];
@@ -507,7 +533,7 @@ export const getAllListings = cache(async (): Promise<PropertyListing[]> => {
 
   return rows
     .map((row) => normalizeListing(row, conflictCounts))
-    .filter((listing) => listing.source.enabled !== false && listing.source.adapterStatus !== "retired");
+    .filter(isInventoryVisible);
 });
 
 export const getMapListingMarkers = cache(
@@ -517,22 +543,30 @@ export const getMapListingMarkers = cache(
     const markers: MapListingMarker[] = [];
 
     for (let from = 0; ; from += pageSize) {
-      const filtered = applyActiveSourceListingFilter(
-        client
-          .from("property_listings")
-          .select(MAP_MARKER_SELECT)
-          .not("latitude", "is", null)
-          .not("longitude", "is", null)
-          .order("last_seen_at", { ascending: false })
-          .range(from, from + pageSize - 1),
-      );
-      const { data, error } = await filtered;
+      const { data, error } = await client
+        .from("property_listings")
+        .select(MAP_MARKER_SELECT)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null)
+        .order("last_seen_at", { ascending: false })
+        .range(from, from + pageSize - 1);
 
       if (error) {
         throw publicReadError("Unable to load map markers", error.message);
       }
       const page = (data ?? []) as unknown as RawListing[];
       for (const row of page) {
+        const origin = row.listing_origin === "manual" ? "manual" : "scraped";
+        const source = oneRelation(row.source);
+        if (
+          origin !== "manual" &&
+          (!isActiveSource(source) ||
+            (source?.adapter_status
+              ? String(source.adapter_status) === "retired"
+              : false))
+        ) {
+          continue;
+        }
         const marker = normalizeMapMarker(row);
         if (marker) markers.push(marker);
       }
@@ -544,8 +578,17 @@ export const getMapListingMarkers = cache(
 );
 
 export const getListingById = cache(async (id: string) => {
-  const listings = await getAllListings();
-  return listings.find((listing) => listing.id === id) ?? null;
+  const client = createInternalDataClient();
+  const conflictCounts = await loadUnresolvedConflictCounts();
+  const { data, error } = await client
+    .from("property_listings")
+    .select(LISTING_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw publicReadError("Unable to load listing", error.message);
+  if (!data) return null;
+  const listing = normalizeListing(data as unknown as RawListing, conflictCounts);
+  return isInventoryVisible(listing) ? listing : null;
 });
 
 export const getPriceObservations = cache(
@@ -579,7 +622,10 @@ export const getPriceObservations = cache(
       throw publicReadError("Unable to load price history", error.message);
     }
 
-    const { collapseUnchangedPriceObservations } = await import(
+    const {
+      collapseUnchangedPriceObservations,
+      filterPresentationPriceObservations,
+    } = await import(
       "@/lib/data/price-observations"
     );
 
@@ -630,7 +676,9 @@ export const getPriceObservations = cache(
     if (options.collapseUnchanged === false) {
       return rows;
     }
-    return collapseUnchangedPriceObservations(rows) as PriceObservation[];
+    return collapseUnchangedPriceObservations(
+      filterPresentationPriceObservations(rows),
+    ) as PriceObservation[];
   },
 );
 
@@ -1074,12 +1122,18 @@ export const getPropertySearchRequests = cache(
     const client = createLabsAdminClient();
     const { data, error } = await client
       .from("property_search_requests")
-      .select("id,title,status,transaction_type,min_price,max_price,price_currency,min_bedrooms,preferred_neighbourhoods,renovation_willingness,notes,intake_source,created_at,updated_at,confirmed_at")
+      .select(
+        "id,title,status,transaction_type,min_price,max_price,price_currency,min_bedrooms,min_bathrooms,min_floor_area_m2,property_types,preferred_neighbourhoods,excluded_neighbourhoods,must_haves,preferences,dealbreakers,renovation_willingness,notes,intake_source,created_at,updated_at,confirmed_at",
+      )
       .order("updated_at", { ascending: false })
       .limit(100);
     if (error) {
       throw new Error(`Unable to load search requests: ${error.message}`);
     }
+    const asStringList = (value: unknown) =>
+      Array.isArray(value)
+        ? value.map(String).filter(Boolean)
+        : [];
     return (data ?? []).map((row) => ({
       id: String(row.id),
       title: row.title ? String(row.title) : null,
@@ -1089,7 +1143,14 @@ export const getPropertySearchRequests = cache(
       maxPrice: optionalNumber(row.max_price),
       priceCurrency: row.price_currency ? String(row.price_currency) : null,
       minBedrooms: optionalNumber(row.min_bedrooms),
-      preferredNeighbourhoods: Array.isArray(row.preferred_neighbourhoods) ? row.preferred_neighbourhoods.map(String) : [],
+      minBathrooms: optionalNumber(row.min_bathrooms),
+      minFloorAreaM2: optionalNumber(row.min_floor_area_m2),
+      propertyTypes: asStringList(row.property_types),
+      preferredNeighbourhoods: asStringList(row.preferred_neighbourhoods),
+      excludedNeighbourhoods: asStringList(row.excluded_neighbourhoods),
+      mustHaves: asStringList(row.must_haves),
+      preferences: asStringList(row.preferences),
+      dealbreakers: asStringList(row.dealbreakers),
       renovationWillingness: row.renovation_willingness ? String(row.renovation_willingness) : null,
       notes: row.notes ? String(row.notes) : null,
       intakeSource: row.intake_source ? String(row.intake_source) : null,
@@ -1105,7 +1166,9 @@ export const getMatchReportsForRequest = cache(
     const client = createLabsAdminClient();
     const { data, error } = await client
       .from("listing_match_reports")
-      .select("id,property_search_request_id,property_listing_id,match_score,hard_pass,match_reasons,trade_offs,scoring_version,generated_at,listing:property_listings(title)")
+      .select(
+        "id,property_search_request_id,property_listing_id,match_score,hard_pass,match_reasons,trade_offs,evidence,scoring_version,generated_at,listing:property_listings(title,external_id,benchmark_price_xcg,primary_image_url,source:property_sources(display_name,name),neighbourhood:neighbourhoods!property_listings_neighbourhood_id_fkey(name))",
+      )
       .eq("property_search_request_id", requestId)
       .order("match_score", { ascending: false })
       .limit(100);
@@ -1114,6 +1177,14 @@ export const getMatchReportsForRequest = cache(
     }
     return (data ?? []).map((row) => {
       const listing = oneRelation(row.listing as RawRelation);
+      const neighbourhood = oneRelation(
+        (listing?.neighbourhood as RawRelation) ?? null,
+      );
+      const source = oneRelation((listing?.source as RawRelation) ?? null);
+      const evidence =
+        row.evidence && typeof row.evidence === "object"
+          ? (row.evidence as Record<string, unknown>)
+          : null;
       return {
         id: String(row.id),
         propertySearchRequestId: String(row.property_search_request_id),
@@ -1122,9 +1193,31 @@ export const getMatchReportsForRequest = cache(
         hardPass: Boolean(row.hard_pass),
         matchReasons: row.match_reasons,
         tradeOffs: row.trade_offs,
+        evidence: row.evidence,
         scoringVersion: String(row.scoring_version),
         generatedAt: String(row.generated_at),
         listingTitle: listing?.title ? String(listing.title) : null,
+        listingExternalId: listing?.external_id
+          ? String(listing.external_id)
+          : null,
+        listingNeighbourhood: neighbourhood?.name
+          ? String(neighbourhood.name)
+          : evidence?.neighbourhood
+            ? String(evidence.neighbourhood)
+            : null,
+        listingBenchmarkPriceXcg: optionalNumber(
+          listing?.benchmark_price_xcg ?? evidence?.benchmark_price_xcg,
+        ),
+        listingSourceDisplayName: source?.display_name
+          ? String(source.display_name)
+          : source?.name
+            ? String(source.name)
+            : evidence?.source
+              ? String(evidence.source)
+              : null,
+        listingPrimaryImageUrl: listing?.primary_image_url
+          ? String(listing.primary_image_url)
+          : null,
       };
     });
   },

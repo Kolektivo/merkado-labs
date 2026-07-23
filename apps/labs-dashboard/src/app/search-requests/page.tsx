@@ -11,20 +11,19 @@ import { getPropertySearchRequests } from "@/lib/data/queries";
 import { formatDateTime, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Search requests" };
+export const metadata: Metadata = { title: "Property Search" };
 
 export default async function SearchRequestsPage() {
   const requests = await getPropertySearchRequests();
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Property search requests"
-        description="Internal draft buyer requests for Labs matching tests. Not customer accounts."
+        title="Property Search"
+        description="Saved Property Search requests and their matches. Prefer What Fits Me for natural-language intake."
         icon={ClipboardList}
       />
       <PrototypeNotice>
-        Draft records are internal test data. Nothing is emailed or activated for
-        customers.
+        Labs-only Property Search data. No paywall, billing, or email delivery.
       </PrototypeNotice>
       <SearchRequestForm />
       <Card className="gap-0 py-0">

@@ -20,6 +20,7 @@ import { DataError } from "@/components/data-error";
 import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
 import { HelpTip } from "@/components/help-tip";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
+import { NativeListingActions } from "@/components/native-listing/native-listing-actions";
 import { NeighbourhoodProvenanceBadges } from "@/components/neighbourhood-provenance";
 import { PriceDisplay } from "@/components/price-display";
 import { PriceHistoryChart } from "@/components/price-history-chart";
@@ -28,9 +29,20 @@ import {
   describeConversionLabel,
   isCurrentProductionBenchmark,
 } from "@/lib/data/price-observations";
-import { filterDefaultTimeline } from "@/lib/domain/activity-presentation";
+import {
+  activityPriceDelta,
+  activityPublicXcgDelta,
+  activityTitle,
+  filterDefaultTimeline,
+  latestVisibleMaterialAt,
+  listingHasOfficialXcgAlternate,
+} from "@/lib/domain/activity-presentation";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
-import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  buildPriceDisplay,
+  formatOriginalPrice,
+  formatXcgPrimary,
+} from "@/lib/domain/price-display";
 import { buildXcgPriceSeries } from "@/lib/domain/xcg-price-series";
 import { resolveListingGalleryUrls } from "@/lib/listing-gallery-urls";
 import { Badge } from "@/components/ui/badge";
@@ -167,29 +179,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function activityLabel(eventType: string, sourceName: string) {
-  const labels: Record<string, string> = {
-    first_seen: `Listing first found on ${sourceName}`,
-    listing_first_seen: `Listing first found on ${sourceName}`,
-    price_changed: "Asking price changed",
-    currency_changed: "Asking currency changed",
-    status_changed: "Listing status changed",
-    missing_from_source: "Listing was not found in a complete source refresh",
-    removed_from_source: "Listing was removed from the source website",
-    relisted: "Listing appeared on the source website again",
-    benchmark_recalculated: "XCG comparison price updated",
-    enrichment_completed: "AI enrichment completed",
-    ai_enrichment_completed: "AI enrichment completed",
-    source_refresh_completed: "Source refresh completed",
-    source_marked_sold: "Source marked listing as sold",
-    source_marked_rented: "Source marked listing as rented",
-    source_marked_under_contract: "Source marked listing under contract",
-    source_returned_active: "Listing returned to active on source",
-    source_description_changed: "Source description changed",
-  };
-  return labels[eventType] ?? titleCase(eventType.replaceAll("_", " "));
-}
-
 export default async function ListingDetailPage({
   params,
   searchParams,
@@ -257,7 +246,19 @@ export default async function ListingDetailPage({
     ...point,
     date: formatDate(point.observedAt),
   }));
-  const timelineActivity = filterDefaultTimeline(activity);
+  const timelineContext = {
+    audience: "admin" as const,
+    includeSecondary: true,
+    hasOfficialXcgAlternate: listingHasOfficialXcgAlternate(
+      null,
+      listing.conversionMethod,
+    ),
+    stableAskingCurrency: listing.originalCurrency ?? listing.currency,
+    eurToXcgRate:
+      listing.conversionMethod === "eur_api" ? listing.conversionRate : null,
+  };
+  const timelineActivity = filterDefaultTimeline(activity, timelineContext);
+  const lastMaterialAt = latestVisibleMaterialAt(activity, timelineContext);
   const proposal = selectRetainedProposal(proposals);
   const proposalBody = asRecord(proposal?.proposal);
   const aiCoverage = resolveAiCoverage({
@@ -344,7 +345,11 @@ export default async function ListingDetailPage({
   const normalizedTab = requestedTab
     ? (tabAlias[requestedTab] ?? requestedTab)
     : "overview";
-  const availableTabs = new Set(["overview", "changes", "timeline"]);
+  const availableTabs = new Set(
+    listing.listingOrigin === "manual"
+      ? ["overview", "timeline"]
+      : ["overview", "changes", "timeline"],
+  );
   const defaultTab = availableTabs.has(normalizedTab)
     ? normalizedTab
     : "overview";
@@ -374,15 +379,25 @@ export default async function ListingDetailPage({
               </Link>
             </Button>
           ) : null}
-          <Button asChild>
-            <a href={sourceLink} target="_blank" rel="noreferrer">
-              Open original ad
-              <ArrowUpRight data-icon="inline-end" />
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-          </Button>
+          {listing.listingOrigin !== "manual" && sourceLink ? (
+            <Button asChild>
+              <a href={sourceLink} target="_blank" rel="noreferrer">
+                Open original ad
+                <ArrowUpRight data-icon="inline-end" />
+                <span className="sr-only"> (opens in new tab)</span>
+              </a>
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {listing.listingOrigin === "manual" ? (
+        <NativeListingActions
+          listingId={id}
+          status={listing.status}
+          publicEligible={listing.publicEligible}
+        />
+      ) : null}
 
       <Card className="gap-0 py-0">
         <div className="grid xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
@@ -402,22 +417,32 @@ export default async function ListingDetailPage({
               <div className="flex flex-wrap gap-2">
                 <Badge>{titleCase(listing.listingType)}</Badge>
                 <Badge variant="outline">
-                  {titleCase(listing.propertyType)}
+                  {titleCase(
+                    listing.realEstateType ?? listing.propertyType ?? "property",
+                  )}
+                </Badge>
+                <Badge variant="secondary">
+                  {listing.listingOrigin === "manual"
+                    ? "User provided"
+                    : "Scraped"}
                 </Badge>
                 <StatusBadge tone={lifecycleTone(listing.status)}>
                   {lifecycleLabel(listing.status)}
                 </StatusBadge>
-                <StatusBadge tone={aiCoverageTone(aiCoverage.category)}>
-                  {aiCoverage.label}
-                </StatusBadge>
+                {listing.listingOrigin !== "manual" ? (
+                  <StatusBadge tone={aiCoverageTone(aiCoverage.category)}>
+                    {aiCoverage.label}
+                  </StatusBadge>
+                ) : null}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                   {listing.title ?? `Listing ${listing.externalId}`}
                 </h1>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Source title (unchanged). Public English title is resolved
-                  separately for Browse.
+                  {listing.listingOrigin === "manual"
+                    ? "Owner-entered title shown in Browse and on the Property Passport."
+                    : "Source title (unchanged). Public English title is resolved separately for Browse."}
                 </p>
                 <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="size-4 shrink-0" />
@@ -465,29 +490,59 @@ export default async function ListingDetailPage({
                   <p className="mt-1 text-sm text-muted-foreground">
                     {listing.pricePeriod
                       ? `Rental period: ${listing.pricePeriod}`
-                      : "Rental period not stated by the source"}
+                      : listing.listingOrigin === "manual"
+                        ? "Rental period not specified by the owner"
+                        : "Rental period not stated by the source"}
                   </p>
                 ) : null}
-                {listing.benchmarkPriceXcg !== null ? (
+                {listing.benchmarkPriceXcg !== null ||
+                listing.originalPrice != null ? (
                   <details className="mt-3 text-xs text-muted-foreground">
                     <summary className="w-fit cursor-pointer rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      Price calculation details
+                      Price provenance
                     </summary>
-                    <p className="mt-1">
-                      {describeConversionLabel({
-                        conversionMethod: listing.conversionMethod,
-                        conversionProvider: listing.conversionProvider,
-                        conversionRate: listing.conversionRate,
-                        conversionRateAt: listing.conversionRateAt,
-                      })}
-                      {listing.conversionRateAt
-                        ? ` · rate date ${formatDate(listing.conversionRateAt)}`
-                        : ""}
-                      . The original source price remains authoritative.
-                      {!isCurrentProductionBenchmark(listing.conversionProvider)
-                        ? " This uses an older test/manual rate until an approved recalculation is imported."
-                        : ""}
-                    </p>
+                    <div className="mt-2 space-y-1">
+                      {listing.originalPrice != null &&
+                      listing.originalCurrency ? (
+                        <p>
+                          Asking anchor:{" "}
+                          {formatOriginalPrice(
+                            listing.originalPrice,
+                            listing.originalCurrency,
+                          )}
+                        </p>
+                      ) : null}
+                      {listing.benchmarkPriceXcg != null ? (
+                        <p>
+                          Public XCG:{" "}
+                          {formatXcgPrimary(listing.benchmarkPriceXcg)}
+                          {listing.conversionMethod ===
+                          "source_official_conversion"
+                            ? " (source-official alternate)"
+                            : " (Merkado benchmark)"}
+                        </p>
+                      ) : null}
+                      <p>
+                        {describeConversionLabel({
+                          conversionMethod: listing.conversionMethod,
+                          conversionProvider: listing.conversionProvider,
+                          conversionRate: listing.conversionRate,
+                          conversionRateAt: listing.conversionRateAt,
+                        })}
+                        {listing.conversionRateAt
+                          ? ` · rate date ${formatDate(listing.conversionRateAt)}`
+                          : ""}
+                        {listing.conversionProvider
+                          ? ` · provider ${listing.conversionProvider}`
+                          : ""}
+                        . The original source asking amount remains authoritative.
+                        {!isCurrentProductionBenchmark(
+                          listing.conversionProvider,
+                        )
+                          ? " This uses an older test/manual rate until an approved recalculation is imported."
+                          : ""}
+                      </p>
+                    </div>
                   </details>
                 ) : null}
                 <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
@@ -500,10 +555,13 @@ export default async function ListingDetailPage({
                     })}
                   </StatusBadge>
                   <span>
-                    {listing.sourceListedAt
-                      ? `Posted on website ${formatDate(listing.sourceListedAt)} · `
-                      : ""}
-                    First seen by Labs {formatDate(listing.firstSeenAt)}
+                    {listing.listingOrigin === "manual"
+                      ? `Submitted to Labs ${formatDate(listing.firstSeenAt)}`
+                      : `${
+                          listing.sourceListedAt
+                            ? `Posted on website ${formatDate(listing.sourceListedAt)} · `
+                            : ""
+                        }First seen by Labs ${formatDate(listing.firstSeenAt)}`}
                   </span>
                 </div>
               </div>
@@ -559,7 +617,9 @@ export default async function ListingDetailPage({
       <Tabs key={defaultTab} defaultValue={defaultTab} className="gap-4">
         <TabsList variant="line" className="w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="changes">Changes & evidence</TabsTrigger>
+          {listing.listingOrigin !== "manual" ? (
+            <TabsTrigger value="changes">Changes & evidence</TabsTrigger>
+          ) : null}
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
@@ -570,10 +630,16 @@ export default async function ListingDetailPage({
                 <CardHeader className="border-b">
                   <div className="flex flex-wrap items-center gap-2">
                     <CardTitle>Property information</CardTitle>
-                    <ProvenanceLabel kind="source" />
+                    {listing.listingOrigin === "manual" ? (
+                      <Badge variant="outline">User provided</Badge>
+                    ) : (
+                      <ProvenanceLabel kind="source" />
+                    )}
                   </div>
                   <CardDescription>
-                    Physical and listing details captured from the public ad.
+                    {listing.listingOrigin === "manual"
+                      ? "Property facts entered by the owner or Labs admin."
+                      : "Physical and listing details captured from the public ad."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -607,17 +673,18 @@ export default async function ListingDetailPage({
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="border-b">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle>Enrichment</CardTitle>
-                    <ProvenanceLabel kind="ai_extracted" />
-                  </div>
-                  <CardDescription>
-                    Current effective listing state after automatic enrichment.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+              {listing.listingOrigin !== "manual" ? (
+                <Card>
+                  <CardHeader className="border-b">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle>Enrichment</CardTitle>
+                      <ProvenanceLabel kind="ai_extracted" />
+                    </div>
+                    <CardDescription>
+                      Current effective listing state after automatic enrichment.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                   <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailItem
                       label="AI coverage"
@@ -672,21 +739,23 @@ export default async function ListingDetailPage({
                       </div>
                     </div>
                   ) : null}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : null}
 
-              <Card>
-                <CardHeader className="border-b">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle>Price over time</CardTitle>
-                    <ProvenanceLabel kind="system" />
-                  </div>
-                  <CardDescription>
-                    Only distinct asking amounts. Repeat visits with the same
-                    price are folded into one row.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+              {listing.listingOrigin !== "manual" ? (
+                <Card>
+                  <CardHeader className="border-b">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle>Price over time</CardTitle>
+                      <ProvenanceLabel kind="system" />
+                    </div>
+                    <CardDescription>
+                      Only distinct asking amounts. Repeat visits with the same
+                      price are folded into one row.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                   {history.length ? (
                     <div className="flex flex-col gap-4">
                       <PriceHistoryChart data={chartHistory} />
@@ -715,37 +784,48 @@ export default async function ListingDetailPage({
                       No price history yet.
                     </p>
                   )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : null}
             </div>
 
             <aside className="flex flex-col gap-4 xl:sticky xl:top-6">
               <Card>
                 <CardHeader className="border-b">
-                  <CardTitle>Tracking summary</CardTitle>
+                  <CardTitle>
+                    {listing.listingOrigin === "manual"
+                      ? "Listing summary"
+                      : "Tracking summary"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border bg-muted/40 p-3">
-                      <Eye className="size-4 text-muted-foreground" />
-                      <p className="mt-2 font-mono text-xl font-semibold">
-                        {listing.observationCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Times seen</p>
+                  {listing.listingOrigin !== "manual" ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border bg-muted/40 p-3">
+                        <Eye className="size-4 text-muted-foreground" />
+                        <p className="mt-2 font-mono text-xl font-semibold">
+                          {listing.observationCount}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Times seen</p>
+                      </div>
+                      <div className="rounded-lg border bg-muted/40 p-3">
+                        <History className="size-4 text-muted-foreground" />
+                        <p className="mt-2 font-mono text-xl font-semibold">
+                          {listing.priceObservationCount}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Price records
+                        </p>
+                      </div>
                     </div>
-                    <div className="rounded-lg border bg-muted/40 p-3">
-                      <History className="size-4 text-muted-foreground" />
-                      <p className="mt-2 font-mono text-xl font-semibold">
-                        {listing.priceObservationCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Price records
-                      </p>
-                    </div>
-                  </div>
+                  ) : null}
                   <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                     <DetailItem
-                      label="First seen"
+                      label={
+                        listing.listingOrigin === "manual"
+                          ? "Submitted"
+                          : "First seen"
+                      }
                       value={
                         <span className="inline-flex items-center gap-2">
                           <CalendarDays className="size-4 text-muted-foreground" />
@@ -754,34 +834,48 @@ export default async function ListingDetailPage({
                       }
                     />
                     <DetailItem
-                      label="Last seen"
+                      label={
+                        listing.listingOrigin === "manual"
+                          ? "Last updated"
+                          : "Last seen"
+                      }
                       value={formatDate(listing.lastSeenAt)}
                     />
+                    {lastMaterialAt ? (
+                      <DetailItem
+                        label="Last material activity"
+                        tip="Derived from the latest visible Passport timeline event, not the latest scraper refresh."
+                        tipLabel="last material activity"
+                        value={formatDate(lastMaterialAt)}
+                      />
+                    ) : null}
                   </dl>
-                  <details className="rounded-lg bg-muted/35 p-3 text-sm">
-                    <summary className="cursor-pointer font-medium">
-                      Technical identity
-                    </summary>
-                    <dl className="mt-3 grid gap-3">
-                      <DetailItem
-                        label="Website listing ID"
-                        value={
-                          <span className="font-mono">#{listing.externalId}</span>
-                        }
-                      />
-                      <DetailItem
-                        label="Listing ID confidence"
-                        tip="How sure we are that the website’s listing ID is stable and correctly matched over time."
-                        tipLabel="listing ID confidence"
-                        value={
-                          <span className="inline-flex items-center gap-2">
-                            <ShieldCheck className="size-4 text-muted-foreground" />
-                            {titleCase(listing.externalIdStatus)}
-                          </span>
-                        }
-                      />
-                    </dl>
-                  </details>
+                  {listing.listingOrigin !== "manual" ? (
+                    <details className="rounded-lg bg-muted/35 p-3 text-sm">
+                      <summary className="cursor-pointer font-medium">
+                        Technical identity
+                      </summary>
+                      <dl className="mt-3 grid gap-3">
+                        <DetailItem
+                          label="Website listing ID"
+                          value={
+                            <span className="font-mono">#{listing.externalId}</span>
+                          }
+                        />
+                        <DetailItem
+                          label="Listing ID confidence"
+                          tip="How sure we are that the website’s listing ID is stable and correctly matched over time."
+                          tipLabel="listing ID confidence"
+                          value={
+                            <span className="inline-flex items-center gap-2">
+                              <ShieldCheck className="size-4 text-muted-foreground" />
+                              {titleCase(listing.externalIdStatus)}
+                            </span>
+                          }
+                        />
+                      </dl>
+                    </details>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -789,31 +883,60 @@ export default async function ListingDetailPage({
                 <CardHeader className="border-b">
                   <CardTitle className="flex items-center gap-2">
                     <Building2 className="size-4" />
-                    Source & attribution
+                    {listing.listingOrigin === "manual"
+                      ? "Contact & provenance"
+                      : "Source & attribution"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                  <p className="text-sm leading-relaxed">
-                    Collected from {listing.source.name}
-                    {listing.originalRealtorName
-                      ? `, originally listed by ${listing.originalRealtorName}`
-                      : ", original realtor name not found yet"}
-                    .
-                  </p>
-                  <dl className="grid gap-3">
-                    <DetailItem
-                      label="Collected from"
-                      tip="The approved realtor website this listing was imported from."
-                      tipLabel="collected from"
-                      value={listing.source.name}
-                    />
-                    <DetailItem
-                      label="Original realtor"
-                      tip={TIPS.attribution.tip}
-                      tipLabel={TIPS.attribution.label}
-                      value={listing.originalRealtorName ?? "Realtor not listed"}
-                    />
-                  </dl>
+                  {listing.listingOrigin === "manual" ? (
+                    <>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        This property was entered by its owner or a Labs admin.
+                        It was not scraped from a realtor website.
+                      </p>
+                      <dl className="grid gap-3">
+                        <DetailItem
+                          label="Contact method"
+                          value={titleCase(listing.contactMethod)}
+                        />
+                        <DetailItem
+                          label="Contact details"
+                          value={listing.contactValue ?? "Not provided"}
+                        />
+                        {listing.contactName ? (
+                          <DetailItem
+                            label="Contact name"
+                            value={listing.contactName}
+                          />
+                        ) : null}
+                      </dl>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm leading-relaxed">
+                        Collected from {listing.source.name}
+                        {listing.originalRealtorName
+                          ? `, originally listed by ${listing.originalRealtorName}`
+                          : ", original realtor name not found yet"}
+                        .
+                      </p>
+                      <dl className="grid gap-3">
+                        <DetailItem
+                          label="Collected from"
+                          tip="The approved realtor website this listing was imported from."
+                          tipLabel="collected from"
+                          value={listing.source.name}
+                        />
+                        <DetailItem
+                          label="Original realtor"
+                          tip={TIPS.attribution.tip}
+                          tipLabel={TIPS.attribution.label}
+                          value={listing.originalRealtorName ?? "Realtor not listed"}
+                        />
+                      </dl>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </aside>
@@ -1110,9 +1233,9 @@ export default async function ListingDetailPage({
                 <ProvenanceLabel kind="system" />
               </div>
               <CardDescription>
-                Seller and source activity. Rate-only benchmark updates,
-                enrichment, and duplicate import events stay in storage but are
-                hidden from this default view.
+                {listing.listingOrigin === "manual"
+                  ? "Owner and admin activity for this property, including publishing and availability changes."
+                  : "Seller and source activity. Rate-only benchmark updates, enrichment, and duplicate import events stay in storage but are hidden from this default view."}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1125,26 +1248,50 @@ export default async function ListingDetailPage({
                 </p>
               ) : (
                 <ul className="space-y-3">
-                  {timelineActivity.map((event) => (
-                    <li
-                      key={event.id}
-                      className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {activityLabel(event.eventType, listing.source.name)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(event.eventAt)}
-                        </span>
-                      </div>
-                      {event.notes ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {event.notes}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
+                  {timelineActivity.map((event) => {
+                    const xcgDelta = activityPublicXcgDelta(
+                      event,
+                      timelineContext,
+                    );
+                    const originalDelta = activityPriceDelta(event);
+                    return (
+                      <li
+                        key={event.id}
+                        className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">
+                            {activityTitle(event.eventType)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(event.eventAt)}
+                          </span>
+                        </div>
+                        {xcgDelta ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatXcgPrimary(xcgDelta.previousXcg)} →{" "}
+                            {formatXcgPrimary(xcgDelta.nextXcg)}
+                          </p>
+                        ) : null}
+                        {originalDelta &&
+                        (originalDelta.previous.currency !== "XCG" ||
+                          originalDelta.next.currency !== "XCG") ? (
+                          <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                            Anchor{" "}
+                            {formatOriginalPrice(
+                              originalDelta.previous.amount,
+                              originalDelta.previous.currency,
+                            )}{" "}
+                            →{" "}
+                            {formatOriginalPrice(
+                              originalDelta.next.amount,
+                              originalDelta.next.currency,
+                            )}
+                          </p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>

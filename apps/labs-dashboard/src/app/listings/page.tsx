@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Building2, List, MapPinned, SearchX } from "lucide-react";
+import { Building2, List, MapPinned, Plus, SearchX } from "lucide-react";
 
 import { DataError } from "@/components/data-error";
 import { ListingFilters } from "@/components/listing-filters";
@@ -31,7 +31,7 @@ import { getMapBasemapConfig } from "@/lib/geo/basemap";
 import { listingsHref } from "@/lib/listings-url";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Listings" };
+export const metadata: Metadata = { title: "Properties" };
 
 type SearchParams = Promise<
   Record<string, string | string[] | undefined>
@@ -70,8 +70,8 @@ export default async function ListingsPage({
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Listings"
-          description="Browse properties collected from approved realtor websites."
+          title="Properties"
+          description="Browse imported and owner-entered properties."
           icon={Building2}
         />
         <DataError
@@ -125,9 +125,17 @@ export default async function ListingsPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Listings"
-        description="Find a property, narrow the inventory, or focus on listings that need attention."
+        title="Properties"
+        description="Find imported properties, manage owner-entered drafts, or focus on records that need attention."
         icon={Building2}
+        actions={
+          <Button asChild>
+            <Link href="/listings/new">
+              <Plus data-icon="inline-start" />
+              Add property
+            </Link>
+          </Button>
+        }
       />
       <Suspense>
         <ListingFilters key={JSON.stringify(params)} options={options} />
@@ -215,20 +223,25 @@ export default async function ListingsPage({
                 </EmptyMedia>
                 <EmptyTitle>
                   {listings.length === 0
-                    ? "No listings imported yet"
-                    : "No listings match"}
+                    ? "No properties yet"
+                    : "No properties match"}
                 </EmptyTitle>
                 <EmptyDescription>
                   {listings.length === 0
-                    ? "Approved realtor websites are registered. Listings will appear here after the first successful import."
+                    ? "Add an owner-entered property or wait for the first successful source import."
                     : "Try clearing filters or widening the search."}
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 {listings.length === 0 ? (
-                  <Button variant="outline" asChild>
-                    <Link href="/sources">Open sources</Link>
-                  </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button asChild>
+                      <Link href="/listings/new">Add property</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <Link href="/sources">Open sources</Link>
+                    </Button>
+                  </div>
                 ) : hasActiveFilters ? (
                   <Button variant="outline" asChild>
                     <Link href="/listings">Clear filters</Link>

@@ -13,7 +13,9 @@ npm --prefix apps/labs-dashboard run dev
 ```
 
 Open `http://localhost:3000`. Internal routes require the local Labs admin
-secret. Public `/browse` uses only the safe `public_property_listings` view.
+secret. Public `/browse` listing facts use the safe `public_property_listings`
+view; Passport activity is fetched server-side and rendered through the shared
+public-safe event filter (labels/dates/price deltas only).
 
 The app reads ignored configuration from
 `apps/labs-dashboard/.env.local`. Copy required Labs values from the repository
@@ -41,9 +43,14 @@ Never expose server credentials through `NEXT_PUBLIC_*`.
 - `/enrichment` — existing AI proposal review; **AI execution disabled**
 - `/quality` — eligibility, lifecycle, fields, evidence, geography
 - `/data-operations` — Labs property pipeline enqueue/dispatch
-- `/settings` — configuration and session health (Automatic refresh Off)
-- `/browse` and `/browse/[id]` — public-safe Labs **public preview**
-- `/prototypes` — clearly separated experimental concepts
+- `/settings` — configuration and session health (Automatic refresh On;
+  default-branch daily cron observed 2026-07-22)
+- `/browse` and `/browse/[id]` — public-safe Labs **public preview** with
+  XCG-primary pricing and filtered Passport history
+- `/prototypes`, `/what-fits-me`, `/search-requests`, and
+  `/match-reports/[requestId]` — What Fits Me natural-language intake, live
+  deterministic matches from public listings, saved Property Search / Your
+  matches. No Agent branding, billing, paywall, or email.
 
 Legacy duplicate routes redirect into the consolidated areas.
 

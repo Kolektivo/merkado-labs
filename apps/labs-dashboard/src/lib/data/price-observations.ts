@@ -22,6 +22,24 @@ function moneyKey(point: {
   return `${amount}|${currency}`;
 }
 
+export function isLegacyTestPriceObservation(
+  point: Pick<PriceObservationPoint, "conversionProvider">,
+): boolean {
+  const provider = (point.conversionProvider ?? "").toLowerCase();
+  return (
+    provider === "fixed_test" ||
+    provider.includes("manual_test") ||
+    provider.endsWith("_test")
+  );
+}
+
+/** Keep immutable test rows in storage, but never use them in Passport pricing. */
+export function filterPresentationPriceObservations<
+  T extends PriceObservationPoint,
+>(observations: T[]): T[] {
+  return observations.filter((point) => !isLegacyTestPriceObservation(point));
+}
+
 /**
  * Collapse consecutive identical asking amounts/currencies into one UI point.
  * Raw immutable rows remain in the database for audit; this is read-model only.

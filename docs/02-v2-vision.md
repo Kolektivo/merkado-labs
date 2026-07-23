@@ -23,7 +23,10 @@ The property marketplace will aggregate selected direct realtor sources, normali
 
 Users who already know what they want can create a Property Search Request directly.
 
-Users who are not yet sure can use **What Fits Me?**, a short guided quiz or conversational intake. It helps translate their situation into a practical search profile.
+Users who are not yet sure can use **What Fits Me**, which turns a written
+request into an editable Property Search and explainable matches. In Labs this
+is already a working deterministic flow against public listings; production Auth
+and continuous alerts remain future work.
 
 Possible optional inputs include:
 
@@ -38,11 +41,12 @@ Possible optional inputs include:
 
 The output is a recommended search range and property profile, not mortgage approval, financial advice, or a guarantee of affordability.
 
-### Merkado Agent
+### Property Search matching (future paid alerts)
 
-After creating a Property Search Request, the user can activate a paid monthly **Merkado Agent** subscription.
-
-The first version sends relevant matches by email. Each match includes:
+Labs user-facing names are **What Fits Me**, **Property Search**, **Your
+matches**, and **Match details**. “Merkado Agent” is not the current product
+label. A future paid monthly matching / alert subscription (main repository)
+may add continuous monitoring and email. Each match includes:
 
 - the matching listing;
 - why it matches the user's request;

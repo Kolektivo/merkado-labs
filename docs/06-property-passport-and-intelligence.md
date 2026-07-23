@@ -45,11 +45,29 @@ Uses the same public-effective read model as Browse:
   **exist and are applied**; production merkado.cw property projection remains
   **[PLANNED]** / paused. See `01-live-product-state.md` and
   `LABS_DASHBOARD_GUIDE.md`.
-- **Property activity** — first seen, last seen, source listing date.
-- **Source** — attribution + original listing link.
+- **Property activity** — shared filtered timeline on public `/browse/[id]` and
+  internal detail via the Passport presentation contract: one “First seen by
+  Merkado”, genuine **XCG** asking-price deltas (`Cg … → Cg …`), source
+  lifecycle, and native submit/publish/availability changes. Hidden (immutable):
+  currency-session switches, FX/benchmark-only updates, non-anchor foreign
+  display wobble, AI/ops, `SYSTEM_REPAIR`, dual-writer duplicates, duplicate
+  first_seen, identical observations, ±1 jitter, ambiguous anchors.
+- **Source / Provenance** — scraped: attribution + original listing link; original
+  foreign asking amount may appear once here (never as a Browse-card price or
+  public activity delta). Manual: **User provided** (no invented source URL) +
+  contact CTA. Rates/providers stay admin-only under **Price provenance**.
 
 Do not present AI as a consumer-facing feature. Neighbourhood provenance on
-Passport may read: From source / Matched from map / Extracted from listing text.
+Passport may read: From source / Matched from map / Extracted from listing text /
+User provided.
+
+### Labs admin manual Passport rules
+
+- Origin `manual` facts are **User provided**, not source facts.
+- Timeline may include `submitted`, `published`, `material_field_changed`,
+  `price_changed`, `unpublished`, `marked_sold`, `marked_rented`, `republished`.
+- Never emit `missing_from_source` or `removed_from_source` for manuals.
+- Production Auth seller Passports remain planned separately.
 
 ### Current listing
 
@@ -71,13 +89,19 @@ Passport may read: From source / Matched from map / Extracted from listing text.
 ### Activity timeline
 
 - source listing date, if known;
-- first detected by Merkado;
+- `First seen by Merkado`;
 - price and currency changes;
 - status changes;
 - source marked sold;
 - missing and removed events;
 - relisted events;
 - last detected date.
+
+The consumer-facing contract renders only a human label, event date, and
+before→after asking amount for genuine price changes. Never render raw event
+notes, private evidence, confidence, prompt/policy identifiers, token usage,
+costs, or pipeline metadata. Historical `fixed_test`/manual-test price
+observations stay stored but do not appear in Passport pricing.
 
 ### Provenance labels
 
@@ -140,39 +164,34 @@ The request may include:
 - willingness to renovate or perform maintenance;
 - must-haves, preferences, and dealbreakers.
 
-### Step 1B: What Fits Me?
+### Step 1B: What Fits Me
 
-A user who is not yet sure can complete a short guided quiz or conversational intake.
+**Labs (working now):** the user writes what they want (English or Dutch). A
+deterministic parser builds editable Property Search criteria. The user reviews
+hard requirements vs soft preferences, then sees live matches from current
+`public_property_listings` with reasons, trade-offs, missing information, XCG
+price, source, and a Passport link. They may confirm to save a Property Search
+and reopen **Your matches**. Matching uses explainable `rules_v1` labels
+(Strong / Good / Possible). No paywall or locked result limit in Labs.
 
-The experience should:
+**Future production:** may add authenticated accounts, richer guided intake,
+and continuous alerts. The output remains guidance only — not mortgage
+eligibility, financial advice, or guaranteed affordability.
 
-1. ask simple questions about the user's situation;
-2. explain why each question matters;
-3. accept approximate ranges instead of demanding exact financial data;
-4. translate answers into a draft Property Search Request;
-5. show the recommended price range, property profile, and trade-offs;
-6. require the user to review and confirm the request.
+### Step 2: Future paid matching / alerts
 
-Possible inputs include approximate income, available funds, family situation, personal needs, purchase timing, and willingness to perform maintenance or renovation.
+After confirming a Property Search, a future paid product (main repository —
+not Labs user-facing “Merkado Agent”) may:
 
-The output is guidance only. It must not be presented as mortgage eligibility, financial advice, or guaranteed affordability.
+- continuously compare new and materially changed listings against the request;
+- rank relevant matches;
+- avoid sending clearly unsuitable listings;
+- explain why each listing matched;
+- deliver Match details by email or in-product alerts;
+- allow the user to refine, pause, resume, or cancel.
 
-### Step 2: Activate Merkado Agent
-
-After confirming a Property Search Request, the user may activate a monthly paid Merkado Agent.
-
-Initial delivery channel: email.
-
-The Agent:
-
-- continuously compares new and materially changed listings against the request;
-- ranks relevant matches;
-- avoids sending clearly unsuitable listings;
-- explains why each listing matched;
-- sends a dedicated Match Report;
-- allows the user to refine, pause, resume, or cancel the Agent.
-
-The Agent does not contact realtors, negotiate, reserve, or purchase autonomously.
+It does not contact realtors, negotiate, reserve, or purchase autonomously.
+Paywall, billing, email delivery, and production Auth remain future work.
 
 ## 7. Personalized Match Report
 

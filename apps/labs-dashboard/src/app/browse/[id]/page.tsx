@@ -10,8 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PriceDisplay } from "@/components/price-display";
+import { getPublicListingActivityEvents } from "@/lib/data/public-listing-activity";
 import { getPublicListingById } from "@/lib/data/public-listings";
-import { buildPriceDisplay } from "@/lib/domain/price-display";
+import {
+  activityPublicXcgDelta,
+  activityTitle,
+  filterDefaultTimeline,
+  latestVisibleMaterialAt,
+  listingHasOfficialXcgAlternate,
+} from "@/lib/domain/activity-presentation";
+import {
+  buildPriceDisplay,
+  formatOriginalPrice,
+  formatXcgPrimary,
+} from "@/lib/domain/price-display";
 import {
   publicListingTypeLabel,
   resolvePublicDisplaySummary,
@@ -61,6 +73,17 @@ function browseBackHref(
   }
   const search = query.toString();
   return search ? `/browse?${search}` : "/browse";
+}
+
+function contactHref(method: string, value: string): string | null {
+  const normalized = method.trim().toLowerCase();
+  if (normalized === "email") return `mailto:${value.trim()}`;
+  if (normalized === "phone") return `tel:${value.trim().replace(/\s+/g, "")}`;
+  if (normalized === "whatsapp") {
+    const digits = value.replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : null;
+  }
+  return null;
 }
 
 export async function generateMetadata({
@@ -123,6 +146,18 @@ export default async function PublicListingPage({
 }) {
   const listing = await getPublicListingById((await params).id);
   if (!listing) notFound();
+  const timelineContext = {
+    audience: "public" as const,
+    includeSecondary: false,
+    hasOfficialXcgAlternate: listingHasOfficialXcgAlternate(
+      null,
+      listing.conversionMethod,
+    ),
+    stableAskingCurrency: listing.originalCurrency,
+  };
+  const rawActivity = await getPublicListingActivityEvents(listing.id);
+  const activity = filterDefaultTimeline(rawActivity, timelineContext);
+  const lastUpdatedAt = latestVisibleMaterialAt(rawActivity, timelineContext);
   const backHref = browseBackHref(await searchParams);
   const featureGroups = groupPublicAttributes(listing.publicAttributes);
   const propertyType =
@@ -146,17 +181,20 @@ export default async function PublicListingPage({
             Back to browse
           </Link>
         </Button>
-        <Button variant="outline" asChild>
-          <a
-            href={listing.originalRealtorUrl ?? listing.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open original listing
-            <ArrowUpRight data-icon="inline-end" />
-            <span className="sr-only"> (opens in new tab)</span>
-          </a>
-        </Button>
+        {listing.listingOrigin !== "manual" &&
+        (listing.originalRealtorUrl || listing.sourceUrl) ? (
+          <Button variant="outline" asChild>
+            <a
+              href={listing.originalRealtorUrl ?? listing.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open original listing
+              <ArrowUpRight data-icon="inline-end" />
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          </Button>
+        ) : null}
       </div>
       <Alert className="border-primary/20 bg-primary/[0.03]">
         <FlaskConical className="size-4" />
@@ -180,7 +218,11 @@ export default async function PublicListingPage({
         <CardContent className="space-y-5 p-5 md:p-7">
           <div className="flex flex-wrap gap-2">
             <Badge>{publicListingTypeLabel(listing.listingType)}</Badge>
-            <Badge variant="outline">{listing.sourceDisplayName}</Badge>
+            <Badge variant="outline">
+              {listing.listingOrigin === "manual"
+                ? "User provided"
+                : listing.sourceDisplayName}
+            </Badge>
             {propertyType ? (
               <Badge variant="secondary">{titleCase(propertyType)}</Badge>
             ) : null}
@@ -193,9 +235,15 @@ export default async function PublicListingPage({
               originalPrice: listing.originalPrice,
               originalCurrency: listing.originalCurrency,
               benchmarkPriceXcg: listing.benchmarkPriceXcg,
+              surface: "browse",
             })}
             size="lg"
           />
+          {lastUpdatedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Last updated {formatDateTime(lastUpdatedAt)}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {listing.effectiveNeighbourhood ? (
               <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate">
@@ -282,65 +330,180 @@ export default async function PublicListingPage({
             english={displayDescription}
             dutch={displayDescriptionNl}
           />
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">
-              Original source description
-            </summary>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-              {listing.description ?? "Source description is not available."}
-            </p>
-          </details>
-          {listing.title && listing.title.trim() !== displayTitle ? (
-            <details>
-              <summary className="cursor-pointer text-sm font-medium">
-                Original source title
-              </summary>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {listing.title}
-              </p>
-            </details>
-          ) : null}
+          {listing.listingOrigin === "manual" ? (
+            listing.description ? (
+              <section>
+                <h2 className="text-sm font-medium">Description</h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {listing.description}
+                </p>
+              </section>
+            ) : null
+          ) : (
+            <>
+              <details>
+                <summary className="cursor-pointer text-sm font-medium">
+                  Original source description
+                </summary>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {listing.description ?? "Source description is not available."}
+                </p>
+              </details>
+              {listing.title && listing.title.trim() !== displayTitle ? (
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Original source title
+                  </summary>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {listing.title}
+                  </p>
+                </details>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Property activity</CardTitle>
+          <CardTitle>Property Passport activity</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            First detected by Merkado: {formatDateTime(listing.firstSeenAt)}
-          </p>
-          <p>
-            Last detected by Merkado: {formatDateTime(listing.lastSeenAt)}
-          </p>
-          {listing.sourceListedAt ? (
-            <p>
-              Source listing date: {formatDateTime(listing.sourceListedAt)}
+        <CardContent>
+          {activity.length ? (
+            <ul className="space-y-3">
+              {activity.map((event) => {
+                const delta = activityPublicXcgDelta(event, timelineContext);
+                return (
+                  <li
+                    key={event.id}
+                    className="rounded-lg border bg-muted/20 px-3 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {activityTitle(event.eventType)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(event.eventAt)}
+                      </span>
+                    </div>
+                    {delta ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatXcgPrimary(delta.previousXcg)} →{" "}
+                        {formatXcgPrimary(delta.nextXcg)}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {listing.listingOrigin === "manual"
+                ? `Submitted to Labs ${formatDateTime(listing.firstSeenAt)}.`
+                : `First seen by Merkado ${formatDateTime(listing.firstSeenAt)}.`}
             </p>
-          ) : null}
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Public activity shows XCG asking changes only. Currency-session
+            switches, FX/benchmark updates, AI/ops events, duplicate imports,
+            and identical observations stay in the audit record but are hidden
+            here.
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Source</CardTitle>
+          <CardTitle>
+            {listing.listingOrigin === "manual" ? "Provenance" : "Source"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Listed by {listing.sourceDisplayName}
-            {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
-          </p>
-          <Button asChild>
-            <a
-              href={listing.originalRealtorUrl ?? listing.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open original listing
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-          </Button>
+          {listing.listingOrigin === "manual" ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                User provided · Labs admin native listing prototype. Facts on
+                this Passport are owner-entered, not scraped from a realtor
+                website.
+              </p>
+              {listing.contactMethod && listing.contactValue ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm">
+                    {listing.contactName
+                      ? `Contact ${listing.contactName}`
+                      : "Contact the property owner"}
+                  </p>
+                  {contactHref(
+                    listing.contactMethod,
+                    listing.contactValue,
+                  ) ? (
+                    <Button asChild size="sm">
+                      <a
+                        href={
+                          contactHref(
+                            listing.contactMethod,
+                            listing.contactValue,
+                          ) ?? undefined
+                        }
+                        target={
+                          listing.contactMethod.toLowerCase() === "whatsapp"
+                            ? "_blank"
+                            : undefined
+                        }
+                        rel={
+                          listing.contactMethod.toLowerCase() === "whatsapp"
+                            ? "noreferrer"
+                            : undefined
+                        }
+                      >
+                        Contact via {titleCase(listing.contactMethod)}
+                        {listing.contactMethod.toLowerCase() === "whatsapp" ? (
+                          <>
+                            <ArrowUpRight data-icon="inline-end" />
+                            <span className="sr-only"> (opens in new tab)</span>
+                          </>
+                        ) : null}
+                      </a>
+                    </Button>
+                  ) : (
+                    <span className="text-sm">{listing.contactValue}</span>
+                  )}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Listed by {listing.sourceDisplayName}
+                {listing.externalId ? ` · Ref ${listing.externalId}` : ""}
+              </p>
+              {listing.originalPrice != null &&
+              listing.originalCurrency &&
+              !["XCG", "ANG", "NAF"].includes(
+                listing.originalCurrency.toUpperCase(),
+              ) ? (
+                <p className="text-sm text-muted-foreground">
+                  Original asking{" "}
+                  {formatOriginalPrice(
+                    listing.originalPrice,
+                    listing.originalCurrency,
+                  )}
+                </p>
+              ) : null}
+              {listing.originalRealtorUrl || listing.sourceUrl ? (
+                <Button asChild>
+                  <a
+                    href={listing.originalRealtorUrl ?? listing.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open original listing
+                    <span className="sr-only"> (opens in new tab)</span>
+                  </a>
+                </Button>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

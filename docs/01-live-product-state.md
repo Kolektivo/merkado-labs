@@ -1,7 +1,7 @@
 # 01 - Merkado Live Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 21, 2026
+**Last updated:** July 23, 2026
 
 **Labs automation foundation:** the four Ready property sources share a Labs-only
 orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
@@ -9,10 +9,18 @@ orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
 `property-pipeline-labs.yml`. **Automatic daily cron is On**
 (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
 gates; schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during
-CEST / 05:00 Amsterdam during CET) begins only when this
-workflow reaches the default branch. Manual/`workflow_dispatch` and dashboard
-Data Operations dispatch remain available. Sotheby's remains blocked and excluded.
-This does not change production or deploy anything.
+CEST / 05:00 Amsterdam during CET). First normal daily cron on the default
+branch was observed 2026-07-22
+(https://github.com/Kolektivo/merkado-labs/actions/runs/29984863341).
+Manual/`workflow_dispatch` and dashboard Data Operations dispatch remain
+available. Sotheby's remains blocked and excluded. This does not change
+production or deploy anything.
+
+**Labs admin native listing prototype `[LABS]` (2026-07-23):** admins can create
+manual-origin real-estate listings via `/listings/new` (draft → review preview →
+publish). Eligible published manuals enter the shared `public_property_listings`
+Browse/Passport read model with **User provided** provenance (no scraper URL).
+This is **not** the production authenticated seller flow on merkado.cw.
 
 ## 1. Production today `[LIVE]`
 
@@ -53,16 +61,18 @@ The isolated Labs project currently has:
   English/Nederlands toggle — not full-site localization. Dutch↔English search
   synonyms are deterministic (no AI per query).
 - RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
-  **220**; Labs DB may show **222** — operational drift; adapter **v0.4.1**;
+  **220**; Labs audit **223** retained source identities — operational drift;
+  adapter **v0.4.1**;
   **199/220** coordinates; Terra initial backfill complete; pipeline ready /
   cron On / dispatch available; normal Refresh & enrich = new/changed only);
-- Keller Williams: Labs inventory **104** listings; live complete catalogs
+- Keller Williams: Labs audit **105** retained identities; live complete catalogs
   discover ~**102** (offline import preview still gates the historical **84**
   artifact only — not a scheduled input). Crawl-Delay 20 sequential. Earlier
   bounded/partial adapter runs had falsely marked 35 KW listings `removed` on
   2026-07-17; restored from last valid pre-absence status without deleting
   immutable events. Pipeline ready / cron On / dispatch available.
-- Moret Real Estate adapter **v0.2.0**: **71** listings; coordinates 71/71;
+- Moret Real Estate adapter **v0.2.0**: catalog contract **71**, Labs audit
+  **72** retained/public identities; coordinates available for the contract set;
   Terra coverage complete; pipeline ready / cron On / dispatch available;
   Refresh & enrich = new/changed only; live Dutch `/properties/` catalog;
 - AI enrichment **v5 / policy v5** is current in Labs across KW, RE/MAX, Moret,
@@ -94,19 +104,63 @@ The isolated Labs project currently has:
   failure does not remove English). Zero-cost policy rematerialization does not
   create billable AI work. Labs public + bilingual view migrations are applied
   in Labs; production merkado.cw property migration remains **paused**.
-- Labs Search Request + test Agent entitlement + 15 Match Reports (`rules_v1`) —
-  **Labs prototypes**, not live on merkado.cw.
+- Labs **What Fits Me** + Property Search matching (`rules_v1`) — **working in
+  Labs**, not live on merkado.cw. Flow: natural-language intake (EN/NL) →
+  editable criteria → immediate matches from current `public_property_listings`
+  → optional confirm to save a Property Search and reopen **Your matches**.
+  Matching is deterministic and explainable (Strong / Good / Possible). XCG is
+  the only primary matched price. Editing saved criteria returns the request to
+  draft for re-confirmation. “Merkado Agent” is **not** the current user-facing
+  product name. No subscription, billing, paywall, entitlement enforcement,
+  continuous monitoring, or real email exists — those remain future
+  main-repository work.
+- Labs admin **Add property** native listing prototype (`listing_origin=manual`):
+  draft/edit/publish/unpublish/sold/rented/republish under the Labs admin cookie;
+  ordered images in Storage bucket `listing-images` (max **12** images **per
+  listing**; reorder requires an exact unique permutation of stored paths;
+  exactly one primary when images exist); immutable activity events
+  (`submitted`, `published`, `material_field_changed`, `price_changed`,
+  `unpublished`, `marked_sold`, `marked_rented`, `republished`) written
+  atomically with status via `apply_native_listing_lifecycle`. Manual rows are
+  excluded from source-absence / removal logic and do not auto-run AI enrichment.
+  Public inventory note (audited 2026-07-23): scraped `public_eligible` /
+  `public_property_listings` / Browse UI are all **283**. The older snapshot
+  **286** public view vs **283** EN/NL About (2026-07-21 / `d2abb557`) was
+  About-coverage lag on three newly public Remax rows — not a Browse/UI
+  mismatch. Current **283** vs that **286** is expected inventory drift.
+- Passport presentation (2026-07-23 cleanup): shared filtered timeline shows one
+  `First seen by Merkado`, genuine **XCG-only** asking deltas, lifecycle and
+  native events. Hidden (immutable): currency-session switches, FX/benchmark-only
+  updates, non-anchor foreign display wobble, enrichment/ops, `SYSTEM_REPAIR`,
+  dual-writer duplicates, duplicate first_seen, identical observations, ±1
+  jitter, ambiguous anchors. Browse cards are XCG-only; original foreign asking
+  may appear once in Passport provenance. Admin **Price provenance** keeps
+  original amount/currency/rate/provider. Public inventory remains **283**.
+- Pricing audit (2026-07-23): all **385/405** priced listings have a positive XCG
+  benchmark and reviewed provenance; the other **20** are source no-price rows,
+  all public-ineligible. Current providers contain no test/manual rates. The
+  **51** immutable historical `fixed_test`/manual-test observations remain for
+  provenance but are excluded from Passport pricing. Fifty apparent USD peg
+  mismatches were reviewed as valid source-official XCG amounts paired with
+  rounded USD alternates, not stale benchmarks.
+- Final Labs cleanup (2026-07-23): complete payload export + SHA-256 manifest
+  preceded deletion of one demo rental contract, its unreferenced asset, six
+  dry-run pipeline runs (including 42 stage / 71 item / 68 event child rows),
+  and one unstarted queued AI job with no proposals. All 405 listings and their
+  observations/events/prices/evidence, canary enrichment, real source runs, and
+  the Search/Agent/15 Match Report demo fixtures were retained. The cleanup
+  rerun is an idempotent no-op.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
 after a verified rollback export. Monumentenzorg adapter **v0.2.0** is Ready
 (5 imported, coordinates 0/5; pipeline ready / cron On / dispatch available).
-Live Labs inventory (post supervised automation gates 2026-07-21): KW **104**,
-Remax **222** (live complete discover **220**; two IDs removed via two-absence
-rule), Moret **71**, Monumentenzorg **5**; `public_property_listings` **286**
-(KW **88** / Remax **125** / Moret **71** / Monumentenzorg **2**) with EN/NL
-About-this-property on **283** (3 newly public Remax deferred under the 25/day
-AI cap). Supervised run `e34eb779-…` spent ~USD **0.96** on **25** Remax
+Live Labs inventory (audited 2026-07-23): KW **105**,
+Remax **223** (live complete catalog contract **220**), Moret **72** (catalog
+contract **71**), Monumentenzorg **5**; **405 total** and
+`public_property_listings` **283**. The historical 2026-07-21 snapshot was 286
+public rows with EN/NL About-this-property on 283; do not reuse 286 as the
+current count. Supervised run `e34eb779-…` spent ~USD **0.96** on **25** Remax
 new/changed; idempotent rerun spent **USD 0** (budget-deferred remainder **71**).
 Next active source task: **Sotheby's** remains access-route **BLOCKED** after
 2026-07-20 recon (not Ready; excluded from Ready pipelines; official
@@ -155,8 +209,13 @@ Core MVP rules:
 - Confirmed sale prices
 - Automated valuation or sold-probability models
 - Weekly intelligence reports
-- Production What Fits Me / Merkado Agent (Labs preview only)
+- Production What Fits Me / Property Search alerts (Labs matching works; Agent
+  branding, paywall, email, and production Auth remain future work)
 - Matching-listing email notifications / real billing
+- Production account ownership, Auth/RLS, subscriptions, paywall/entitlement
+  enforcement, notification delivery, and merkado.cw integration. Whether to
+  show only three matches and require payment to unlock more is **[OPEN]**, not
+  implemented in Labs.
 
 ## 5. Required accuracy language
 

@@ -3,23 +3,23 @@ import { Sparkles } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PrototypeNotice } from "@/components/prototype-notice";
-import { SearchRequestForm } from "@/components/search-request-form";
+import { WhatFitsMeFlow } from "@/components/what-fits-me-flow";
 
-export const metadata: Metadata = { title: "What fits me" };
+export const metadata: Metadata = { title: "What Fits Me" };
 
 export default function WhatFitsMePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="What Fits Me?"
-        description="Turn practical preferences into an internal draft search request."
+        title="What Fits Me"
+        description="Describe what you want, review the interpreted Property Search, and see real matches from current Labs listings."
         icon={Sparkles}
       />
       <PrototypeNotice>
-        Structured guidance only. This is not mortgage approval, affordability
-        advice, or a customer-ready service.
+        Labs matching only — deterministic and explainable. Not mortgage advice,
+        not live on merkado.cw, and no billing or email.
       </PrototypeNotice>
-      <SearchRequestForm guided />
+      <WhatFitsMeFlow />
     </div>
   );
 }

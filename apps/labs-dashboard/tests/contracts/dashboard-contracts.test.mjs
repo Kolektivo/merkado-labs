@@ -24,14 +24,40 @@ test("public browse and passport use effective public fields without AI internal
   assert.match(browse, /effectiveNeighbourhood/);
   assert.match(browse, /minPrice/);
   assert.match(browse, /benchmarkPriceXcg/);
+  assert.match(browse, /listingOrigin === "manual"|User provided/);
   assert.match(passport, /Property features/);
-  assert.match(passport, /Source description/);
+  assert.match(passport, /Source description|User provided/);
   assert.match(passport, /AboutPropertyDescription/);
   assert.match(passport, /resolvePublicDisplayTitle|displayTitle/);
   assert.match(passport, /resolvePublicDisplaySummary|displaySummary/);
   assert.match(passport, /buildPublicListingJsonLd|application\/ld\+json/);
+  assert.match(passport, /listingOrigin === "manual"/);
+  assert.match(passport, /getPublicListingActivityEvents/);
+  assert.match(passport, /filterDefaultTimeline/);
+  assert.match(passport, /activityPublicXcgDelta/);
+  assert.match(passport, /formatXcgPrimary/);
   assert.doesNotMatch(browse, /field_decisions|token_usage|supporting_evidence/);
   assert.doesNotMatch(passport, /field_decisions|token_usage|supporting_evidence/);
+  assert.doesNotMatch(passport, /event\.notes/);
+});
+
+test("native listing APIs require Labs admin session cookie", () => {
+  for (const path of [
+    "src/app/api/native-listings/route.ts",
+    "src/app/api/native-listings/[id]/route.ts",
+    "src/app/api/native-listings/[id]/actions/route.ts",
+    "src/app/api/native-listings/[id]/images/route.ts",
+  ]) {
+    const route = source(path);
+    assert.match(route, /assertLabsAdminSession/);
+    assert.doesNotMatch(route, /readAdminSecretFromBody/);
+  }
+});
+
+test("listings inventory exposes Add property entry point", () => {
+  const listings = source("src/app/listings/page.tsx");
+  assert.match(listings, /\/listings\/new/);
+  assert.match(listings, /Add property/);
 });
 
 test("internal routes use one signed-cookie proxy gate", () => {
@@ -45,6 +71,7 @@ test("internal routes use one signed-cookie proxy gate", () => {
 test("normal admin APIs require the session cookie, not repeated secrets", () => {
   for (const path of [
     "src/app/api/search-requests/route.ts",
+    "src/app/api/search-requests/[id]/route.ts",
     "src/app/api/search-requests/[id]/confirm/route.ts",
     "src/app/api/agent/entitlements/route.ts",
     "src/app/api/enrichment/preview/route.ts",
@@ -57,6 +84,38 @@ test("normal admin APIs require the session cookie, not repeated secrets", () =>
     assert.match(route, /assertLabsAdminSession/);
     assert.doesNotMatch(route, /readAdminSecretFromBody/);
   }
+});
+
+test("What Fits Me handoff supports criteria review, edit, and confirmation", () => {
+  const flow = source("src/components/what-fits-me-flow.tsx");
+  const page = source("src/app/what-fits-me/page.tsx");
+  const review = source("src/components/search-request-review.tsx");
+  const report = source("src/app/match-reports/[requestId]/page.tsx");
+  const previewRoute = source("src/app/api/what-fits-me/preview/route.ts");
+  const createRoute = source("src/app/api/search-requests/route.ts");
+  const updateRoute = source("src/app/api/search-requests/[id]/route.ts");
+  const matchLib = source("src/lib/matching/run-public-match.ts");
+
+  assert.match(page, /WhatFitsMeFlow/);
+  assert.match(flow, /Interpret & review criteria/);
+  assert.match(flow, /Find matching properties/);
+  assert.match(flow, /create a Property Search/);
+  assert.match(flow, /intakeSource: "what_fits_me"/);
+  assert.match(flow, /persistMatches: true/);
+  assert.match(previewRoute, /assertLabsAdminSession/);
+  assert.match(previewRoute, /parsePropertySearchText|criteriaFromBody/);
+  assert.match(matchLib, /getPublicListings|public_property_listings|toMatchCandidate/);
+  assert.match(createRoute, /persistMatchReportsForRequest/);
+  assert.match(report, /SearchRequestReview/);
+  assert.match(report, /Your matches/);
+  assert.match(report, /Open Passport/);
+  assert.doesNotMatch(report, /Merkado Agent/);
+  assert.doesNotMatch(flow, /Merkado Agent/);
+  assert.doesNotMatch(flow, /Subscribe|Unlock more|Enter card|Stripe/i);
+  assert.match(review, /Property Search criteria/);
+  assert.match(review, /Edit search/);
+  assert.match(updateRoute, /status: "draft"/);
+  assert.match(updateRoute, /confirmed_at: null/);
 });
 
 test("navigation exposes only consolidated top-level areas", () => {

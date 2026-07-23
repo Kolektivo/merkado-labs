@@ -1,12 +1,15 @@
 # 06 - Currency and Pricing Rules
 
 **Purpose:** Approved original-currency and XCG benchmark conversion policy for Merkado Labs.
-**Last updated:** July 21, 2026
+**Last updated:** July 23, 2026
 
 ## 1. Principles
 
-- Preserve the original asking amount and original currency as source truth.
+- Preserve the original asking amount and original currency as source truth
+  (scraped source text or Labs admin / future user-entered amount).
 - Store a separate XCG benchmark for comparison.
+- Labs admin native listings use the same conversion methods; never invent
+  `source_official_conversion` from a Merkado rate.
 - Never present the XCG figure as a bank conversion quote, transaction rate, appraisal, or contractual amount.
 - For true foreign-currency → XCG conversions, surface an **indicative tip/icon**
   (copy: **Indicative equivalent based on known information.**). Do not repeat
@@ -60,6 +63,9 @@ EUR_TO_XCG = ECB_USD_PER_EUR × 1.79
 
 CLI `--fx-provider manual --eur-rate …` is allowed for controlled tests only.
 Provider ids such as `fixed_test` / `manual_test` must be labelled as historical/manual and must not be shown as current production benchmarks after an approved ECB recalculation.
+The 2026-07-23 audit confirmed **0** current listing providers with test/manual
+labels. All **51** immutable historical test-rate `price_observations` remain
+stored for provenance and are filtered from Passport price rows/charts.
 
 ## 4. Public eligibility
 
@@ -79,18 +85,23 @@ events (not `price_changed`). Current dashboard listing values use the ECB provi
   detail, browse cards, listing table — formatted with the `Cg` prefix
   (literal `Cg 1,927`, not `Intl` currency style — Node and browsers
   disagree on the XCG symbol and that breaks hydration).
-- The original source amount is shown as a **secondary** line only when its
-  currency differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG, so they
-  are not treated as a "different" currency).
-- Price search and filter ranges operate on the **XCG benchmark**, not the
-  original currency; a listing without a valid benchmark is excluded from
-  the mixed-currency sort/filter.
+- **Browse cards** show XCG only (no competing original line).
+- Passport overview uses XCG as the primary price; original foreign asking
+  may appear once in the Source/Provenance area, never as a public activity
+  delta.
+- Admin detail may show the original as a secondary line when its currency
+  differs from XCG/ANG/NAf (ANG and NAf are 1:1 with XCG).
+- Price search and filter ranges operate on the **effective XCG** amount, not
+  the original currency; a listing without a valid benchmark is excluded from
+  the mixed-currency sort/filter. Never fabricate an XCG amount when no valid
+  benchmark exists.
 - If an original price exists but no XCG benchmark is available yet, show
   the original amount with **"XCG equivalent currently unavailable"**
   instead of fabricating a conversion.
 - True foreign→XCG conversions show an indicative **tip/icon** beside the
-  primary XCG amount (HelpTip); XCG/ANG/NAf identity cases omit it. Do not
-  repeat the indicative sentence as always-visible body text under the price.
+  primary XCG amount on detail surfaces (HelpTip); browse cards omit it.
+  XCG/ANG/NAf identity cases omit it. Do not repeat the indicative sentence
+  as always-visible body text under the price.
 - Sold listings additionally show: **Last known listing price. The actual
   sale price may differ.**
 - Implementation: `apps/labs-dashboard/src/lib/domain/price-display.ts` +
@@ -130,18 +141,39 @@ Labs refresh applied (`data/processed/source_official_currency_refresh.json`,
 
 ### Event semantics
 
-- `price_changed` — asking **amount** changed
-- `currency_changed` — asking **currency** changed
+- `price_changed` — genuine asking-**anchor amount** changed (not FX, not session)
+- `currency_changed` — asking **currency** changed (stored; never shown publicly)
 - `benchmark_recalculated` — FX/rate/provider context only (anchor unchanged)
 - Official alternate capture/backfill with unchanged anchor ≠ `price_changed`
+- Stable official XCG + foreign display/session drift ≠ `price_changed`
 - Import pipeline is the sole writer for these three; lifecycle must not duplicate them
   (dual-writer `price_changed` fixed in the 2026-07-21 quality pass)
-- Tiny RE/MAX display jitter (±1) may be flagged `suspected_display_fx_jitter` in presentation metadata; do not delete
-- Presentation timeline suppresses rate-only / enrichment / policy-rematerialization
-  noise at read-time (see `05`)
+- Tiny RE/MAX display jitter (±1) is flagged
+  `suspected_display_fx_jitter`, retained, and hidden from Passport timelines
+- Public Passport activity deltas are **XCG-only** (`Cg A → Cg B`); original
+  currency/rate/provider stay in admin **Price provenance** (see `05`)
 
 ### XCG price-over-time chart
 
 Dashboard chart points come from **material asking-price changes** only.
 Y-value = source-official XCG when stored, else Merkado benchmark at that event.
 Tooltips show original amount/currency + provenance. Rate-only changes do not move the chart.
+
+## 8. Listing-level price audit (2026-07-23)
+
+Audited all **405** Labs listings and the public-effective projection:
+
+- **385** priced listings have positive original amounts, positive XCG
+  benchmarks, and valid current provenance.
+- **20** no-price source listings are public-ineligible; they are listed in
+  `labs/PRICE_CURRENCY_AUDIT_2026-07-23.md`.
+- **283** public rows therefore display/filter/sort with XCG primary.
+- Current methods: 205 source-official conversions, 160 XCG identity, 11 ECB
+  EUR, 7 fixed USD peg, 2 legacy ANG/NAf 1:1, and 20 no-price/no-conversion.
+- A naive USD×1.79 check flagged **50** rows. Review showed every row uses
+  `source_official_conversion` / `source:official_alternate`: authoritative
+  whole-XCG source amounts with rounded USD secondary amounts. Differences
+  were rounding (≤ XCG 0.50), not stale current benchmarks, so no listing
+  mutation was justified.
+
+No immutable price history was rewritten or deleted.

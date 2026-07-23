@@ -49,7 +49,10 @@ def test_preferred_neighbourhood_boosts_score() -> None:
     result = score_listing(request, _listing())
     assert result.hard_pass is True
     assert result.match_score >= 0.7
-    assert any("preferred" in r.lower() for r in result.match_reasons)
+    assert any(
+        "required" in r.lower() or "neighbourhood" in r.lower()
+        for r in result.match_reasons
+    )
 
 
 def test_excluded_neighbourhood_blocks() -> None:
@@ -68,11 +71,35 @@ def test_rank_orders_by_score() -> None:
     request = SearchRequestProfile(
         max_price=Decimal("900000"),
         preferred_neighbourhoods=("Salinja",),
+        preferences=("pool",),
     )
-    a = _listing(listing_id="a", neighbourhood_text="Salinja")
-    b = _listing(listing_id="b", neighbourhood_text="Westpunt", bedrooms=4)
+    a = _listing(
+        listing_id="a",
+        neighbourhood_text="Salinja",
+        amenities=("pool", "parking"),
+        title="Quiet villa",
+    )
+    b = _listing(
+        listing_id="b",
+        neighbourhood_text="Salinja",
+        amenities=("parking",),
+        title="Family home",
+        bedrooms=4,
+    )
     ranked = rank_listings(request, [b, a], limit=10)
     assert ranked[0].listing_id == "a"
+
+
+def test_missing_xcg_fails_budget_filter() -> None:
+    request = SearchRequestProfile(max_price=Decimal("800000"))
+    result = score_listing(request, _listing(benchmark_price_xcg=None))
+    assert result.hard_pass is False
+
+
+def test_required_location_is_hard_filter() -> None:
+    request = SearchRequestProfile(preferred_neighbourhoods=("Jan Thiel",))
+    result = score_listing(request, _listing(neighbourhood_text="Westpunt"))
+    assert result.hard_pass is False
 
 
 def test_what_fits_me_mapping() -> None:

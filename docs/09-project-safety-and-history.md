@@ -72,6 +72,25 @@ Do not add browser automation, AI frameworks, vector databases, or new graph inf
 
 ## 6. Decision history
 
+### July 23, 2026 - Labs admin native listing prototype
+
+- Added Labs-only admin **Add property** flow (`/listings/new`) with draft,
+  review card preview, ordered Storage images, and publish/unpublish/sold/
+  rented/republish actions under the Labs admin cookie.
+- Forward migrations: `listing_origin`, `real_estate_type`, contact/publish
+  fields, `listing_images`, `listing-images` bucket, origin-aware
+  `public_property_listings`, and manual Passport events (`submitted`,
+  `published`, `material_field_changed`, `price_changed`, `unpublished`,
+  `marked_sold`, `marked_rented`, `republished`).
+- Explicit naming: Labs `property_type` remains scraped subtype; manuals set
+  `real_estate_type` without reinterpreting historical subtype strings as
+  `car|real_estate`.
+- Boundary: Labs admin prototype ≠ production authenticated seller flow.
+  Scraped pipeline/cron unchanged; manuals never get source-absence events or
+  automatic AI enrichment.
+- First normal daily property pipeline cron on default branch observed
+  2026-07-22 (https://github.com/Kolektivo/merkado-labs/actions/runs/29984863341).
+
 ### July 21, 2026 - Quality pass, bilingual presentation, automation armed On
 
 - Labs cleanup/stabilization after hash-repair work, then English v5 + Dutch

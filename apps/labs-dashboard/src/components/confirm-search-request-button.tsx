@@ -27,13 +27,13 @@ export function ConfirmSearchRequestButton({
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <p className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="size-3.5" />
-          Confirmed for Labs testing
+          Property Search confirmed
         </p>
         <Link
-          href="/agent"
+          href="/what-fits-me"
           className="font-medium text-foreground underline underline-offset-2"
         >
-          Create an Agent test pass
+          Start another What Fits Me search
         </Link>
       </div>
     );
@@ -42,7 +42,8 @@ export function ConfirmSearchRequestButton({
   if (status !== "draft") {
     return (
       <p className="text-sm text-muted-foreground">
-        This request is {status.replaceAll("_", " ")} and cannot be confirmed.
+        This Property Search is {status.replaceAll("_", " ")} and cannot be
+        confirmed.
       </p>
     );
   }
@@ -57,12 +58,12 @@ export function ConfirmSearchRequestButton({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.error ?? "Unable to confirm request.");
+        throw new Error(result.error ?? "Unable to confirm Property Search.");
       }
       setStatus("confirmed");
       setMessage({
         kind: "success",
-        text: "Request confirmed. You can create a Merkado Agent test pass now.",
+        text: "Property Search confirmed. Your matches stay available on this page.",
       });
       router.refresh();
     } catch (error) {
@@ -71,7 +72,7 @@ export function ConfirmSearchRequestButton({
         text:
           error instanceof Error
             ? error.message
-            : "Unable to confirm request.",
+            : "Unable to confirm Property Search.",
       });
     } finally {
       setBusy(false);
@@ -82,7 +83,7 @@ export function ConfirmSearchRequestButton({
     <div className="flex flex-wrap items-center gap-3">
       <Button type="button" size="sm" onClick={() => void confirm()} disabled={busy}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-        {busy ? "Confirming…" : "Confirm request"}
+        {busy ? "Confirming…" : "Confirm Property Search"}
       </Button>
       {message ? (
         <p

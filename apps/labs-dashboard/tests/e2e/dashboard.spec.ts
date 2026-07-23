@@ -173,7 +173,10 @@ test("authenticated core routes load real data without browser errors", async ({
   await expect(page.getByText("Next scheduled run", { exact: true })).toHaveCount(0);
 
   await page.goto("/listings?type=rent");
-  const detailHref = await page.locator('a[href^="/listings/"]').first().getAttribute("href");
+  const detailHref = await page
+    .locator('a[href^="/listings/"]:not([href="/listings/new"])')
+    .first()
+    .getAttribute("href");
   expect(detailHref).toBeTruthy();
   const detailResponse = await page.goto(detailHref!);
   expect(detailResponse?.status()).toBe(200);
@@ -371,7 +374,7 @@ test("progressive disclosures and enrichment views are keyboard accessible", asy
 
 test("prototype pages are explicit and AI execution is disabled", async ({ page }) => {
   await login(page);
-  for (const route of ["/search-requests", "/what-fits-me", "/agent"]) {
+  for (const route of ["/search-requests", "/what-fits-me"]) {
     const response = await page.goto(route);
     expect(response?.status(), route).toBe(200);
     await page.waitForLoadState("networkidle");
@@ -382,6 +385,15 @@ test("prototype pages are explicit and AI execution is disabled", async ({ page 
     ).toBeVisible();
     await expectNoHorizontalOverflow(page, route);
   }
+  await page.goto("/what-fits-me");
+  await expect(
+    page.getByRole("heading", { name: "What Fits Me" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Interpret & review criteria" }),
+  ).toBeVisible();
+  await expect(page.getByText("Merkado Agent")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page, "/what-fits-me");
 
   await page.goto("/search-requests");
   const matchReportLink = page.locator('a[href^="/match-reports/"]').first();

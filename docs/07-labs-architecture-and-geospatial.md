@@ -45,9 +45,27 @@ DIRECT SOURCE ADAPTER
 ```
 
 Four Ready sources share the Labs property pipeline (orchestrator/worker/locks/
-anomaly/budgets/`change_hash`). **Daily cron remains Off** until activation
-gates pass; manual/`workflow_dispatch` and Data Operations dispatch remain
-available. Sotheby's is excluded.
+anomaly/budgets/`change_hash`). **Daily cron is On**
+(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates; first normal daily
+cron on the default branch observed 2026-07-22 (run `29984863341`).
+Manual/`workflow_dispatch` and Data Operations dispatch remain available.
+Sotheby's is excluded.
+
+### Labs admin native listing path (prototype)
+
+```text
+LABS ADMIN SESSION
+  -> /listings/new wizard (details → features → photos → review preview)
+  -> service-role APIs under assertLabsAdminSession
+  -> property_listings (listing_origin=manual)
+  -> listing_images + Storage bucket listing-images
+  -> immutable activity events (submitted/published/…)
+  -> public_property_listings when eligibility passes
+```
+
+End-user Auth seller accounts are **not** implemented here. Labs must not use
+the admin secret as production user auth. Manual rows never enter adapters,
+source runs, or absence/removal logic. AI enrichment is not auto-run for manuals.
 
 ### Evidence layers
 
@@ -214,8 +232,18 @@ merkado.cw property projection remains paused / not part of automatic deploy.
 ### Security model (Labs read access)
 
 - Anon/authenticated: **SELECT only** on `public_property_listings` (and neighbourhoods).
-- No anon SELECT on `property_listings`, observations, activity events, source runs,
-  AI tables, search/agent/match tables, or raw evidence.
+- No anon SELECT on `property_listings`, observations, activity events,
+  AI tables, search/agent/match tables, or raw evidence. Public Passport
+  activity is fetched server-side with the Labs service role, eligibility is
+  checked against the public view, and only filtered labels/dates/price deltas
+  are rendered.
+- **Known Labs-only security debt:** orchestration progress tables
+  `property_pipeline_runs`, `property_pipeline_source_stages`,
+  `property_pipeline_items`, and `property_pipeline_events` retain historical
+  anon/authenticated SELECT policies from the Data Operations migration. They
+  contain operational bookkeeping, not raw HTML or service credentials, but
+  should be made admin-only before any production handoff. This final cleanup
+  does not broaden into a retrospective RLS redesign.
 - Labs dashboard internal queries use server-side service-role client.
 - Public view uses `security_invoker=false` so the projection is readable without
   granting underlying table SELECT. The effective view joins AI proposals as
@@ -232,9 +260,16 @@ merkado.cw property projection remains paused / not part of automatic deploy.
 - `/browse` + Passport-style detail — **public preview** (eligible active only;
   separate from Prototypes nav)
 - `/data-operations` — Labs-only pipeline enqueue/dispatch (admin + credentials)
-- `/search-requests`, `/what-fits-me`, `/agent`, `/match-reports/[requestId]` — Labs prototypes
-- Matcher: `merkado_labs.matching` (`rules_v1`) + `scripts/run_match_preview.py`
-- No real email, billing, or production merkado.cw connection
+- `/what-fits-me`, `/search-requests`, `/match-reports/[requestId]` — Labs
+  What Fits Me / Property Search / Your matches. Natural-language parse →
+  editable criteria → live matches from `public_property_listings` → optional
+  saved Property Search. Legacy `/agent` route may remain for internal fixtures
+  but is not the user-facing product name.
+- Matcher: dashboard `src/lib/matching` (`rules_v1`) against public listings;
+  Python `merkado_labs.matching` + `scripts/run_match_preview.py` for offline
+  Labs preview. Deterministic only — no runtime AI API for matching.
+- No real email, billing, subscription, entitlement enforcement, paywall, or
+  production merkado.cw connection. There is no locked result limit in Labs.
 - Nothing here is described as live on merkado.cw
 
 ### RE/MAX refresh (2026-07-17) and Terra prep (2026-07-20)
@@ -245,7 +280,7 @@ merkado.cw property projection remains paused / not part of automatic deploy.
 - Initial AI validation: 5 listings succeeded; unchanged rerun skipped (0 tokens)
 - Adapter `0.4.1` (2026-07-20): parse `google.maps.LatLng` (199/220 on cache reparse), listing agent, filter agent headshots; Labs rows not updated (no import this task)
 - Terra v3 five-listing canary executed 2026-07-20 (`gpt-5.6-terra` + v3): **5/5** after `hs2467` retry
-- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron On (schedule after default-branch merge) / dispatch available; normal Refresh & enrich stays new/changed only
+- v0.4.1 activation + Terra initial backfill (2026-07-20): offline import applied — **199/220** coordinates; **193** inferred / **6** outside polygons / **21** still missing; effective neighbourhood changes **5** (generic source → map); five-listing semantic Terra refresh + remaining **211** Terra backfill completed (**220/220** coverage); catalog contract **220**; pipeline ready / cron On (default-branch schedule observed) / dispatch available; normal Refresh & enrich stays new/changed only
 
 ## 4. Geospatial principles
 
@@ -347,9 +382,9 @@ Operational areas, Data Operations, Explore/public preview, plus prototypes:
 - Enrichment (review-only; execution disabled)
 - Quality (eligibility, lifecycle, missing fields, evidence, geography)
 - Data Operations (Labs pipeline enqueue/dispatch)
-- Settings (Automatic refresh **Off**; cron temporarily disabled)
+- Settings (Automatic refresh **On**; daily default-branch cron observed)
 - Browse — public preview under Explore (not nested only under Prototypes)
-- Prototypes (Search Request / What Fits Me / Agent / Match Reports)
+- Prototypes (What Fits Me / Property Search / Your matches)
 
 Legacy top-level routes redirect into these areas:
 
@@ -370,7 +405,7 @@ The dashboard retains views for:
 - activity timeline;
 - coordinate quality and assignment status;
 - safe map filtering by source and lifecycle state;
-- Data Operations dispatch status (cron On; schedule after default-branch merge).
+- Data Operations dispatch status (cron On; default-branch schedule observed).
 
 Sold and removed records may appear in admin/history views, but not active inventory.
 

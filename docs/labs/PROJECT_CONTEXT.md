@@ -14,9 +14,12 @@ Active work is **direct-source property ingestion** for Curaçao:
   `change_hash`); **daily cron armed On**
   (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
   idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
-  (06:00 Amsterdam during CEST / 05:00 Amsterdam during CET) begins only when
-  `property-pipeline-labs.yml` reaches the default branch;
+  (06:00 Amsterdam during CEST / 05:00 Amsterdam during CET); first normal
+  daily cron on default branch observed 2026-07-22 (run `29984863341`);
   manual/dashboard dispatch available;
+- Labs admin native listing prototype (`/listings/new`, `listing_origin=manual`)
+  with draft/publish lifecycle, Storage images, and User-provided Passport
+  provenance — not production Auth seller accounts;
 - AI enrichment **v5 / policy v5** (`listing_enrichment_v5` /
   `listing_enrichment_schema_v5` / `enrichment_policy_v5`); English-default
   public UI (`display_title` / `display_summary` / English description) with
@@ -32,6 +35,14 @@ Active work is **direct-source property ingestion** for Curaçao:
   **402**; `public_property_listings` **286**; EN/NL About-this-property on
   **283**; Remax deferred enrichment remainder **71** under the 25/day AI cap
   (counts change — see `01-live-product-state.md`);
+- **Current audit (2026-07-23):** 405 retained source listings / 283 public;
+  385 priced with valid XCG provenance and 20 source no-price/public-excluded;
+  public + internal Passport uses the filtered activity contract; 51 historical
+  test-rate price observations remain stored but hidden;
+- final synthetic cleanup exported full rollback payloads + SHA-256 manifest,
+  then removed only the approved demo contract/asset, six dry-run pipeline
+  parents, and one empty queued AI job. Search/Agent/15 Match Report fixtures
+  remain for the guided-discovery demonstration;
 - source-official currency: RE/MAX NAF cookie session; KW inline alts;
   official XCG precedence (hr2066 EUR 664 / Cg 1350 via
   `source_official_conversion`; listing currently inactive/rented);
@@ -40,9 +51,11 @@ Active work is **direct-source property ingestion** for Curaçao:
   timeline, map vs neighbourhood-search gaps — see
   `PROPERTY_DATA_QUALITY_REPORT.md`);
 - Labs public view `public_property_listings` + image galleries; Browse public
-  preview (English-canonical product language + Dutch About toggle);
-- Labs dashboard: ops + Data Operations + Enrichment review + prototypes
-  (not read-only);
+  preview (English-canonical product language + Dutch About toggle + filtered
+  Passport history);
+- Labs dashboard: ops + Data Operations + Enrichment review + native listing +
+  What Fits Me live matching + Property Search / Your matches (not read-only; no
+  production billing/email/paywall);
 - geospatial neighbourhood boundaries and assignment.
 
 The CaribbeanHouseHunt aggregator workflow is retired and removed from the active

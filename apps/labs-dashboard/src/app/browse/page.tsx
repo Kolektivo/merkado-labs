@@ -451,7 +451,11 @@ export default async function BrowsePage({
                     <Badge>
                       {publicListingTypeLabel(listing.listingType)}
                     </Badge>
-                    <Badge variant="outline">{listing.sourceDisplayName}</Badge>
+                    <Badge variant="outline">
+                      {listing.listingOrigin === "manual"
+                        ? "User provided"
+                        : listing.sourceDisplayName}
+                    </Badge>
                   </div>
                   <h2 className="line-clamp-2 font-medium">{displayTitle}</h2>
                   <PriceDisplay
@@ -459,6 +463,7 @@ export default async function BrowsePage({
                       originalPrice: listing.originalPrice,
                       originalCurrency: listing.originalCurrency,
                       benchmarkPriceXcg: listing.benchmarkPriceXcg,
+                      surface: "browse",
                     })}
                     size="sm"
                   />

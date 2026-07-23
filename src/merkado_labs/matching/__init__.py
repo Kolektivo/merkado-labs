@@ -151,6 +151,17 @@ def score_listing(
             trade_offs=["Asking benchmark is below the requested minimum."],
             evidence=evidence,
         )
+    if request.max_price is not None and price is None:
+        # Trustworthy XCG required — cannot falsely pass a budget filter.
+        return MatchResult(
+            listing_id=listing.listing_id,
+            hard_pass=False,
+            match_score=0.0,
+            trade_offs=[
+                "No reliable XCG price available to check against the budget."
+            ],
+            evidence=evidence,
+        )
     if request.max_price is not None and price is not None and price > request.max_price:
         return MatchResult(
             listing_id=listing.listing_id,
@@ -159,8 +170,6 @@ def score_listing(
             trade_offs=["Asking benchmark exceeds the requested maximum."],
             evidence=evidence,
         )
-    if request.max_price is not None and price is None:
-        trade_offs.append("Price benchmark missing; cannot confirm budget fit.")
 
     if request.min_bedrooms is not None:
         if listing.bedrooms is None:
@@ -210,6 +219,29 @@ def score_listing(
                 evidence=evidence,
             )
 
+    # Required locations are a hard filter when provided.
+    if request.preferred_neighbourhoods:
+        if not listing.neighbourhood_text:
+            return MatchResult(
+                listing_id=listing.listing_id,
+                hard_pass=False,
+                match_score=0.0,
+                trade_offs=[
+                    "Location is not listed, so it cannot meet the area requirement."
+                ],
+                evidence=evidence,
+            )
+        if not _neighbourhood_matches(
+            listing.neighbourhood_text, request.preferred_neighbourhoods
+        ):
+            return MatchResult(
+                listing_id=listing.listing_id,
+                hard_pass=False,
+                match_score=0.0,
+                trade_offs=["Not in one of the required locations."],
+                evidence=evidence,
+            )
+
     amenity_set = _amenity_codes(listing.amenities)
     for must in request.must_haves:
         token = _norm(must)
@@ -229,23 +261,27 @@ def score_listing(
             )
 
     score = 0.35
-    reasons.append("Passes hard eligibility and core filters.")
+    reasons.append("Meets core requirements.")
 
     if price is not None and request.max_price is not None:
         score += 0.15
-        reasons.append("Within requested maximum benchmark budget.")
+        reasons.append("Within requested maximum XCG budget.")
     if request.min_bedrooms is not None and listing.bedrooms is not None:
         score += 0.1
         reasons.append(f"Has at least {request.min_bedrooms:g} bedrooms.")
     if request.preferred_neighbourhoods:
-        if _neighbourhood_matches(listing.neighbourhood_text, request.preferred_neighbourhoods):
-            score += 0.25
-            reasons.append("Located in a preferred neighbourhood.")
-        else:
-            trade_offs.append("Not in a preferred neighbourhood.")
-            score += 0.05
+        score += 0.2
+        reasons.append("Located in a required neighbourhood.")
     else:
-        score += 0.1
+        score += 0.05
+
+    for must in request.must_haves:
+        token = _norm(must)
+        if token and (token in amenity_set or token in _norm(listing.title)):
+            score += 0.06
+            reasons.append(f"Includes required feature: {must}.")
+        elif token:
+            score = max(0.0, score - 0.04)
 
     for pref in request.preferences:
         token = _norm(pref)

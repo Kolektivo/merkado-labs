@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from merkado_labs.config import get_settings
-from merkado_labs.scrapers.import_pipeline import create_labs_client
-from merkado_labs.scrapers.presentation import dry_run_presentation_counts
+from merkado_labs.config import get_settings  # noqa: E402
+from merkado_labs.scrapers.import_pipeline import create_labs_client  # noqa: E402
+from merkado_labs.scrapers.presentation import dry_run_presentation_counts  # noqa: E402
 
 
 def main() -> int:
@@ -32,18 +32,25 @@ def main() -> int:
         raise SystemExit("Refusing non-Labs project")
 
     client = create_labs_client()
-    query = (
-        client.table("listing_activity_events")
-        .select(
-            "id,property_listing_id,event_type,event_at,previous_value,new_value,notes,"
-            "presentation_class,suppressed_reason"
+    rows: list[dict] = []
+    page_size = 1000
+    while len(rows) < args.limit:
+        start = len(rows)
+        query = (
+            client.table("listing_activity_events")
+            .select(
+                "id,property_listing_id,event_type,event_at,previous_value,new_value,notes,"
+                "presentation_class,suppressed_reason"
+            )
+            .order("event_at", desc=True)
+            .range(start, min(start + page_size, args.limit) - 1)
         )
-        .order("event_at", desc=True)
-        .limit(args.limit)
-    )
-    if args.listing_id:
-        query = query.eq("property_listing_id", args.listing_id)
-    rows = query.execute().data or []
+        if args.listing_id:
+            query = query.eq("property_listing_id", args.listing_id)
+        page = query.execute().data or []
+        rows.extend(page)
+        if len(page) < page_size:
+            break
 
     # Group by listing for dual-writer detection within each listing timeline.
     by_listing: dict[str, list] = {}

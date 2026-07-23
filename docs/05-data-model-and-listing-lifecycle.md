@@ -1,8 +1,18 @@
 # 05 - Data Model, Currency & Listing Lifecycle
 
-**Purpose:** Canonical implementation rules for storing source truth, benchmark prices, source-run health, and listing history in Merkado Labs.
+**Purpose:** Canonical implementation rules for storing source truth, benchmark prices, source-run health, listing history, and Labs admin native listings in Merkado Labs.
 
 **Labs project only:** `csaefdkpwukshtouyixg`
+
+## Naming contract
+
+- **Properties** is the umbrella for marketplace assets.
+- Production-boundary discriminator: `property_type` ∈ {`car`, `real_estate`}.
+- Real-estate subtypes use `real_estate_type`.
+- Labs `property_listings.property_type` remains the scraped/legacy **subtype
+  label** (house, apartment, …). Native rows also set `real_estate_type`
+  explicitly and mirror the subtype into `property_type` for existing filters —
+  never reinterpret Labs subtype values as `car|real_estate`.
 
 ## 1. Current foundation `[LABS]`
 
@@ -19,7 +29,8 @@ Existing concepts include:
 - ingestion quarantine;
 - neighbourhoods and geospatial assignment;
 - experimental market signals and contract assessments;
-- Labs dashboard (ops + Data Operations + Browse + Enrichment review — not read-only).
+- Labs dashboard (ops + Data Operations + Browse + Enrichment review — not read-only);
+- Labs admin native/manual listings (`listing_origin=manual`) with Storage images.
 
 Inspect actual migrations before finalizing column names. Use forward-only additive changes.
 
@@ -51,10 +62,35 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
 - `20260721155626_bilingual_display_descriptions.sql` — Dutch
   `listing_display_description_locales` + `display_description_nl` on the
   public view (English description unchanged; raw source preserved)
+- `20260723120000_native_manual_listing_foundation.sql` — origin/contact/publish
+  columns, draft/unpublished statuses, manual activity events, `listing_images`,
+  `listing-images` Storage bucket
+- `20260723120100_native_manual_public_listings_view.sql` — origin-aware
+  `public_property_listings` (manual rows without scraper URL)
+- `20260723140000_native_listing_hardening.sql` — at most one primary image per
+  listing; `apply_native_listing_lifecycle` RPC so manual status + Passport
+  event + eligibility commit atomically (service-role only)
+- `20260723150000_native_listing_image_delete.sql` — atomic manual image removal,
+  reorder/cover normalization, public projection, eligibility recomputation,
+  and Passport event (service-role only)
+- `20260723151000_native_listing_image_delete_jsonb_fix.sql` — forward fix for
+  the deployed JSONB `image_urls` projection used by the image-delete RPC
+- `20260723152000_native_listing_image_reorder_atomic.sql` — exact-permutation
+  image reorder serialized with deletion so cover selection stays consistent
 
 Labs public-effective + pipeline migrations above are **applied** (verify with
 `list_migrations` before assuming a new file is live). Production merkado.cw
 property migration remains **paused**.
+
+### Listing origins
+
+| Origin | Who creates | Identity | Media | Absence / removal |
+|---|---|---|---|---|
+| `scraped` | Direct-source adapters | `property_source_id` + `external_id` + `source_url` | External image URLs | Complete successful source snapshots |
+| `manual` | Labs admin cookie (prototype) | Listing id; no source URL required | Merkado Storage `listing-images` | Owner/admin actions only — never `missing_from_source` / `removed_from_source` |
+
+Production authenticated seller accounts (`seller_id = auth.uid()`) remain
+**planned** on merkado.cw and are not this Labs admin prototype.
 
 ### Complete vs partial source runs
 
@@ -78,16 +114,23 @@ new/changed only and must not re-run the one-time backfill.
 
 ## 2. Public eligibility
 
-A listing may appear publicly only when all are true:
+Common rules:
 
 - original price is known and positive;
 - current status is `active`;
-- source is enabled;
-- source attribution and original URL exist;
-- removal threshold has not been reached;
-- no critical identity or price parser error exists.
+- no critical identity or price validation error exists.
+
+Origin-specific rules:
+
+- `scraped`: source enabled/not retired; attribution + original URL; removal
+  threshold not reached;
+- `manual`: required publish fields + ≥1 valid image + valid contact; not
+  unpublished/sold/blocked; **no** scraper URL required.
 
 No-price records may remain in raw evidence or quarantine, but public queries must exclude them.
+
+Manual statuses used by the Labs admin prototype: `draft`, `active`,
+`unpublished`, `sold`, `inactive` (rented). Scraped statuses are unchanged.
 
 ## 3. Price provenance
 
@@ -290,14 +333,34 @@ Each event should store:
 
 ### Price events vs benchmark (do not conflate)
 
+Keep three concepts separate:
+
+| Concept | Meaning |
+|---|---|
+| **Asking anchor** | Actual amount + currency set by the seller/source |
+| **Official alternate** | XCG/ANG amount officially published by the same source |
+| **Merkado benchmark** | Calculated XCG equivalent using an approved exchange rate |
+
 | Event | Means |
 |---|---|
-| `price_changed` | Asking **amount** changed (source fact) |
-| `currency_changed` | Asking **currency** changed (source fact) |
+| `price_changed` | Genuine asking-**anchor amount** change only |
+| `currency_changed` | Asking **currency** changed (retained in storage; never public) |
 | `benchmark_recalculated` | FX/rate/provider context only; asking anchor unchanged |
 
+Only a change to the genuine asking anchor may create a public `price_changed`.
+The following must **never** create a public price-change event:
+
+- ECB exchange-rate movement / benchmark recalculation
+- source currency-selector/session differences
+- updated official alternate with unchanged asking anchor
+- formatting or rounding differences / identical before→after
+- repeated imports / legacy dual-writer duplicates
+- foreign display wobble when a source-official XCG alternate is stable
+
 Import pipeline is the sole writer for these three. Dual-writer duplication of
-`price_changed` was fixed in the 2026-07-21 quality pass.
+`price_changed` was fixed in the 2026-07-21 quality pass. From 2026-07-23,
+imports also skip `price_changed` / `currency_changed` when the source-official
+XCG alternate is present and unchanged (RE/MAX display/session drift).
 
 **Official alternate backfill ≠ `price_changed`.** Capturing or refreshing a
 source-official alternate currency (e.g. RE/MAX NAF-session XCG) while the
@@ -305,21 +368,40 @@ asking anchor is unchanged must not emit `price_changed` or `currency_changed`.
 It is provenance/benchmark preference only (see `06` and
 `data/processed/source_official_currency_refresh.json` for hr2066).
 
-### Presentation timeline (Phase 5)
+### Presentation timeline (Passport contract)
 
 Default listing timeline shows genuine seller/source activity. Hide/group at
-read-time (do **not** delete events):
+read-time (do **not** delete immutable events):
 
 - `benchmark_recalculated` (rate-only)
+- `currency_changed` and currency-session `price_changed` (EUR↔XCG switches)
+- non-anchor foreign display observations when an official XCG alternate exists
+- same normalized XCG before/after (rounded whole Cg)
+- ambiguous anchors (publicly suppressed + admin_review flag; never guess)
 - policy rematerialization / enrichment-only / ops noise
-- dual-writer duplicate `price_changed` / `currency_changed` (legacy rows)
-- repeated identical observations (collapsed in price history)
+- `SYSTEM_REPAIR` operational notes
+- dual-writer duplicate `price_changed` / `currency_changed` (numeric-normalized)
+- duplicate `first_seen` (keep earliest “First seen by Merkado” only)
+- repeated identical observations
+- ±1 same-currency display jitter (`suspected_display_fx_jitter`)
 
-Timeline dry-run sample (Labs): **1000** events → **557** visible default,
-**443** suppressed. Tooling:
-`merkado_labs.scrapers.presentation.dry_run_presentation_counts`
-(and dashboard `dryRunPresentationCounts`). Archive/hide from presentation only
-unless Labs cleanup policy explicitly allows delete with proof.
+The shared TypeScript/Python read contract
+(`activity-presentation.ts` / `presentation.py`, alias `buildPassportTimeline`)
+is used by internal listing detail and public `/browse/[id]`. It is intentionally
+reusable for a future **car Passport** without modifying production Merkado.
+
+Public rendering exposes a human label, timestamp, and **XCG-only** asking
+delta (`Cg 2,500 → Cg 2,750`). It never shows EUR/USD activity deltas, raw
+event notes, evidence, confidence, rates, providers, tokens, or ops metadata.
+“Last updated” on Passport derives from the latest **visible material** timeline
+event, not scraper `last_seen_at`.
+
+Admin-only expandable **Price provenance** retains original amount/currency,
+rate, provider, method, and official-alternate vs Merkado-benchmark labelling.
+
+Genuine history remains immutable. Prefer presentation suppress metadata over
+deletion; delete only provably synthetic test data (none identified in the
+2026-07-23 inventory).
 
 Migration: `20260721140000_source_official_currency_and_presentation.sql`.
 
@@ -357,6 +439,32 @@ Before deletion:
 
 Do not edit applied migrations. Cleanup tooling under `scripts/cleanup/` is retained
 only for verification against the local export; it is not an active ingestion dependency.
+
+### Final Labs synthetic cleanup (2026-07-23)
+
+`scripts/cleanup/final_labs_data_cleanup.py` performed a second, narrower
+reviewed cleanup. It classified legitimate/keep, confirmed synthetic,
+duplicate-noise/keep, and ambiguous/keep rows; required zero locks and no
+running pipeline; exported complete JSONL payloads; verified the SHA-256
+manifest; deleted only exact allowlisted IDs; and passed an idempotent second
+apply.
+
+- Rollback export:
+  `data/processed/final_labs_cleanup_export/payloads_20260723T150208Z/`
+  (private/gitignored)
+- Manifest SHA-256:
+  `7daa683ff9e45d461ff7d8df790f5074e2a77a8a045a519d9adacc8d2b575d30`
+- Deleted: 1 synthetic rental contract, its 1 unreferenced asset, 1 queued
+  unstarted AI job with 0 proposals, and 6 explicit dry-run pipeline parents
+  cascading 42 stage / 71 item / 68 progress-event rows.
+- Retained: all 405 source listings and their immutable history/evidence,
+  canary AI jobs/proposals, real source runs (including Moret runs with stale
+  notes), duplicate observations, three RE/MAX evidence-folder gaps, and the
+  Search Request / Agent / 15 Match Report Labs fixtures.
+
+The rollback payload contains full deleted rows and the keep-fixture snapshots;
+restoration must be a separate reviewed dependency-order operation, never an
+automatic rollback.
 
 ## 9. RLS and public/admin access
 

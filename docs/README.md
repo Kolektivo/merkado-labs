@@ -2,31 +2,45 @@
 
 This folder holds the working context for Merkado Labs property work.
 
-**Last updated:** July 21, 2026  
+**Last updated:** July 23, 2026  
 **Active set:** `01`–`09` below. Older numbered docs were replaced by this set.
+
+## Terminology (canonical)
+
+- **Properties** = umbrella for all Merkado listed assets.
+- Top-level marketplace discriminator (production boundary): `property_type` ∈
+  {`car`, `real_estate`}.
+- Real-estate subtypes use `real_estate_type` (house, apartment, land, …).
+- Labs `property_listings.property_type` today still means the **real-estate
+  subtype / source label** for scraped rows — map explicitly; never silently
+  reinterpret as `car|real_estate`.
 
 ## Labs build status (this repository)
 
 | Area | Status |
 |---|---|
 | Direct-source foundation (adapters, currency, lifecycle, eligibility) | [LABS] Built; four Ready sources + Sotheby's BLOCKED |
+| Labs admin native listing prototype | [LABS] Implemented: admin Add property wizard, draft/publish/unpublish/sold/rented/republish, Storage images, origin-aware Browse/Passport; **not** production Auth seller accounts |
 | Raw evidence + AI enrichment foundation | [LABS] Private Storage; proposals/jobs service-role only; review UX |
 | Approved source registry (5 MVP sources) | [LABS] Seeded; CHH removed |
 | CHH harvest / importer / workflow | Removed from active repo |
 | CHH Labs rows | Deleted 2026-07-16; verified local export retained |
+| Final Labs data cleanup | [LABS] Completed 2026-07-23 after full payload export + SHA-256 manifest; only approved demo contract/asset, six dry-run pipeline runs, and one empty queued AI job removed; all 405 listings + demo Search/Agent/15 Match Reports retained |
 | Labs property schema + RLS | [LABS] Built; AI tables locked from anon; public-effective view applied |
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
-| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 4 * * *` UTC (00:00 Curaçao; 06:00 Amsterdam CEST / 05:00 CET) + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates — begins on default branch only |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (snapshot 2026-07-21 / `d2abb557`: ~**286** `public_property_listings`, EN/NL ~**283**); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
+| Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 4 * * *` UTC (00:00 Curaçao; 06:00 Amsterdam CEST / 05:00 CET) + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates; first normal daily cron observed on default branch 2026-07-22 (run `29984863341`) |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (2026-07-23: **283** `public_property_listings` = scraped `public_eligible` = Browse UI; historical 2026-07-21 / `d2abb557` snapshot was **286** public / **283** EN/NL About); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
+| Passport activity presentation | [LABS] Public + internal filtered timeline; meaningful seller/source/native events and price deltas; FX/AI/ops/repair/duplicate/jitter noise retained but hidden |
+| Price/currency audit | [LABS] 385 priced with valid XCG benchmark provenance; 20 source no-price rows excluded; 51 historical test-rate observations retained but hidden — see `labs/PRICE_CURRENCY_AUDIT_2026-07-23.md` |
 | English presentation contract | [LABS] v5 applied: **289** migrated (~USD **7.83**); Dutch backfill **285** (~USD **2.42**); unchanged bilingual hashes skip at zero cost — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
-| Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
-| RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift); NAF cookie-session for official XCG alts |
-| Moret adapter | [LABS] v0.2.0 Ready; 71 catalog |
+| Keller Williams adapter | [LABS] v0.3.1 Ready; Labs audit **105** identities / **87** public; offline import preview still gates at 84 |
+| RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220**, Labs audit **223** identities / **122** public; NAF cookie-session for official XCG alts |
+| Moret adapter | [LABS] v0.2.0 Ready; catalog contract 71, Labs audit **72** identities/public |
 | Monumentenzorg | [LABS] v0.2.0 Ready; 5 catalog |
 | Sotheby's | [RISK] Access route BLOCKED 2026-07-20 (excluded from Ready pipelines; feed/API needed) |
 | AI enrichment (v5 / policy v5) | [LABS] Current: `listing_enrichment_v5` / `listing_enrichment_schema_v5` / `enrichment_policy_v5`; English public presentation fields; dashboard AI execution disabled; pipeline AI under budgets when worker runs; prior v4.2 quality pass retained — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
-| Search Request + Match Reports | [LABS] Demo request + 15 `rules_v1` matches |
+| What Fits Me + Property Search | [LABS] Working Labs flow: natural-language → editable criteria → live `rules_v1` matches from `public_property_listings` → optional saved Property Search; retained demo request + 15 matches kept; no Agent/paywall/billing/email UI; production Auth deferred |
 
 ## The files
 
@@ -47,6 +61,7 @@ This folder holds the working context for Merkado Labs property work.
 | `labs/SAFETY_RULES.md` | Hard Labs-only rules. | Before any write, deploy, or credential use. |
 | `labs/EXPERIMENT_LOG.md` | Dated experiment notes (historical). | Reviewing what was tried. |
 | `labs/PROPERTY_DATA_QUALITY_REPORT.md` | 2026-07-21 property quality + English/Dutch presentation + automation validation (v5 contract, budgets, image dedupe). | After enrichment/policy rematerialization, bilingual work, or price/geo quality work. |
+| `labs/PRICE_CURRENCY_AUDIT_2026-07-23.md` | Listing-level final price anomalies and reviewed false positives. | Checking XCG readiness or no-price exclusions. |
 
 Production reference copies (**historical** — not Labs property build docs):
 

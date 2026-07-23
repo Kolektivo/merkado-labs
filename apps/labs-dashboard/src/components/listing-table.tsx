@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, ImageOff, MoreHorizontal, Rows3 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Eye,
+  ImageOff,
+  MoreHorizontal,
+  Pencil,
+  Rows3,
+} from "lucide-react";
 
 import { EffectiveNeighbourhoodBadge } from "@/components/effective-neighbourhood";
 import { PriceDisplay } from "@/components/price-display";
@@ -27,6 +34,7 @@ import {
 import { listingDetailHref } from "@/lib/breadcrumbs";
 import { resolveEffectiveNeighbourhood } from "@/lib/domain/effective-neighbourhood";
 import { buildPriceDisplay } from "@/lib/domain/price-display";
+import { publicListingTypeLabel } from "@/lib/domain/public-presentation";
 import type { PropertyListing } from "@/lib/domain/types";
 import { formatDate, titleCase } from "@/lib/format";
 import { resolveListingPrimaryImageUrl } from "@/lib/listing-gallery-urls";
@@ -68,21 +76,43 @@ function ListingActions({
               View property
             </Link>
           </DropdownMenuItem>
+          {listing.listingOrigin === "manual" &&
+          !["sold", "removed"].includes(listing.status) ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/listings/${listing.id}/edit`}>
+                <Pencil />
+                Edit property
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
+          {listing.listingOrigin === "manual" && listing.publicEligible ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/browse/${listing.id}`}>
+                <Eye />
+                Open Passport
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <a
-              href={listing.originalRealtorUrl ?? listing.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ArrowUpRight />
-              Open original ad
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+        {listing.listingOrigin !== "manual" &&
+        (listing.originalRealtorUrl || listing.sourceUrl) ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <a
+                  href={listing.originalRealtorUrl ?? listing.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ArrowUpRight />
+                  Open original ad
+                  <span className="sr-only"> (opens in new tab)</span>
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -165,7 +195,9 @@ export function ListingTable({
                     />
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {listing.source.name}
+                    {listing.listingOrigin === "manual"
+                      ? "User provided"
+                      : listing.source.name}
                   </p>
                 </div>
               </div>
@@ -179,11 +211,15 @@ export function ListingTable({
                 size="sm"
               />
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{titleCase(listing.listingType)}</Badge>
+                <Badge variant="secondary">
+                  {publicListingTypeLabel(listing.listingType)}
+                </Badge>
                 <StatusBadge tone={lifecycleTone(listing.status)}>
                   {lifecycleLabel(listing.status)}
                 </StatusBadge>
-                {listing.unresolvedConflictCount > 0 ? (
+                {listing.listingOrigin === "manual" ? (
+                  <StatusBadge tone="neutral">Owner entered</StatusBadge>
+                ) : listing.unresolvedConflictCount > 0 ? (
                   <StatusBadge tone="warning">Needs review</StatusBadge>
                 ) : (
                   <StatusBadge
@@ -278,7 +314,7 @@ export function ListingTable({
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {titleCase(listing.listingType)}
+                      {publicListingTypeLabel(listing.listingType)}
                     </Badge>
                   </TableCell>
                   <TableCell className="min-w-[170px]">
@@ -290,7 +326,9 @@ export function ListingTable({
                     </div>
                   </TableCell>
                   <TableCell className="max-w-40 truncate text-sm">
-                    {listing.source.name}
+                    {listing.listingOrigin === "manual"
+                      ? "User provided"
+                      : listing.source.name}
                   </TableCell>
                   <TableCell>
                     <StatusBadge tone={lifecycleTone(listing.status)}>
@@ -298,7 +336,9 @@ export function ListingTable({
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    {listing.unresolvedConflictCount > 0 ? (
+                    {listing.listingOrigin === "manual" ? (
+                      <StatusBadge tone="neutral">Owner entered</StatusBadge>
+                    ) : listing.unresolvedConflictCount > 0 ? (
                       <StatusBadge tone="warning">Needs review</StatusBadge>
                     ) : (
                       <StatusBadge

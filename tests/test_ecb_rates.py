@@ -60,7 +60,8 @@ def test_derive_eur_to_xcg_formula() -> None:
 
 
 def test_ecb_provider_caches_one_quote_per_instance() -> None:
-    provider = EcbEurRateProvider()
+    # Freshness is covered separately; keep this cache test date-independent.
+    provider = EcbEurRateProvider(max_age_days=10_000)
     with patch.object(
         provider,
         "_fetch_xml",

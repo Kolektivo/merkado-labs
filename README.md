@@ -13,13 +13,19 @@ automatically.
   v0.3.1, RE/MAX v0.4.1, Moret v0.2.0, Monumentenzorg v0.2.0. Sotheby's is
   BLOCKED and excluded from Ready pipelines. CHH is retired/removed.
 - **Property pipeline** (orchestrator/worker/locks/anomaly/budgets/`change_hash`)
-  with Data Operations dispatch; **GitHub daily cron temporarily disabled**
-  (`AUTOMATIC_REFRESH_ENABLED = false`). Manual/`workflow_dispatch` still available.
-- **AI enrichment** v4 / v4.1 active under pipeline budgets; dashboard AI
+  with Data Operations dispatch; **GitHub daily cron On**
+  (`AUTOMATIC_REFRESH_ENABLED = true`, `0 4 * * *` UTC). The first normal
+  default-branch schedule was observed 2026-07-22; manual dispatch remains available.
+- **AI enrichment** v5 / policy v5 active under pipeline budgets; dashboard AI
   execution disabled.
 - **Geospatial layer**: PostGIS neighbourhood boundaries and assignment.
 - **Labs dashboard** (`apps/labs-dashboard`): ops + Data Operations + Browse
-  public preview + Enrichment review + prototypes — **not** read-only.
+  public preview + filtered Property Passport activity + Enrichment review +
+  native listing and guided-search prototypes — **not** read-only.
+- **Audited Labs dataset** (2026-07-23): 405 source listings retained; 283
+  public-effective listings; final synthetic cleanup exported with SHA-256
+  rollback evidence before removing only approved demo contract/asset and
+  operations residue. Search/Agent/15 Match Report fixtures were retained.
 
 Property MVP docs `docs/01`–`09` and `docs/LABS_DASHBOARD_GUIDE.md` are the
 current source of truth. Start at `docs/README.md`.

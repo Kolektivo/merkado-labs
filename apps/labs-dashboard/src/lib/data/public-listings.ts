@@ -20,6 +20,12 @@ const PUBLIC_SELECT = [
   "external_id",
   "source_url",
   "original_realtor_url",
+  "listing_origin",
+  "real_estate_type",
+  "contact_name",
+  "contact_method",
+  "contact_value",
+  "published_at",
   "listing_type",
   "source_listing_status",
   "property_type",
@@ -219,6 +225,7 @@ function normalizeProvenance(raw: unknown): PublicNeighbourhoodProvenance {
     value === "source" ||
     value === "map" ||
     value === "ai_extracted" ||
+    value === "user_provided" ||
     value === "unavailable"
   ) {
     return value;
@@ -281,10 +288,16 @@ export function normalizePublicListing(
   return {
     id: String(row.id),
     externalId: String(row.external_id),
-    sourceUrl: String(row.source_url),
+    sourceUrl: row.source_url ? String(row.source_url) : "",
     originalRealtorUrl: row.original_realtor_url
       ? String(row.original_realtor_url)
       : null,
+    listingOrigin: row.listing_origin === "manual" ? "manual" : "scraped",
+    realEstateType: row.real_estate_type ? String(row.real_estate_type) : null,
+    contactName: row.contact_name ? String(row.contact_name) : null,
+    contactMethod: row.contact_method ? String(row.contact_method) : null,
+    contactValue: row.contact_value ? String(row.contact_value) : null,
+    publishedAt: row.published_at ? String(row.published_at) : null,
     listingType: row.listing_type ? String(row.listing_type) : null,
     sourceListingStatus: row.source_listing_status
       ? String(row.source_listing_status)
