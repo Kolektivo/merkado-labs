@@ -29,7 +29,7 @@ This folder holds the working context for Merkado Labs property work.
 | Geospatial boundaries + neighbourhood assignment | [LABS] Built (RE/MAX 199/220 coords; Monumentenzorg 0/5) |
 | Labs dashboard | [LABS] Ops + Data Operations + Browse (public preview) + Enrichment review + prototypes — not read-only |
 | Property pipeline automation | [LABS] Orchestrator/worker/locks/anomaly/budgets/change_hash; GHA schedule `0 4 * * *` UTC (00:00 Curaçao; 06:00 Amsterdam CEST / 05:00 CET) + `workflow_dispatch`; **daily cron On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 gates; first normal daily cron observed on default branch 2026-07-22 (run `29984863341`) |
-| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (snapshot 2026-07-21 / `d2abb557`: ~**286** `public_property_listings`, EN/NL ~**283**); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
+| Public browse on merkado.cw | [PLANNED] Labs `/browse` only (2026-07-23: **283** `public_property_listings` = scraped `public_eligible` = Browse UI; historical 2026-07-21 / `d2abb557` snapshot was **286** public / **283** EN/NL About); English-canonical + Dutch About-this-property toggle; stable URLs `/browse/{uuid}` |
 | English presentation contract | [LABS] v5 applied: **289** migrated (~USD **7.83**); Dutch backfill **285** (~USD **2.42**); unchanged bilingual hashes skip at zero cost — see `labs/PROPERTY_DATA_QUALITY_REPORT.md` |
 | Keller Williams adapter | [LABS] v0.3.1 Ready; Labs inventory **104**; offline import preview still gates at 84 |
 | RE/MAX adapter | [LABS] v0.4.1 Ready; catalog contract **220** (DB may show 222 — operational drift); NAF cookie-session for official XCG alts |

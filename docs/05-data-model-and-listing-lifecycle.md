@@ -67,6 +67,9 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
   `listing-images` Storage bucket
 - `20260723120100_native_manual_public_listings_view.sql` — origin-aware
   `public_property_listings` (manual rows without scraper URL)
+- `20260723140000_native_listing_hardening.sql` — at most one primary image per
+  listing; `apply_native_listing_lifecycle` RPC so manual status + Passport
+  event + eligibility commit atomically (service-role only)
 
 Labs public-effective + pipeline migrations above are **applied** (verify with
 `list_migrations` before assuming a new file is live). Production merkado.cw

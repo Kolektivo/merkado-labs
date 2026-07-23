@@ -14,6 +14,11 @@ import {
   validateNativePublish,
 } from "@/lib/native-listings/validation";
 import { NATIVE_LISTING_ORIGIN } from "@/lib/native-listings/constants";
+import {
+  assignPrimaryFlags,
+  validateReorderPermutation,
+  validateUploadCapacity,
+} from "@/lib/native-listings/image-rules";
 
 const ACTOR = "labs_admin";
 
@@ -138,10 +143,52 @@ function draftToRow(input: NativeListingInput, existing?: Record<string, unknown
   };
 }
 
+/**
+ * When images exist, force exactly one primary (sort_order 0). Clears other
+ * primaries first so the partial unique index never sees two true rows.
+ */
+async function ensureExactlyOnePrimary(
+  client: ReturnType<typeof createLabsAdminClient>,
+  listingId: string,
+) {
+  const { data, error } = await client
+    .from("listing_images")
+    .select("id, sort_order, is_primary")
+    .eq("property_listing_id", listingId)
+    .order("sort_order", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (!data?.length) return;
+
+  const normalized = assignPrimaryFlags(
+    data.map((row) => ({
+      id: row.id as string,
+      sortOrder: Number(row.sort_order),
+      isPrimary: Boolean(row.is_primary),
+    })),
+  );
+  const primaryId = normalized.find((row) => row.isPrimary)?.id;
+  if (!primaryId) throw new Error("Failed to assign primary image.");
+
+  const { error: clearError } = await client
+    .from("listing_images")
+    .update({ is_primary: false })
+    .eq("property_listing_id", listingId)
+    .neq("id", primaryId);
+  if (clearError) throw new Error(clearError.message);
+
+  const { error: setError } = await client
+    .from("listing_images")
+    .update({ is_primary: true })
+    .eq("id", primaryId)
+    .eq("property_listing_id", listingId);
+  if (setError) throw new Error(setError.message);
+}
+
 async function syncImageColumns(
   client: ReturnType<typeof createLabsAdminClient>,
   listingId: string,
 ) {
+  await ensureExactlyOnePrimary(client, listingId);
   const { data, error } = await client
     .from("listing_images")
     .select("public_url, sort_order, is_primary")
@@ -297,6 +344,37 @@ export async function updateNativeListing(
   return { id: listingId };
 }
 
+async function applyLifecycleAtomically(
+  client: ReturnType<typeof createLabsAdminClient>,
+  args: {
+    listingId: string;
+    expectedStatus: string;
+    listingPatch: Record<string, unknown>;
+    eventType: string;
+    previousValue: Record<string, unknown>;
+    newValue: Record<string, unknown>;
+    notes?: string;
+  },
+) {
+  const { data, error } = await client.rpc("apply_native_listing_lifecycle", {
+    p_listing_id: args.listingId,
+    p_expected_status: args.expectedStatus,
+    p_listing_patch: args.listingPatch,
+    p_event_type: args.eventType,
+    p_previous_value: args.previousValue,
+    p_new_value: args.newValue,
+    p_notes: args.notes ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data as {
+    id: string;
+    status: string;
+    eligible: boolean;
+    reason: string;
+    event_type: string;
+  };
+}
+
 export async function runNativeListingAction(listingId: string, action: Action) {
   const client = createLabsAdminClient();
   const { data: existing, error } = await client
@@ -310,6 +388,10 @@ export async function runNativeListingAction(listingId: string, action: Action) 
 
   const now = new Date().toISOString();
   const previousStatus = existing.status;
+
+  let eventType: string;
+  let listingPatch: Record<string, unknown>;
+  let newValue: Record<string, unknown>;
 
   if (action === "publish" || action === "republish") {
     const { count, error: imageError } = await client
@@ -360,99 +442,74 @@ export async function runNativeListingAction(listingId: string, action: Action) 
       throw new Error("Listing cannot be republished from the current status.");
     }
 
-    const { error: updateError } = await client
-      .from("property_listings")
-      .update({
-        status: "active",
-        published_at: existing.published_at ?? now,
-        unpublished_at: null,
-        sold_at: null,
-        source_listing_status: "active",
-        last_seen_at: now,
-      })
-      .eq("id", listingId)
-      .eq("listing_origin", NATIVE_LISTING_ORIGIN);
-    if (updateError) throw new Error(updateError.message);
-
-    await appendEvent(
-      client,
-      listingId,
-      action === "republish" ? "republished" : "published",
-      { status: previousStatus },
-      { status: "active" },
-    );
+    eventType = action === "republish" ? "republished" : "published";
+    listingPatch = {
+      status: "active",
+      published_at: existing.published_at ?? now,
+      unpublished_at: null,
+      sold_at: null,
+      source_listing_status: "active",
+      last_seen_at: now,
+    };
+    newValue = { status: "active" };
   } else if (action === "unpublish") {
     if (previousStatus !== "active") {
       throw new Error("Only active listings can be unpublished.");
     }
-    const { error: updateError } = await client
-      .from("property_listings")
-      .update({
-        status: "unpublished",
-        unpublished_at: now,
-        last_seen_at: now,
-      })
-      .eq("id", listingId)
-      .eq("listing_origin", NATIVE_LISTING_ORIGIN);
-    if (updateError) throw new Error(updateError.message);
-    await appendEvent(
-      client,
-      listingId,
-      "unpublished",
-      { status: previousStatus },
-      { status: "unpublished" },
-    );
+    eventType = "unpublished";
+    listingPatch = {
+      status: "unpublished",
+      unpublished_at: now,
+      last_seen_at: now,
+    };
+    newValue = { status: "unpublished" };
   } else if (action === "mark_sold") {
     if (!["active", "unpublished"].includes(previousStatus)) {
       throw new Error("Only active or unpublished listings can be marked sold.");
     }
-    const { error: updateError } = await client
-      .from("property_listings")
-      .update({
-        status: "sold",
-        sold_at: now,
-        first_observed_sold_at: existing.first_observed_sold_at ?? now,
-        source_listing_status: "sold",
-        last_seen_at: now,
-      })
-      .eq("id", listingId)
-      .eq("listing_origin", NATIVE_LISTING_ORIGIN);
-    if (updateError) throw new Error(updateError.message);
-    await appendEvent(
-      client,
-      listingId,
-      "marked_sold",
-      { status: previousStatus },
-      { status: "sold" },
-    );
+    eventType = "marked_sold";
+    listingPatch = {
+      status: "sold",
+      sold_at: now,
+      first_observed_sold_at: existing.first_observed_sold_at ?? now,
+      source_listing_status: "sold",
+      last_seen_at: now,
+    };
+    newValue = { status: "sold" };
   } else if (action === "mark_rented") {
     if (!["active", "unpublished"].includes(previousStatus)) {
       throw new Error("Only active or unpublished listings can be marked rented.");
     }
-    const { error: updateError } = await client
-      .from("property_listings")
-      .update({
-        status: "inactive",
-        first_observed_rented_at: existing.first_observed_rented_at ?? now,
-        source_listing_status: "rented",
-        last_seen_at: now,
-      })
-      .eq("id", listingId)
-      .eq("listing_origin", NATIVE_LISTING_ORIGIN);
-    if (updateError) throw new Error(updateError.message);
-    await appendEvent(
-      client,
-      listingId,
-      "marked_rented",
-      { status: previousStatus },
-      { status: "inactive", source_listing_status: "rented" },
-    );
+    eventType = "marked_rented";
+    listingPatch = {
+      status: "inactive",
+      first_observed_rented_at: existing.first_observed_rented_at ?? now,
+      source_listing_status: "rented",
+      last_seen_at: now,
+    };
+    newValue = { status: "inactive", source_listing_status: "rented" };
   } else {
     throw new Error("Unsupported action.");
   }
 
-  const eligibility = await recomputeEligibility(client, listingId);
-  return { id: listingId, action, eligibility };
+  // Status + Passport event (+ eligibility) commit together; no partial success.
+  const result = await applyLifecycleAtomically(client, {
+    listingId,
+    expectedStatus: previousStatus,
+    listingPatch,
+    eventType,
+    previousValue: { status: previousStatus },
+    newValue,
+  });
+
+  return {
+    id: listingId,
+    action,
+    eligibility: {
+      eligible: Boolean(result.eligible),
+      reason: String(result.reason),
+    },
+  };
 }
 
 export async function uploadNativeImages(
@@ -469,6 +526,15 @@ export async function uploadNativeImages(
   if (error) throw new Error(error.message);
   if (!listing) throw new Error("Native listing not found.");
 
+  const { count: existingCount, error: countError } = await client
+    .from("listing_images")
+    .select("id", { count: "exact", head: true })
+    .eq("property_listing_id", listingId);
+  if (countError) throw new Error(countError.message);
+
+  const capacity = validateUploadCapacity(existingCount ?? 0, files.length);
+  if (!capacity.ok) throw new Error(capacity.error);
+
   const { data: existingImages, error: existingError } = await client
     .from("listing_images")
     .select("sort_order")
@@ -481,6 +547,7 @@ export async function uploadNativeImages(
     existingImages && existingImages.length > 0
       ? Number(existingImages[0].sort_order) + 1
       : 0;
+  const willBeFirstImage = (existingCount ?? 0) === 0;
 
   const uploaded: Array<{ path: string; url: string; sortOrder: number }> = [];
 
@@ -502,7 +569,9 @@ export async function uploadNativeImages(
       storage_path: path,
       public_url: url,
       sort_order: sortOrder,
-      is_primary: sortOrder === 0,
+      // Only the listing's first image may start as primary; ensureExactlyOnePrimary
+      // re-normalizes after the batch so exactly one primary remains.
+      is_primary: willBeFirstImage && sortOrder === 0,
     });
     if (insertError) {
       await client.storage.from("listing-images").remove([path]);
@@ -539,13 +608,35 @@ export async function reorderNativeImages(
   if (error) throw new Error(error.message);
   if (!listing) throw new Error("Native listing not found.");
 
+  const { data: stored, error: storedError } = await client
+    .from("listing_images")
+    .select("storage_path")
+    .eq("property_listing_id", listingId);
+  if (storedError) throw new Error(storedError.message);
+
+  const storedPaths = (stored ?? []).map((row) => String(row.storage_path));
+  const permutation = validateReorderPermutation(orderedPaths, storedPaths);
+  if (!permutation.ok) throw new Error(permutation.error);
+
+  // Clear primaries first so the unique primary index cannot see two true rows
+  // mid-reorder, then apply the exact permutation with sort_order 0 as primary.
+  const { error: clearError } = await client
+    .from("listing_images")
+    .update({ is_primary: false })
+    .eq("property_listing_id", listingId);
+  if (clearError) throw new Error(clearError.message);
+
   for (const [index, path] of orderedPaths.entries()) {
-    const { error: updateError } = await client
+    const { data: updated, error: updateError } = await client
       .from("listing_images")
       .update({ sort_order: index, is_primary: index === 0 })
       .eq("property_listing_id", listingId)
-      .eq("storage_path", path);
+      .eq("storage_path", path)
+      .select("id");
     if (updateError) throw new Error(updateError.message);
+    if (!updated?.length) {
+      throw new Error("Unknown or foreign image path in reorder request.");
+    }
   }
 
   await syncImageColumns(client, listingId);

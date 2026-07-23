@@ -32,9 +32,13 @@ export async function POST(
     if (!files.length) {
       return NextResponse.json({ error: "No files uploaded." }, { status: 400 });
     }
+    // MAX_NATIVE_IMAGES is enforced as a per-listing total in uploadNativeImages.
+    // Reject oversized batches here only as a request sanity bound.
     if (files.length > MAX_NATIVE_IMAGES) {
       return NextResponse.json(
-        { error: `Upload at most ${MAX_NATIVE_IMAGES} images at a time.` },
+        {
+          error: `A listing may have at most ${MAX_NATIVE_IMAGES} images total.`,
+        },
         { status: 400 },
       );
     }

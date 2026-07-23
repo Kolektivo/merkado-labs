@@ -106,10 +106,18 @@ The isolated Labs project currently has:
   **Labs prototypes**, not live on merkado.cw.
 - Labs admin **Add property** native listing prototype (`listing_origin=manual`):
   draft/edit/publish/unpublish/sold/rented/republish under the Labs admin cookie;
-  ordered images in Storage bucket `listing-images`; immutable activity events
+  ordered images in Storage bucket `listing-images` (max **12** images **per
+  listing**; reorder requires an exact unique permutation of stored paths;
+  exactly one primary when images exist); immutable activity events
   (`submitted`, `published`, `material_field_changed`, `price_changed`,
-  `unpublished`, `marked_sold`, `marked_rented`, `republished`). Manual rows are
+  `unpublished`, `marked_sold`, `marked_rented`, `republished`) written
+  atomically with status via `apply_native_listing_lifecycle`. Manual rows are
   excluded from source-absence / removal logic and do not auto-run AI enrichment.
+  Public inventory note (2026-07-23): scraped `public_eligible` /
+  `public_property_listings` / Browse UI are all **283**. The older snapshot
+  **286** public view vs **283** EN/NL About (2026-07-21 / `d2abb557`) was
+  About-coverage lag on three newly public Remax rows — not a Browse/UI
+  mismatch. Current **283** vs that **286** is expected inventory drift.
 
 The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
 active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
