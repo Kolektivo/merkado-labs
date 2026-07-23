@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 import { NativeListingWizard } from "@/components/native-listing/native-listing-wizard";
 import { PageHeader } from "@/components/page-header";
+import { StatusBadge } from "@/components/status-badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { getNativeListing } from "@/lib/native-listings/service";
+import { lifecycleLabel, lifecycleTone } from "@/lib/ui-labels";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Edit property" };
@@ -21,6 +26,36 @@ export default async function EditNativeListingPage({
   if (!result) notFound();
 
   const listing = result.listing;
+  if (["sold", "removed"].includes(listing.status)) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" asChild>
+          <Link href={`/listings/${id}`}>
+            <ArrowLeft data-icon="inline-start" />
+            Back to property
+          </Link>
+        </Button>
+        <PageHeader
+          title="Edit property"
+          description="This property is not currently editable."
+          icon={Pencil}
+          actions={
+            <StatusBadge tone={lifecycleTone(listing.status)}>
+              {lifecycleLabel(listing.status)}
+            </StatusBadge>
+          }
+        />
+        <Alert>
+          <AlertTitle>Editing is locked for this status</AlertTitle>
+          <AlertDescription>
+            Sold or removed properties keep their history locked. Return to the
+            property page to review the available lifecycle actions.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const features = Array.isArray(listing.owner_attributes)
     ? listing.owner_attributes
         .map((item: { key?: string }) => item?.key)
@@ -29,14 +64,27 @@ export default async function EditNativeListingPage({
 
   return (
     <div className="space-y-6">
+      <Button variant="ghost" asChild>
+        <Link href={`/listings/${id}`}>
+          <ArrowLeft data-icon="inline-start" />
+          Back to property
+        </Link>
+      </Button>
       <PageHeader
         title="Edit property"
-        description="Update a Labs admin native listing. Changes append immutable activity events."
+        description="Update the property details, photos, and public preview."
         icon={Pencil}
+        actions={
+          <StatusBadge tone={lifecycleTone(listing.status)}>
+            {lifecycleLabel(listing.status)}
+          </StatusBadge>
+        }
       />
       <NativeListingWizard
         mode="edit"
         listingId={id}
+        initialStatus={listing.status}
+        initialPublicEligible={Boolean(listing.public_eligible)}
         initialValues={{
           listingType: listing.listing_type ?? "sale",
           title: listing.title ?? "",

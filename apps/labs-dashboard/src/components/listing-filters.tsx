@@ -324,7 +324,9 @@ export function ListingFilters({
                   onChange={(value) => update({ lifecycle: value })}
                   allLabel="Any market status"
                   options={[
+                    { value: "draft", label: "Draft" },
                     { value: "active", label: "Active" },
+                    { value: "unpublished", label: "Unpublished" },
                     { value: "sold", label: "Sold" },
                     { value: "inactive", label: "Inactive" },
                     { value: "missing", label: "Missing after latest check" },
@@ -644,7 +646,9 @@ export function ListingFilters({
                   onChange={(value) => update({ lifecycle: value })}
                   allLabel="Any market status"
                   options={[
+                    { value: "draft", label: "Draft" },
                     { value: "active", label: "Active (still listed)" },
+                    { value: "unpublished", label: "Unpublished" },
                     { value: "sold", label: "Sold" },
                     { value: "inactive", label: "Inactive" },
                     {

@@ -70,6 +70,13 @@ Applied forward migrations for the direct-source MVP foundation (Labs only):
 - `20260723140000_native_listing_hardening.sql` — at most one primary image per
   listing; `apply_native_listing_lifecycle` RPC so manual status + Passport
   event + eligibility commit atomically (service-role only)
+- `20260723150000_native_listing_image_delete.sql` — atomic manual image removal,
+  reorder/cover normalization, public projection, eligibility recomputation,
+  and Passport event (service-role only)
+- `20260723151000_native_listing_image_delete_jsonb_fix.sql` — forward fix for
+  the deployed JSONB `image_urls` projection used by the image-delete RPC
+- `20260723152000_native_listing_image_reorder_atomic.sql` — exact-permutation
+  image reorder serialized with deletion so cover selection stays consistent
 
 Labs public-effective + pipeline migrations above are **applied** (verify with
 `list_migrations` before assuming a new file is live). Production merkado.cw

@@ -193,7 +193,7 @@ export function ListingImageGallery({
                   "absolute left-3 top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition",
                   variant === "detail"
                     ? "bg-black/50 text-white hover:bg-black/65"
-                    : "bg-background/85 text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
+                    : "bg-background/85 text-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
                 )}
                 onClick={(event) => {
                   stopCardNav(event);
@@ -209,7 +209,7 @@ export function ListingImageGallery({
                   "absolute right-3 top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition",
                   variant === "detail"
                     ? "bg-black/50 text-white hover:bg-black/65"
-                    : "bg-background/85 text-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
+                    : "bg-background/85 text-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
                 )}
                 onClick={(event) => {
                   stopCardNav(event);

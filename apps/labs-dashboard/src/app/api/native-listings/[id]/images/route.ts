@@ -7,6 +7,7 @@ import {
   NATIVE_IMAGE_MIME,
 } from "@/lib/native-listings/constants";
 import {
+  removeNativeImage,
   reorderNativeImages,
   uploadNativeImages,
 } from "@/lib/native-listings/service";
@@ -107,6 +108,39 @@ export async function PATCH(
       {
         error:
           error instanceof Error ? error.message : "Unable to reorder images.",
+      },
+      { status },
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Params },
+) {
+  try {
+    assertLabsAdminSession(request);
+    const { id } = await context.params;
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const storagePath =
+      typeof body.storagePath === "string" ? body.storagePath.trim() : "";
+    if (!storagePath) {
+      return NextResponse.json(
+        { error: "storagePath is required." },
+        { status: 400 },
+      );
+    }
+    const result = await removeNativeImage(id, storagePath);
+    return NextResponse.json(result);
+  } catch (error) {
+    const status = error instanceof AdminAuthError ? error.status : 400;
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Unable to remove image.",
       },
       { status },
     );

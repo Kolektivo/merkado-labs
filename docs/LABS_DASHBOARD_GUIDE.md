@@ -66,7 +66,10 @@ is not live on merkado.cw.
   coordinates exist. Open a listing for source facts, AI review, private
   evidence metadata, and lifecycle history. **Add property** opens the Labs
   admin native listing wizard (`/listings/new`): draft → features → photos →
-  review preview → publish. Edit at `/listings/[id]/edit`. Native rows use
+  Browse-card + Property-Passport review → publish. Photos can be reordered,
+  promoted to cover, or removed before publishing; lifecycle controls only show
+  transitions valid for the current status. Edit at `/listings/[id]/edit`.
+  Native rows use
   `listing_origin=manual`, never require a scraper URL, and do not run through
   the property pipeline or AI enrichment automatically.
 - **Sources** — source maturity and inventory. Open a source for run history,

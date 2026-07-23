@@ -16,7 +16,6 @@ import {
 import { NATIVE_LISTING_ORIGIN } from "@/lib/native-listings/constants";
 import {
   assignPrimaryFlags,
-  validateReorderPermutation,
   validateUploadCapacity,
 } from "@/lib/native-listings/image-rules";
 
@@ -582,7 +581,7 @@ export async function uploadNativeImages(
   }
 
   await syncImageColumns(client, listingId);
-  await recomputeEligibility(client, listingId);
+  const eligibility = await recomputeEligibility(client, listingId);
   await appendEvent(
     client,
     listingId,
@@ -591,7 +590,7 @@ export async function uploadNativeImages(
     { images_added: uploaded.length },
     "Native listing images updated.",
   );
-  return { uploaded };
+  return { uploaded, eligibility };
 }
 
 export async function reorderNativeImages(
@@ -599,49 +598,49 @@ export async function reorderNativeImages(
   orderedPaths: string[],
 ) {
   const client = createLabsAdminClient();
-  const { data: listing, error } = await client
-    .from("property_listings")
-    .select("id")
-    .eq("id", listingId)
-    .eq("listing_origin", NATIVE_LISTING_ORIGIN)
-    .maybeSingle();
+  const { data, error } = await client.rpc("reorder_native_listing_images", {
+    p_listing_id: listingId,
+    p_ordered_paths: orderedPaths,
+  });
   if (error) throw new Error(error.message);
-  if (!listing) throw new Error("Native listing not found.");
+  return data;
+}
 
-  const { data: stored, error: storedError } = await client
-    .from("listing_images")
-    .select("storage_path")
-    .eq("property_listing_id", listingId);
-  if (storedError) throw new Error(storedError.message);
+export async function removeNativeImage(
+  listingId: string,
+  storagePath: string,
+) {
+  const client = createLabsAdminClient();
+  const path = storagePath.trim();
+  if (!path) throw new Error("Image path is required.");
 
-  const storedPaths = (stored ?? []).map((row) => String(row.storage_path));
-  const permutation = validateReorderPermutation(orderedPaths, storedPaths);
-  if (!permutation.ok) throw new Error(permutation.error);
+  const { data, error } = await client.rpc("delete_native_listing_image", {
+    p_listing_id: listingId,
+    p_storage_path: path,
+  });
+  if (error) throw new Error(error.message);
 
-  // Clear primaries first so the unique primary index cannot see two true rows
-  // mid-reorder, then apply the exact permutation with sort_order 0 as primary.
-  const { error: clearError } = await client
-    .from("listing_images")
-    .update({ is_primary: false })
-    .eq("property_listing_id", listingId);
-  if (clearError) throw new Error(clearError.message);
+  const result =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  const deletedPath =
+    typeof result.storage_path === "string" ? result.storage_path : path;
 
-  for (const [index, path] of orderedPaths.entries()) {
-    const { data: updated, error: updateError } = await client
-      .from("listing_images")
-      .update({ sort_order: index, is_primary: index === 0 })
-      .eq("property_listing_id", listingId)
-      .eq("storage_path", path)
-      .select("id");
-    if (updateError) throw new Error(updateError.message);
-    if (!updated?.length) {
-      throw new Error("Unknown or foreign image path in reorder request.");
-    }
-  }
+  // Database state is already committed atomically. Storage cleanup is
+  // deliberately best-effort so a transient object error cannot make the UI
+  // report that the image row still exists.
+  const { error: storageError } = await client.storage
+    .from("listing-images")
+    .remove([deletedPath]);
 
-  await syncImageColumns(client, listingId);
-  await recomputeEligibility(client, listingId);
-  return { ok: true };
+  return {
+    ok: true,
+    imagesRemaining: Number(result.images_remaining ?? 0),
+    eligible: Boolean(result.eligible),
+    reason: String(result.reason ?? ""),
+    storageWarning: storageError?.message ?? null,
+  };
 }
 
 export async function getNativeListing(listingId: string) {

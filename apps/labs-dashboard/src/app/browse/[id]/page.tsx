@@ -63,6 +63,17 @@ function browseBackHref(
   return search ? `/browse?${search}` : "/browse";
 }
 
+function contactHref(method: string, value: string): string | null {
+  const normalized = method.trim().toLowerCase();
+  if (normalized === "email") return `mailto:${value.trim()}`;
+  if (normalized === "phone") return `tel:${value.trim().replace(/\s+/g, "")}`;
+  if (normalized === "whatsapp") {
+    const digits = value.replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : null;
+  }
+  return null;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -369,10 +380,48 @@ export default async function PublicListingPage({
                 website.
               </p>
               {listing.contactMethod && listing.contactValue ? (
-                <p className="text-sm">
-                  Contact via {listing.contactMethod}: {listing.contactValue}
-                  {listing.contactName ? ` (${listing.contactName})` : ""}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm">
+                    {listing.contactName
+                      ? `Contact ${listing.contactName}`
+                      : "Contact the property owner"}
+                  </p>
+                  {contactHref(
+                    listing.contactMethod,
+                    listing.contactValue,
+                  ) ? (
+                    <Button asChild size="sm">
+                      <a
+                        href={
+                          contactHref(
+                            listing.contactMethod,
+                            listing.contactValue,
+                          ) ?? undefined
+                        }
+                        target={
+                          listing.contactMethod.toLowerCase() === "whatsapp"
+                            ? "_blank"
+                            : undefined
+                        }
+                        rel={
+                          listing.contactMethod.toLowerCase() === "whatsapp"
+                            ? "noreferrer"
+                            : undefined
+                        }
+                      >
+                        Contact via {titleCase(listing.contactMethod)}
+                        {listing.contactMethod.toLowerCase() === "whatsapp" ? (
+                          <>
+                            <ArrowUpRight data-icon="inline-end" />
+                            <span className="sr-only"> (opens in new tab)</span>
+                          </>
+                        ) : null}
+                      </a>
+                    </Button>
+                  ) : (
+                    <span className="text-sm">{listing.contactValue}</span>
+                  )}
+                </div>
               ) : null}
             </>
           ) : (

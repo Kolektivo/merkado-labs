@@ -92,6 +92,13 @@ const migrationSource = readFileSync(
   ),
   "utf8",
 );
+const reorderMigrationSource = readFileSync(
+  new URL(
+    "../../../../supabase/migrations/20260723152000_native_listing_image_reorder_atomic.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("MAX_NATIVE_IMAGES is a per-listing total capacity", () => {
   assert.equal(validateUploadCapacity(0, 12).ok, true);
@@ -121,8 +128,13 @@ test("reorder accepts only an exact unique permutation of stored paths", () => {
     validateReorderPermutation(["a.jpg", "b.jpg", "foreign.jpg"], stored).ok,
     false,
   );
-  assert.match(serviceSource, /validateReorderPermutation/);
-  assert.match(serviceSource, /Unknown or foreign image path/);
+  assert.match(serviceSource, /reorder_native_listing_images/);
+  assert.match(
+    reorderMigrationSource,
+    /Image order must include every stored image exactly once/,
+  );
+  assert.match(reorderMigrationSource, /count\(distinct path\)/);
+  assert.match(reorderMigrationSource, /for update/);
 });
 
 test("exactly one primary when images exist", () => {
