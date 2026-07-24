@@ -20,7 +20,7 @@ mirrors merkado-cw ADR-003):
 - **Listings** = cars and real-estate listings together.
 - **Cars** and **Real Estate** = the two categories.
 - **Property** / **Properties** = real estate only (never the cars+RE umbrella).
-- Actions: **Create a listing** (shared); **Sell your car**; **List a property**.
+- Actions: **Create a listing** (shared); **List your car**; **List a property**.
 - Labs schema: `property_listings.property_type` still means the **real-estate
   subtype / source label** for scraped rows — map explicitly; never silently
   reinterpret as `car|real_estate`.

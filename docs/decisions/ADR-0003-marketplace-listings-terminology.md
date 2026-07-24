@@ -26,8 +26,12 @@ marketplace vocabulary for both Labs and production (merkado.cw).
 | Action | Copy |
 | --- | --- |
 | Shared | **Create a listing** |
-| Cars | **Sell your car** |
+| Cars | **List your car** |
 | Real estate | **List a property** |
+| Footer create column | **List** |
+
+Production routes (merkado.cw): `/list`, `/list/cars`, `/list/real-estate`
+(legacy `/sell/*` redirects).
 
 ### Keep as real-estate-specific
 
