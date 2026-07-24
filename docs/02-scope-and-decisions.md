@@ -76,7 +76,7 @@ remains out of scope.
 
 | Avoided claim | Correct description |
 |---|---|
-| Property marketplace is live | Property is Labs/WIP; cars are live |
+| Real-estate marketplace is live | Real estate is Labs/WIP + production browse/seller slice in progress; cars are live |
 | Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron On (default-branch schedule observed) / dispatch available; Sotheby's remains BLOCKED |
 | Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
 | Sold price is known | Last known asking price may be known; sale price is not confirmed |

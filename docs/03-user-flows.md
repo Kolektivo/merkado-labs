@@ -48,8 +48,10 @@ Public `/browse` and `/browse/[id]` skip this gate.
 2. Optional `?view=map` when coordinates exist (also legacy `/map` redirect).
 3. Open `/listings/[id]` for source facts, enrichment context, private evidence
    metadata, and Passport-style activity timeline.
-4. Sidebar label is **Listings**; page title uses **Properties**
-   (`[OPEN]` naming consistency — product decision not required for this docs pass).
+4. Sidebar label is **Listings**; page title still says **Properties** in the
+   Labs UI today — that UI copy is **out of date** vs ADR-0003 (should mean
+   real-estate inventory only, or align title to **Listings**). Track as a
+   separate Labs UI terminology task; do not treat the page title as canonical.
 
 ### 3.3 Add / edit native listing (Labs admin prototype)
 

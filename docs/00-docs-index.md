@@ -1,23 +1,36 @@
 # Merkado Docs — Index
 
-This folder holds the working context for Merkado Labs property work.
+This folder holds the working context for Merkado Labs **real-estate** and
+marketplace research work.
 
-**Last updated:** July 23, 2026
+**Last updated:** July 24, 2026
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
 and `docs/decisions/ADR-0002-private-local-evidence.md`.
+**Terminology:** `docs/decisions/ADR-0003-marketplace-listings-terminology.md`.
 **Continuous docs:** Documentation Synchronization Protocol in root `AGENTS.md`.
 
 ## Terminology (canonical)
 
-- **Properties** = umbrella for all Merkado listed assets.
-- Top-level marketplace discriminator (production boundary): `property_type` ∈
-  {`car`, `real_estate`}.
-- Real-estate subtypes use `real_estate_type` (house, apartment, land, …).
-- Labs `property_listings.property_type` today still means the **real-estate
+Approved vocabulary ([ADR-0003](decisions/ADR-0003-marketplace-listings-terminology.md);
+mirrors merkado-cw ADR-003):
+
+- **Marketplace** = overall Merkado product area (Cars + Real Estate).
+- **Listings** = cars and real-estate listings together.
+- **Cars** and **Real Estate** = the two categories.
+- **Property** / **Properties** = real estate only (never the cars+RE umbrella).
+- Actions: **Create a listing** (shared); **Sell your car**; **List a property**.
+- Labs schema: `property_listings.property_type` still means the **real-estate
   subtype / source label** for scraped rows — map explicitly; never silently
   reinterpret as `car|real_estate`.
+- Named RE features keep “Property” where they mean real estate (Property
+  Passport, Property Search, etc.).
+- **Kitchen vs storefront:** Labs holds the pipeline (~29 tables). Production
+  merkado.cw currently stores a flat RE storefront (`real_estate_*`) via sync.
+  Moving scrapers/cron/AI onto cw is ADR-004 on the main repo — not automatic.
+
+**Supersedes:** earlier “Properties = umbrella for all Merkado listed assets.”
 
 ## Canonical source map
 

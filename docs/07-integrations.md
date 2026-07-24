@@ -113,7 +113,7 @@ Confirm the exact domain, listing index, detail paths, robots rules, and terms n
 | Attributes | Flexible metadata bag — not first-class browse filters in this activation |
 | Neighbourhood provenance | Dedicated source location remains source truth; geospatial assignment separate; AI neighbourhood candidates must be evidence-backed; generic `Curaçao` is not a confirmed neighbourhood; coordinates are never AI-generated |
 | Scheduling | Pipeline ready / cron On (default-branch schedule observed) / dispatch available |
-| Production claims | Labs research only — no production property marketplace claims |
+| Production claims | Labs research only — no production real-estate marketplace claims |
 ### Moret Real Estate (`moret_real_estate`) — [LABS] 2026-07-20
 
 | Item | Value |

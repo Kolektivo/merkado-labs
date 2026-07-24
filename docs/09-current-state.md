@@ -103,7 +103,11 @@ The isolated Labs project currently has:
   English presentation then Dutch description in the same job pass (Dutch
   failure does not remove English). Zero-cost policy rematerialization does not
   create billable AI work. Labs public + bilingual view migrations are applied
-  in Labs; production merkado.cw property migration remains **paused**.
+  in Labs; production merkado.cw first public RE browse/detail slice is
+  **implemented in the merkado-cw repo + production DB** (2026-07-24;
+  `/real-estate`, parallel tables, Labs sync). It is **not** marked live on
+  merkado.cw until Vercel deploy + Product Lead UAT. Navbar/homepage chrome,
+  seller Auth, and What Fits Me remain deferred.
 - Labs **What Fits Me** + Property Search matching (`rules_v1`) — **working in
   Labs**, not live on merkado.cw. Flow: natural-language intake (EN/NL) →
   editable criteria → immediate matches from current `public_property_listings`
@@ -203,8 +207,10 @@ Core MVP rules:
 - Scheduled GitHub Actions runs for the property pipeline on the **default
   branch** (code flag and workflow schedule are already On; feature-branch
   schedules do not fire — see § intro)
-- Production merkado.cw property surface (Labs English Browse preview is ready)
-- Public property browse/detail UI on `merkado.cw` (Labs `/browse` public preview exists)
+- Production merkado.cw property surface: first `/real-estate` slice coded +
+  DB synced in merkado-cw (awaiting Vercel deploy / UAT before calling live)
+- Public property browse/detail UI on `merkado.cw` (Labs `/browse` remains the
+  Labs preview; production routes exist in merkado-cw pending deploy)
 - Reliable multi-source property entity resolution
 - Confirmed sale prices
 - Automated valuation or sold-probability models

@@ -6,13 +6,26 @@
 
 ## Naming contract
 
-- **Properties** is the umbrella for marketplace assets.
-- Production-boundary discriminator: `property_type` ∈ {`car`, `real_estate`}.
+- **Marketplace** is the overall product area; **Listings** covers cars and
+  real estate together (ADR-0003).
+- Categories: **Cars** and **Real Estate**. **Property** means real estate only.
+- Production marketplace categories: `car` | `real_estate` (not called
+  “Properties”).
 - Real-estate subtypes use `real_estate_type`.
 - Labs `property_listings.property_type` remains the scraped/legacy **subtype
   label** (house, apartment, …). Native rows also set `real_estate_type`
   explicitly and mirror the subtype into `property_type` for existing filters —
   never reinterpret Labs subtype values as `car|real_estate`.
+
+## Labs kitchen vs production storefront
+
+Labs is the **kitchen** (scrape → history → AI → public projection). Production
+merkado.cw is the **storefront** (`real_estate_sources` + `real_estate_listings`
+plus manual sellers). Buyers do not need all Labs tables on cw. When scrapers and
+AI run on production, a reviewed subset of Labs pipeline tables (or equivalents)
+must be ported — see merkado-cw `docs/decisions/ADR-004-real-estate-ops-ownership-transfer.md`.
+
+Until that transfer, Labs → cw sync remains the bridge.
 
 ## 1. Current foundation `[LABS]`
 

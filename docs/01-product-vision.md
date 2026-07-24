@@ -4,9 +4,12 @@
 
 ## 1. Core direction
 
-Merkado grows from a Curaçao vehicle marketplace into a trusted hard-asset discovery platform. The near-term PropTech advantage is accurate, source-traceable property data with structured search, transparent price provenance, and durable activity history.
+**Merkado** grows from a Curaçao vehicle marketplace into a trusted hard-asset
+discovery platform. The near-term PropTech advantage is accurate, source-traceable
+**real-estate** data with structured search, transparent price provenance, and
+durable activity history.
 
-The property MVP is not blockchain-first. It is data-quality first.
+The real-estate MVP is not blockchain-first. It is data-quality first.
 
 The longer-term product should help a user move from an unclear housing need to a structured Property Search Request, then continuously match that request against new and changed listings through a paid Merkado Agent.
 
@@ -14,10 +17,10 @@ The longer-term product should help a user move from an unclear housing need to 
 
 ### Public marketplace
 
-Cars are live on `merkado.cw`. Property browse / Search Request / What Fits Me /
+Cars are live on `merkado.cw`. Real-estate browse / Search Request / What Fits Me /
 Agent / Match Reports in Labs are **prototypes**, not production-live.
 
-The property marketplace will aggregate selected direct realtor sources, normalize searchable fields, show transparent price information, and direct users to the original realtor or approved contact flow.
+The real-estate side of the marketplace will aggregate selected direct realtor sources, normalize searchable fields, show transparent price information, and direct users to the original realtor or approved contact flow.
 
 ### Guided discovery
 

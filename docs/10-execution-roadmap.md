@@ -31,7 +31,7 @@ Approved follow-ons that wait on capacity or a clear Labs gate (not speculative)
 | Item | Notes |
 |---|---|
 | Sotheby's adapter path unblocking | Access route **BLOCKED** (2026-07-20); needs official feed/partner API + written approval — also listed under **Blocked** |
-| Production merkado.cw property surface planning | Labs English Browse preview exists; production migration paused — requires explicit Product Lead go-ahead before build |
+| Production merkado.cw property surface planning | Labs English Browse preview exists; **first production slice started 2026-07-24** in merkado-cw (`/real-estate` + parallel tables + Labs sync) — navbar/homepage chrome still deferred |
 | Authenticated user listing on merkado.cw | Planned deliverable in scope (`List a property` / My properties) — main-repo / production Auth |
 
 ## Later

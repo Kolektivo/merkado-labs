@@ -26,8 +26,9 @@ automatically.
   change over time — see **`docs/09-current-state.md`** only (dated audits under
   local `docs/private/research/` are historical evidence, not the live snapshot).
 
-Property MVP docs (`docs/00`–`12`) are the current source of truth. Start at
-`docs/00-docs-index.md`. Agent operating rules: root `AGENTS.md` (Claude:
+Canonical docs (`docs/00`–`12`) are the current source of truth. Start at
+`docs/00-docs-index.md` (terminology: Marketplace / Listings / Property = real
+estate only — ADR-0003). Agent operating rules: root `AGENTS.md` (Claude:
 `CLAUDE.md`). Verification and Product Lead UAT: `docs/11-testing-and-uat.md`.
 Full ops/deploy guidance: `docs/12-deployment-runbook.md`.
 
