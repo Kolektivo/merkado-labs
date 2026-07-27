@@ -13,19 +13,14 @@ prototypes only — not live on merkado.cw and not activation-complete.
 Remaining activation gates: Sotheby's access route **BLOCKED** (2026-07-20 recon;
 not Ready — official affiliate feed/export or Anywhere partner API with written
 approval required; excluded from Ready pipelines). Four Ready adapters (KW,
-RE/MAX, Moret, Monumentenzorg) share the Labs property pipeline; **daily cron is
-armed On** (`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised +
-idempotent gates; GHA schedule `0 4 * * *` UTC = 00:00 America/Curacao
-(06:00 Amsterdam during CEST / 05:00 Amsterdam during CET); first normal daily
-cron on the default branch observed 2026-07-22 (run `29984863341`);
-manual/`workflow_dispatch` and dashboard Data Operations dispatch remain
-available. Labs admin native listing prototype is implemented separately from
-the scraper pipeline; production Auth seller listing remains planned. AI proposals use
-exception-based **v5** policy (`enrichment_policy_v5`; high-confidence evidenced
-fields auto-apply; manual attention only for conflicts, weak evidence, or
-new-attribute taxonomy). Labs prototypes (Search Request / What Fits Me / Agent /
-Match Reports) exist in the dashboard; production activation on merkado.cw
-remains out of scope.
+RE/MAX, Moret, Monumentenzorg) previously shared the Labs property pipeline.
+**Labs is fully on hold (2026-07-27 Product Lead):** no Labs cron, no Labs
+OpenAI spend, no paid pipeline enqueue — live Ready inventory runs on
+merkado-cw (ADR-004). Labs admin native listing prototype remains separate from
+production Auth seller listing. AI proposals historically used exception-based
+**v5** policy (`enrichment_policy_v5`). Labs prototypes (Search Request /
+What Fits Me / Agent / Match Reports) exist in the dashboard archive;
+production activation on merkado.cw remains the active product path.
 
 ## 2. MVP deliverables
 

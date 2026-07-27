@@ -1,20 +1,27 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 23, 2026
+**Last updated:** July 27, 2026
 
-**Labs automation foundation:** the four Ready property sources share a Labs-only
-orchestration path (orchestrator/worker/locks/anomaly/budgets/`change_hash`) via
-`run_property_pipeline.py` / `run_property_pipeline_worker.py` and GHA
-`property-pipeline-labs.yml`. **Automatic daily cron is On**
-(`AUTOMATIC_REFRESH_ENABLED = true`) after 2026-07-21 supervised + idempotent
-gates; schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during
-CEST / 05:00 Amsterdam during CET). First normal daily cron on the default
-branch was observed 2026-07-22
-(https://github.com/Kolektivo/merkado-labs/actions/runs/29984863341).
-Manual/`workflow_dispatch` and dashboard Data Operations dispatch remain
-available. Sotheby's remains blocked and excluded. This does not change
-production or deploy anything.
+**Labs hold (2026-07-27 Product Lead):** Merkado Labs is **fully on hold**.
+Further product development continues on **merkado-cw**. Labs must not spend
+OpenAI tokens or run paid scrape/enrich automation.
+
+Operational freeze in effect:
+- GitHub Action `Property pipeline (Labs)` **disabled**
+- Daily cron **removed** from the workflow while on hold
+- Repository variable `LABS_OPERATIONS_ENABLED=false`
+- Labs environment secret `OPENAI_API_KEY` **removed**
+- `AUTOMATIC_REFRESH_ENABLED = false` (Python + dashboard)
+- Dashboard pipeline enqueue refuses runs while on hold
+
+Live Ready-source inventory scrape/enrichment runs on merkado-cw only
+(ADR-004 complete). Labs remains an optional sandbox archive — not deleted.
+
+**Prior Labs automation (historical):** four Ready sources previously shared a
+Labs-only orchestration path via `property-pipeline-labs.yml` with daily cron
+`0 4 * * *` UTC. That path is idle while this hold remains. Sotheby's remains
+blocked and excluded. This does not change production.
 
 **Labs admin native listing prototype `[LABS]` (2026-07-23):** admins can create
 manual-origin real-estate listings via `/listings/new` (draft → review preview →

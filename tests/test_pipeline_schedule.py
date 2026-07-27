@@ -27,16 +27,16 @@ def test_ready_order_and_schedule_metadata() -> None:
     ]
     assert CURACAO_TZ == "America/Curacao"
     assert DAILY_CRON_UTC == "0 4 * * *"
-    assert AUTOMATIC_REFRESH_ENABLED is True
+    assert AUTOMATIC_REFRESH_ENABLED is False
     meta = schedule_metadata()
-    assert meta["automatic_refresh"] == "On"
-    assert meta["enabled"] is True
+    assert meta["automatic_refresh"] == "Off"
+    assert meta["enabled"] is False
     assert meta["documented_cron_utc"] == "0 4 * * *"
     assert meta["intended_local_time"] == "00:00"
     assert "sothebys_curacao" in meta["excluded_sources"]
-    meta_off = schedule_metadata(enabled=False)
-    assert meta_off["automatic_refresh"] == "Off"
-    assert meta_off["enabled"] is False
+    meta_on = schedule_metadata(enabled=True)
+    assert meta_on["automatic_refresh"] == "On"
+    assert meta_on["enabled"] is True
 
 
 def test_next_scheduled_run_is_next_0400_utc() -> None:
@@ -46,13 +46,13 @@ def test_next_scheduled_run_is_next_0400_utc() -> None:
     assert next_scheduled_run_utc(after) == datetime(2026, 7, 22, 4, 0, tzinfo=UTC)
 
 
-def test_workflow_has_daily_cron_and_dispatch() -> None:
+def test_workflow_hold_gate_and_dispatch() -> None:
     workflow_path = Path(".github/workflows/property-pipeline-labs.yml")
     workflow = workflow_path.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
-    assert "\n  schedule:" in workflow
-    assert 'cron: "0 4 * * *"' in workflow
-    assert 'trigger="scheduled"' in workflow
+    assert "\n  schedule:" not in workflow
+    assert "LABS_OPERATIONS_ENABLED" in workflow
+    assert "Merkado Labs is on hold" in workflow
     assert "cancel-in-progress: false" in workflow
     assert "github.event_name" in workflow
     assert "csaefdkpwukshtouyixg" in workflow
@@ -62,7 +62,7 @@ def test_workflow_has_daily_cron_and_dispatch() -> None:
 
 
 def test_workflow_sets_enrichment_model_and_budget_caps() -> None:
-    """Regression: scheduled RE/MAX failed when OPENAI_ENRICHMENT_MODEL was unset."""
+    """Caps remain documented for resume; OpenAI secret removed while on hold."""
 
     workflow = Path(".github/workflows/property-pipeline-labs.yml").read_text(
         encoding="utf-8"

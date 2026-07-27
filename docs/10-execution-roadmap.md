@@ -1,7 +1,7 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only, categorized for delivery planning.
-**Last updated:** July 23, 2026
+**Last updated:** July 27, 2026
 
 **Not a dump of every unimplemented idea.** Deferred, rejected, speculative, and
 unapproved items stay in `02-scope-and-decisions.md`, `docs/decisions/`, or
@@ -15,24 +15,20 @@ ledgers stay in local `docs/private/tasks/` only.
 
 ## Now
 
-Approved work that is active or immediately next for Labs:
-
 | Item | Notes |
 |---|---|
-| Operate Ready pipeline (KW, RE/MAX, Moret, Monumentenzorg) | Cron On + dispatch; monitor budgets, anomalies, source health |
-| Maintain Labs Browse / Passport / native listing prototypes | Quality, pricing presentation, admin wizard |
-| Maintain Labs What Fits Me matching prototype | `rules_v1`; no paywall/email |
-| Keep docs/current-state accurate after verified changes | Update `09` only after verification |
+| **Labs fully on hold** | No Labs cron, no Labs OpenAI spend, no paid pipeline enqueue. Keep repo as sandbox archive. |
+| Continue product work on **merkado-cw** | Live Ready RE inventory + storefront ownership already transferred (ADR-004). |
 
 ## Next
 
-Approved follow-ons that wait on capacity or a clear Labs gate (not speculative):
+Approved follow-ons wait for Product Lead direction on merkado-cw (not Labs):
 
 | Item | Notes |
 |---|---|
-| Sotheby's adapter path unblocking | Access route **BLOCKED** (2026-07-20); needs official feed/partner API + written approval — also listed under **Blocked** |
-| Production merkado.cw property surface | Live browse/detail/seller/favorites/report on cw; recurring sync Action lives in merkado-cw (Labs stays the scrape kitchen) |
-| Authenticated user listing on merkado.cw | Planned deliverable in scope (`List a property` / My properties) — main-repo / production Auth |
+| Homepage Real Estate discovery (merkado-cw) | Product Lead Figma |
+| What Fits Me save/alerts/paywall (merkado-cw) | Later product slices |
+| Resume Labs sandbox (only if needed) | Requires restoring OpenAI secret, `LABS_OPERATIONS_ENABLED=true`, re-enable workflow + schedule |
 
 ## Later
 

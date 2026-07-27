@@ -5,8 +5,13 @@ import "server-only";
  * = 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET).
  */
 export const DAILY_CRON_UTC = "0 4 * * *";
-/** Matches GHA: daily cron On after 2026-07-21 supervised + idempotent gates. */
-export const AUTOMATIC_REFRESH_ENABLED = true;
+/**
+ * HOLD (2026-07-27 Product Lead): Labs fully on hold — no automatic spend.
+ * Live Ready inventory runs on merkado-cw. Documented cron kept for resume.
+ */
+export const AUTOMATIC_REFRESH_ENABLED = false;
+/** Master switch for paid/manual Labs pipeline enqueue (mirrors Actions variable). */
+export const LABS_OPERATIONS_ENABLED = false;
 
 export function nextScheduledRunUtc(now = new Date()): Date {
   const next = new Date(

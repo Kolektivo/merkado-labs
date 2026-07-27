@@ -2,8 +2,8 @@ import type { HarvestJob } from "@/lib/domain/types";
 
 /**
  * Direct-source adapter jobs for merkado-labs.
- * Pipeline + workflow_dispatch + daily cron On (0 4 * * * UTC) after gates;
- * scheduled execution begins when the workflow reaches the default branch.
+ * HOLD (2026-07-27): Labs pipeline on hold — no automatic cron / paid OpenAI.
+ * Live Ready inventory runs on merkado.cw. Documented cron kept for resume.
  * Keep in sync with docs/07-integrations.md and src/merkado_labs/scrapers/.
  */
 export const HARVEST_JOBS: HarvestJob[] = [

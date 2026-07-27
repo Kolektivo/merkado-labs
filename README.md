@@ -13,11 +13,10 @@ automatically.
   v0.3.1, RE/MAX v0.4.1, Moret v0.2.0, Monumentenzorg v0.2.0. Sotheby's is
   BLOCKED and excluded from Ready pipelines. CHH is retired/removed.
 - **Property pipeline** (orchestrator/worker/locks/anomaly/budgets/`change_hash`)
-  with Data Operations dispatch; **GitHub daily cron On**
-  (`AUTOMATIC_REFRESH_ENABLED = true`, `0 4 * * *` UTC). The first normal
-  default-branch schedule was observed 2026-07-22; manual dispatch remains available.
-- **AI enrichment** v5 / policy v5 active under pipeline budgets; dashboard AI
-  execution disabled.
+  is **on hold** (2026-07-27 Product Lead): GitHub workflow disabled, cron
+  removed, `LABS_OPERATIONS_ENABLED=false`, Labs `OPENAI_API_KEY` removed,
+  `AUTOMATIC_REFRESH_ENABLED = false`. Live Ready inventory runs on merkado-cw.
+- **AI enrichment** paused on Labs; paid Terra enrichment runs on merkado-cw.
 - **Geospatial layer**: PostGIS neighbourhood boundaries and assignment.
 - **Labs dashboard** (`apps/labs-dashboard`): ops + Data Operations + Browse
   public preview + filtered Property Passport activity + Enrichment review +

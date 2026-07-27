@@ -91,29 +91,24 @@ test("confirmation separates changed-listing AI from initial backfill", () => {
   );
 });
 
-test("data operations page shows schedule flag and budgets", () => {
+test("data operations page shows hold state and budgets", () => {
   const page = source("src/app/data-operations/page.tsx");
   assert.match(page, /Data operations/);
   assert.match(page, /Refresh & enrich|PipelineRefreshControls/);
   assert.match(page, /PipelineRunProgress/);
   assert.match(page, /Automatic refresh/);
   assert.match(page, /AUTOMATIC_REFRESH_ENABLED/);
-  assert.match(page, /begins on default branch/);
-  assert.match(page, /00:00 Curaçao/);
-  assert.match(page, /04:00 UTC/);
-  assert.match(page, /06:00 Amsterdam \(CEST\)/);
-  assert.match(page, /05:00 Amsterdam \(CET\)/);
+  assert.match(page, /LABS_OPERATIONS_ENABLED/);
+  assert.match(page, /Labs is on hold/);
+  assert.match(page, /merkado\.cw/);
   assert.match(page, /USD 2 \/ day/);
   assert.match(page, /GitHub workflow/);
-  assert.match(page, /Manual Run now dispatch needs setup/);
-  assert.doesNotMatch(page, /Manual dispatch \(cron Off\)/);
-  assert.match(page, /Daily automation is configured On/);
   const schedule = source("src/lib/pipeline/schedule.ts");
-  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = true/);
-  const settings = source("src/app/settings/page.tsx");
-  assert.match(settings, /Daily automation configured/);
-  assert.match(settings, /begins once the workflow is on the default branch/);
-  assert.doesNotMatch(settings, /Manual dispatch \(cron Off\)/);
+  assert.match(schedule, /AUTOMATIC_REFRESH_ENABLED = false/);
+  assert.match(schedule, /LABS_OPERATIONS_ENABLED = false/);
+  const enqueue = source("src/lib/pipeline/enqueue.ts");
+  assert.match(enqueue, /LABS_OPERATIONS_ENABLED/);
+  assert.match(enqueue, /Merkado Labs is on hold/);
 
   const progress = source("src/components/pipeline-run-progress.tsx");
   const readiness = source("src/lib/domain/source-readiness.ts");

@@ -24,6 +24,7 @@ import { formatDateTime } from "@/lib/format";
 import {
   AUTOMATIC_REFRESH_ENABLED,
   DAILY_CRON_UTC,
+  LABS_OPERATIONS_ENABLED,
 } from "@/lib/pipeline/schedule";
 import { getConfigurationHealth } from "@/lib/system/health";
 import { jobStatusLabel, jobStatusTone } from "@/lib/ui-labels";
@@ -64,7 +65,11 @@ export default async function DataOperationsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Data operations"
-        description="Dispatch a safe Labs refresh, follow its progress, and review recent outcomes."
+        description={
+          LABS_OPERATIONS_ENABLED
+            ? "Dispatch a safe Labs refresh, follow its progress, and review recent outcomes."
+            : "Labs is on hold. Paid pipeline / OpenAI spend stays on merkado.cw only."
+        }
         icon={RefreshCw}
       />
 
@@ -76,28 +81,40 @@ export default async function DataOperationsPage() {
             value: AUTOMATIC_REFRESH_ENABLED ? "On" : "Off",
             helper: AUTOMATIC_REFRESH_ENABLED
               ? `Configured · 00:00 Curaçao / 04:00 UTC · 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET) · cron ${DAILY_CRON_UTC} · begins on default branch`
-              : "No scheduled runs · intended 00:00 Curaçao when re-enabled",
+              : "Hold · no scheduled Labs runs · live inventory is on merkado.cw",
             tip: AUTOMATIC_REFRESH_ENABLED
               ? "Daily automation is configured On. Scheduled execution begins once the workflow is on the default branch; Run now can still dispatch manually."
-              : "Automatic refresh is currently off. Only an explicit manual dispatch can start a new refresh.",
+              : "Labs is fully on hold. Automatic refresh and paid enqueue are disabled. Resume needs Product Lead approval.",
             tipLabel: "automatic refresh",
             icon: RefreshCw,
           },
           {
             label: "Manual dispatch",
-            value: health.githubDispatchConfigured ? "Ready" : "Setup needed",
-            helper: health.githubDispatchConfigured
-              ? "Run now can dispatch the Labs workflow"
-              : "Server-only GitHub credentials are missing",
-            tip: "Run now starts the approved Labs-only GitHub workflow. It does not deploy the dashboard or access production.",
+            value: LABS_OPERATIONS_ENABLED
+              ? health.githubDispatchConfigured
+                ? "Ready"
+                : "Setup needed"
+              : "On hold",
+            helper: LABS_OPERATIONS_ENABLED
+              ? health.githubDispatchConfigured
+                ? "Run now can dispatch the Labs workflow"
+                : "Server-only GitHub credentials are missing"
+              : "Enqueue blocked while Labs is on hold",
+            tip: LABS_OPERATIONS_ENABLED
+              ? "Run now starts the approved Labs-only GitHub workflow. It does not deploy the dashboard or access production."
+              : "Manual Run now is disabled while Labs is on hold so OpenAI spend stays on merkado-cw only.",
             tipLabel: "manual dispatch",
             icon: RefreshCw,
           },
           {
             label: "AI guardrails",
-            value: "25 / day",
-            helper: "USD 2 / day · USD 25 / month · overflow deferred",
-            tip: "At most 25 changed listings can use AI in a day, subject to the daily and monthly cost limits.",
+            value: LABS_OPERATIONS_ENABLED ? "25 / day" : "Paused",
+            helper: LABS_OPERATIONS_ENABLED
+              ? "USD 2 / day · USD 25 / month · overflow deferred"
+              : "Labs OpenAI secret removed · spend on merkado-cw only",
+            tip: LABS_OPERATIONS_ENABLED
+              ? "At most 25 changed listings can use AI in a day, subject to the daily and monthly cost limits."
+              : "No Labs AI budget is active while the sandbox is on hold.",
             tipLabel: "AI guardrails",
             icon: RefreshCw,
           },

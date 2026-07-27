@@ -66,13 +66,13 @@ export default async function SettingsPage() {
             {[
               [
                 "Website refreshes",
-                "Daily automation configured",
-                "Automatic refresh On. Schedule 00:00 Curaçao / 04:00 UTC (06:00 Amsterdam during CEST, 05:00 during CET) begins once the workflow is on the default branch. Run now when dispatch credentials are set.",
+                "On hold",
+                "Labs automatic refresh and paid pipeline enqueue are Off. Live Ready inventory runs on merkado.cw. Resume needs Product Lead approval.",
               ],
               [
                 "AI enrichment",
-                "Via pipeline / review UI",
-                "New/changed listings only under USD 2/day and USD 25/month when a pipeline run executes. Dashboard AI job execution stays disabled.",
+                "Paused on Labs",
+                "Labs OpenAI Actions secret removed while on hold. Paid enrichment runs on merkado-cw only.",
               ],
               [
                 "Environment",

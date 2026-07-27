@@ -118,14 +118,28 @@ See `03-user-flows.md` for journeys. Ops summary:
 
 ## 5. Property pipeline automation
 
+**Status (2026-07-27): Labs fully on hold — no paid spend.**
+
 - Scripts: `scripts/run_property_pipeline.py`,
-  `scripts/run_property_pipeline_worker.py`
-- Workflow: `.github/workflows/property-pipeline-labs.yml`
-- Schedule: `0 4 * * *` UTC when on default branch;
-  `AUTOMATIC_REFRESH_ENABLED = true`
-- Guards hard-code Labs ref and forbid production ref
-- AI budgets: USD 2/day, USD 25/month, 25 listings/run (workflow/pipeline)
+  `scripts/run_property_pipeline_worker.py` (idle)
+- Workflow: `.github/workflows/property-pipeline-labs.yml` (**disabled** in
+  GitHub Actions; daily `schedule` removed while on hold)
+- Repository variable: `LABS_OPERATIONS_ENABLED=false` (workflow refuses runs)
+- Labs environment secret `OPENAI_API_KEY` **removed** (restore only to resume)
+- `AUTOMATIC_REFRESH_ENABLED = false` in Python + dashboard
+- Dashboard Data Operations enqueue refuses runs while on hold
+- Guards still hard-code Labs ref and forbid production ref
+- Documented AI budgets (for resume): USD 2/day, USD 25/month, 25 listings/run
 - Sotheby's excluded while BLOCKED
+
+### Resume checklist (Product Lead approval required)
+
+1. Restore `OPENAI_API_KEY` on the GitHub `labs` environment
+2. Set `LABS_OPERATIONS_ENABLED=true`
+3. Re-enable workflow `Property pipeline (Labs)`
+4. Restore daily `schedule: cron: "0 4 * * *"` in the workflow if automation is wanted
+5. Set `AUTOMATIC_REFRESH_ENABLED` / `LABS_OPERATIONS_ENABLED` code flags back to true
+6. Verify a dry-run before any paid execute
 
 ## 6. Vercel (Labs only, approval required)
 

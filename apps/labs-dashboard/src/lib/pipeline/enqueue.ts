@@ -8,12 +8,19 @@ import {
   type SourceReadinessConfig,
 } from "@/lib/domain/source-readiness";
 import { dispatchPropertyPipelineWorkflow } from "@/lib/pipeline/dispatch-github";
-import { AUTOMATIC_REFRESH_ENABLED, DAILY_CRON_UTC } from "@/lib/pipeline/schedule";
+import {
+  AUTOMATIC_REFRESH_ENABLED,
+  DAILY_CRON_UTC,
+  LABS_OPERATIONS_ENABLED,
+} from "@/lib/pipeline/schedule";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { LABS_PROJECT_REF, getSupabaseConfig } from "@/lib/supabase/config";
 
 /** Default daily AI budget; the Python worker also enforces monthly/listing limits. */
 export const PIPELINE_AI_COST_CEILING_USD = 2;
+
+const LABS_HOLD_MESSAGE =
+  "Merkado Labs is on hold. Pipeline enqueue is disabled so OpenAI spend stays on merkado-cw only. Resume requires Product Lead approval.";
 
 const STAGES = [
   "preflight",
@@ -65,6 +72,10 @@ export type EnqueueInput = {
  * Enqueue only — never scrapes, imports, or calls OpenAI inside the HTTP path.
  */
 export async function enqueuePipelineRun(input: EnqueueInput) {
+  if (!LABS_OPERATIONS_ENABLED) {
+    throw new Error(LABS_HOLD_MESSAGE);
+  }
+
   const { url } = getSupabaseConfig();
   if (!url.includes(LABS_PROJECT_REF)) {
     throw new Error("Production project is forbidden");

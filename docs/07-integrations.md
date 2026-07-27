@@ -4,20 +4,19 @@
 
 ## Automation foundation (Labs only)
 
-**Automatic refresh is armed On** (`AUTOMATIC_REFRESH_ENABLED = true` in Python
-+ TypeScript) after 2026-07-21 supervised + idempotent gates. GitHub Actions
-schedule `0 4 * * *` UTC = 00:00 America/Curacao (06:00 Amsterdam during CEST /
-05:00 Amsterdam during CET) in
-`property-pipeline-labs.yml` is armed On the default branch; first normal daily
-cron observed 2026-07-22 (run `29984863341`). Manual/`workflow_dispatch` and
-dashboard Data Operations dispatch remain available for the four Ready sources.
-Labs admin native/manual listings never enter adapters, source runs, or
-absence/removal logic. Entrypoint:
-`scripts/run_property_pipeline.py --once --execute-live`. Live scrapes use HTTP
-disk cache under `data/raw/<source_key>/cache` — not frozen
-`data/processed/*` catalogs as scheduled input. Daily AI limits: USD 2/day,
-USD 25/month, and 25 changed listings per run. Over-cap remainder stays
-`budget_deferred`. Sotheby's is blocked and excluded.
+**Labs fully on hold (2026-07-27 Product Lead).** No Labs automatic refresh,
+no Labs OpenAI spend, no paid pipeline enqueue. Live Ready inventory scrape /
+enrichment runs on **merkado-cw** only. Documented cron `0 4 * * *` UTC and AI
+budget caps remain in docs for resume; workflow schedule is removed while on
+hold. See `docs/12-deployment-runbook.md` resume checklist.
+
+Historical note: Labs previously ran four Ready sources via
+`property-pipeline-labs.yml` with `AUTOMATIC_REFRESH_ENABLED = true` after
+2026-07-21 gates. Labs admin native/manual listings never enter adapters,
+source runs, or absence/removal logic. Entrypoint when resumed:
+`scripts/run_property_pipeline.py --once --execute-live`. Daily AI limits when
+resumed: USD 2/day, USD 25/month, and 25 changed listings per run. Sotheby's
+is blocked and excluded.
 
 **AI enrichment versions (current):** prompt/schema/policy
 `listing_enrichment_v5` / `listing_enrichment_schema_v5` /

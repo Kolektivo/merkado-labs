@@ -7,10 +7,9 @@ from zoneinfo import ZoneInfo
 
 from merkado_labs.pipeline.sources import CURACAO_TZ, DAILY_CRON_UTC
 
-# Labs daily automation enabled after supervised + idempotent gates passed
-# (2026-07-21). Scheduled execution begins only when the workflow reaches the
-# default branch.
-AUTOMATIC_REFRESH_ENABLED = True
+# HOLD (2026-07-27 Product Lead): Labs fully on hold — no automatic spend.
+# Live Ready inventory runs on merkado-cw. Resume only with explicit approval.
+AUTOMATIC_REFRESH_ENABLED = False
 # 04:00 UTC == 00:00 America/Curacao == 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET)
 SCHEDULE_CRON_UTC = DAILY_CRON_UTC
 

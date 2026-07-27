@@ -1,10 +1,13 @@
 name: Property pipeline (Labs)
 
+# HOLD (2026-07-27 Product Lead): Labs fully on hold — no paid OpenAI / scrape spend.
+# Workflow is also disabled in GitHub Actions UI. Resume requires:
+# 1) Product Lead approval
+# 2) Restore OPENAI_API_KEY on the `labs` environment
+# 3) Set repository variable LABS_OPERATIONS_ENABLED=true
+# 4) Re-enable this workflow
+# 5) Restore the daily schedule block below if automation is wanted again
 on:
-  # Daily Labs cron: 04:00 UTC = 00:00 America/Curacao = 06:00 Amsterdam (CEST) / 05:00 Amsterdam (CET).
-  # Labs-only; no production / deploy / Sotheby's / CHH.
-  schedule:
-    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       trigger_type:
@@ -28,7 +31,7 @@ on:
       dry_run:
         description: Scrape and validate without writes or paid AI
         required: true
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -55,7 +58,19 @@ jobs:
       PROPERTY_AI_MONTHLY_BUDGET_USD: "25.00"
       MAX_LISTINGS_PER_DAILY_RUN: "25"
       PROPERTY_AI_MAX_LISTINGS_PER_DAILY_RUN: "25"
+      LABS_OPERATIONS_ENABLED: ${{ vars.LABS_OPERATIONS_ENABLED }}
     steps:
+      - name: Refuse runs while Labs is on hold
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${LABS_OPERATIONS_ENABLED:-false}" != "true" ]]; then
+            echo "Merkado Labs is on hold (LABS_OPERATIONS_ENABLED!=true)." >&2
+            echo "Refusing pipeline runs so OpenAI / Actions spend stays on merkado-cw only." >&2
+            echo "See docs/12-deployment-runbook.md to resume." >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
