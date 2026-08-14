@@ -1,2 +1,5 @@
 -- Merkado Labs seed file.
--- Intentionally empty until a dedicated experimental Supabase project is confirmed.
+-- Allowed project only: csaefdkpwukshtouyixg.
+-- The Rent Advance demo book is seeded from
+-- src/lib/rent-advance/seed.ts into ra_demo_state on first load.
+-- Do not put listing or production data here.

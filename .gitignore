@@ -3,46 +3,11 @@
 .env.*
 !.env.example
 
-# Python environments and generated files
-.venv/
-venv/
-env/
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-dist/
-build/
-
-# Scraped and generated data
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-!data/processed/chh_cleanup_export/
-# CHH cleanup payload exports (complete row dumps) must never be committed
-data/processed/chh_cleanup_export/**
-!data/processed/chh_cleanup_export/README.md
-# Final Labs cleanup payload exports contain complete rollback rows
-data/processed/final_labs_cleanup_export/**
-data/geo/cache/
-*.html
-*.htm
-!tests/fixtures/**/*.html
-!tests/fixtures/**/*.htm
-*.warc
-*.warc.gz
-data/**/*.[jJ][pP][gG]
-data/**/*.[jJ][pP][eE][gG]
-data/**/*.[pP][nN][gG]
-data/**/*.[wW][eE][bB][pP]
-data/**/*.[gG][iI][fF]
-*.parquet
-*.feather
-experiments/caribbeanhousehunt_sample/pilot_contract.json
+# Node / Next.js
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
 
 # Temporary files
 *.tmp
@@ -51,24 +16,16 @@ experiments/caribbeanhousehunt_sample/pilot_contract.json
 *.bak
 *.swp
 ~$*
-*.console.log
 .DS_Store
 Thumbs.db
 
-# Local UX / agent screenshot dumps (never commit)
+# Local UX / agent screenshot dumps
 **/tmp-screenshots/
 
-# Playwright / local test artifacts (repo root or nested)
+# Test artifacts
 test-results/
-**/test-results/
 playwright-report/
-**/playwright-report/
-**/coverage/
-
-# Node / Next.js build output (defensive monorepo ignores)
-**/node_modules/
-**/.next/
-**/out/
+coverage/
 
 # Local IDE configuration that may contain secrets
 .cursor/*.local.*
@@ -78,9 +35,6 @@ playwright-report/
 supabase/.temp/
 supabase/.branches/
 .vercel/
-
-# Temporary AI setup template (reference only — never canonical)
-_ai-setup-template/
 
 # Private local working material
 docs/private/

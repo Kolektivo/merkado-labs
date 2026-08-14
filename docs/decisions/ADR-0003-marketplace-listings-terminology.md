@@ -1,8 +1,14 @@
 # ADR-0003: Marketplace / Listings / Property terminology
 
-Status: Accepted
+Status: Superseded in this repo (2026-08-14)
 Date: 2026-07-24
 Owner: Product Lead
+
+**Labs note:** This ADR is history. Merkado Labs no longer holds listing
+schema, scrapers, or a listings UI. `property_listings` and related tables
+were dropped in the 2026-08-14 Rent Advance rebuild. Marketplace / Listings /
+Cars / Property vocabulary for the live storefront lives on **merkado-cw**.
+Keep this file so the rename decision is still readable.
 
 ## Context
 
@@ -48,8 +54,7 @@ discriminator without an explicit mapping layer.
 
 ## Consequences
 
-- `docs/00-docs-index.md` terminology section and related canonical docs must
-  match this ADR
-- Labs UI that still titles inventory “Properties” while the nav says
-  “Listings” is a known inconsistency for a separate UI task
+- Live marketplace vocabulary is owned by merkado-cw ADR-003.
+- Labs no longer has a listings UI, so the old “Properties vs Listings”
+  inconsistency in this repo is gone.
 - Parallel production ADR: merkado-cw `docs/decisions/ADR-003-marketplace-listings-terminology.md`

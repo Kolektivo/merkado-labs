@@ -68,9 +68,8 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
 - Never run destructive SQL without explicit approval.
 - Represent every database change in a reviewed migration file before applying.
 - Enable RLS on every table created in an exposed schema.
-- Use service-role credentials only in local backend scripts or the Labs-only
-  GitHub Action; never commit, print, log, or expose them to browser code.
-- Preserve scraped source data in raw form before normalization.
+- Use service-role credentials only in local backend scripts; never commit,
+  print, log, or expose them to browser code.
 - Do not deploy to Vercel from this repository unless explicitly instructed.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
@@ -102,8 +101,8 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
 - Move durable outcomes from completed private tasks into canonical docs.
 - Canonical product docs are `docs/00`–`docs/12` (see ADR-0001 / ADR-0002). Do
   not invent parallel numbering.
-- App-scoped `apps/labs-dashboard/AGENTS.md` and `CLAUDE.md` are Next.js
-  instructions for that app, not duplicates of this file.
+- This file is the product source of truth. The Next.js app now lives at the
+  repository root.
 
 ### Documentation Synchronization Protocol
 
@@ -156,25 +155,17 @@ Keep documentation continuous with Product Lead decisions:
 
 ## Verification
 
-Python (repository root, with venv activated):
+Python scrapers and the old Labs pipeline are **removed**. Do not reintroduce
+them. Live marketplace ingestion is merkado-cw only.
 
-- Install: `python -m pip install -e ".[dev]"`
-- Optional geo: `python -m pip install -e ".[geo]"`
-- Compile check: `python -m compileall src tests`
-- Lint: `python -m ruff check .`
-- Tests: `python -m pytest`
+Dashboard (repository root):
 
-Labs dashboard (`apps/labs-dashboard`):
-
-- Install: `npm install` (from that directory) or
-  `npm --prefix apps/labs-dashboard install`
+- Install: `npm install`
 - Development: `npm run dev`
 - Lint: `npm run lint`
 - Type check: `npm run typecheck`
 - Unit tests: `npm run test:unit`
-- Contract tests: `npm run test:contracts`
 - Build: `npm run build`
-- Browser / e2e: `npm run test:e2e` (build + Playwright)
 
 Product Lead UAT format and critical flows: `docs/11-testing-and-uat.md`.
 

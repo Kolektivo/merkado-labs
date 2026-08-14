@@ -1,169 +1,49 @@
 # 01 - Product Vision
 
-**Purpose:** Long-term product direction, separate from current live-product claims.
+**Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
+**Last updated:** August 14, 2026
 
-## 1. Core direction
+## 1. One-sentence vision
 
-**Merkado** grows from a Curaçao vehicle marketplace into a trusted hard-asset
-discovery platform. The near-term PropTech advantage is accurate, source-traceable
-**real-estate** data with structured search, transparent price provenance, and
-durable activity history.
+Merkado Labs is the working demo of **Merkado Rent Advance** (landlord) and **Merkado Direct** (holder platform): a Curaçao landlord sells a short strip of future rent claims for cash now, without taking on a loan.
 
-The real-estate MVP is not blockchain-first. It is data-quality first.
+## 2. Problem
 
-The longer-term product should help a user move from an unclear housing need to a structured Property Search Request, then continuously match that request against new and changed listings through a paid Merkado Agent.
+Private landlords on Curaçao often need a lump sum while a tenant is already in place. Conventional credit is slow, poorly matched to a performing lease, and easy to mis-label. The first live transaction, **MRA-001**, is a true sale of six months of rent receivables — not a mortgage, not a loan, and not a public investment product.
 
-## 2. Product layers
+## 3. Who it is for
 
-### Public marketplace
+| Audience | Product name they see | What they need |
+|---|---|---|
+| Landlord / operations | Merkado Rent Advance | A clear quote, a Passport, and a single purchase price |
+| Purchaser / holder | Merkado Direct | Anonymised offer facts and honest collection risk |
+| Payer / tenant | Neither brand as a finance product | Reassurance that the tenancy does not change |
+| Buildathon / partners | Labs demo | A working walkthrough without crypto theatre |
 
-Cars are live on `merkado.cw`. Real-estate browse / Search Request / What Fits Me /
-Agent / Match Reports in Labs are **prototypes**, not production-live.
+These names never appear on the same role screen. They carry different
+disclosure duties. The Labs sidebar lists both only so a walkthrough can
+switch roles.
 
-The real-estate side of the marketplace will aggregate selected direct realtor sources, normalize searchable fields, show transparent price information, and direct users to the original realtor or approved contact flow.
+**Passport** on this demo is the offer scorecard. It is not the merkado.cw
+Property Passport (listing history on a real-estate page).
 
-### Guided discovery
+## 4. What this Labs repo is
 
-Users who already know what they want can create a Property Search Request directly.
+This repository is **not** the live merkado.cw marketplace. Cars, listings, scrapers, and public browse now live in **merkado-cw**. Labs is the sandbox for the Rent Advance / Direct demo that may later sit at a surface such as `app.merkado.cw`.
 
-Users who are not yet sure can use **What Fits Me**, which turns a written
-request into an editable Property Search and explainable matches. In Labs this
-is already a working deterministic flow against public listings; production Auth
-and continuous alerts remain future work.
+The demo is off-chain on purpose: rent arrives in a Curaçao bank / foundation sub-ledger. A token would not make that receipt more true.
 
-Possible optional inputs include:
+## 5. Success for this phase
 
-- available funds or approximate down-payment range;
-- approximate income or comfortable monthly housing budget;
-- household and family needs;
-- preferred locations and property types;
-- bedrooms, outdoor space, accessibility, parking, and other needs;
-- purchase timeline;
-- willingness and capacity to renovate or perform maintenance;
-- must-haves, preferences, and dealbreakers.
+- A visitor can walk MRA-001 from quote → Passport → tenant notice → funding → monthly collections.
+- Pricing reproduces the locked pack (Cg 10,206 purchase price, 5.50% fee, ~21.6% effective annualised) and **blocks** anything over 24%.
+- The payer app never shows economics. The purchaser app never shows tenant identity.
+- Stage 0 legal questions stay visible and unresolved.
+- The Future Caribbean application can point at a working Labs demo, not a slide.
 
-The output is a recommended search range and property profile, not mortgage approval, financial advice, or a guarantee of affordability.
+## 6. What we refuse to claim
 
-### Property Search matching (future paid alerts)
-
-Labs user-facing names are **What Fits Me**, **Property Search**, **Your
-matches**, and **Match details**. “Merkado Agent” is not the current product
-label. A future paid monthly matching / alert subscription (main repository)
-may add continuous monitoring and email. Each match includes:
-
-- the matching listing;
-- why it matches the user's request;
-- important trade-offs for that specific user;
-- a dedicated Match Report with evidence-backed context;
-- actions to view the original listing or request professional help through an approved referral.
-
-The Agent does not purchase, negotiate, contact realtors, or make decisions on the user's behalf.
-
-### Intelligence layer
-
-The system preserves enough history to explain:
-
-- when a listing appeared;
-- when the source says it was originally listed;
-- how the asking price changed;
-- which currency was original;
-- which conversion rate was used;
-- when the source marked it sold;
-- when it disappeared or was removed;
-- which source and observation support each fact.
-
-This history can later support personalized Match Reports, such as whether an asking price appears high or low relative to comparable evidence, whether similar listings tend to move quickly, and which renovation or age-related trade-offs may matter for the user's profile.
-
-Intelligence products begin only after sufficient reliable history exists.
-
-### Future asset products
-
-Tokenized contracts, investment products, stablecoin payouts, or other WealthTech experiments remain separate from the Property Passport. They may reference Passport evidence later, but they do not define the Passport.
-
-## 3. Property Passport vision
-
-The Passport is an off-chain, source-backed record of listing and property activity.
-
-MVP content:
-
-- current listing facts;
-- source and realtor attribution;
-- original and benchmark currency information;
-- source listing date when available;
-- first/last detected dates;
-- price and status history;
-- sold, missing, removed, and relisted events;
-- conversion provenance and disclaimers.
-
-Later evidence layers may include reviewed cross-source matches, inspections, title records, transaction evidence, legal records, or market signals. These must never be implied before they exist.
-
-The Passport provides evidence for future Match Reports, but the personalized report and the Passport are separate products:
-
-- the Passport explains the listing's evidence and history;
-- the Match Report explains how that listing may fit one user's Property Search Request.
-
-## 4. Future user journey
-
-```text
-Visit Merkado
-  -> already knows what they want?
-      -> Yes: create Property Search Request
-      -> No: complete What Fits Me? guided intake
-  -> review and confirm Property Search Request
-  -> activate monthly Merkado Agent
-  -> receive matching listings by email
-  -> open personalized Match Report
-  -> view original listing OR request professional help
-  -> refine, pause, or cancel the Agent at any time
-```
-
-## 5. Data-source strategy
-
-MVP sources:
-
-- Keller Williams Curaçao
-- Sotheby's International Realty
-- RE/MAX
-- Moret Real Estate
-- Monumentenzorg Curaçao
-
-Each source remains independently attributable. The system must not silently merge source listings into a single property identity.
-
-## 6. Long-term moat
-
-Merkado's durable advantage is a trustworthy longitudinal dataset combined with structured user intent:
-
-- direct source observations;
-- listing lifecycle history;
-- price and currency provenance;
-- source-run quality;
-- geospatial normalization;
-- reviewed relationships between listings and real-world properties;
-- explainable market signals linked back to evidence;
-- structured Property Search Requests;
-- explainable personalized matching;
-- user feedback on which matches were useful.
-
-The moat is not a generic chatbot. It is trusted Curaçao property data plus a transparent matching and advisory layer.
-
-## Passport framing cross-links
-
-The former single Passport & intelligence document was split during docs
-standardization. Complete product framing is preserved across:
-
-| Topic | Home |
-|---|---|
-| Passport vision and future journey | this file (§3–§4) |
-| MVP Passport sections, public copy, Labs Browse detail | `03-user-flows.md` |
-| Identity model, activity events, entities | `06-data-model.md` |
-| User data / privacy principles | `08-security-and-privacy.md` |
-| Activation gate and post-activation order | `02-scope-and-decisions.md`, `10-execution-roadmap.md` |
-| Verified Labs implementation | `09-current-state.md` |
-
-### Passport definition (canonical short form)
-
-A Property Passport is an off-chain, source-traceable activity log for one source
-listing and, later, a reviewed canonical property. It is not a blockchain token,
-proof of ownership, title record, confirmed valuation, confirmed transaction
-record, or legal guarantee. Labs Passport-style pages are prototypes, not
-production merkado.cw surfaces.
+- That third-party holders may subscribe today
+- That distributions are guaranteed
+- That this is a loan, yield product, fund, or listed instrument
+- That the demo is live on merkado.cw

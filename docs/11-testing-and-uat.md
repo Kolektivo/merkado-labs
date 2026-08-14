@@ -1,111 +1,112 @@
-# Testing and Product Lead UAT
+# 11 - Testing and UAT
 
-**Purpose:** Real verification commands for this repository, plus a
-beginner-friendly Product Lead acceptance checklist.
+**Purpose:** How we verify the Rent Advance demo.
+**Last updated:** August 14, 2026
 
-**Current product state:** `docs/09-current-state.md`
-**Dashboard ops:** `docs/12-deployment-runbook.md` + `apps/labs-dashboard/README.md`
-**Safety before any write/deploy:** `docs/08-security-and-privacy.md`
-
-## Automated checks
-
-### Python (repository root)
-
-Activate the virtual environment first on Windows:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-| Check | Command |
-|---|---|
-| Install (dev) | `python -m pip install -e ".[dev]"` |
-| Optional geospatial | `python -m pip install -e ".[geo]"` |
-| Compile | `python -m compileall src tests` |
-| Lint | `python -m ruff check .` |
-| Unit / integration tests | `python -m pytest` |
-
-### Labs dashboard (`apps/labs-dashboard`)
+## Automated
 
 From the repository root:
 
 ```powershell
-npm --prefix apps/labs-dashboard install
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run build
 ```
 
-| Check | Command |
-|---|---|
-| Lint | `npm --prefix apps/labs-dashboard run lint` |
-| Type check | `npm --prefix apps/labs-dashboard run typecheck` |
-| Unit tests | `npm --prefix apps/labs-dashboard run test:unit` |
-| Contract tests | `npm --prefix apps/labs-dashboard run test:contracts` |
-| Production build | `npm --prefix apps/labs-dashboard run build` |
-| Browser / e2e | `npm --prefix apps/labs-dashboard run test:e2e` |
-| Local UI | `npm --prefix apps/labs-dashboard run dev` |
+Pricing unit tests must reproduce MRA-001 locked figures and the 24% block.
 
-Browser e2e uses installed Microsoft Edge across desktop and mobile profiles.
+## Critical flows (engineering)
 
-### What CI runs today
+1. Overview shows MRA-001 figures and three role doors. No login.
+2. Offers lists six offers; MRA-001 is Live.
+3. Get Now: cash figure first; 3-month disabled; Demonstrate 24% cap blocks the quote.
+4. Offer detail: collections only on live deals; dual control fails if the same person is chosen twice. Approval on MRA-004 is one click.
+5. Marketplace: no tenant name or address; Subscribe is closed.
+6. Pay rent: one page; headline says rent is unchanged; Cg 1,800.00 to the
+   property manager; notice in English / Nederlands / Papiamentu.
+7. Overview Reset demo asks to confirm, then restores the seed book.
+8. Sale explainer never uses interest rate, debt, or borrow — only “not a loan.”
 
-GitHub Actions workflow `property-pipeline-labs.yml` runs the Labs property
-pipeline on a schedule. It does **not** currently run Python lint/tests or
-dashboard lint/typecheck/e2e. Local and PR verification still matter.
+## Product Lead walkthrough
 
-## Critical Labs flows (manual)
+Do this on http://localhost:3000 after `npm run dev`. There is no login.
+Judge copy, clarity, and whether a landlord or tenant would misunderstand
+this as a loan. After each item, reply with what you saw if it felt wrong.
 
-Use these when the change touches the matching area. Exact routes and env
-setup: `docs/12-deployment-runbook.md` and `apps/labs-dashboard/README.md`.
+### Before you start
 
-1. **Public Browse** — `/browse` and `/browse/{id}`: listing cards, XCG-primary
-   price, English presentation, optional Dutch About, filtered Passport history.
-2. **What Fits Me** — `/what-fits-me`: natural language → editable criteria →
-   live matches → optional save to Property Search.
-3. **Native listing (admin)** — `/listings/new` and listing lifecycle under
-   Labs admin cookie (draft / publish / unpublish / sold / rented / republish).
-4. **Data Operations** — `/data-operations` and `/settings`: pipeline health;
-   do not dispatch or change schedules without approval.
-5. **Enrichment review** — `/enrichment`: review UX only; dashboard AI
-   execution is disabled.
+Click **Reset demo** on Overview and confirm **Yes, reset** so you start from
+the six seeded offers.
 
-## Product Lead UAT format
+### 1. Overview
 
-Copy this block into the task or PR. Replace placeholders with exact UI text
-and expected results.
+- You see three doors: landlord, holder, renter.
+- Buttons read **Open landlord book**, **Open marketplace**, **Pay rent**.
+- MRA-001 shows Cg 1,800 rent, six months, Cg 10,206 cash, 5.50% fee, ~21.6%.
+- “Still open” lists three legal questions in plain language.
+- The page says this is a sale of receivables, not a loan.
 
-```text
-Product Lead UAT
+### 2. Landlord book (Offers)
 
-Prep:
-1. Start the Labs dashboard: npm --prefix apps/labs-dashboard run dev
-2. Open http://localhost:3000
-3. Sign in with the Labs admin secret only if the flow needs admin pages
+- The table is first. Six rows: Live, Funding, Closed, Under review, Default, Draft.
+- **Needs attention** is collapsed unless something needs you.
+- Open **MRA-001**. You see the sale-not-loan explainer and a **Collections** tab.
+- Related-party note is on MRA-001 (family of a board member), not on MRA-004.
 
-Checks:
-1. Go to [exact page or menu path]
-   Expected: [what you should see]
-2. Do [exact action]
-   Expected: [what should happen]
-3. On phone-width or resized window, confirm [layout / tap target]
-   Expected: [readable, usable, no cut-off controls]
+### 3. Approve a waiting offer
 
-Stop and ask for help if:
-- The page errors or stays blank
-- You are asked for production credentials
-- Anything would write to merkado.cw or production Supabase
-```
+- Open **MRA-004**. Approver is already R. Girigoria.
+- Click approve. Status becomes Funding.
 
-## Roles
+### 4. Two-person release (MRA-001)
 
-| Role | What they verify |
-|---|---|
-| Agent / engineer | Automated checks + connected implementation |
-| Product Lead | UAT checklist above on real screens |
-| Security / data auditor (User Subagent) | Auth, RLS, secrets, migrations when relevant |
-| Product experience reviewer (User Subagent) | UX, responsive, accessibility after UI work |
-| Implementation verifier (User Subagent) | Independent “is it actually done?” check |
+- On MRA-001, pick the **same person twice** → it must refuse.
+- Then instruct as D. Martina and sign as A. Sambo → it must succeed.
 
-## Approval
+### 5. Record a collection (MRA-001)
 
-Do not treat automated green checks alone as Product Lead acceptance. For
-user-facing work, the Product Lead completes the UAT steps (or explicitly
-defers them) before merge or deploy.
+- Record month 1. The book updates. You can undo with Reset demo later.
+
+### 6. Create offer
+
+- **Create offer** in the sidebar. Six steps, already filled from MRA-001.
+- You can jump to **Quote** or **Review**.
+- Save as draft. A new row (MRA-007) appears. Reset will remove it.
+
+### 7. Get Now
+
+- Open **Get Now**. Choose the **six-month** term.
+- Cash figure is first. 3 / 9 / 12 month buttons stay disabled.
+- Click **Demonstrate 24% cap**. No quote is created.
+
+### 8. Holder marketplace
+
+- Open **Marketplace**. You do **not** see a tenant name, employer, or street.
+- Drafts and under-review offers are hidden.
+- **Subscribe** is closed and does not complete a purchase.
+
+### 9. Portfolio
+
+- **Portfolio** shows book-entry amounts in XCG, not a promised return.
+
+### 10. Pay rent
+
+- Headline: **Your rent is unchanged.**
+- Next payment: **Cg 1,800.00** to the property manager, reference MRA-001.
+- Switch **English / Nederlands / Papiamentu**. The notice changes.
+- You never see a fee, holder name, or return figure.
+- Confirm the payment. The page updates.
+
+### 11. Reset
+
+- Back to Overview. **Reset demo** asks “Restore the six seeded offers?”
+- After **Yes, reset**, MRA-007 is gone and MRA-004 is Under review again.
+
+### What you are judging
+
+- Would a landlord think this is a loan?
+- Would a renter think their lease or rent changed?
+- Would a holder think they can buy in today, or that collections are guaranteed?
+
+If everything looks correct, reply: `Approved, commit and push.`

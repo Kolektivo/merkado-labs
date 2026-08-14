@@ -1,265 +1,110 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** July 27, 2026
+**Last updated:** August 14, 2026 (open demo at repository root; docs aligned with merkado-cw)
 
-**Labs hold (2026-07-27 Product Lead):** Merkado Labs is **fully on hold**.
-Further product development continues on **merkado-cw**. Labs must not spend
-OpenAI tokens or run paid scrape/enrich automation.
+**Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
+property-scraper kitchen. That work lives on **merkado-cw**. This repository is
+the working **Merkado Rent Advance / Merkado Direct** demo. The Next.js app
+lives at the repository root. There is no login.
 
-Operational freeze in effect:
-- GitHub Action `Property pipeline (Labs)` **disabled**
-- Daily cron **removed** from the workflow while on hold
-- Repository variable `LABS_OPERATIONS_ENABLED=false`
-- Labs environment secret `OPENAI_API_KEY` **removed**
-- `AUTOMATIC_REFRESH_ENABLED = false` (Python + dashboard)
-- Dashboard pipeline enqueue refuses runs while on hold
+This demo is **not** live on merkado.cw. It may later sit at a surface such as
+`app.merkado.cw`. There is no public offering and no crypto in this build.
 
-Live Ready-source inventory scrape/enrichment runs on merkado-cw only
-(ADR-004 complete). Labs remains an optional sandbox archive — not deleted.
-
-**Prior Labs automation (historical):** four Ready sources previously shared a
-Labs-only orchestration path via `property-pipeline-labs.yml` with daily cron
-`0 4 * * *` UTC. That path is idle while this hold remains. Sotheby's remains
-blocked and excluded. This does not change production.
-
-**Labs admin native listing prototype `[LABS]` (2026-07-23):** admins can create
-manual-origin real-estate listings via `/listings/new` (draft → review preview →
-publish). Eligible published manuals enter the shared `public_property_listings`
-Browse/Passport read model with **User provided** provenance (no scraper URL).
-This is **not** the production authenticated seller flow on merkado.cw.
+merkado-cw remains the live cars + real-estate marketplace. Its **Property
+Passport** is listing history on a property page. This demo’s **Passport** is
+the offer scorecard. They are different products.
 
 ## 1. Production today `[LIVE]`
 
-Merkado is a Curaçao vehicle marketplace aggregator. Users browse cars and contact sellers through WhatsApp.
+Merkado on merkado.cw remains the Curaçao marketplace. Cars, listings, scrapers,
+and public browse are owned by **merkado-cw**. This Labs repo does not operate
+them.
 
-Live production does **not** currently include:
+Live production does **not** currently include Merkado Rent Advance or Merkado
+Direct as a public product.
 
-- real-estate listings;
-- property search or property detail pages;
-- Property Passports;
-- property checkout, escrow, title transfer, or Kadaster verification;
-- on-chain property records;
-- property market reports, agents, or alerts.
+## 2. Labs demo today `[LABS]`
 
-## 2. Property work in Labs `[LABS]`
+Verified from the repository root (lint, typecheck, unit tests, and a browser
+walkthrough on 2026-08-14). The demo is open. No login, settings, or admin page.
 
-The isolated Labs project currently has:
+| Surface | What a visitor sees |
+|---|---|
+| Overview `/` | Three role doors with labelled actions, MRA-001 locked figures, open gates, Reset demo |
+| Offers `/originate` | Six-offer book first, status filters, XCG totals, collapsed Needs attention |
+| Create offer `/originate/new` | Six-step wizard prefilled from the MRA-001 shape |
+| Get Now `/originate/simulator` | 6-month pricing; 3/9/12 disabled; 24% cap blocks a quote |
+| Offer detail `/originate/MRA-*` | Sale-not-loan, Passport, collections, dual control |
+| Marketplace `/offers` | Anonymised cards; drafts and under-review hidden; Contribute closed |
+| Portfolio `/portfolio` | Merkado Direct book-entry in XCG |
+| Pay rent `/pay` | One page; “Your rent is unchanged.”; Cg 1,800.00 to the property manager; English / Nederlands / Papiamentu |
 
-- property, source, listing, observation, price, neighbourhood, signal, and pilot-contract tables;
-- immutable observation patterns + listing activity events;
-- private raw HTML evidence (`listing-raw-evidence`) for RE/MAX catalog;
-- AI enrichment jobs/proposals with Labs human review fields (service-role only);
-- Property Search Request / Agent entitlement / Match Report preview tables;
-- geospatial neighbourhood boundaries and assignment;
-- Labs dashboard with ops pages, **Data Operations**, Browse as **public preview**,
-  Enrichment review, Search Request / What Fits Me / Agent prototypes;
-- cleaned internal dashboard navigation: Overview, Listings, Sources,
-  Enrichment, Quality, Data Operations, Settings; Browse under Explore/Public
-  preview (separate from Prototypes);
-- internal routes protected by the signed Labs admin cookie; public
-  Browse/Passport reads `public_property_listings` / public-effective projection;
-- **English is the default public website language** for Browse / Passport /
-  titles, summaries, filters, navigation, and SEO. Stable public URLs are
-  `/browse/{uuid}`. Scrapers keep raw source title/description; AI generates
-  English `display_title` / `display_summary` / description. Deterministic
-  English fallbacks never leave a blank public title. **About this property**
-  additionally supports Dutch (`display_description_nl`) via a compact
-  English/Nederlands toggle — not full-site localization. Dutch↔English search
-  synonyms are deterministic (no AI per query).
-- RE/MAX Curaçao as the first end-to-end direct-source adapter (catalog contract
-  **220**; Labs audit **223** retained source identities — operational drift;
-  adapter **v0.4.1**;
-  **199/220** coordinates; Terra initial backfill complete; pipeline ready /
-  cron On / dispatch available; normal Refresh & enrich = new/changed only);
-- Keller Williams: Labs audit **105** retained identities; live complete catalogs
-  discover ~**102** (offline import preview still gates the historical **84**
-  artifact only — not a scheduled input). Crawl-Delay 20 sequential. Earlier
-  bounded/partial adapter runs had falsely marked 35 KW listings `removed` on
-  2026-07-17; restored from last valid pre-absence status without deleting
-  immutable events. Pipeline ready / cron On / dispatch available.
-- Moret Real Estate adapter **v0.2.0**: catalog contract **71**, Labs audit
-  **72** retained/public identities; coordinates available for the contract set;
-  Terra coverage complete; pipeline ready / cron On / dispatch available;
-  Refresh & enrich = new/changed only; live Dutch `/properties/` catalog;
-- AI enrichment **v5 / policy v5** is current in Labs across KW, RE/MAX, Moret,
-  and Monumentenzorg (Sotheby's out of scope): prompt/schema/policy
-  `listing_enrichment_v5` / `listing_enrichment_schema_v5` /
-  `enrichment_policy_v5` with v3/v4 history retained. English public presentation
-  fields (`display_title`, `display_summary`, English overview) are part of the
-  v5 contract. Title convention: `N-Bedroom Type [feature] in Neighbourhood`.
-  AI never overwrites protected facts (price, currency, beds/baths, areas,
-  coords, IDs, status, raw source title/description). Human review is
-  exceptional — genuine conflicts only. Decisions distinguish auto_applied /
-  redundant / rejected / needs_attention (v5 field decisions:
-  auto_applied **3679** / rejected **386** / redundant **361** /
-  needs_attention **9** across **9** listings). Public view rows (snapshot
-  2026-07-21 / `d2abb557`: **286**) expose English `display_title` /
-  `display_summary` / `display_description`, optional Dutch
-  `display_description_nl` (EN/NL About coverage **283**), effective
-  neighbourhood, feature attrs, and image galleries. SEO / JSON-LD use English
-  presentation + XCG when available. Dashboard AI job execution is disabled;
-  pipeline AI runs under budgets (USD 2/day, USD 25/month, 25 listings/run)
-  when the worker executes. One-time English presentation migration **applied**
-  for **289** active Ready listings (~USD **7.83**, under USD **15** /
-  **320**-call caps) and was **not rerun** for bilingual work. Targeted
-  one-time Dutch description backfill **applied** for **285** public listings
-  (~USD **2.42**, under USD **5** / **320**-call caps); post-run selection is
-  zero-billable (`selected_count=0` / `already_complete=285`). Unchanged
-  bilingual hashes skip at zero cost. Future new/changed enrichment generates
-  English presentation then Dutch description in the same job pass (Dutch
-  failure does not remove English). Zero-cost policy rematerialization does not
-  create billable AI work. Labs public + bilingual view migrations are applied
-  in Labs; production merkado.cw first public RE browse/detail slice is
-  **implemented in the merkado-cw repo + production DB** (2026-07-24;
-  `/real-estate`, parallel tables, Labs sync). It is **not** marked live on
-  merkado.cw until Vercel deploy + Product Lead UAT. Navbar/homepage chrome,
-  seller Auth, and What Fits Me remain deferred.
-- Labs **What Fits Me** + Property Search matching (`rules_v1`) — **working in
-  Labs**, not live on merkado.cw. Flow: natural-language intake (EN/NL) →
-  editable criteria → immediate matches from current `public_property_listings`
-  → optional confirm to save a Property Search and reopen **Your matches**.
-  Matching is deterministic and explainable (Strong / Good / Possible). XCG is
-  the only primary matched price. Editing saved criteria returns the request to
-  draft for re-confirmation. “Merkado Agent” is **not** the current user-facing
-  product name. No subscription, billing, paywall, entitlement enforcement,
-  continuous monitoring, or real email exists — those remain future
-  main-repository work.
-- Labs admin **Add property** native listing prototype (`listing_origin=manual`):
-  draft/edit/publish/unpublish/sold/rented/republish under the Labs admin cookie;
-  ordered images in Storage bucket `listing-images` (max **12** images **per
-  listing**; reorder requires an exact unique permutation of stored paths;
-  exactly one primary when images exist); immutable activity events
-  (`submitted`, `published`, `material_field_changed`, `price_changed`,
-  `unpublished`, `marked_sold`, `marked_rented`, `republished`) written
-  atomically with status via `apply_native_listing_lifecycle`. Manual rows are
-  excluded from source-absence / removal logic and do not auto-run AI enrichment.
-  Public inventory note (audited 2026-07-23): scraped `public_eligible` /
-  `public_property_listings` / Browse UI are all **283**. The older snapshot
-  **286** public view vs **283** EN/NL About (2026-07-21 / `d2abb557`) was
-  About-coverage lag on three newly public Remax rows — not a Browse/UI
-  mismatch. Current **283** vs that **286** is expected inventory drift.
-- Passport presentation (2026-07-23 cleanup): shared filtered timeline shows one
-  `First seen by Merkado`, genuine **XCG-only** asking deltas, lifecycle and
-  native events. Hidden (immutable): currency-session switches, FX/benchmark-only
-  updates, non-anchor foreign display wobble, enrichment/ops, `SYSTEM_REPAIR`,
-  dual-writer duplicates, duplicate first_seen, identical observations, ±1
-  jitter, ambiguous anchors. Browse cards are XCG-only; original foreign asking
-  may appear once in Passport provenance. Admin **Price provenance** keeps
-  original amount/currency/rate/provider. Public inventory remains **283**.
-- Pricing audit (2026-07-23): all **385/405** priced listings have a positive XCG
-  benchmark and reviewed provenance; the other **20** are source no-price rows,
-  all public-ineligible. Current providers contain no test/manual rates. The
-  **51** immutable historical `fixed_test`/manual-test observations remain for
-  provenance but are excluded from Passport pricing. Fifty apparent USD peg
-  mismatches were reviewed as valid source-official XCG amounts paired with
-  rounded USD alternates, not stale benchmarks.
-- Final Labs cleanup (2026-07-23): complete payload export + SHA-256 manifest
-  preceded deletion of one demo rental contract, its unreferenced asset, six
-  dry-run pipeline runs (including 42 stage / 71 item / 68 event child rows),
-  and one unstarted queued AI job with no proposals. All 405 listings and their
-  observations/events/prices/evidence, canary enrichment, real source runs, and
-  the Search/Agent/15 Match Report demo fixtures were retained. The cleanup
-  rerun is an idempotent no-op.
+Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
+other retired payer subpages) redirect to Overview, Offers, or Pay rent.
 
-The previous CaribbeanHouseHunt (CHH) workflow is retired and removed from the
-active repository. CHH-derived Labs rows were deleted from Labs on 2026-07-16
-after a verified rollback export. Monumentenzorg adapter **v0.2.0** is Ready
-(5 imported, coordinates 0/5; pipeline ready / cron On / dispatch available).
-Live Labs inventory (audited 2026-07-23): KW **105**,
-Remax **223** (live complete catalog contract **220**), Moret **72** (catalog
-contract **71**), Monumentenzorg **5**; **405 total** and
-`public_property_listings` **283**. The historical 2026-07-21 snapshot was 286
-public rows with EN/NL About-this-property on 283; do not reuse 286 as the
-current count. Supervised run `e34eb779-…` spent ~USD **0.96** on **25** Remax
-new/changed; idempotent rerun spent **USD 0** (budget-deferred remainder **71**).
-Next active source task: **Sotheby's** remains access-route **BLOCKED** after
-2026-07-20 recon (not Ready; excluded from Ready pipelines; official
-feed/partner API required).
+### Locked MRA-001 figures (verified)
 
-## 3. Current property MVP direction `[WIP]`
+- Monthly rent **Cg 1,800.00** (180000 cents)
+- Term **6 months**
+- Gross receivables **Cg 10,800.00**
+- Fee **5.50% = Cg 594.00**
+- Purchase price **Cg 10,206.00**
+- Effective annualised **≈ 21.6%** (under the 24% hard cap)
+- Screens show **Cg / XCG only** (no USD equivalent)
 
-Approved direct sources:
+A weak-score + related-party quote prices at **7.00%** and is blocked by the
+24% cap.
 
-1. Keller Williams Curaçao
-2. Sotheby's International Realty
-3. RE/MAX
-4. Moret Real Estate
-5. Monumentenzorg Curaçao
+### Privacy walls (verified in the browser)
 
-Core MVP rules:
+- Purchaser marketplace shows district, band, rent-to-market, term. No tenant
+  name, employer, street address, or income figure.
+- Subscribe is closed and does not complete a purchase.
+- Drafts are not shown as marketplace offers.
+- Payer app shows rent to **Property Management B.V.** (Option A). No fee,
+  holder, or return figures.
+- Purchaser pages load an anonymised card only — not the full payer file.
 
-- Build one direct source adapter per website.
-- Run adapters manually and in bounded mode during validation.
-- Show only active listings with a known positive price.
-- Preserve the original amount and original currency.
-- Display XCG as the primary displayed, search, and filter price; show the
-  original amount and currency as secondary. For true foreign→XCG conversions,
-  show an indicative tip/icon (not a repeated inline disclaimer sentence).
-- Convert USD at `1 USD = 1.79 XCG`.
-- Convert EUR using ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`).
-- Tip copy for converted values: `Indicative equivalent based on known information.`
-- Preserve source listing dates separately from Merkado detection dates.
-- Append lifecycle events instead of only overwriting current values.
-- Keep `sold` separate from `removed`.
-- Treat the Property Passport as an off-chain activity log.
+### Working demo actions (verified)
 
-## 4. Not built yet
+- Record collection is offered only on live, collecting, or defaulted offers.
+- Dual-control release fails if instructor and signatory are the same person
+  (app check plus a trigger on `ra_demo_state`).
+- Dual-control release succeeds when D. Martina instructs and A. Sambo signs.
+- Independent approval moves under-review offer MRA-004 to funding.
+  Related-party disclosure is on live offer MRA-001, not on MRA-004.
+- Create offer saves a new draft (MRA-007 in the walkthrough; Reset removes it).
+- Payer language toggle switches English / Dutch / Papiamentu copy.
+- Payer can confirm the next Cg 1,800.00 payment.
+- Overview Reset demo asks to confirm, then restores the six seeded offers.
 
-- Production-ready live-crawl adapters for all five sources (KW/Moret/
-  Monumentenzorg catalogs were activated from verified offline complete-catalog
-  artifacts, not continuous live crawls; Sotheby's remains access-route BLOCKED).
-  Shared pipeline scrapes with HTTP disk cache under `data/raw/<source_key>/cache`
-  (`use_cache=True`) — not frozen `data/processed` catalogs as scheduled input.
-- Scheduled GitHub Actions runs for the property pipeline on the **default
-  branch** (code flag and workflow schedule are already On; feature-branch
-  schedules do not fire — see § intro)
-- Production merkado.cw property surface: first `/real-estate` slice coded +
-  DB synced in merkado-cw (awaiting Vercel deploy / UAT before calling live)
-- Public property browse/detail UI on `merkado.cw` (Labs `/browse` remains the
-  Labs preview; production routes exist in merkado-cw pending deploy)
-- Reliable multi-source property entity resolution
-- Confirmed sale prices
-- Automated valuation or sold-probability models
-- Weekly intelligence reports
-- Production What Fits Me / Property Search alerts (Labs matching works; Agent
-  branding, paywall, email, and production Auth remain future work)
-- Matching-listing email notifications / real billing
-- Production account ownership, Auth/RLS, subscriptions, paywall/entitlement
-  enforcement, notification delivery, and merkado.cw integration. Whether to
-  show only three matches and require payment to unlock more is **[OPEN]**, not
-  implemented in Labs.
+## 3. Database `[LABS]`
 
-## 5. Required accuracy language
+Allowed project only: `csaefdkpwukshtouyixg`.
 
-Use:
+Migration `supabase/migrations/20260814120000_rent_advance_rebuild.sql` dropped
+the old listing / pipeline tables and created `ra_*` tables with RLS on and no
+`anon` / `authenticated` grants. Demo state is stored in `ra_demo_state` and
+seeded on first load. Service role is server-only.
 
-- `Experimental Merkado Labs dataset, separate from merkado.cw.`
-- `Direct-source property ingestion is being built.`
-- `The Passport is an off-chain listing activity log.`
-- `Converted prices are indicative, not contractual.`
-- `Last known listing price. The actual sale price may differ.`
+A later Labs migration, `20260814140000_ra_demo_state_dual_control.sql`, adds a
+trigger that rejects same-person releases inside that JSON book.
 
-Never claim:
+## 4. What was removed from this repo
 
-- verified ownership;
-- confirmed sale price;
-- automated property identity resolution;
-- on-chain Property Passports;
-- a CHH partnership or active CHH dependency.
+- Python scrapers and the property pipeline
+- Browse / listings / enrichment / What Fits Me dashboard pages
+- Listing-specific GitHub Actions
+- Root Python package and tests
+- The nested `apps/labs-dashboard` app (the demo is now the repository root)
+- Login, Settings, admin cookie, readiness, audit, and extra payer subpages
+- Historical listing migrations from the working tree
 
-## Local verification notes (docs standardization 2026-07-23)
+## 5. What this is not
 
-Read-only filesystem verification (no database or external calls):
-
-- App routes for Browse, native listing wizard, What Fits Me, Data Operations,
-  Enrichment, Quality, Settings match `03-user-flows.md`.
-- **Mismatch:** legacy redirects to `/quality?tab=lifecycle` and
-  `/quality?tab=location` exist, but the Quality page does not currently consume
-  `tab` query params. Behavior: user lands on Quality; tab deep-links are inert.
-- **Mismatch:** `/agent` remains a live internal entitlements page and is not in
-  the primary sidebar. Product naming still treats “Merkado Agent” as non-current
-  user-facing label (`02` / `10`).
-- Live inventory counts in this file were **not** re-queried against Supabase
-  during docs standardization (forbidden for this task). Treat figures as
-  last-documented values from this document’s prior verification dates.
+- Not live on merkado.cw
+- Not a loan, yield product, fund, or public offering
+- Not a wallet or USDC product
+- Not authorised for third-party subscribe until M.1.2 and M.1.4 are closed
+  in writing

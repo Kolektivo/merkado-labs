@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** July 23, 2026
+**Last updated:** August 14, 2026
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -50,96 +50,63 @@ Never:
 5. Represent every approved database change in a reviewed migration file.
 6. Enable RLS on every table created in an exposed schema.
 7. Never run destructive SQL without explicit approval.
-8. Preserve scraped source data in raw form before normalization.
-9. Run adapters manually and bounded before scheduling.
-10. Never create missing/removal events from failed or partial runs.
-11. Never commit secrets. Keep `.env` files local and ignored. Only
+8. Never commit secrets. Keep `.env` files local and ignored. Only
     `.env.example` placeholder names may be documented in the repository —
     never real credential values.
-12. Prefer dry-run first for policy rematerialization; refuse writes while
-    `property_pipeline_runs` is active. Zero-cost reeval must not call OpenAI or
-    alter billable input checksums.
-13. Never invent live inventory counts in reports — use contracts, dry-run
-    artifacts, or verified queries.
+9. Personal data in the demo must be placeholders. Do not commit real landlord,
+    tenant, or bank details.
+10. Purchaser screens must not expose tenant identity, employer, or address.
 
-## 3. Labs admin authentication (verified locally)
+## 3. Demo access
 
-- Shared secret: `LABS_ADMIN_SECRET` (server env).
-- Login: `POST /api/admin/login` → signed httpOnly cookie `labs_admin_session`
-  (HMAC-SHA256, ~12h TTL, `sameSite=lax`, `secure` in production).
-- Page gate: `src/proxy.ts` — public `/login` and `/browse`; other pages require
-  session. `/api/*` uses per-route session asserts.
-- Native listing writes use service-role server APIs behind the Labs admin cookie.
-  They are **not** production user Auth and must never sync to merkado.cw.
-- Public Browse/Passport uses the publishable Labs key against
-  `public_property_listings` only.
+- The demo is fully open. There is no login page and no admin cookie.
+- Reset demo is on Overview so a walkthrough can restore the seeded book.
 
-## 4. Authorization and RLS (summary)
+## 4. Authorization and RLS
 
-- Core property tables have RLS enabled; hardened migrations revoke anon access
-  from internal tables.
-- Public read path is the `public_property_listings` view (effective fields only).
-- AI jobs/proposals are service-role oriented; anon must not access internal AI
-  tables.
-- Native listing write RPCs are granted to `service_role`.
-- Inspect actual migrations under `supabase/migrations/` before changing policy.
+- Every `ra_*` table has RLS enabled.
+- `anon` and `authenticated` have no grants. Browser code never talks to these
+  tables directly.
+- Server components and server actions use the Labs service role. Browser
+  code never receives that key.
+- Dual-control release is rejected if instructor and signatory are the same person
+  (application check on every save, and a database trigger on `ra_demo_state`).
 
-See also `06-data-model.md` § RLS and public/admin access.
+## 5. Retired pipeline safety
 
-## 5. CHH retirement safety
+The property pipeline, scrapers, and public listing browse have been removed from
+this repository. Do not restore them here. Live marketplace ingestion is
+merkado-cw only.
 
-CHH must remain removed from active code, workflows, configuration, UI, tests,
-source registration, and Labs data. Do not restore a runnable CHH fallback.
-Historical evidence only: local `docs/private/research/` (gitignored; experiment
-log, richer-harvest audit, decision history). Approved CHH retirement rules remain
-in this file and related canonical docs.
-
-Before any similar data cleanup in future:
-
-- confirm project reference;
-- produce affected counts per table;
-- create export/checksum rollback evidence;
-- delete in dependency-safe order;
-- run integrity, RLS, test, and dashboard checks.
+The 2026-08-14 Labs schema rebuild dropped the old listing tables after Product
+Lead instruction to reuse this repo for Rent Advance. Do not point any leftover
+script at those names.
 
 ## 6. Deployment and technology safety
 
-- Labs dashboard may only use a **separate** Labs Vercel project with root
-  `apps/labs-dashboard` and Labs publishable env vars.
+- Labs dashboard may only use a **separate** Labs Vercel project with the
+  repository root and Labs publishable env vars.
 - Do not link this directory to the production Merkado Vercel project.
 - Do not create, link, change environment variables, or deploy without explicit
   repository-owner approval.
 - Do not add a new frontend surface, browser automation, AI framework, vector
-  database, or knowledge-graph technology without an explicit task. The existing
-  Labs dashboard and Terra enrichment path are already approved.
-- Keep work focused on Curaçao marketplace experiments.
+  database, or knowledge-graph technology without an explicit task.
+- Keep work focused on the Curaçao Rent Advance demo.
 
 Operational detail: `12-deployment-runbook.md`.
 
-## 7. User data and privacy principles (guided discovery)
+## 7. Privacy walls
 
-From Property Passport / intelligence framing — apply before production Auth
-launch:
-
-- Ask only for information needed to improve the search.
-- Prefer approximate ranges over exact salary, savings, or debt values.
-- Clearly mark optional questions.
-- Explain how answers affect recommendations.
-- Do not infer sensitive personal attributes.
-- Do not use family, income, or financial inputs for unrelated advertising.
-- Allow users to edit and delete their search profile.
-- Separate user-provided facts from Merkado-derived recommendations.
-- Define retention, consent, cancellation, and email preference rules before
-  launch.
-
-Labs What Fits Me today is an admin-session prototype without production customer
-profiles.
+- Payer screens: no fee, purchase price, holders, or scheduled holder figures.
+- Purchaser screens: no tenant name, employer, address, or exact income.
+- No public offering copy. Sole-holder mode until written opinions exist.
+- Related-party family facts are disclosed to holders; they are not an excuse
+  for softer arrears.
 
 ## 8. Service-role credential rules
 
-Service-role credentials may be used only by local backend scripts or the
-Labs-only GitHub Action. Never commit, print, log, or expose them to browser
-code.
+Service-role credentials may be used only by Next.js server code and local
+backend scripts. Never commit, print, log, or expose them to browser code.
 
 ## 9. Private local documentation (`docs/private/`)
 

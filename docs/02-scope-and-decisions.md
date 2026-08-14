@@ -1,313 +1,66 @@
 # 02 - Scope and Decisions
 
-**Purpose:** Single source of truth for the current MVP scope, resolved decisions, accuracy constraints, and remaining partner questions.
+**Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
+**Last updated:** August 14, 2026
 
 ## 1. MVP goal
 
-Replace the retired CHH pipeline with direct, source-specific property ingestion for five approved Curaçao sources. Prioritize data accuracy, price provenance, listing lifecycle history, and a simple off-chain Passport.
+Ship a working **Merkado Rent Advance / Merkado Direct** demo in this repository, seeded from **MRA-001**, using the existing Labs dashboard design system and Labs Supabase only.
 
-The future What Fits Me? and Merkado Agent journey is an approved product direction.
-Labs dashboard demos of Search Request / What Fits Me / Agent / Match Reports are
-prototypes only — not live on merkado.cw and not activation-complete.
+Property scrapers, Browse, enrichment, and pipeline work are **out of this repo**. They live on merkado-cw.
 
-Remaining activation gates: Sotheby's access route **BLOCKED** (2026-07-20 recon;
-not Ready — official affiliate feed/export or Anywhere partner API with written
-approval required; excluded from Ready pipelines). Four Ready adapters (KW,
-RE/MAX, Moret, Monumentenzorg) previously shared the Labs property pipeline.
-**Labs is fully on hold (2026-07-27 Product Lead):** no Labs cron, no Labs
-OpenAI spend, no paid pipeline enqueue — live Ready inventory runs on
-merkado-cw (ADR-004). Labs admin native listing prototype remains separate from
-production Auth seller listing. AI proposals historically used exception-based
-**v5** policy (`enrichment_policy_v5`). Labs prototypes (Search Request /
-What Fits Me / Agent / Match Reports) exist in the dashboard archive;
-production activation on merkado.cw remains the active product path.
-
-## 2. MVP deliverables
+## 2. In scope
 
 | Priority | Deliverable | Completion test |
 |---|---|---|
-| P0 | Remove CHH | No CHH workflow, runtime code, config, UI dependency, active tests, source registration, or Labs records remain. |
-| P0 | Source-neutral foundation | Shared adapter, snapshot, run-health, currency, and lifecycle contracts exist without CHH naming. |
-| P0 | Additive Labs migration | Currency provenance, source-run health, lifecycle states, and immutable events can be stored safely. |
-| P1 | RE/MAX adapter | Existing proof becomes a complete direct listing adapter with fixtures, dry run, price handling, and lifecycle support. |
-| P1 | Four remaining adapters | Keller Williams, Sotheby's, Moret, and Monumentenzorg each produce reviewed normalized snapshots. |
-| P1 | Public eligibility | Public queries return only active, priced, attributable listings. |
-| P1 | Currency normalization | Original value remains intact and XCG benchmark provenance is stored. |
-| P1 | Lifecycle engine | First seen, source listed, price changes, sold, missing, removed, and relisted events are represented safely. |
-| P2 | Dashboard updates | Source health, currency, eligibility, lifecycle, and exclusions can be inspected. |
-| P2 | Passport/read model | Safe listing history and provenance are available to the app. |
-| P2 | Labs admin native listing | Admin can draft/publish a manual-origin property with images, preview, and Passport events (not production Auth). |
-| [LABS] Working | What Fits Me | Natural-language intake → editable Property Search criteria → live `rules_v1` matches from public-eligible listings → optional save. Production Auth/alerts remain planned. |
-| Planned (production) | Authenticated user listing | merkado.cw seller Auth/RLS flow (`List a property` / My properties). |
-| Future (main repo) | Paid matching / alerts | Formerly framed as “Merkado Agent”; paywall, subscriptions, email, and production Auth remain unbuilt. Labs uses Property Search + Your matches. |
-| Deferred | Broader reports, alerts, AVM | Start only after the data-history activation gate is met. |
+| P0 | Pricing engine | Reproduces MRA-001 cents and IRR; blocks >24% with no override |
+| P0 | Originate book | Six demo offers with statuses, Passport, collections, dual control |
+| P0 | Landlord disclosure | Net advance, gross forgone, flat fee, effective rate, sale-not-loan, no other charge, non-recourse |
+| P0 | Payer journey | XCG rent, what does not change, EN/NL/Papiamentu notice |
+| P0 | Purchaser journey | Anonymised cards; subscribe gated by M.1.2 / M.1.4 |
+| P1 | Open gates | Stage 0 questions visible on Overview |
+| P1 | Labs schema | RLS on; service-role only; no production project |
 
-## 3. Resolved decisions
+## 3. Out of scope
+
+- Public Merkado Direct marketing page
+- Third-party subscription
+- Secondary transfer
+- 3-month term pricing
+- On-chain / USDC / wallets / tokens as the product
+- Property series (enum reserved, not built)
+- Scrapers, Terra, What Fits Me, public listing browse
+- Deploy to Vercel unless the Product Lead asks
+
+## 4. Resolved decisions
 
 | Topic | Decision |
 |---|---|
-| Data sources | Five approved direct sources, one adapter each |
-| CHH | Remove completely from active architecture and Labs data |
-| App structure | Refactor the existing Labs app, no second app or repository |
-| Git | Feature branch recommended only for rollback, not for parallel architecture |
-| Public eligibility | Active listings with a valid positive price only |
-| Benchmark currency | XCG |
-| USD conversion | Fixed `1 USD = 1.79 XCG` |
-| EUR conversion | ECB daily USD-per-EUR × 1.79 (`ecb_eur_usd_xcg_peg`), cached once per run |
-| Original price | Never overwritten by converted values |
-| Listing dates | Source date and Merkado first-seen date remain separate |
-| Sold | Requires explicit source signal |
-| Removed | Requires consecutive successful complete snapshots with absence |
-| Passport | Off-chain listing/property activity log |
-| AI review model | Exception-based (`enrichment_policy_v5`): high-confidence evidenced gap-filling fields auto-apply; English public presentation + optional Dutch About-this-property; Dutch/English synonym normalization is deterministic; source/map duplicates are `redundant` (not rejected); confidence-alone and subjective marketing reject quietly; only genuine unresolved conflicts show **Needs review**; unsupported/protected/noisy proposals reject; production migration remains paused. Historical v4 / v4.1 / v4.2 retained for audit. |
-| Guided discovery | Labs What Fits Me parses EN/NL text into editable criteria, matches live public listings, then optionally saves a Property Search. Production user accounts remain planned. |
-| Paid matching / alerts | Future main-repository work (not Labs user-facing “Merkado Agent”) |
-| Match Reports | Personalized and evidence-backed; must show reasons, trade-offs, confidence, and limitations |
-| Professional help | Future referral CTA from a match; provider types and commercial model still open |
-| Intelligence | Deferred until enough reliable history exists |
-| Cross-source matching | Reviewed later, never automatic in MVP |
+| Landlord name | Merkado Rent Advance |
+| Holder platform | Merkado Direct · series Rent Advance |
+| Instrument | Digital Participation Right (book-entry in this demo) |
+| Commercial form | True sale of receivables (*koop en cessie*) |
+| Currency | XCG cents; USD display-only at 1.79 |
+| Approved term | 6 months only |
+| Fee model | Single % of gross receivables; no flat fees |
+| Related-party | Explicit +25 bp; independent approver; never cheaper than market |
+| Cap | 24% effective annualised, engine-enforced |
+| Crypto | Not in this demo |
+| Production marketplace | merkado-cw only |
+| Supabase | Labs `csaefdkpwukshtouyixg` only |
 
-## 4. Reality check
+## 5. Open questions (must stay visible)
 
-| Avoided claim | Correct description |
-|---|---|
-| Real-estate marketplace is live | Real estate is Labs/WIP + production browse/seller slice in progress; cars are live |
-| Five direct scrapers are running | Four Ready adapters (KW, RE/MAX, Moret, Monumentenzorg): pipeline ready / cron On (default-branch schedule observed) / dispatch available; Sotheby's remains BLOCKED |
-| Passport is verified/on-chain | Passport is an off-chain provenance and activity record |
-| Sold price is known | Last known asking price may be known; sale price is not confirmed |
-| Removed means sold | Removed means absent from the source after confirmation |
-| Property identity is resolved | Source listings remain separate unless reviewed |
-| AI valuation exists | Any current signal is experimental and limited |
-| What Fits Me? determines affordability | It proposes a search range from user-provided inputs; it is not financial advice or mortgage approval |
-| Merkado Agent guarantees a good purchase | It provides explainable matches and context; users and professionals make the final decision |
-| Likely to sell fast is a fact | It is an evidence-backed estimate with confidence and limitations |
-
-## 5. Out of scope for the current direct-source MVP
-
-- CHH fallback or active archive workflow
-- confirmed sale-price claims
-- public 5% sale-price estimates
-- automated valuation model
-- automatic cross-source property merging
-- Kadaster/title verification
-- KYC/AML, escrow, checkout, or asset payments
-- blockchain Passport
-- Production What Fits Me customer journey (Labs matching flow works; production Auth does not)
-- Production Property Search account ownership/consent flow (Labs admin session exists)
-- monthly paid matching subscription and billing
-- personalized email matching / alerts
-- production Match Report delivery (Labs live matching + 15 retained fixtures exist)
-- professional-help referral marketplace
-- weekly reports
-- sold-probability models
-
-These are not rejected ideas. Labs What Fits Me matching works against real
-public listings; paywall, alerts, email, billing, and production Auth remain
-future main-repository work after the data activation gate.
-
-### Labs What Fits Me readiness (updated 2026-07-23)
-
-| Demonstration step | Labs status | Production boundary |
+| ID | Question | Blocks |
 |---|---|---|
-| 1. Describe what you want | Ready: natural-language EN/NL intake | No customer profile or financial-advice workflow |
-| 2. Review Property Search criteria | Ready: editable hard requirements vs soft preferences | No production account ownership |
-| 3. See live matches | Ready: deterministic `rules_v1` against `public_property_listings` | No paywall or locked result limit |
-| 4. Save Property Search / Your matches | Ready: confirm persists request + match reports; reopen preserves results | No billing, email alerts, or continuous monitor |
+| M.1.2 | DPR characterisation | All third-party holder activity |
+| M.1.3 | Stichting object and board | All collection flow |
+| M.1.4 | Investor-funds licensing | Public Merkado Direct |
+| M.2.1 | Assignment of future rent claims | Document template sign-off |
+| M.3.1 | Related-party arm’s-length file | Nothing if +25 bp is kept |
 
-The fixture request `4ec62242-3921-4aa5-be9c-97e557f32585`, entitlement
-`3c6f97f7-9e30-4738-ac36-1f3a1af45067`, and its 15 reports are retained Labs
-demonstration data. They are not customer records.
+## 6. Vocabulary
 
-## 6. Intelligence activation gate `[DEFERRED]`
+Use: sale, purchase price, receivables, assignment, collections, discount, fee, advance, participation, holder, distribution.
 
-Suggested gate, to confirm with the partner:
-
-- 8–12 weeks of stable history;
-- all five sources operating reliably;
-- above 95% successful runs;
-- stable external identifiers;
-- reviewed currency accuracy;
-- enough priced observations per useful segment;
-- false-removal behavior understood;
-- evidence-backed price-positioning method tested;
-- privacy and consent model approved for user financial/profile inputs;
-- subscription, cancellation, email, and referral rules specified.
-
-## 7. Future What Fits Me? and Agent boundaries
-
-### What Fits Me?
-
-- Inputs must be user-provided and optional where possible.
-- Collect ranges instead of unnecessary exact financial data.
-- The user must review and confirm the resulting Property Search Request.
-- The result must clearly state that it is guidance, not lending or financial advice.
-
-### Merkado Agent
-
-- Monthly subscription.
-- Email is the first delivery channel.
-- User can edit, pause, or cancel the Agent.
-- Matching must be based on the confirmed Property Search Request.
-- Each match must explain why it was selected.
-- The Agent does not contact, negotiate, reserve, or buy property autonomously.
-
-### Match Report
-
-May include, when supported by evidence:
-
-- price position relative to suitable comparison evidence;
-- whether similar listings tend to move quickly;
-- notable price changes or listing history;
-- likely renovation or maintenance considerations;
-- strengths, weaknesses, and trade-offs for the user's profile;
-- confidence level, sample size, evidence window, and limitations.
-
-It must never fabricate sale prices, condition, renovation costs, legal status, or affordability.
-
-## 8. Remaining open questions
-
-1. What exact domains and listing sections are approved for each source?
-2. Should scheduled automation begin only after repeated manual validation? Current recommendation: yes.
-3. Should the default removal threshold be two consecutive successful runs for all sources, or configurable per source? Current recommendation: configurable, default two.
-4. Should sold listings remain accessible only on detail/Passport pages, or also in a separate sold archive?
-5. Which EUR exchange-rate provider is approved and how often should it refresh? **Resolved:** ECB daily USD-per-EUR × 1.79, cached once per source run (`ecb_eur_usd_xcg_peg`).
-6. Is the `000`/`500` ending heuristic approved only as a low-confidence currency hint? Current recommendation: yes, never override explicit source currency.
-7. What exact listing types are expected from Monumentenzorg?
-8. Which source follows RE/MAX in implementation order after reconnaissance?
-9. What monthly price and trial model should the Merkado Agent use?
-10. What fields are required versus optional in What Fits Me?
-11. Should users enter approximate income, comfortable monthly budget, available cash, or a combination?
-12. How often should Agent emails be sent: immediate, daily digest, or user-selected?
-13. Which professional-help categories launch first: buyer agent, mortgage advisor, inspector, contractor, notary, or another provider?
-14. Is professional-help monetization a referral fee, lead fee, partnership, or initially free?
-15. What confidence threshold is required before saying a listing is high/low priced or likely to move quickly?
-16. **[OPEN]** Should free users see only three matches and pay to unlock more,
-    or should the initial product use another trial/value boundary? Labs does
-    not implement either behavior.
-
-## Preserved Passport intelligence framing
-
-The following sections are preserved from former `06-property-passport-and-intelligence.md` so unique product rules are not lost. They do not expand current MVP scope beyond what is already approved above.
-
-## 5. Intelligence foundation in MVP
-
-Build now:
-
-- immutable source observations;
-- original and normalized currency data;
-- source and detection dates;
-- current status plus activity events;
-- source-run health;
-- geospatial/neighbourhood assignment where evidence allows;
-- source-neutral entities and relationships;
-- evidence links for future calculations.
-
-The intelligence layer begins with reliable history, not AI features.
-
-## 7. Personalized Match Report
-
-Each recommended listing should have a dedicated report with two layers.
-
-### A. Listing evidence
-
-Grounded in the Property Passport and source data:
-
-- original listing facts and source;
-- asking price and currency provenance;
-- listing age and activity history;
-- price changes;
-- source status;
-- neighbourhood and property-type context;
-- data-quality warnings and missing information.
-
-### B. User-specific perspective
-
-Grounded in the confirmed Property Search Request:
-
-- why the property matches;
-- which needs it satisfies;
-- which preferences it misses;
-- important trade-offs;
-- possible maintenance or renovation implications when evidenced;
-- how the property compares with the user's preferred age, size, location, and budget;
-- whether the user may need professional review before proceeding.
-
-### C. Future evidence-backed signals
-
-Only when the required data and confidence exist:
-
-- `Below typical asking range`, `Within typical asking range`, or `Above typical asking range`;
-- likelihood that comparable listings attract attention or disappear quickly;
-- supply scarcity for the user's requested segment;
-- relevant neighbourhood or property-type trends;
-- confidence level and reason for the assessment.
-
-Example style:
-
-> This property fits your preferred Salinja area and is within your target range. Similar listings in this segment tend to move relatively quickly. The building appears older than your preferred profile, so maintenance or renovation should be reviewed before making a decision.
-
-This example is a writing pattern, not permission to state unsupported facts.
-
-### D. Actions
-
-- `View original listing`
-- `Save or dismiss`
-- `Adjust my Property Search Request`
-- `Get professional help`
-
-Professional-help referrals may later include approved buyer agents, mortgage advisors, property inspectors, contractors, notaries, or other specialists. The provider model and commercial terms require a separate decision.
-
-## 8. Matching and evidence rules
-
-A match should distinguish:
-
-- **Hard filters:** requirements that normally exclude a listing;
-- **Soft preferences:** desirable but negotiable criteria;
-- **Trade-offs:** meaningful differences the user should understand;
-- **Evidence strength:** how much reliable data supports the statement.
-
-Every calculated signal or Match Report must state or retain:
-
-- source set;
-- observation window;
-- included/excluded statuses;
-- conversion method;
-- comparison segment;
-- sample count;
-- calculation timestamp;
-- confidence level;
-- known limitations.
-
-AI may summarize evidence and personalize wording. It must not create missing facts.
-
-Do not claim:
-
-- exact market value without an approved valuation method;
-- confirmed selling speed from one missing listing;
-- confirmed condition from listing age or photos alone;
-- renovation cost without professional evidence;
-- legal/title status without verified records;
-- affordability or mortgage eligibility;
-- guaranteed investment returns.
-
-## 13. Other deferred intelligence products
-
-- automated weekly market reports;
-- sold-probability estimates for removed listings;
-- automated valuation or ROI claims;
-- AI-selected comparables without a reviewed method;
-- automatic cross-source entity resolution.
-
-## 14. Future evolution
-
-Possible later layers:
-
-- reviewed multi-source property linking;
-- confirmed transaction evidence;
-- Kadaster or notary evidence;
-- inspection/condition records;
-- comparables and market signals;
-- user-submitted corrections with review;
-- legal or zoning records.
-
-Blockchain may support separate future contract or investment products. The Passport remains the off-chain evidence and activity record.
+Never use in product copy or schema names: loan, borrow, lend, interest rate, repayment, principal, debt, yield, guaranteed, fund (as product).

@@ -21,7 +21,7 @@ Adopt the standard AI Product Development OS documentation tree:
 - Local-only (gitignored) working material: `docs/private/` for meetings,
   research, detailed tasks, and scratch (see **ADR-0002**, which supersedes the
   earlier tracked `meetings/` / `research/` / `tasks/` layout)
-- Keep app-scoped `AGENTS.md` / `CLAUDE.md` / README beside `apps/labs-dashboard`
+- Keep product `AGENTS.md` / `CLAUDE.md` / README at the repository root (the Next.js app lives there now)
 - Keep executable safety enforcement in `.cursor/rules/`
 - Remove `docs/labs/` after verified content coverage
 - Continuous sync: approved intent → vision/scope/flows/architecture; verified
