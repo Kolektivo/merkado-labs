@@ -22,6 +22,20 @@ Required env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 
+## Vercel (Labs demo host)
+
+The Next.js app lives at the **repository root**. The Vercel project
+`merkado-labs` (Kolektivo Labs) must keep **Root Directory empty**. Do not set
+it to `apps/labs-dashboard` — that folder was removed.
+
+Production URL after a successful Git deploy: https://merkado-labs.vercel.app
+
+Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY` (server only)
+
 ## Database
 
 Migrations live in `supabase/migrations/`. Only the Rent Advance rebuild and

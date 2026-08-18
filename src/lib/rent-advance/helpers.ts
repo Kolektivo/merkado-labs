@@ -84,6 +84,17 @@ export function collectedCount(offer: Offer): number {
   return offer.receivables.filter((row) => row.status === "received").length;
 }
 
+export function propertyCoverSrc(type: string): string {
+  const normalized = type.trim().toLowerCase();
+  if (normalized.includes("villa")) return "/properties/villa.webp";
+  if (normalized.includes("town")) return "/properties/townhouse.webp";
+  if (normalized.includes("studio")) return "/properties/studio.webp";
+  if (normalized.includes("apartment") || normalized.includes("flat")) {
+    return "/properties/apartment.webp";
+  }
+  return "/properties/house.webp";
+}
+
 export function outstandingCents(offer: Offer): number {
   return offer.receivables
     .filter((row) => row.status !== "received")
@@ -304,14 +315,10 @@ export function bookTotals(book: DemoBook) {
       sum + offer.receivables.filter((row) => row.status !== "received").length,
     0,
   );
-  const collectedThisMonth = book.offers.reduce((sum, offer) => {
-    return (
-      sum +
-      offer.collections
-        .filter((row) => row.receivedOn.startsWith("2026-08"))
-        .reduce((inner, row) => inner + row.amountCents, 0)
-    );
-  }, 0);
+  const collectedToDate = book.offers.reduce(
+    (sum, offer) => sum + distributionsReceivedCents(offer),
+    0,
+  );
   const live = book.offers.filter((offer) =>
     ["live", "collecting", "funding"].includes(offer.status),
   ).length;
@@ -320,7 +327,7 @@ export function bookTotals(book: DemoBook) {
     totalAdvanced,
     outstanding,
     remainingCollections,
-    collectedThisMonth,
+    collectedToDate,
     live,
     draft: book.offers.filter((offer) => offer.status === "draft").length,
     review: book.offers.filter((offer) => offer.status === "under_review").length,

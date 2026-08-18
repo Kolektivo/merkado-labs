@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 14, 2026 (open demo at repository root; docs aligned with merkado-cw)
+**Last updated:** August 18, 2026 (open demo at repository root; docs aligned with merkado-cw)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -27,16 +27,16 @@ Direct as a public product.
 ## 2. Labs demo today `[LABS]`
 
 Verified from the repository root (lint, typecheck, unit tests, and a browser
-walkthrough on 2026-08-14). The demo is open. No login, settings, or admin page.
+walkthrough on 2026-08-18). The demo is open. No login, settings, or admin page.
 
 | Surface | What a visitor sees |
 |---|---|
 | Overview `/` | Three role doors with labelled actions, MRA-001 locked figures, open gates, Reset demo |
-| Offers `/originate` | Six-offer book first, status filters, XCG totals, collapsed Needs attention |
+| Offers `/originate` | Six-offer book first; no collection-progress column; next action is text; collected-to-date totals |
 | Create offer `/originate/new` | Six-step wizard prefilled from the MRA-001 shape |
 | Get Now `/originate/simulator` | 6-month pricing; 3/9/12 disabled; 24% cap blocks a quote |
 | Offer detail `/originate/MRA-*` | Sale-not-loan, Passport, collections, dual control |
-| Marketplace `/offers` | Anonymised cards; drafts and under-review hidden; Contribute closed |
+| Marketplace `/offers` | Anonymised photo cards; Property score (not Passport); no agency or rent-to-market line; Contribute closed |
 | Portfolio `/portfolio` | Merkado Direct book-entry in XCG |
 | Pay rent `/pay` | One page; “Your rent is unchanged.”; Cg 1,800.00 to the property manager; English / Nederlands / Papiamentu |
 
@@ -58,8 +58,9 @@ A weak-score + related-party quote prices at **7.00%** and is blocked by the
 
 ### Privacy walls (verified in the browser)
 
-- Purchaser marketplace shows district, band, rent-to-market, term. No tenant
-  name, employer, street address, or income figure.
+- Purchaser marketplace shows a property photo, district, property score, payer
+  band, and term. No tenant name, employer, street address, agency, or income
+  figure. Rent-to-market sits inside the property score.
 - Subscribe is closed and does not complete a purchase.
 - Drafts are not shown as marketplace offers.
 - Payer app shows rent to **Property Management B.V.** (Option A). No fee,

@@ -26,7 +26,6 @@ import {
 import {
   attentionItems,
   bookTotals,
-  collectedCount,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
@@ -92,7 +91,7 @@ export default async function OriginatePage({
     <div className="space-y-6">
       <PageHeader
         title="Offers"
-        description="The landlord book. Open a row to approve, collect, or release."
+        description="The landlord book. Open a reference to approve, collect, or release."
         actions={
           <Button asChild>
             <Link href="/originate/new">
@@ -132,7 +131,7 @@ export default async function OriginatePage({
       <Card className="gap-0 py-0">
         {offers.length ? (
           <CardContent className="overflow-x-auto px-0">
-            <Table className="min-w-[860px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+            <Table className="min-w-[760px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Ref</TableHead>
@@ -140,7 +139,6 @@ export default async function OriginatePage({
                   <TableHead>Payer</TableHead>
                   <TableHead className="text-right">Advance</TableHead>
                   <TableHead>Term</TableHead>
-                  <TableHead>Collected</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Next action</TableHead>
                 </TableRow>
@@ -168,22 +166,14 @@ export default async function OriginatePage({
                     </TableCell>
                     <TableCell>{offer.months} months</TableCell>
                     <TableCell>
-                      {collectedCount(offer)} of {offer.months}
-                    </TableCell>
-                    <TableCell>
                       <StatusBadge tone={statusTone(offer.status)}>
                         {statusLabel(offer.status)}
                       </StatusBadge>
                     </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/originate/${offer.reference}`}
-                        className="text-sm font-medium hover:underline"
-                      >
-                        {offer.nextAction
-                          .replace(/^Pull month/, "Record month")
-                          .replace(/^Chase subscriptions$/, "Wait for remaining funding")}
-                      </Link>
+                    <TableCell className="text-sm">
+                      {offer.nextAction
+                        .replace(/^Pull month/, "Record month")
+                        .replace(/^Chase subscriptions$/, "Wait for remaining funding")}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -220,14 +210,13 @@ export default async function OriginatePage({
             tip: "Sold rent that has not been collected yet.",
           },
           {
-            label: "Collected this month",
-            value: <Money cents={totals.collectedThisMonth} />,
-            tip: "Rent received in the current calendar month.",
+            label: "Collected to date",
+            value: <Money cents={totals.collectedToDate} />,
+            tip: "All rent received so far across the book.",
           },
           {
             label: "Live offers",
             value: totals.live,
-            helper: `${totals.remainingCollections} collections remaining`,
             tip: "Offers that are live or already collecting.",
           },
         ]}

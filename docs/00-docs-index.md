@@ -3,7 +3,7 @@
 This folder holds the working context for Merkado Labs **Rent Advance** and
 **Merkado Direct** demo work.
 
-**Last updated:** August 14, 2026
+**Last updated:** August 18, 2026
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -19,7 +19,7 @@ Merkado Direct. “Merkado Premium” is retired.
 - **Digital Participation Right (DPR)** = instrument name (book-entry in this demo).
 - **Passport (this demo)** = offer scores (rent vs market, condition, access).
   This is **not** the merkado.cw **Property Passport** (listing history on a
-  property page).
+  property page). Holder-facing marketplace cards label this **Property score**.
 - **Marketplace / Listings / Cars / Property** on merkado.cw remain defined in
   merkado-cw. This Labs repo no longer operates the listing pipeline.
   Rent Advance is **not** live on merkado.cw.

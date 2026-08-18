@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { SearchX } from "lucide-react";
@@ -17,7 +18,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { SOLE_HOLDER_GATE } from "@/lib/rent-advance/copy";
-import { statusLabel, statusTone } from "@/lib/rent-advance/helpers";
+import {
+  propertyCoverSrc,
+  statusLabel,
+  statusTone,
+} from "@/lib/rent-advance/helpers";
 import { listMarketplaceCards } from "@/lib/rent-advance/store";
 import type { ScoreBand } from "@/lib/rent-advance/scoring";
 
@@ -69,10 +74,10 @@ export default async function OffersPage({
       <form className="flex flex-wrap items-end gap-3" method="get">
         <label className="grid gap-1 text-sm">
           <span className="flex items-center gap-1 text-muted-foreground">
-            Passport band
-            <HelpTip label="Passport band">
-              Property quality grade from A to D. Holders see the grade, not
-              the street address.
+            Property score
+            <HelpTip label="Property score">
+              Property quality grade from A to D. Rent versus market is already
+              inside this score. Holders see the grade, not the street address.
             </HelpTip>
           </span>
           <select
@@ -128,18 +133,27 @@ export default async function OffersPage({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map((card) => (
-            <Card key={card.reference} className="flex flex-col">
+            <Card key={card.reference} className="flex flex-col pt-0">
+              <Image
+                src={propertyCoverSrc(card.type)}
+                alt={`${card.type} in ${card.district}`}
+                width={1600}
+                height={1000}
+                sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                className="aspect-[16/10] h-auto w-full object-cover"
+              />
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge tone={statusTone(card.status)}>
                     {statusLabel(card.status)}
                   </StatusBadge>
                   <StatusBadge tone="neutral">
-                    Passport {card.passportScore} · {card.passportLabel}
+                    Property score {card.passportScore} · {card.passportLabel}
                   </StatusBadge>
                 </div>
                 <CardTitle className="mt-2 text-lg">
-                  {card.district} · {card.type} · {card.bedrooms} beds
+                  {card.district} · {card.type} · {card.bedrooms}{" "}
+                  {card.bedrooms === 1 ? "bed" : "beds"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col gap-2 text-sm">
@@ -149,19 +163,11 @@ export default async function OffersPage({
                     Payment-history grade. Holders never see the renter’s name.
                   </HelpTip>
                 </p>
-                <p className="flex items-center gap-1.5">
-                  Rent-to-market {Math.round(card.rentToMarket * 100)}%
-                  <HelpTip label="Rent-to-market">
-                    Contract rent versus the local market estimate. Below 100%
-                    means the rent is cheaper than nearby listings.
-                  </HelpTip>
-                </p>
                 <p>{card.months} months</p>
                 <p>
                   <Money cents={card.fundedCents} compact /> of{" "}
                   <Money cents={card.offeringCents} compact /> taken
                 </p>
-                <p className="text-xs text-muted-foreground">Via {card.agency}</p>
               </CardContent>
               <CardFooter>
                 <Button asChild size="sm">

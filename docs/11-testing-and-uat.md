@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Rent Advance demo.
-**Last updated:** August 14, 2026
+**Last updated:** August 18, 2026
 
 ## Automated
 
@@ -50,6 +50,10 @@ the six seeded offers.
 ### 2. Landlord book (Offers)
 
 - The table is first. Six rows: Live, Funding, Closed, Under review, Default, Draft.
+- There is no **Collected** column and no “3 of 6” progress. The **Advance**
+  column is the cash already paid to the landlord.
+- **Next action** is plain text, not a link. Open an offer from the **Ref**.
+- The totals include **Collected to date**, not collected this month.
 - **Needs attention** is collapsed unless something needs you.
 - Open **MRA-001**. You see the sale-not-loan explainer and a **Collections** tab.
 - Related-party note is on MRA-001 (family of a board member), not on MRA-004.
@@ -83,6 +87,8 @@ the six seeded offers.
 ### 8. Holder marketplace
 
 - Open **Marketplace**. You do **not** see a tenant name, employer, or street.
+- Each card has a house photo at the top and says **Property score**, not Passport.
+- Cards do **not** show “Via …” or a separate rent-to-market line.
 - Drafts and under-review offers are hidden.
 - **Subscribe** is closed and does not complete a purchase.
 

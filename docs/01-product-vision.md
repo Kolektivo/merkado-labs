@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 14, 2026
+**Last updated:** August 18, 2026
 
 ## 1. One-sentence vision
 
@@ -25,7 +25,8 @@ disclosure duties. The Labs sidebar lists both only so a walkthrough can
 switch roles.
 
 **Passport** on this demo is the offer scorecard. It is not the merkado.cw
-Property Passport (listing history on a real-estate page).
+Property Passport (listing history on a real-estate page). Holder-facing
+marketplace cards say **Property score**.
 
 ## 4. What this Labs repo is
 

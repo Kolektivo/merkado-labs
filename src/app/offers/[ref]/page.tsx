@@ -49,11 +49,12 @@ export default async function BuyerOfferPage({
             {statusLabel(offer.status)}
           </StatusBadge>
           <StatusBadge tone="neutral">
-            Passport {offer.passport.total} · {offer.passportLabel}
+            Property score {offer.passport.total} · {offer.passportLabel}
           </StatusBadge>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
-          {offer.district} · {offer.type} · {offer.bedrooms} beds
+          {offer.district} · {offer.type} · {offer.bedrooms}{" "}
+          {offer.bedrooms === 1 ? "bed" : "beds"}
         </h1>
         <p className="text-sm text-muted-foreground">
           Offer {offer.reference}. District only — no street address, tenant
@@ -91,7 +92,8 @@ export default async function BuyerOfferPage({
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p>
-                {offer.district} · {offer.type} · {offer.bedrooms} beds ·{" "}
+                {offer.district} · {offer.type} · {offer.bedrooms}{" "}
+                {offer.bedrooms === 1 ? "bed" : "beds"} ·{" "}
                 {offer.interiorM2} m²
               </p>
               <p>{offer.summary}</p>
