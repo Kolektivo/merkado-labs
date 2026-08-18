@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 14, 2026
+**Last updated:** August 18, 2026
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -51,15 +51,17 @@ Never:
 6. Enable RLS on every table created in an exposed schema.
 7. Never run destructive SQL without explicit approval.
 8. Never commit secrets. Keep `.env` files local and ignored. Only
-    `.env.example` placeholder names may be documented in the repository —
-    never real credential values.
+   `.env.example` placeholder names may be documented in the repository —
+   never real credential values.
 9. Personal data in the demo must be placeholders. Do not commit real landlord,
-    tenant, or bank details.
+   tenant, or bank details.
 10. Purchaser screens must not expose tenant identity, employer, or address.
 
 ## 3. Demo access
 
 - The demo is fully open. There is no login page and no admin cookie.
+- The Merkado account mock is fictional Labs UI. It does not reuse
+  production auth, cookies, middleware, or profile queries.
 - Reset demo is on Overview so a walkthrough can restore the seeded book.
 
 ## 4. Authorization and RLS
@@ -79,8 +81,8 @@ this repository. Do not restore them here. Live marketplace ingestion is
 merkado-cw only.
 
 The 2026-08-14 Labs schema rebuild dropped the old listing tables after Product
-Lead instruction to reuse this repo for Rent Advance. Do not point any leftover
-script at those names.
+Lead instruction to reuse this repo for the Rent Advance / Direct demo. Do not
+point any leftover script at those names.
 
 ## 6. Deployment and technology safety
 
@@ -91,24 +93,38 @@ script at those names.
   repository-owner approval.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
-- Keep work focused on the Curaçao Rent Advance demo.
+- Keep work focused on the Curaçao Direct / Pay demo.
+- Do not install a real wallet or Safe dependency in this task.
+- No real transaction can be initiated from any control.
 
 Operational detail: `12-deployment-runbook.md`.
 
 ## 7. Privacy walls
 
 - Payer screens: no fee, purchase price, holders, or scheduled holder figures.
-- Purchaser screens: no tenant name, employer, address, or exact income.
+- Purchaser screens: no tenant name, employer, address, contact, or exact income.
+- Landlord screens: no holder wallet or Safe address.
 - No public offering copy. Sole-holder mode until written opinions exist.
 - Related-party family facts are disclosed to holders; they are not an excuse
   for softer arrears.
 
-## 8. Service-role credential rules
+## 8. Mock wallet and payment-link safety
+
+- Mock addresses must be obviously fictional and unusable for real funds.
+- Never put secrets or sensitive identity in a URL.
+- Payment deep-link IDs in this demo are fictional. Production links need
+  opaque, scoped, expiring authorization.
+- Do not silently report a successful saved payment if Labs persistence is
+  unavailable.
+- Do not invent an explorer URL. Show an explorer link only when
+  `cryptoConfig.explorerBaseUrl` is provided.
+
+## 9. Service-role credential rules
 
 Service-role credentials may be used only by Next.js server code and local
 backend scripts. Never commit, print, log, or expose them to browser code.
 
-## 9. Private local documentation (`docs/private/`)
+## 10. Private local documentation (`docs/private/`)
 
 `docs/private/` is a **local-only**, **gitignored**, **non-canonical** workspace.
 Per Product Lead decision (ADR-0002), **all** of the following are local-only:

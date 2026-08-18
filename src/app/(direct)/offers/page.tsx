@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { SearchX } from "lucide-react";
 
+import { ThemeMerkado } from "@/components/theme-merkado";
+
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
@@ -51,12 +53,12 @@ export default async function OffersPage({
   const district = one(params, "district");
   const published = await listMarketplaceCards();
   const cards = published
-    .filter((card) => (band ? card.passportBand === band : true))
+    .filter((card) => (band ? card.propertyBand === band : true))
     .filter((card) => (district ? card.district === district : true));
   const districts = [...new Set(published.map((card) => card.district))].sort();
 
   return (
-    <div className="space-y-6">
+    <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Marketplace"
         description="District and grade only. No name, employer, street, or income."
@@ -148,7 +150,7 @@ export default async function OffersPage({
                     {statusLabel(card.status)}
                   </StatusBadge>
                   <StatusBadge tone="neutral">
-                    Property score {card.passportScore} · {card.passportLabel}
+                    Property score {card.propertyScore} · {card.propertyLabel}
                   </StatusBadge>
                 </div>
                 <CardTitle className="mt-2 text-lg">
@@ -178,6 +180,6 @@ export default async function OffersPage({
           ))}
         </div>
       )}
-    </div>
+    </ThemeMerkado>
   );
 }

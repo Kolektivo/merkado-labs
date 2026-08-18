@@ -1,0 +1,101 @@
+# ADR-0005 — Buildathon Direct + Pay demo
+
+**Status:** Accepted  
+**Date:** 2026-08-18
+
+## Context
+
+The August 2026 Labs rebuild (ADR-0004) delivered a working off-chain Rent
+Advance walkthrough split into a landlord product, a holder platform, and a
+one-click XCG payer page. The Buildathon needs one coherent prototype now:
+Merkado Direct as the umbrella, Merkado Pay as a renter payment-link, a
+Labs-only account mock, and shared fictional state — while legal, network,
+Safe, and production architecture decisions stay open.
+
+## Decision
+
+- Treat **Merkado Direct** as the customer-facing umbrella for My Offers,
+  Create Offer, Get Now, Marketplace, and Portfolio. Do not prominently
+  brand a separate Merkado Rent Advance product.
+- Add **Merkado Pay** as a mocked USDC-only payment-link. No real wallet
+  prompt, signature, RPC, SDK, token transfer, Safe transaction, or
+  blockchain write.
+- Add a fictional Labs **Merkado account** (My Payments, Apps). Do not
+  reuse production auth, cookies, or profiles.
+- Keep one JSON `DemoBook` in `ra_demo_state` with `normalizeBook()` for
+  older payloads. No new migration.
+- Use deterministic stable IDs. Do not create a token, NFT, transferable
+  position, or secondary market. `externalTokenId` may be null only.
+- Present holder distributions as automatic in this demo. No Claim button.
+- Keep the pricing engine on raw Listing Score and Payer Score. Derived
+  Property Score is presentation-only.
+- Expose a typed `PaymentProvider` so Luis can replace the mock adapter
+  later. Network, chain ID, USDC contract, Safe, and explorer stay
+  data-driven and unselected. Luis and Luuk own those choices.
+- Do not connect production Supabase, users, or merkado.cw.
+
+## Options considered
+
+### Option A: Multi-surface Labs demo with a mock provider (chosen)
+
+- Benefits: Explainable live walkthrough; shared state; Luis has a typed
+  replacement seam; no premature network lock-in.
+- Risks: Viewers may mistake mocked Pay for a real wallet. Mitigate with
+  demo-only labelling and fictional addresses.
+- Product impact: One story instead of three disconnected apps.
+- Technical impact: JSON book extension only; no new dependency.
+
+### Option B: Keep the isolated XCG walkthrough until legal and chain
+decisions close
+
+- Benefits: Less surface area.
+- Risks: The Buildathon cannot show the intended ecosystem.
+- Product impact: Fails the approved handoff.
+- Technical impact: None.
+
+### Option C: Install a real wallet/Safe stack now
+
+- Benefits: Closer to production mechanics.
+- Risks: Forces a network, usable addresses, and legal claims we cannot
+  make. Forbidden by the handoff.
+- Product impact: Unsafe for a public demo.
+- Technical impact: New dependencies and production-adjacent secrets.
+
+## Reason
+
+The Product Lead approved a believable prototype now, with mocked crypto
+and open legal gates, rather than waiting for chain selection or shipping
+a real wallet.
+
+## Consequences
+
+- Positive: Direct, Pay, and account share one book; quote → offer → pay
+  → portfolio is one story; Luis has a documented replacement path.
+- Negative: “Automatic distribution” and payment allocation are
+  demonstrated states, not production mechanics.
+- Follow-up: Luis and Luuk select network, native USDC, Safe services,
+  and allocation design. Counsel still owns M.1.2 / M.1.3 / M.1.4.
+
+## Reversal or migration
+
+Revert customer copy and hide Pay/account routes if the umbrella naming
+is withdrawn. The mock provider can be deleted when a real adapter ships
+in a later approved task. JSON fields remain optional via normalization.
+
+## Relationship to ADR-0004
+
+ADR-0004 remains accepted for removing scrapers and hosting the Labs demo
+in this repository. ADR-0005 supersedes ADR-0004 only where they conflict:
+
+- customer brand split (Rent Advance vs holder-only Direct)
+- “no crypto in this demo” as a product stance (mocked USDC is now in
+  scope; real crypto is still out)
+- XCG-only payer page as the final renter experience
+
+Do not rewrite ADR-0004.
+
+## Approval
+
+- Product Lead: approved Buildathon handoff, 2026-08-18
+- Technical owner: Merkado Labs agent implementation
+- Date: 2026-08-18

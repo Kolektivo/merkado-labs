@@ -25,6 +25,8 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 
+import { ThemeMerkado } from "@/components/theme-merkado";
+
 import { ContributeGate } from "./contribute-gate";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +41,7 @@ export default async function BuyerOfferPage({
   if (!offer) notFound();
 
   return (
-    <div className="space-y-6">
+    <ThemeMerkado className="space-y-6">
       <Button variant="ghost" size="sm" asChild>
         <Link href="/offers">← All offers</Link>
       </Button>
@@ -49,7 +51,7 @@ export default async function BuyerOfferPage({
             {statusLabel(offer.status)}
           </StatusBadge>
           <StatusBadge tone="neutral">
-            Property score {offer.passport.total} · {offer.passportLabel}
+            Property score {offer.propertyScore} · {offer.propertyLabel}
           </StatusBadge>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">
@@ -74,7 +76,7 @@ export default async function BuyerOfferPage({
 
       <Tabs defaultValue="passport">
         <TabsList variant="line">
-          <TabsTrigger value="passport">Passport</TabsTrigger>
+          <TabsTrigger value="passport">Property Score</TabsTrigger>
           <TabsTrigger value="comparables">Comparables</TabsTrigger>
           <TabsTrigger value="payer">Payer</TabsTrigger>
           <TabsTrigger value="terms">Terms</TabsTrigger>
@@ -84,9 +86,10 @@ export default async function BuyerOfferPage({
           <Card>
             <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-2">
-                Passport {offer.passport.total}/100 · {offer.passportLabel}
-                <HelpTip label="Passport">
-                  Property quality grade. Street address is never shown here.
+                Property Score {offer.propertyScore}/100 · {offer.propertyLabel}
+                <HelpTip label="Property Score">
+                  Derived from Listing Score and rent-to-market. Street address
+                  is never shown here.
                 </HelpTip>
               </CardTitle>
             </CardHeader>
@@ -104,7 +107,9 @@ export default async function BuyerOfferPage({
                 <ScoreRow label="Accessibility" value={offer.passport.accessibility} />
               </dl>
               <p className="text-muted-foreground">
-                Rent-to-market {Math.round(offer.rentToMarket * 100)}% of market.
+                {offer.marketDataAvailable
+                  ? "Rent-to-market is included in the Property Score."
+                  : "Market data unavailable."}{" "}
                 Street address is not shown.
               </p>
             </CardContent>
@@ -151,8 +156,6 @@ export default async function BuyerOfferPage({
             <CardContent className="space-y-2 text-sm">
               <p>{offer.payer.bandLabel}</p>
               <p>On-time {offer.payer.onTimePercent}%</p>
-              <p>Employment type · {offer.payer.employmentStatus}</p>
-              <p>Affordability band · {offer.payer.rentToIncomeBand}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -168,7 +171,6 @@ export default async function BuyerOfferPage({
                 Funded <Money cents={offer.fundedCents} /> of{" "}
                 <Money cents={offer.offeringCents} /> offering
               </p>
-              <p>Via {offer.agency}</p>
               <div>
                 <p className="mb-2 font-medium">
                   Six-month distribution schedule · scheduled, not promised
@@ -207,7 +209,7 @@ export default async function BuyerOfferPage({
       </Tabs>
 
       {canShowContribute(offer.status) ? <ContributeGate /> : null}
-    </div>
+    </ThemeMerkado>
   );
 }
 

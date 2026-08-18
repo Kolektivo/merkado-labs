@@ -1,14 +1,18 @@
 # 06 - Data Model
 
-**Purpose:** Entities, money, and lifecycle for the Rent Advance demo.
-**Last updated:** August 14, 2026
+**Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
+**Last updated:** August 18, 2026
 
 ## 1. Money
 
-- Store XCG as integer cents. No floats in the pricing path.
-- Screens show **XCG / Cg only**. The 1.79 peg exists in code for later
-  display; this demo does not show a USD equivalent (same as merkado.cw).
+- Store XCG as integer cents. No floats in the pricing or payment path.
+- Store USDC as integer atomic units with six decimals.
+  `usdcAtomic = round_half_up(xcgCents * 1_000_000 / 179)` at peg 1.79.
+- Direct operations screens show **XCG / Cg**. Pay and My Payments show
+  USDC as the primary value and XCG as supporting rent.
 - Round fees half-up to the cent.
+
+MRA-001 Pay conversion: XCG 1,800 → 1,005,586,592 atomic → **1,005.59 USDC**.
 
 ## 2. Pricing
 
@@ -18,24 +22,83 @@ fee               = round_half_up(gross × fee_rate)
 purchase_price    = gross − fee
 ```
 
-Effective annualised cost is the IRR of “cash in at t=0, rent forgone at t=1…N”, then `(1+i)^12 − 1`. If that value is above **0.24**, no offer is created.
+Effective annualised cost is the IRR of “cash in at t=0, rent forgone at
+t=1…N”, then `(1+i)^12 − 1`. If that value is above **0.24**, no offer is
+created. There is no override.
 
-MRA-001 locked result: rent 180000 cents, 6 months, 5.50% → fee 59400, purchase 1020600, effective ≈ 21.57%.
+MRA-001 locked result: rent 180000 cents, 6 months, 5.50% → fee 59400,
+purchase 1020600, effective ≈ 21.57%.
 
-## 3. Entities
+Pricing inputs: monthly rent, term, **Listing Score**, **Payer Score**,
+related-party flag. Property Score is not an input.
 
-Series → Offer (transaction) → Receivables / Collections / Releases / Documents / Holders  
-Offer also has Property, Lease, Payer file, Passport scores, Checklist.
+## 3. Property Score
 
-`property` series type exists on `ra_series` so the platform is not hardcoded to receivables. It is not implemented.
+```
+rentToMarketRatio = contractualMonthlyRent / estimatedMarketMonthlyRent
+```
 
-## 4. Lifecycle
+Lower is more favourable. Multipliers:
+
+- ratio <= 0.70 → 1.10
+- ratio > 0.70 and <= 0.85 → 1.05
+- ratio > 0.85 and <= 1.00 → 1.00
+- ratio > 1.00 and <= 1.15 → 0.95
+- ratio > 1.15 → 0.90
+
+```
+propertyScore = clamp(round(clamp(listingScore, 0, 100) * multiplier), 0, 100)
+```
+
+Missing, zero, negative, or non-finite market rent uses multiplier 1.00 and
+an explicit “market data unavailable” state.
+
+Examples: Listing Score 80 and ratio 0.60 → Property Score 88. Listing
+Score 95 and ratio 0.60 caps at 100.
+
+## 4. Entities
+
+Series → Offer (transaction) → Receivables / Collections / Releases /
+Documents / Holders / Payment requests / Distributions / Ledger
+transactions.
+
+Offer also has Property, Lease, Payer file, Listing Score (`passport.total`),
+and checklist.
+
+Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
+`paymentRequestId`, `positionId`, `collectionId`, `distributionId`,
+`transactionId`, optional `txHash`, and `safeAccountId`. Do not call any
+field a token ID in the UI. `externalTokenId` may exist as null.
+
+`property` series type exists on `ra_series` so the platform is not
+hardcoded to receivables. It is not implemented.
+
+## 5. Lifecycle
 
 `draft → under_review → funding → live/collecting → closed`  
 `default` is an arrears outcome, not a shortcut.
 
+Payment request: `due → initiated → pending → confirmed` (also failed,
+overdue, expired, already paid). Confirmed is distinct from the first click.
+
 Stage 0 is a hard gate. Dual-control release requires two different people.
 
-## 5. Anonymisation
+Draft, under-review, and unfunded offers are not counted as money already
+advanced or receivables already sold.
 
-Purchaser serialisation may include district, grades, rent-to-market, term. It may not include tenant name, employer, address, or exact income. Marketplace and portfolio pages load that anonymised shape only.
+## 6. Anonymisation
+
+Purchaser serialisation may include district, grades, Property Score, term.
+It may not include tenant name, employer, address, contact, or exact income.
+Marketplace and portfolio pages load that anonymised shape only.
+
+Payer serialisation may include rent, dates, USDC amount, and a fictional
+receiving address. It may not include fee, purchase price, holders, or
+distribution economics.
+
+## 7. Persistence
+
+The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
+New fields must default via `normalizeBook()` so an older payload does not
+crash. Reset restores the complete current seed. No new migration for this
+pivot.

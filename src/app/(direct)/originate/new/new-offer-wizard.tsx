@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveDraftOfferAction } from "@/lib/rent-advance/actions";
+import { buildScheduledReceivables } from "@/lib/rent-advance/helpers";
 import { CapExceededError } from "@/lib/rent-advance/money";
 import { priceOrBlock, priceQuote, type Quote } from "@/lib/rent-advance/pricing";
 import type { Offer } from "@/lib/rent-advance/types";
@@ -29,7 +30,7 @@ const STEPS = [
   { id: 1, label: "Property" },
   { id: 2, label: "Payer" },
   { id: 3, label: "Lease" },
-  { id: 4, label: "Passport & score" },
+  { id: 4, label: "Listing Score" },
   { id: 5, label: "Quote" },
   { id: 6, label: "Review" },
 ] as const;
@@ -74,12 +75,23 @@ function applyQuote(offer: Offer, quote: Quote): Offer {
     nominalAnnualised: quote.nominalAnnualised,
     effectiveAnnualised: quote.effectiveAnnualised,
     lease: { ...offer.lease, monthlyRentCents: quote.monthlyRentCents },
+    receivables: buildScheduledReceivables(
+      offer.reference,
+      quote.monthlyRentCents,
+      quote.months,
+    ),
   };
 }
 
-export function NewOfferWizard({ initial }: { initial: Offer }) {
+export function NewOfferWizard({
+  initial,
+  startStep = 1,
+}: {
+  initial: Offer;
+  startStep?: number;
+}) {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(startStep);
   const [offer, setOffer] = useState(initial);
   const [declared, setDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -539,13 +551,13 @@ export function NewOfferWizard({ initial }: { initial: Offer }) {
       {step === 4 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Passport & score</CardTitle>
+            <CardTitle>Listing Score</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field
               id="passport-total"
-              label="Passport score"
-              tip="Property quality from 0 to 100. Weaker properties raise the fee."
+              label="Listing Score"
+              tip="Raw property quality from 0 to 100. This is what prices the quote. Property Score is only a derived explanation."
             >
               <Input
                 id="passport-total"

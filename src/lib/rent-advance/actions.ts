@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
-import { canRecordCollection } from "@/lib/rent-advance/helpers";
+import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
+import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
+import {
+  applyOpsCollection,
+  applyPaymentOutcome,
+  type PaymentMockOutcome,
+} from "@/lib/rent-advance/payment-apply";
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import { loadBook, resetBook, saveBook, updateOffer } from "@/lib/rent-advance/store";
@@ -60,40 +66,32 @@ export async function approveOfferAction(reference: string, actorId: string) {
 export async function recordCollectionAction(
   reference: string,
   receivableN: number,
-  daysVariance = 0,
 ) {
-  await updateOffer(reference, (offer) => {
-    if (!canRecordCollection(offer.status)) {
-      throw new Error(
-        "Collections can be recorded only on live, collecting, or defaulted offers.",
-      );
-    }
-    const receivable = offer.receivables.find((row) => row.n === receivableN);
-    if (!receivable) throw new Error("Receivable not found.");
-    receivable.status = "received";
-    const collection = {
-      id: `col-${reference}-${receivableN}-${Date.now()}`,
-      receivableN,
-      receivedOn: new Date().toISOString().slice(0, 10),
-      amountCents: receivable.amountCents,
-      daysVariance,
-      status: "received" as const,
-    };
-    return {
-      ...offer,
-      collections: [collection, ...offer.collections],
-      events: [
-        {
-          id: `ev-${reference}-col-${Date.now()}`,
-          at: new Date().toISOString(),
-          title: `Collection received · month ${receivableN}`,
-          detail: "Awaiting dual-control release",
-          actor: "System",
-        },
-        ...offer.events,
-      ],
-    };
-  });
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  if (!canRecordCollection(offer.status)) {
+    throw new Error(
+      "Collections can be recorded only on live, collecting, or defaulted offers.",
+    );
+  }
+  await saveBook(applyOpsCollection(book, reference, receivableN));
+  refresh();
+}
+
+export async function confirmPaymentAction(
+  paymentRequestId: string,
+  outcome: PaymentMockOutcome = "confirmed",
+) {
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+    throw new Error("Payment request not found.");
+  }
+  const next = applyPaymentOutcome(book, paymentRequestId, outcome);
+  await saveBook(next);
   refresh();
 }
 
@@ -145,6 +143,12 @@ export async function closeChecklistItemAction(id: string, evidence: string) {
 }
 
 export async function saveDraftOfferAction(offer: Offer) {
+  if (offer.reference === "MRA-001") {
+    throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
+  }
+  if (offer.months !== 6) {
+    throw new Error("Only the six-month term is approved for origination.");
+  }
   priceOrBlock({
     monthlyRentCents: offer.monthlyRentCents,
     months: offer.months,
@@ -153,23 +157,19 @@ export async function saveDraftOfferAction(offer: Offer) {
   });
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
-  const index = book.offers.findIndex((row) => row.reference === offer.reference);
-  if (index === -1) book.offers.unshift(offer);
-  else book.offers[index] = offer;
-  if (offer.tenant.id && !book.assignedTenancies.includes(offer.tenant.id)) {
-    book.assignedTenancies.push(offer.tenant.id);
+  const toSave = { ...offer, status: "draft" as const };
+  const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index === -1) book.offers.unshift(toSave);
+  else book.offers[index] = toSave;
+  if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {
+    book.assignedTenancies.push(toSave.tenant.id);
   }
   await saveBook(book);
   refresh();
 }
 
-export async function payerPayNowAction(reference: string) {
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const next = offer.receivables.find((row) => row.status === "scheduled");
-  if (!next) throw new Error("No scheduled receivable remains.");
-  await recordCollectionAction(reference, next.n, 0);
+export async function payerPayNowAction(paymentRequestId: string) {
+  return confirmPaymentAction(paymentRequestId, "confirmed");
 }
 
 export async function nextDraftReference(): Promise<string> {
@@ -185,12 +185,23 @@ export async function seedOfferTemplate(): Promise<Offer> {
   const reference = await nextDraftReference();
   return {
     ...structuredClone(canonical),
+    offerId: `offer-${reference.toLowerCase()}`,
+    settlementTransactionId: null,
     reference,
     status: "draft",
     fundedCents: 0,
     collections: [],
     releases: [],
     publishedAt: null,
+    tenant: {
+      ...canonical.tenant,
+      id: `tn-${reference.toLowerCase()}`,
+    },
+    receivables: buildScheduledReceivables(
+      reference,
+      canonical.monthlyRentCents,
+      canonical.months,
+    ),
     nextAction: "Finish draft",
     events: [
       {

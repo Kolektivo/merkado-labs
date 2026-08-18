@@ -11,12 +11,13 @@ export function ResetDemoButton() {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (confirming) {
     return (
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm text-muted-foreground">
-          Restore the six seeded offers?
+          Restore the seeded offers, payments, and distributions?
         </p>
         <Button
           type="button"
@@ -26,10 +27,15 @@ export function ResetDemoButton() {
           onClick={() => {
             setDone(false);
             startTransition(async () => {
-              await resetDemoAction();
-              setDone(true);
-              setConfirming(false);
-              router.refresh();
+              try {
+                setError(null);
+                await resetDemoAction();
+                setDone(true);
+                setConfirming(false);
+                router.refresh();
+              } catch {
+                setError("The demo could not be reset. Try again.");
+              }
             });
           }}
         >
@@ -65,6 +71,7 @@ export function ResetDemoButton() {
       {done ? (
         <p className="text-sm text-muted-foreground">Seeded book restored.</p>
       ) : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }

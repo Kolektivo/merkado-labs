@@ -5,7 +5,7 @@ import { SaleNotLoan } from "@/components/sale-not-loan";
 import { Rate } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatPercent, formatXcg, FEE_FLOOR } from "@/lib/rent-advance/money";
+import { formatPercent, formatXcg, FEE_FLOOR, INTERNAL_CAP } from "@/lib/rent-advance/money";
 import type { Quote } from "@/lib/rent-advance/pricing";
 
 function Line({
@@ -37,14 +37,14 @@ export function FeeBuildup({ quote }: { quote: Quote }) {
       <CardContent>
         <dl className="divide-y">
           <Line
-            label="Base"
+            label="Term base fee"
             value={<Rate value={quote.baseFeeRate} />}
-            tip="Starting fee before property or payer adjustments."
+            tip="Starting fee for this term before score adjustments."
           />
           <Line
-            label="Passport adjustment"
+            label="Listing Score band adjustment"
             value={<Rate value={quote.passportAdjustment} />}
-            tip="Property quality grade. Weaker properties cost more."
+            tip="Property quality grade. Weaker listings cost more."
           />
           <Line
             label="Payer adjustment"
@@ -57,11 +57,11 @@ export function FeeBuildup({ quote }: { quote: Quote }) {
             tip="Extra 25 basis points when the landlord and Merkado are connected."
           />
           <Line
-            label="Floor"
+            label="Fee floor"
             value={formatPercent(FEE_FLOOR)}
             tip="The fee never goes below this floor."
           />
-          <Line label="Fee rate" value={<Rate value={quote.feeRate} />} />
+          <Line label="Final fee" value={<Rate value={quote.feeRate} />} />
         </dl>
       </CardContent>
     </Card>
@@ -69,6 +69,8 @@ export function FeeBuildup({ quote }: { quote: Quote }) {
 }
 
 export function QuoteResult({ quote }: { quote: Quote }) {
+  const capHeadroom = INTERNAL_CAP - quote.effectiveAnnualised;
+
   if (quote.capBreached) {
     return (
       <div className="space-y-4">
@@ -77,8 +79,8 @@ export function QuoteResult({ quote }: { quote: Quote }) {
           <AlertDescription>
             The annualised comparison is{" "}
             {formatPercent(quote.effectiveAnnualised, 1)}, above the 24% cap.
-            Lower the rent, raise the scores, or drop the related-party
-            premium.
+            There is no override. Lower the rent, raise the scores, or drop the
+            related-party premium.
           </AlertDescription>
         </Alert>
         <details className="rounded-xl border p-4">
@@ -95,6 +97,20 @@ export function QuoteResult({ quote }: { quote: Quote }) {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Get Now amount</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <p className="text-3xl font-semibold tracking-tight">
+            {formatXcg(quote.purchasePriceCents)}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Paid once, up front. Later rent collections go to holders, not back
+            to the landlord.
+          </p>
+        </CardContent>
+      </Card>
       <SaleNotLoan
         netAdvance={formatXcg(quote.purchasePriceCents)}
         grossForgone={formatXcg(quote.grossReceivablesCents)}
@@ -102,6 +118,34 @@ export function QuoteResult({ quote }: { quote: Quote }) {
         flatFee={formatPercent(quote.feeRate)}
         effective={formatPercent(quote.effectiveAnnualised, 1)}
       />
+      <dl className="divide-y rounded-xl border bg-card px-4">
+        <Line label="Gross receivables" value={formatXcg(quote.grossReceivablesCents)} />
+        <Line
+          label="Fee"
+          value={`${formatXcg(quote.feeCents)} · ${formatPercent(quote.feeRate)}`}
+        />
+        <Line label="Advance rate" value={formatPercent(quote.advanceRate, 1)} />
+        <Line
+          label="Payment timing"
+          value="One payment after funding"
+          tip="The landlord receives the purchase price once."
+        />
+        <Line
+          label="Effective annualised"
+          value={formatPercent(quote.effectiveAnnualised, 1)}
+        />
+        <Line label="Monthly comparison" value={formatPercent(quote.monthlyIrr)} />
+        <Line label="Nominal comparison" value={formatPercent(quote.nominalAnnualised, 1)} />
+        <Line
+          label="24% cap"
+          value={
+            capHeadroom >= 0
+              ? `${formatPercent(quote.effectiveAnnualised, 1)} of 24%`
+              : "Breached"
+          }
+          tip="The engine blocks anything above 24%. There is no override."
+        />
+      </dl>
       <details className="rounded-xl border p-4">
         <summary className="cursor-pointer text-sm font-medium">
           How the fee is built

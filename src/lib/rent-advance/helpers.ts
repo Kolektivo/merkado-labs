@@ -1,4 +1,6 @@
+import { positionIdFor, receivableIdFor } from "@/lib/rent-advance/ids";
 import { formatXcg } from "@/lib/rent-advance/money";
+import { derivePropertyScore } from "@/lib/rent-advance/property-score";
 import { bandLabel, payerBandLabel, scoreBand } from "@/lib/rent-advance/scoring";
 import type {
   AttentionItem,
@@ -9,10 +11,56 @@ import type {
   PortfolioPosition,
   PortfolioPositionDetail,
   PurchaserOfferDetail,
+  Receivable,
 } from "@/lib/rent-advance/types";
 
+function monthsFrom(start: string, count: number, endDay = 28): string[] {
+  const date = new Date(`${start}T12:00:00Z`);
+  return Array.from({ length: count }, (_, index) => {
+    const next = new Date(date);
+    next.setUTCMonth(next.getUTCMonth() + index + 1, 0);
+    const day = Math.min(endDay, next.getUTCDate());
+    next.setUTCDate(day);
+    return next.toISOString().slice(0, 10);
+  });
+}
+
+export function buildScheduledReceivables(
+  reference: string,
+  monthlyRentCents: number,
+  months: number,
+  start = "2026-09-01",
+): Receivable[] {
+  return monthsFrom(start, months).map((dueDate, index) => ({
+    n: index + 1,
+    dueDate,
+    amountCents: monthlyRentCents,
+    status: "scheduled" as const,
+    receivableId: receivableIdFor(reference, index + 1),
+  }));
+}
+
+export function listingScore(offer: Offer): number {
+  return offer.passport.total;
+}
+
+export function propertyScoreFor(offer: Offer) {
+  return derivePropertyScore(
+    listingScore(offer),
+    offer.monthlyRentCents,
+    offer.marketRentCents,
+  );
+}
+
 export function rentToMarket(offer: Offer): number {
+  if (!Number.isFinite(offer.marketRentCents) || offer.marketRentCents <= 0) {
+    return Number.NaN;
+  }
   return offer.monthlyRentCents / offer.marketRentCents;
+}
+
+export function countsAsAdvanced(offer: Offer): boolean {
+  return offer.status !== "draft" && offer.status !== "under_review" && offer.fundedCents > 0;
 }
 
 export function rentToIncomeBand(monthlyRentCents: number, monthlyIncomeCents: number): string {
@@ -157,17 +205,23 @@ export function payerPayee(offer: Offer): string {
 }
 
 export function anonymizeOffer(offer: Offer): BuyerOfferCard {
+  const derived = propertyScoreFor(offer);
   return {
     reference: offer.reference,
     district: offer.property.district,
     type: offer.property.type,
     summary: offer.property.summary,
     bedrooms: offer.property.bedrooms,
-    passportScore: offer.passport.total,
-    passportBand: scoreBand(offer.passport.total),
-    passportLabel: bandLabel(offer.passport.total),
+    listingScore: derived.listingScore,
+    propertyScore: derived.propertyScore,
+    propertyBand: scoreBand(derived.propertyScore),
+    propertyLabel: bandLabel(derived.propertyScore),
+    passportScore: derived.propertyScore,
+    passportBand: scoreBand(derived.propertyScore),
+    passportLabel: bandLabel(derived.propertyScore),
     payerBand: scoreBand(offer.tenant.scores.total),
-    rentToMarket: rentToMarket(offer),
+    rentToMarket: derived.rentToMarketRatio,
+    marketDataAvailable: derived.marketDataAvailable,
     months: offer.months,
     offeringCents: offer.offeringCents,
     fundedCents: offer.fundedCents,
@@ -215,18 +269,54 @@ export function toPurchaserOffer(offer: Offer): PurchaserOfferDetail {
   };
 }
 
-export function toPortfolioPosition(offer: Offer): PortfolioPosition {
+export function distributionTotals(book: DemoBook, offer: Offer) {
+  const rows = (book.distributions ?? []).filter(
+    (row) => row.offerReference === offer.reference,
+  );
   return {
-    ...anonymizeOffer(offer),
-    receivedCents: distributionsReceivedCents(offer),
-    remainingCents: outstandingCents(offer),
-    collectedMonths: collectedCount(offer),
+    collectedCents: distributionsReceivedCents(offer),
+    pendingDistributionCents: rows
+      .filter((row) => row.status === "pending")
+      .reduce((sum, row) => sum + row.amountCents, 0),
+    distributedCents: rows
+      .filter((row) => row.status === "distributed")
+      .reduce((sum, row) => sum + row.amountCents, 0),
+    settlementTxHash:
+      book.ledgerTransactions?.find(
+        (row) =>
+          row.offerReference === offer.reference && row.kind === "advance_settlement",
+      )?.txHash ?? null,
   };
 }
 
-export function toPortfolioPositionDetail(offer: Offer): PortfolioPositionDetail {
+export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPosition {
+  const money = book
+    ? distributionTotals(book, offer)
+    : {
+        collectedCents: distributionsReceivedCents(offer),
+        pendingDistributionCents: 0,
+        distributedCents: distributionsReceivedCents(offer),
+        settlementTxHash: null,
+      };
   return {
-    ...toPortfolioPosition(offer),
+    ...anonymizeOffer(offer),
+    positionId: positionIdFor(offer.reference),
+    receivedCents: money.collectedCents,
+    remainingCents: outstandingCents(offer),
+    collectedCents: money.collectedCents,
+    pendingDistributionCents: money.pendingDistributionCents,
+    distributedCents: money.distributedCents,
+    collectedMonths: collectedCount(offer),
+    settlementTxHash: money.settlementTxHash,
+  };
+}
+
+export function toPortfolioPositionDetail(
+  offer: Offer,
+  book?: DemoBook,
+): PortfolioPositionDetail {
+  return {
+    ...toPortfolioPosition(offer, book),
     receivables: offer.receivables.map((row) => {
       const collection = offer.collections.find(
         (item) => item.receivableN === row.n,
@@ -244,9 +334,30 @@ export function toPortfolioPositionDetail(offer: Offer): PortfolioPositionDetail
   };
 }
 
+const OFFER_LIST_ORDER: Record<OfferStatus, number> = {
+  collecting: 0,
+  live: 1,
+  funding: 2,
+  default: 3,
+  under_review: 4,
+  draft: 5,
+  closed: 6,
+};
+
+export function sortOffersForLandlordList(offers: Offer[]): Offer[] {
+  return [...offers].sort((a, b) => {
+    const rank =
+      (OFFER_LIST_ORDER[a.status] ?? 9) - (OFFER_LIST_ORDER[b.status] ?? 9);
+    return rank !== 0 ? rank : a.reference.localeCompare(b.reference);
+  });
+}
+
 export function attentionItems(book: DemoBook): AttentionItem[] {
   const overdue = book.offers.filter((offer) => offer.status === "default");
   const unsettled = book.offers.filter((offer) => offer.status === "funding");
+  const missedOffer = book.offers.find((offer) =>
+    offer.receivables.some((row) => row.status === "missed"),
+  );
   const missed = book.offers.flatMap((offer) =>
     offer.receivables.filter((row) => row.status === "missed"),
   );
@@ -283,9 +394,9 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
       label: "Missed month",
       count: missed.length,
       detail: missed.length
-        ? `A month did not arrive · ${overdue[0]?.reference ?? "book"}`
+        ? `A month did not arrive · ${missedOffer?.reference ?? "book"}`
         : "none",
-      href: overdue[0] ? `/originate/${overdue[0].reference}` : "/originate",
+      href: missedOffer ? `/originate/${missedOffer.reference}` : "/originate",
     },
     {
       tone: "info",
@@ -302,20 +413,21 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
 }
 
 export function bookTotals(book: DemoBook) {
-  const totalAdvanced = book.offers.reduce(
+  const counted = book.offers.filter(countsAsAdvanced);
+  const totalAdvanced = counted.reduce(
     (sum, offer) => sum + offer.purchasePriceCents,
     0,
   );
-  const outstanding = book.offers.reduce(
+  const outstanding = counted.reduce(
     (sum, offer) => sum + outstandingCents(offer),
     0,
   );
-  const remainingCollections = book.offers.reduce(
+  const remainingCollections = counted.reduce(
     (sum, offer) =>
       sum + offer.receivables.filter((row) => row.status !== "received").length,
     0,
   );
-  const collectedToDate = book.offers.reduce(
+  const collectedToDate = counted.reduce(
     (sum, offer) => sum + distributionsReceivedCents(offer),
     0,
   );

@@ -26,6 +26,7 @@ import {
 import {
   attentionItems,
   bookTotals,
+  sortOffersForLandlordList,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
@@ -34,7 +35,7 @@ import type { OfferStatus } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Offers" };
+export const metadata: Metadata = { title: "My Offers" };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -78,7 +79,7 @@ export default async function OriginatePage({
   const book = await loadBook();
   const totals = bookTotals(book);
   const attention = attentionItems(book);
-  const offers =
+  const filtered =
     status === "all"
       ? book.offers
       : status === "collecting"
@@ -86,19 +87,25 @@ export default async function OriginatePage({
             (offer) => offer.status === "collecting" || offer.status === "live",
           )
         : book.offers.filter((offer) => offer.status === status);
+  const offers = sortOffersForLandlordList(filtered);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Offers"
-        description="The landlord book. Open a reference to approve, collect, or release."
+        title="My Offers"
+        description="Simulate in Get Now, then use the quote to prefill Create Offer. Open a reference to approve, collect, or release."
         actions={
-          <Button asChild>
-            <Link href="/originate/new">
-              <Plus data-icon="inline-start" />
-              Create offer
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/originate/simulator">Get Now</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/originate/new">
+                <Plus data-icon="inline-start" />
+                Create offer
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -131,7 +138,31 @@ export default async function OriginatePage({
       <Card className="gap-0 py-0">
         {offers.length ? (
           <CardContent className="overflow-x-auto px-0">
-            <Table className="min-w-[760px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+            <div className="space-y-3 px-4 py-3 md:hidden">
+              {offers.map((offer) => (
+                <Link
+                  key={offer.reference}
+                  href={`/originate/${offer.reference}`}
+                  className="block rounded-xl border px-4 py-3"
+                >
+                  <p className="font-medium">{offer.reference}</p>
+                  <p className="text-sm">{offer.property.summary}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {offer.property.district} · {offer.tenant.initials}
+                  </p>
+                  <p className="mt-2 text-sm">
+                    <Money cents={offer.purchasePriceCents} /> · {offer.months} months
+                  </p>
+                  <p className="mt-1 text-sm">{statusLabel(offer.status)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {offer.nextAction
+                      .replace(/^Pull month/, "Record month")
+                      .replace(/^Chase subscriptions$/, "Wait for remaining funding")}
+                  </p>
+                </Link>
+              ))}
+            </div>
+            <Table className="hidden min-w-[760px] md:table [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Ref</TableHead>

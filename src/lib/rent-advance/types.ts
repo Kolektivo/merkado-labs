@@ -117,11 +117,111 @@ export type PayerFile = {
   scores: PayerScores;
 };
 
+export type PaymentRequestStatus =
+  | "due"
+  | "initiated"
+  | "pending"
+  | "confirmed"
+  | "failed"
+  | "overdue"
+  | "expired"
+  | "partial";
+
+export type DistributionStatus = "pending" | "distributed";
+
+export type LedgerTransactionKind =
+  | "advance_settlement"
+  | "rent_payment"
+  | "holder_distribution";
+
+export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
+
+export type CryptoConfig = {
+  networkKey: string | null;
+  chainId: number | null;
+  networkLabel: string | null;
+  usdcContract: string | null;
+  usdcDecimals: number;
+  safeAccountId: string | null;
+  safeAddress: string | null;
+  explorerBaseUrl: string | null;
+};
+
+export type DemoAccount = {
+  accountId: string;
+  displayName: string;
+  roleLabel: string;
+  payerFileId: string;
+};
+
+export type PaymentRequest = {
+  paymentRequestId: string;
+  accountId: string;
+  offerId: string;
+  offerReference: string;
+  propertyId: string;
+  receivableId: string;
+  receivableN: number;
+  periodLabel: string;
+  dueDate: string;
+  amountXcgCents: number;
+  amountUsdcAtomic: number;
+  paymentReference: string;
+  receivingAddress: string;
+  status: PaymentRequestStatus;
+  initiatedAt: string | null;
+  confirmedAt: string | null;
+  transactionId: string | null;
+  txHash: string | null;
+};
+
+export type LedgerTransaction = {
+  transactionId: string;
+  kind: LedgerTransactionKind;
+  offerId: string;
+  offerReference: string;
+  paymentRequestId: string | null;
+  collectionId: string | null;
+  distributionId: string | null;
+  amountXcgCents: number;
+  amountUsdcAtomic: number | null;
+  status: LedgerTransactionStatus;
+  createdAt: string;
+  confirmedAt: string | null;
+  txHash: string | null;
+  fromLabel: string;
+  toLabel: string;
+};
+
+export type DistributionRecord = {
+  distributionId: string;
+  collectionId: string;
+  positionId: string;
+  offerId: string;
+  offerReference: string;
+  amountCents: number;
+  status: DistributionStatus;
+  createdAt: string;
+  distributedAt: string | null;
+  transactionId: string;
+  txHash: string | null;
+};
+
+export type PositionRecord = {
+  positionId: string;
+  offerId: string;
+  offerReference: string;
+  holderId: string;
+  settlementTransactionId: string | null;
+  externalTokenId: null;
+};
+
 export type Receivable = {
   n: number;
   dueDate: string;
   amountCents: number;
   status: ReceivableStatus;
+  receivableId?: string;
 };
 
 export type Collection = {
@@ -180,6 +280,8 @@ export type ReleaseInstruction = {
 };
 
 export type Offer = {
+  offerId?: string;
+  settlementTransactionId?: string | null;
   reference: string;
   status: OfferStatus;
   seriesDisplayName: string;
@@ -246,6 +348,12 @@ export type DemoBook = {
   checklist: ChecklistItem[];
   openQuestions: OpenQuestion[];
   assignedTenancies: string[];
+  cryptoConfig?: CryptoConfig;
+  accounts?: DemoAccount[];
+  paymentRequests?: PaymentRequest[];
+  ledgerTransactions?: LedgerTransaction[];
+  distributions?: DistributionRecord[];
+  positions?: PositionRecord[];
 };
 
 export type BuyerOfferCard = {
@@ -254,11 +362,16 @@ export type BuyerOfferCard = {
   type: string;
   summary: string;
   bedrooms: number;
+  listingScore: number;
+  propertyScore: number;
+  propertyBand: ScoreBand;
+  propertyLabel: string;
   passportScore: number;
   passportBand: ScoreBand;
   passportLabel: string;
   payerBand: ScoreBand;
-  rentToMarket: number;
+  rentToMarket: number | null;
+  marketDataAvailable: boolean;
   months: number;
   offeringCents: number;
   fundedCents: number;
@@ -300,9 +413,14 @@ export type PurchaserOfferDetail = BuyerOfferCard & {
 };
 
 export type PortfolioPosition = BuyerOfferCard & {
+  positionId: string;
   receivedCents: number;
   remainingCents: number;
+  collectedCents: number;
+  pendingDistributionCents: number;
+  distributedCents: number;
   collectedMonths: number;
+  settlementTxHash: string | null;
 };
 
 export type PortfolioPositionDetail = PortfolioPosition & {

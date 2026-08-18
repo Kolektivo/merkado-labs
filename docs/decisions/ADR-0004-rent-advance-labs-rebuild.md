@@ -1,6 +1,7 @@
 # ADR-0004 — Labs becomes the Rent Advance demo
 
-**Status:** Accepted  
+**Status:** Accepted (partially superseded by ADR-0005 for customer brand,
+mocked Pay, and Direct-as-umbrella only; scraper-removal decision stands)  
 **Date:** 2026-08-14
 
 ## Context

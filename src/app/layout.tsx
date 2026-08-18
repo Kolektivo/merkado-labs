@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 
-import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
@@ -16,13 +15,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const inter = Inter({
+  variable: "--font-merkado",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "Merkado Labs · Rent Advance",
+    default: "Merkado Labs · Direct + Pay",
     template: "%s · Merkado Labs",
   },
   description:
-    "Labs demo of Merkado Rent Advance and Merkado Direct. A sale of rent receivables, not a loan. Not live on merkado.cw.",
+    "Labs demo of Merkado Direct and Merkado Pay. Rent paid forward, not a loan. Not live on merkado.cw.",
   robots: { index: false, follow: false },
   icons: {
     icon: [{ url: "/cw-logo.png", type: "image/png" }],
@@ -38,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-x-hidden">
         <a
@@ -47,9 +51,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <TooltipProvider>
-          <AppShell>{children}</AppShell>
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

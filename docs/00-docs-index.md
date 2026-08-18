@@ -1,30 +1,46 @@
 # Merkado Docs — Index
 
-This folder holds the working context for Merkado Labs **Rent Advance** and
-**Merkado Direct** demo work.
+This folder holds the working context for the Merkado Labs **Merkado Direct**
+and **Merkado Pay** Buildathon demo.
 
 **Last updated:** August 18, 2026
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
 and `docs/decisions/ADR-0002-private-local-evidence.md`.
-**Product rename:** landlord product is Merkado Rent Advance; holder platform is
-Merkado Direct. “Merkado Premium” is retired.
+**Buildathon pivot:** `docs/decisions/ADR-0005-buildathon-direct-pay-demo.md`.
+**Product naming:** **Merkado Direct** is the umbrella app (My Offers, Create
+Offer, Get Now, Marketplace, Portfolio). **Merkado Pay** is the renter
+payment-link. Do not prominently brand a separate “Merkado Rent Advance”
+product. Internal series/legal wording may remain. “Merkado Premium” is
+retired.
 
 ## Terminology (canonical)
 
-- **Merkado Rent Advance** = landlord-facing product (sale of rent receivables).
-- **Merkado Direct** = holder-facing platform brand.
-- **Merkado Direct · Rent Advance** = first series.
-- **Digital Participation Right (DPR)** = instrument name (book-entry in this demo).
-- **Passport (this demo)** = offer scores (rent vs market, condition, access).
-  This is **not** the merkado.cw **Property Passport** (listing history on a
-  property page). Holder-facing marketplace cards label this **Property score**.
+- **Merkado Direct** = umbrella Labs demo for landlords and holders: My Offers,
+  Create Offer, Get Now, Marketplace, and Portfolio. Calm customer copy:
+  “rent paid forward” or “get future rent paid upfront.”
+- **Merkado Pay** = renter payment-link for mocked USDC rent payments.
+- **Merkado account (Labs mock)** = fictional renter account with My Payments
+  and Apps. Not production auth.
+- **Merkado Direct · Rent Advance** = first series name (internal / legal).
+- **Digital Participation Right (DPR)** = instrument name (book-entry in this
+  demo). There is no token, NFT, or transferable position.
+- **Listing Score** = raw 0–100 underwriting/quality input used by the pricing
+  engine. Customer-facing replacement for earlier “Passport score” labels.
+- **Property Score** = derived presentation score from Listing Score ×
+  rent-to-market multiplier. Never fed back into pricing.
+- **Passport (legacy internal field)** = stored offer scorecard object
+  (`passport.total` is the Listing Score). This is **not** the merkado.cw
+  **Property Passport** (listing history on a property page).
 - **Marketplace / Listings / Cars / Property** on merkado.cw remain defined in
   merkado-cw. This Labs repo no longer operates the listing pipeline.
-  Rent Advance is **not** live on merkado.cw.
+  This demo is **not** live on merkado.cw.
 
 **Supersedes:** Labs-as-property-scraper-kitchen. That work is on merkado-cw.
+ADR-0004 remains the Labs-rebuild record; ADR-0005 supersedes only the
+customer brand split, no-crypto-as-product stance, and holder-only Direct
+framing where they conflict.
 
 ## Canonical source map
 
@@ -51,14 +67,17 @@ Merkado Direct. “Merkado Premium” is retired.
 
 | Area | Status |
 |---|---|
-| Rent Advance demo | [LABS] Rebuilt August 2026 |
+| Merkado Direct umbrella | [LABS] Buildathon demo (see `09` after verify) |
 | Pricing engine + 24% cap | [LABS] Built |
-| Originate / Passport / collections | [LABS] Built |
-| Merkado Direct marketplace | [LABS] Built; subscribe gated |
-| Payer app (XCG, EN/NL/PAP) | [LABS] Built; one open page; no crypto |
+| Get Now + Listing / Property Score | [LABS] Buildathon scope |
+| Marketplace | [LABS] Built; subscribe gated |
+| Portfolio | [LABS] Pre-seeded positions; automatic distributions |
+| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; no real wallet |
+| Merkado account mock | [LABS] Buildathon scope; fictional only |
 | Login / admin | Removed — demo is open |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
+| Real network / Safe / USDC | Unselected; Luis and Luuk own |
 
 ## Reading order
 

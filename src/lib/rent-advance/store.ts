@@ -8,6 +8,7 @@ import {
   toPortfolioPositionDetail,
   toPurchaserOffer,
 } from "@/lib/rent-advance/helpers";
+import { normalizeBook } from "@/lib/rent-advance/payment-apply";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import type {
   BuyerOfferCard,
@@ -26,40 +27,39 @@ function cloneBook(): DemoBook {
 }
 
 export async function loadBook(): Promise<DemoBook> {
-  try {
-    const supabase = createLabsAdminClient();
-    const { data, error } = await supabase
-      .from("ra_demo_state")
-      .select("payload")
-      .eq("id", STATE_ID)
-      .maybeSingle();
-    if (error || !data?.payload) {
-      const seed = cloneBook();
-      await supabase.from("ra_demo_state").upsert({
-        id: STATE_ID,
-        payload: seed,
-        updated_at: new Date().toISOString(),
-      });
-      return seed;
-    }
-    return data.payload as DemoBook;
-  } catch {
-    return cloneBook();
+  const supabase = createLabsAdminClient();
+  const { data, error } = await supabase
+    .from("ra_demo_state")
+    .select("payload")
+    .eq("id", STATE_ID)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.payload) {
+    const seed = cloneBook();
+    const { error: writeError } = await supabase.from("ra_demo_state").upsert({
+      id: STATE_ID,
+      payload: seed,
+      updated_at: new Date().toISOString(),
+    });
+    if (writeError) throw writeError;
+    return seed;
   }
+  return normalizeBook(data.payload);
 }
 
 export async function saveBook(book: DemoBook): Promise<DemoBook> {
   for (const offer of book.offers) {
     assertReleasesDistinct(offer.releases);
   }
+  const normalized = normalizeBook(book);
   const supabase = createLabsAdminClient();
   const { error } = await supabase.from("ra_demo_state").upsert({
     id: STATE_ID,
-    payload: book,
+    payload: normalized,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
-  return book;
+  return normalized;
 }
 
 export async function resetBook(): Promise<DemoBook> {
@@ -93,7 +93,7 @@ export async function listPortfolioPositions(): Promise<{
 }> {
   const book = await loadBook();
   const funded = book.offers.filter((offer) => offer.fundedCents > 0);
-  const positions = funded.map(toPortfolioPosition);
+  const positions = funded.map((offer) => toPortfolioPosition(offer, book));
   return {
     positions,
     contributed: positions.reduce((sum, row) => sum + row.fundedCents, 0),
@@ -108,9 +108,10 @@ export async function listPortfolioPositions(): Promise<{
 export async function getPortfolioPosition(
   reference: string,
 ): Promise<PortfolioPositionDetail | null> {
-  const offer = await getOffer(reference);
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
   if (!offer || offer.fundedCents <= 0) return null;
-  return toPortfolioPositionDetail(offer);
+  return toPortfolioPositionDetail(offer, book);
 }
 
 export async function updateOffer(

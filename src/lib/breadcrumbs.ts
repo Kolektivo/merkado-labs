@@ -4,12 +4,15 @@ export type BreadcrumbCrumb = {
 };
 
 const ROUTE_LABELS: Record<string, string> = {
-  "/originate": "Offers",
+  "/originate": "My Offers",
   "/originate/new": "Create offer",
   "/originate/simulator": "Get Now",
   "/offers": "Marketplace",
   "/portfolio": "Portfolio",
-  "/pay": "Pay rent",
+  "/pay": "Merkado Pay",
+  "/account": "Account",
+  "/account/payments": "My Payments",
+  "/account/apps": "Apps",
 };
 
 export function resolveCrumbs(pathname: string): BreadcrumbCrumb[] {

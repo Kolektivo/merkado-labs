@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import {
   DualControlForm,
   OfferOpsForms,
-} from "@/app/originate/[ref]/offer-ops-forms";
+} from "./offer-ops-forms";
+import { CopyValue, ExplorerLink } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
@@ -25,7 +26,9 @@ import { formatDate, formatDateTime, titleCase } from "@/lib/format";
 import { ARREARS_LADDER, arrearsStep } from "@/lib/rent-advance/arrears";
 import {
   collectedCount,
+  distributionTotals,
   landlordDisclosure,
+  propertyScoreFor,
   rentToMarket,
   statusLabel,
   statusTone,
@@ -68,7 +71,12 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
   const missed = offer.receivables.find((row) => row.status === "missed");
   const lateDays = missed ? Math.max(1, daysLate(missed.dueDate)) : 0;
   const currentArrears = missed ? arrearsStep(lateDays) : null;
-  const belowMarket = rentToMarket(offer) < 1;
+  const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
+  const derived = propertyScoreFor(offer);
+  const money = distributionTotals(book, offer);
+  const settlement = book.ledgerTransactions?.find(
+    (row) => row.offerReference === offer.reference && row.kind === "advance_settlement",
+  );
 
   return (
     <div className="space-y-6">
@@ -126,6 +134,34 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         </Card>
       </div>
 
+      {settlement ? (
+        <Alert>
+          <AlertTitle>One-time upfront settlement</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>
+              The landlord already received the purchase price. Later rent is
+              collected for holders and is not paid to the landlord again.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <CopyValue
+                value={settlement.txHash ?? settlement.transactionId}
+                label="settlement reference"
+                truncate
+              />
+              <ExplorerLink
+                baseUrl={book.cryptoConfig?.explorerBaseUrl}
+                hash={settlement.txHash}
+              />
+            </div>
+            <p className="text-xs">
+              Collected <Money cents={money.collectedCents} /> · pending
+              distribution <Money cents={money.pendingDistributionCents} /> ·
+              distributed <Money cents={money.distributedCents} />
+            </p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {offer.status === "draft" ? (
         <Alert>
           <AlertTitle>Draft</AlertTitle>
@@ -140,7 +176,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         <Alert>
           <AlertTitle>Related-party offer</AlertTitle>
           <AlertDescription>
-            {offer.status === "under_review"
+            {offer.status === "under_review" || offer.status === "draft"
               ? "The landlord is connected to Merkado. An independent approver must sign before funding. The fee includes a related-party premium."
               : "The landlord is connected to Merkado. The fee includes a related-party premium. Independent approval is already on the file."}
           </AlertDescription>
@@ -165,7 +201,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
       <Tabs defaultValue="overview">
         <TabsList variant="line" className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="passport">Passport</TabsTrigger>
+          <TabsTrigger value="passport">Listing Score</TabsTrigger>
           <TabsTrigger value="servicing">Collections</TabsTrigger>
           <TabsTrigger value="holders">Holders</TabsTrigger>
         </TabsList>
@@ -219,8 +255,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
               <AlertTitle>Below-market rent</AlertTitle>
               <AlertDescription>
                 Contractual rent is {formatPercent(rentToMarket(offer), 0)} of
-                the market estimate. Passport scores this as a stronger
-                rent-versus-market reading.
+                the market estimate. That is a stronger rent-to-market reading.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -228,10 +263,10 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Passport scores
-                  <HelpTip label="Passport">
-                    Property quality grade. Holders see the score, not the
-                    street address.
+                  Listing Score
+                  <HelpTip label="Listing Score">
+                    Raw underwriting input used for pricing. Property Score is
+                    derived for explanation only.
                   </HelpTip>
                 </CardTitle>
               </CardHeader>
@@ -256,7 +291,8 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
                   ))}
                 </dl>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {bandLabel(offer.passport.total)} · Passport {offer.passport.total}
+                  {bandLabel(offer.passport.total)} · Listing Score{" "}
+                  {offer.passport.total} · Property Score {derived.propertyScore}
                 </p>
               </CardContent>
             </Card>

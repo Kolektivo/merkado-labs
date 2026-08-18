@@ -29,41 +29,42 @@ export default async function DirectPage() {
   return (
     <div className="space-y-8">
       <PrototypeNotice>
-        Labs walkthrough. Not live on merkado.cw. No public offering. No crypto.
+        Labs walkthrough. Not live on merkado.cw. No public offering. Wallet
+        and USDC payments are mocked.
       </PrototypeNotice>
 
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Rent Advance demo
+          Merkado Labs demo
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          A landlord sells six months of rent for cash today. The renter keeps
-          the same lease and the same rent. The holder sees collections — not
-          the renter’s name.
+          Merkado Direct lets a landlord get future rent paid upfront. Merkado
+          Pay is the renter payment-link. One shared demo state. This is a sale
+          of receivables, not a loan.
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <RoleCard
           href="/originate"
-          badge="Landlord"
-          title="Merkado Rent Advance"
-          body="Price the sale, approve the offer, and record collections."
-          action="Open landlord book"
-        />
-        <RoleCard
-          href="/offers"
-          badge="Holder"
+          badge="Direct"
           title="Merkado Direct"
-          body="Anonymised offers and a book-entry portfolio. Subscribe is closed."
-          action="Open marketplace"
+          body="My Offers, Get Now, Marketplace, and Portfolio. Compare rent paid forward, then walk the seeded book."
+          action="Open Direct"
         />
         <RoleCard
           href="/pay"
-          badge="Renter"
-          title="Pay rent"
-          body="Same rent, same landlord, same property manager. English, Dutch, Papiamentu."
-          action="Pay rent"
+          badge="Pay"
+          title="Merkado Pay"
+          body="A simple renter payment-link. Mocked USDC, same rent, same lease. English, Dutch, Papiamentu."
+          action="Open Pay"
+        />
+        <RoleCard
+          href="/account/payments"
+          badge="Account"
+          title="Merkado account"
+          body="A fictional Labs account with My Payments and Apps. Not production sign-in."
+          action="Open account"
         />
       </div>
 
@@ -88,12 +89,12 @@ export default async function DirectPage() {
               <Fact
                 label="Term"
                 value="6 months"
-                tip="Only the six-month term is approved. Three months is disabled."
+                tip="Only the six-month term can create an offer. Nine and twelve months can be simulated."
               />
               <Fact
                 label="Landlord receives"
                 value={formatXcg(1020600)}
-                tip="Purchase price: six months of rent minus the 5.50% fee."
+                tip="Purchase price: six months of rent minus the 5.50% fee. Paid once."
               />
               <Fact
                 label="Fee"
@@ -101,14 +102,14 @@ export default async function DirectPage() {
                 tip="One flat fee on the gross rent. No extra arrangement or exit charges."
               />
               <Fact
-                label="Effective cost"
+                label="Effective annualised comparison"
                 value="21.6%"
-                tip="Annualised comparison so a landlord can compare the flat fee with other ways of getting cash today. The engine blocks anything above 24%."
+                tip="A comparison figure so a landlord can compare the flat fee with other ways of getting cash today. This is not an interest rate. The engine blocks anything above 24%."
               />
             </dl>
             <p className="mt-4 text-xs text-muted-foreground">
-              {offer.property.district} · related-party premium · sale of
-              receivables, not a loan.
+              {offer?.property.district ?? "Sun Set Heights"} · related-party
+              premium · sale of receivables, not a loan.
             </p>
           </CardContent>
         </Card>
@@ -145,8 +146,8 @@ export default async function DirectPage() {
         <div>
           <p className="font-medium">Reset the walkthrough</p>
           <p className="text-sm text-muted-foreground">
-            Restores the six seeded offers if a collection or draft left the
-            book messy.
+            Restores the seeded offers, payments, transactions, and
+            distributions.
           </p>
         </div>
         <ResetDemoButton />

@@ -6,21 +6,24 @@ import { cn } from "@/lib/utils";
 
 function termHint(months: number): string | null {
   if (months === 3) return "Requires separate regulatory advice";
-  if (months === 9 || months === 12) return "not approved for origination";
+  if (months === 9 || months === 12) return "Simulation only · not approved for origination";
   return null;
 }
 
 export function TermPicker({
   value,
   onChange,
+  allowSimulation = false,
 }: {
   value: number;
   onChange: (months: number) => void;
+  allowSimulation?: boolean;
 }) {
   return (
     <div className="grid gap-2 sm:grid-cols-4">
       {DISPLAY_TERMS.map((months) => {
         const approved = months === 6;
+        const selectable = approved || (allowSimulation && months !== 3);
         const hint = termHint(months);
         const selected = value === months;
         return (
@@ -28,10 +31,10 @@ export function TermPicker({
             key={months}
             type="button"
             variant={selected ? "default" : "outline"}
-            disabled={!approved}
+            disabled={!selectable}
             aria-pressed={selected}
-            className={cn("h-auto flex-col items-start gap-1 px-3 py-2.5 whitespace-normal")}
-            onClick={() => approved && onChange(months)}
+            className={cn("h-auto min-h-16 flex-col items-start gap-1 px-3 py-2.5 whitespace-normal")}
+            onClick={() => selectable && onChange(months)}
           >
             <span className="font-medium">{months} months</span>
             {hint ? (

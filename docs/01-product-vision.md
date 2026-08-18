@@ -5,46 +5,73 @@
 
 ## 1. One-sentence vision
 
-Merkado Labs is the working demo of **Merkado Rent Advance** (landlord) and **Merkado Direct** (holder platform): a Curaçao landlord sells a short strip of future rent claims for cash now, without taking on a loan.
+Merkado Labs is the working Buildathon demo of **Merkado Direct** (umbrella
+app for rent paid forward) and **Merkado Pay** (a simple renter payment-link):
+a Curaçao landlord can get future rent paid upfront, the renter pays the same
+rent, and a holder sees collections — not a loan, not a public offering, and
+not live on merkado.cw.
 
 ## 2. Problem
 
-Private landlords on Curaçao often need a lump sum while a tenant is already in place. Conventional credit is slow, poorly matched to a performing lease, and easy to mis-label. The first live transaction, **MRA-001**, is a true sale of six months of rent receivables — not a mortgage, not a loan, and not a public investment product.
+Private landlords on Curaçao often need a lump sum while a tenant is already
+in place. Conventional credit is slow, poorly matched to a performing lease,
+and easy to mis-label. The first reference transaction, **MRA-001**, is a true
+sale of six months of rent receivables — not a mortgage, not a loan, and not
+a public investment product.
+
+The Buildathon also needs one coherent walkthrough: landlord quote and offer
+book, renter USDC payment, shared account history, and automatic holder
+distribution — while legal, network, Safe, and production architecture
+decisions remain open.
 
 ## 3. Who it is for
 
 | Audience | Product name they see | What they need |
 |---|---|---|
-| Landlord / operations | Merkado Rent Advance | A clear quote, a Passport, and a single purchase price |
-| Purchaser / holder | Merkado Direct | Anonymised offer facts and honest collection risk |
-| Payer / tenant | Neither brand as a finance product | Reassurance that the tenancy does not change |
-| Buildathon / partners | Labs demo | A working walkthrough without crypto theatre |
+| Landlord / operations | Merkado Direct | A clear Get Now quote, My Offers, and one upfront purchase amount |
+| Purchaser / holder | Merkado Direct | Anonymised offer facts, Portfolio IDs, and honest collection risk |
+| Payer / tenant | Merkado Pay | A payment link, same rent and lease, mocked USDC, no economics |
+| Buildathon / partners | Labs demo hub | Direct, Pay, and a fictional Merkado account, plus Reset demo |
 
-These names never appear on the same role screen. They carry different
-disclosure duties. The Labs sidebar lists both only so a walkthrough can
-switch roles.
+Do not prominently brand a separate “Merkado Rent Advance” product on
+customer screens. Internal series and legal wording may still say Rent
+Advance where needed.
 
-**Passport** on this demo is the offer scorecard. It is not the merkado.cw
-Property Passport (listing history on a real-estate page). Holder-facing
-marketplace cards say **Property score**.
+**Listing Score** is the raw 0–100 quality input. **Property Score** is a
+derived presentation figure (Listing Score × rent-to-market). Neither is the
+merkado.cw Property Passport (listing history on a real-estate page).
 
 ## 4. What this Labs repo is
 
-This repository is **not** the live merkado.cw marketplace. Cars, listings, scrapers, and public browse now live in **merkado-cw**. Labs is the sandbox for the Rent Advance / Direct demo that may later sit at a surface such as `app.merkado.cw`.
+This repository is **not** the live merkado.cw marketplace. Cars, listings,
+scrapers, and public browse now live in **merkado-cw**. Labs is the sandbox
+for the Direct / Pay demo.
 
-The demo is off-chain on purpose: rent arrives in a Curaçao bank / foundation sub-ledger. A token would not make that receipt more true.
+Wallet, Safe, transaction, account, and payment behaviour in this demo is
+**mocked**. No real signature, RPC, token transfer, or blockchain write.
+Luis and Luuk own the later network, USDC contract, and Safe decisions.
+
+The landlord receives one upfront purchase amount. Later rent collections
+are not paid to the landlord a second time. They move into the holder
+distribution flow, presented as automatic in this demo.
 
 ## 5. Success for this phase
 
-- A visitor can walk MRA-001 from quote → Passport → tenant notice → funding → monthly collections.
-- Pricing reproduces the locked pack (Cg 10,206 purchase price, 5.50% fee, ~21.6% effective annualised) and **blocks** anything over 24%.
-- The payer app never shows economics. The purchaser app never shows tenant identity.
+- A visitor can walk MRA-001 from Get Now → Use this quote → My Offers →
+  mocked Pay → My Payments → Portfolio, with one shared demo state.
+- Pricing reproduces the locked pack (Cg 10,206 purchase price, 5.50% fee,
+  ~21.6% effective annualised) and **blocks** anything over 24%.
+- Property Score never changes quote pricing.
+- The payer app never shows economics. The holder app never shows tenant
+  identity.
 - Stage 0 legal questions stay visible and unresolved.
-- The Future Caribbean application can point at a working Labs demo, not a slide.
+- Luis can replace the mock crypto layer from a typed provider boundary.
 
 ## 6. What we refuse to claim
 
 - That third-party holders may subscribe today
 - That distributions are guaranteed
-- That this is a loan, yield product, fund, or listed instrument
+- That this is a loan, yield product, fund, token, or listed instrument
+- That a mocked payment is a verified on-chain receipt
+- That the displayed payment reference is encoded in a plain USDC transfer
 - That the demo is live on merkado.cw

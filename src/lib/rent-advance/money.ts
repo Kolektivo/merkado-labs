@@ -1,4 +1,7 @@
 export const XCG_USD_PEG = 1.79;
+export const XCG_USD_PEG_DENOMINATOR = 179;
+export const USDC_DECIMALS = 6;
+export const USDC_ATOMIC_FACTOR = 1_000_000;
 export const INTERNAL_CAP = 0.24;
 export const REGULATORY_CEILING = 0.27;
 export const FEE_FLOOR = 0.045;
@@ -60,4 +63,22 @@ export function formatUsdFromXcg(cents: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(usdFromXcgCents(cents))}`;
+}
+
+export function usdcAtomicFromXcgCents(cents: number): number {
+  return roundHalfUp((cents * USDC_ATOMIC_FACTOR) / XCG_USD_PEG_DENOMINATOR);
+}
+
+export function formatUsdcAtomic(atomic: number): string {
+  return `${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(atomic / USDC_ATOMIC_FACTOR)} USDC`;
+}
+
+export function formatUsdcAtomicAmount(atomic: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(atomic / USDC_ATOMIC_FACTOR);
 }

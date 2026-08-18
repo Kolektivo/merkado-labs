@@ -1,4 +1,9 @@
 import { ACTORS } from "@/lib/rent-advance/actors";
+import {
+  offerIdFromReference,
+  receivableIdFor,
+} from "@/lib/rent-advance/ids";
+import { normalizeBook } from "@/lib/rent-advance/payment-apply";
 import { holderSchedule, priceQuote } from "@/lib/rent-advance/pricing";
 import type {
   ChecklistItem,
@@ -77,12 +82,18 @@ function monthsFrom(start: string, count: number, endDay = 28): string[] {
   });
 }
 
-function receivables(rent: number, count: number, start = "2026-09-01"): Receivable[] {
+function receivables(
+  reference: string,
+  rent: number,
+  count: number,
+  start = "2026-09-01",
+): Receivable[] {
   return monthsFrom(start, count).map((dueDate, index) => ({
     n: index + 1,
     dueDate,
     amountCents: rent,
     status: "scheduled" as const,
+    receivableId: receivableIdFor(reference, index + 1),
   }));
 }
 
@@ -203,6 +214,7 @@ function makeOffer(input: {
   receivedCount?: number;
   missedCount?: number;
   createdAt?: string;
+  marketRentCents?: number;
 }): Offer {
   const related = Boolean(input.relatedParty);
   const quote = quoteFor(
@@ -222,7 +234,7 @@ function makeOffer(input: {
     months: input.months,
     units,
   });
-  const rows = receivables(input.rent, input.months);
+  const rows = receivables(input.reference, input.rent, input.months);
   const receivedCount = input.receivedCount ?? 0;
   const missedCount = input.missedCount ?? 0;
   rows.forEach((row, index) => {
@@ -231,6 +243,10 @@ function makeOffer(input: {
   });
 
   return {
+    offerId: offerIdFromReference(input.reference),
+    settlementTransactionId: (input.fundedCents ?? (input.status === "draft" ? 0 : 1)) > 0
+      ? `tx-settle-${input.reference.toLowerCase()}`
+      : null,
     reference: input.reference,
     status: input.status,
     seriesDisplayName: "Merkado Direct · Rent Advance",
@@ -272,7 +288,7 @@ function makeOffer(input: {
       accessibility: 14,
       total: input.passportTotal,
     },
-    marketRentCents: Math.round(input.rent / 0.75),
+    marketRentCents: input.marketRentCents ?? Math.round(input.rent / 0.75),
     estimatedVoidWeeks: 4,
     comparables: COMPARABLES,
     months: input.months,
@@ -308,7 +324,7 @@ function makeOffer(input: {
         id: `ev-${input.reference}-1`,
         at: input.createdAt ?? "2026-08-13T09:44:00-04:00",
         title: "Offer created",
-        detail: `D. Martina · Passport ${input.passportTotal}`,
+        detail: `D. Martina · Listing Score ${input.passportTotal}`,
         actor: "D. Martina",
       },
     ],
@@ -487,6 +503,7 @@ function buildOffers(): Offer[] {
     payerScore: 95,
     agency: "Moret Real Estate",
     fundedCents: 1050000,
+    marketRentCents: 300000,
     property: makeProperty({
       id: "prop-001",
       address: "Kaya Seru Cueba 20",
@@ -698,7 +715,7 @@ function buildOffers(): Offer[] {
 }
 
 export function getSeedBook(): DemoBook {
-  return {
+  return normalizeBook({
     series: {
       platform: "merkado_direct",
       seriesType: "rent_advance",
@@ -711,7 +728,7 @@ export function getSeedBook(): DemoBook {
     checklist: CHECKLIST,
     openQuestions: OPEN_QUESTIONS,
     assignedTenancies: ["tn-001", "tn-002", "tn-003", "tn-005"],
-  };
+  });
 }
 
 export const CANONICAL_REFERENCE = "MRA-001";

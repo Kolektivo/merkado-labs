@@ -7,11 +7,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   Briefcase,
-  ClipboardCheck,
   Home,
   LayoutDashboard,
   LineChart,
   Plus,
+  UserRound,
 } from "lucide-react";
 
 import {
@@ -54,26 +54,20 @@ type NavSection = {
 const navigationSections: NavSection[] = [
   {
     label: "Demo",
-    items: [{ href: "/", label: "Overview", icon: LayoutDashboard }],
-  },
-  {
-    label: "Merkado Rent Advance",
     items: [
-      { href: "/originate", label: "Offers", icon: Home },
-      { href: "/originate/new", label: "Create offer", icon: Plus },
-      { href: "/originate/simulator", label: "Get Now", icon: LineChart },
+      { href: "/", label: "Overview", icon: LayoutDashboard },
+      { href: "/account/payments", label: "Account", icon: UserRound },
     ],
   },
   {
     label: "Merkado Direct",
     items: [
+      { href: "/originate", label: "My Offers", icon: Home },
+      { href: "/originate/new", label: "Create Offer", icon: Plus },
+      { href: "/originate/simulator", label: "Get Now", icon: LineChart },
       { href: "/offers", label: "Marketplace", icon: BookOpen },
       { href: "/portfolio", label: "Portfolio", icon: Briefcase },
     ],
-  },
-  {
-    label: "Renter",
-    items: [{ href: "/pay", label: "Pay rent", icon: ClipboardCheck }],
   },
 ];
 
@@ -86,7 +80,7 @@ function isActivePath(pathname: string, href: string) {
 }
 
 function AppSidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -106,14 +100,11 @@ function AppSidebar() {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Merkado Labs</span>
                   <span className="truncate text-xs text-sidebar-foreground/60">
-                    {pathname.startsWith("/offers") ||
-                    pathname.startsWith("/portfolio")
-                      ? "Merkado Direct"
-                      : pathname.startsWith("/originate")
-                        ? "Merkado Rent Advance"
-                        : pathname.startsWith("/pay")
-                          ? "Pay rent"
-                          : "Rent Advance demo"}
+                    {pathname.startsWith("/account")
+                      ? "Demo account"
+                      : pathname.startsWith("/pay")
+                        ? "Merkado Pay"
+                        : "Merkado Direct"}
                   </span>
                 </div>
               </Link>
@@ -195,7 +186,7 @@ function BreadcrumbTrail({ crumbs }: { crumbs: BreadcrumbCrumb[] }) {
 }
 
 function SiteHeader() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
       <SidebarTrigger className="-ml-1 shrink-0" />
@@ -208,31 +199,6 @@ function SiteHeader() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  if (pathname === "/pay" || pathname.startsWith("/pay/")) {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-background/90 px-4 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-md items-center justify-between">
-            <Link href="/pay" className="text-sm font-semibold">
-              Pay rent
-            </Link>
-            <Link
-              href="/"
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-            >
-              Back to demo
-            </Link>
-          </div>
-        </header>
-        <main id="main-content" className="mx-auto w-full max-w-md px-4 py-6">
-          {children}
-        </main>
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar />
