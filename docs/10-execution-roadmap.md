@@ -8,7 +8,6 @@
 - Product Lead visual/product UAT of the verified Labs Buildathon demo
   (hub, Direct, Pay, and account mock).
 - Keep Stage 0 questions visible; do not pretend they are closed.
-- First remote GitHub verify run is pending a Product Lead-approved push.
 
 ## Next
 

@@ -26,7 +26,7 @@ duplicate collection or distribution. App-link tests must prove external
 HTTPS URLs open externally and missing or invalid URLs stay inside the demo.
 
 GitHub Actions runs the same commands via `.github/workflows/verify.yml`.
-Do not treat GitHub CI as passing until a remote run has completed.
+The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 
 ## Critical flows (engineering)
 

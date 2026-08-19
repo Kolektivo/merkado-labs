@@ -58,8 +58,8 @@ Node 22 or newer. Two optional packages (`@emnapi/core` and
 `@emnapi/runtime`) are listed so Linux `npm ci` stays in sync with a
 Windows-generated lockfile. They are not a wallet or chain dependency.
 
-A workflow file in the repository is not a passing GitHub check. Treat
-GitHub CI as pending until a remote run has completed.
+The first passing remote Verify run on `main` was 2026-08-19
+(run 32228015203).
 
 ## Do not
 

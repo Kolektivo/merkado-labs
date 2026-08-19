@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 19, 2026 (local automated verification re-run; GitHub CI pending)
+**Last updated:** August 19, 2026 (local automated verification re-run; GitHub Verify passed)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -31,9 +31,8 @@ a public product.
 Local automated checks were re-run from the repository root on 2026-08-19
 after the verification cleanup: `npm ci`, lint, typecheck, unit tests, and
 production build all passed. Unit tests now import the real application
-modules. GitHub Actions verification is in the repository
-(`.github/workflows/verify.yml`) but has **not** run remotely yet — treat
-CI as pending until a Product Lead-approved push.
+modules. GitHub Actions Verify also passed on `main` after that push
+(workflow run 32228015203).
 
 The 2026-08-18 browser walkthrough still stands for product behaviour. The
 demo is open. No login, settings, or admin page.
