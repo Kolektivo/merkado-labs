@@ -54,7 +54,9 @@ on pull requests and on pushes to `main`. It uses Node 24, clearly fake
 CI-only configuration values, and the approved Labs URL
 `https://csaefdkpwukshtouyixg.supabase.co`. It must not receive production
 credentials, write to Supabase, or expose secrets. The app requires
-Node 22 or newer.
+Node 22 or newer. Two optional packages (`@emnapi/core` and
+`@emnapi/runtime`) are listed so Linux `npm ci` stays in sync with a
+Windows-generated lockfile. They are not a wallet or chain dependency.
 
 A workflow file in the repository is not a passing GitHub check. Treat
 GitHub CI as pending until a remote run has completed.
