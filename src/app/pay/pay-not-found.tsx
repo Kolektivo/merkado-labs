@@ -10,7 +10,8 @@ export function PayNotFound() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">{copy.notFound}</h1>
-      <p className="text-sm text-muted-foreground">{copy.demoOnly}</p>
+      <p className="text-sm text-muted-foreground">{copy.openNextPayment}</p>
+      <p className="text-xs text-muted-foreground">{copy.demoOnly}</p>
       <Button asChild>
         <Link href="/pay">{copy.payNow}</Link>
       </Button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpTip } from "@/components/help-tip";
 import { Label } from "@/components/ui/label";
 import { bandLabel, scoreBand } from "@/lib/rent-advance/scoring";
 
@@ -9,12 +10,14 @@ export function ScoreSlider({
   value,
   onChange,
   hint,
+  tip,
 }: {
   id: string;
   label: string;
   value: number;
   onChange: (value: number) => void;
   hint?: string;
+  tip?: string;
 }) {
   const safe = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
   const band = scoreBand(safe);
@@ -22,7 +25,10 @@ export function ScoreSlider({
   return (
     <div className="space-y-2">
       <div className="flex items-end justify-between gap-3">
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id} className="flex items-center gap-1.5">
+          {label}
+          {tip ? <HelpTip label={label}>{tip}</HelpTip> : null}
+        </Label>
         <p className="text-sm tabular-nums">
           <span className="font-medium">{safe}</span>
           <span className="text-muted-foreground"> · {bandLabel(safe)}</span>

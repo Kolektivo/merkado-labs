@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { truncateHash } from "@/lib/rent-advance/ids";
+import {
+  isOfficialExplorerBaseUrl,
+  normalizeExplorerBaseUrl,
+} from "@/lib/pay/networks";
+import { isExplorableTxHash, truncateHash } from "@/lib/rent-advance/ids";
 import { cn } from "@/lib/utils";
 
 export function CopyValue({
@@ -58,8 +62,10 @@ export function ExplorerLink({
   baseUrl: string | null | undefined;
   hash: string | null | undefined;
 }) {
-  if (!baseUrl || !hash || !/^https:\/\//i.test(baseUrl)) return null;
-  const href = `${baseUrl.replace(/\/$/, "")}/${hash}`;
+  if (!baseUrl || !hash) return null;
+  if (!isExplorableTxHash(hash)) return null;
+  if (!isOfficialExplorerBaseUrl(baseUrl)) return null;
+  const href = `${normalizeExplorerBaseUrl(baseUrl)}/tx/${hash}`;
   return (
     <a
       href={href}

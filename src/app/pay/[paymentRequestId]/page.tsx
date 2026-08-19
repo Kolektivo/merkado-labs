@@ -52,6 +52,9 @@ export default async function PayRequestPage({
       district={offer?.property.district ?? ""}
       earlierPeriodLabel={earlier?.periodLabel ?? null}
       history={history}
+      cryptoConfig={book.cryptoConfig}
+      offerReference={request.offerReference}
+      receivableId={request.receivableId}
     />
   );
 }

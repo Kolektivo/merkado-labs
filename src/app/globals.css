@@ -38,6 +38,30 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface: #ffffff;
+  --color-surface-dark: #141414;
+  --color-violet-50: #eeedfc;
+  --color-violet-100: #cbc8f7;
+  --color-violet-200: #b1aef3;
+  --color-violet-300: #8e8eed;
+  --color-violet-400: #7871e9;
+  --color-violet-500: #564ee4;
+  --color-violet-600: #4e47cf;
+  --color-violet-700: #3d37a2;
+  --color-violet-800: #2f2b7d;
+  --color-violet-900: #242160;
+  --color-grey-50: #fafafa;
+  --color-grey-100: #f0f0f0;
+  --color-grey-200: #e8e8e8;
+  --color-grey-300: #dedede;
+  --color-grey-400: #d8d8d8;
+  --color-grey-500: #cecece;
+  --color-grey-600: #bbbbbb;
+  --color-grey-650: #a7a7a7;
+  --color-grey-700: #929292;
+  --color-grey-800: #717171;
+  --color-grey-900: #575757;
+  --color-error-50: #fbebeb;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -157,32 +181,148 @@
   min-height: 100%;
 }
 
-.theme-merkado .account-sidebar {
+.theme-merkado.account-shell {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+
+.theme-merkado .account-sidebar,
+.theme-merkado .account-panel {
   background: #ffffff;
-  border: 1px solid #e4e2e0;
+  border: 1px solid #e8e8e8;
   border-radius: 16px;
   padding: 20px;
 }
 
 @media (min-width: 768px) {
-  .theme-merkado .account-sidebar {
+  .theme-merkado .account-sidebar,
+  .theme-merkado .account-panel {
     padding: 24px;
   }
+}
+
+.theme-merkado .account-panel-compact {
+  padding: 12px 16px;
+}
+
+.theme-merkado .account-avatar {
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #f0f0f0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #171717;
+}
+
+.theme-merkado .account-role-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 10px;
+  color: #929292;
+}
+
+.theme-merkado .account-nav-label {
+  padding: 0 14px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #929292;
 }
 
 .theme-merkado .account-nav-row {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  gap: 6px;
+  height: 40px;
+  min-height: 40px;
   border-radius: 12px;
-  padding: 0 12px;
+  padding: 0 14px;
   font-size: 14px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #171717;
   transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.theme-merkado .account-nav-row:hover,
-.theme-merkado .account-nav-row[aria-current="page"] {
-  background: #f3f2f1;
+.theme-merkado .account-nav-row:hover {
+  background: #fafafa;
+}
+
+.theme-merkado .account-nav-row[aria-current="page"],
+.theme-merkado .account-nav-row-active {
+  background: #f0f0f0;
+}
+
+.theme-merkado .account-outline-action {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid #564ee4;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #564ee4;
+  transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.theme-merkado .account-outline-action:hover {
+  background: #eeedfc;
+}
+
+.theme-merkado .account-outline-action:focus-visible,
+.theme-merkado .account-nav-row:focus-visible,
+.theme-merkado .account-segment-item:focus-visible,
+.theme-merkado .account-segment-active:focus-visible,
+.theme-merkado a.account-panel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #564ee4;
+}
+
+.theme-merkado .account-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+  background: #f0f0f0;
+  padding: 4px;
+}
+
+.theme-merkado .account-segment-item,
+.theme-merkado .account-segment-active {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.theme-merkado .account-segment-item {
+  color: #929292;
+}
+
+.theme-merkado .account-segment-item:hover {
+  color: #171717;
+}
+
+.theme-merkado .account-segment-active {
+  background: #ffffff;
+  color: #171717;
+  box-shadow: 0 1px 2px rgb(23 23 23 / 8%);
 }
 
 .theme-merkado input:not([type="checkbox"]):not([type="range"]),
@@ -192,7 +332,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .theme-merkado .account-nav-row {
+  .theme-merkado .account-nav-row,
+  .theme-merkado .account-outline-action {
     transition: none;
   }
 }

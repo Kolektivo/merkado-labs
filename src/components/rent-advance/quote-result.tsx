@@ -5,6 +5,7 @@ import { SaleNotLoan } from "@/components/sale-not-loan";
 import { Rate } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PLAIN } from "@/lib/rent-advance/copy";
 import { formatPercent, formatXcg, FEE_FLOOR, INTERNAL_CAP } from "@/lib/rent-advance/money";
 import type { Quote } from "@/lib/rent-advance/pricing";
 
@@ -32,29 +33,29 @@ export function FeeBuildup({ quote }: { quote: Quote }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Fee build-up</CardTitle>
+        <CardTitle>How the fee is calculated</CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="divide-y">
           <Line
-            label="Term base fee"
+            label="Starting fee for this term"
             value={<Rate value={quote.baseFeeRate} />}
-            tip="Starting fee for this term before score adjustments."
+            tip="The fee before listing quality or payment history change it."
           />
           <Line
-            label="Listing Score band adjustment"
+            label="Property quality adjustment"
             value={<Rate value={quote.passportAdjustment} />}
-            tip="Property quality grade. Weaker listings cost more."
+            tip={PLAIN.listingScore}
           />
           <Line
-            label="Payer adjustment"
+            label="Payment history adjustment"
             value={<Rate value={quote.payerAdjustment} />}
-            tip="How reliably this renter has paid. Weaker history costs more."
+            tip={PLAIN.payerScore}
           />
           <Line
-            label="Related-party premium"
+            label="Connected-landlord extra"
             value={<Rate value={quote.relatedPartyPremium} />}
-            tip="Extra 25 basis points when the landlord and Merkado are connected."
+            tip={PLAIN.relatedParty}
           />
           <Line
             label="Fee floor"
@@ -79,8 +80,8 @@ export function QuoteResult({ quote }: { quote: Quote }) {
           <AlertDescription>
             The annualised comparison is{" "}
             {formatPercent(quote.effectiveAnnualised, 1)}, above the 24% cap.
-            There is no override. Lower the rent, raise the scores, or drop the
-            related-party premium.
+            There is no override. Lower the rent, raise the scores, or turn off
+            the connected-landlord extra.
           </AlertDescription>
         </Alert>
         <details className="rounded-xl border p-4">
@@ -99,15 +100,14 @@ export function QuoteResult({ quote }: { quote: Quote }) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Get Now amount</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Cash the landlord would receive
+            <HelpTip label="Cash the landlord would receive">{PLAIN.cashNow}</HelpTip>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1">
+        <CardContent>
           <p className="text-3xl font-semibold tracking-tight">
             {formatXcg(quote.purchasePriceCents)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Paid once, up front. Later rent collections go to holders, not back
-            to the landlord.
           </p>
         </CardContent>
       </Card>
@@ -119,33 +119,53 @@ export function QuoteResult({ quote }: { quote: Quote }) {
         effective={formatPercent(quote.effectiveAnnualised, 1)}
       />
       <dl className="divide-y rounded-xl border bg-card px-4">
-        <Line label="Gross receivables" value={formatXcg(quote.grossReceivablesCents)} />
+        <Line
+          label="Total rent for these months"
+          value={formatXcg(quote.grossReceivablesCents)}
+          tip={PLAIN.totalRent}
+        />
         <Line
           label="Fee"
           value={`${formatXcg(quote.feeCents)} · ${formatPercent(quote.feeRate)}`}
-        />
-        <Line label="Advance rate" value={formatPercent(quote.advanceRate, 1)} />
-        <Line
-          label="Payment timing"
-          value="One payment after funding"
-          tip="The landlord receives the purchase price once."
+          tip={PLAIN.fee}
         />
         <Line
-          label="Effective annualised"
+          label="Share paid now"
+          value={formatPercent(quote.advanceRate, 1)}
+          tip={PLAIN.sharePaidNow}
+        />
+        <Line
+          label="When the landlord is paid"
+          value="Once, after the offer is funded"
+          tip={PLAIN.cashNow}
+        />
+        <Line
+          label="Yearly comparison"
           value={formatPercent(quote.effectiveAnnualised, 1)}
+          tip={PLAIN.yearlyComparison}
         />
-        <Line label="Monthly comparison" value={formatPercent(quote.monthlyIrr)} />
-        <Line label="Nominal comparison" value={formatPercent(quote.nominalAnnualised, 1)} />
         <Line
-          label="24% cap"
+          label="24% limit"
           value={
             capHeadroom >= 0
               ? `${formatPercent(quote.effectiveAnnualised, 1)} of 24%`
-              : "Breached"
+              : "Above the limit"
           }
-          tip="The engine blocks anything above 24%. There is no override."
+          tip={PLAIN.yearlyComparison}
         />
       </dl>
+      <details className="rounded-xl border p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Extra comparison figures
+        </summary>
+        <dl className="mt-3 divide-y">
+          <Line label="Monthly comparison" value={formatPercent(quote.monthlyIrr)} />
+          <Line
+            label="Simple yearly comparison"
+            value={formatPercent(quote.nominalAnnualised, 1)}
+          />
+        </dl>
+      </details>
       <details className="rounded-xl border p-4">
         <summary className="cursor-pointer text-sm font-medium">
           How the fee is built

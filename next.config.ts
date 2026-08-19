@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
       { source: "/originate/audit", destination: "/originate", permanent: false },
       { source: "/originate/readiness", destination: "/", permanent: false },
       { source: "/pay/home", destination: "/pay", permanent: false },
+      { source: "/pay/payments", destination: "/pay", permanent: false },
       { source: "/pay/history", destination: "/pay", permanent: false },
       { source: "/pay/method", destination: "/pay", permanent: false },
       { source: "/pay/now", destination: "/pay", permanent: false },

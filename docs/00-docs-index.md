@@ -20,16 +20,26 @@ retired.
 - **Merkado Direct** = umbrella Labs demo for landlords and holders: My Offers,
   Create Offer, Get Now, Marketplace, and Portfolio. Calm customer copy:
   “rent paid forward” or “get future rent paid upfront.”
-- **Merkado Pay** = renter payment-link for mocked USDC rent payments.
-- **Merkado account (Labs mock)** = fictional renter account with My Payments
-  and Apps. Not production auth.
+- **Merkado Pay** = renter payment-link for mocked USDC rent payments on
+  OP Sepolia by default (Base Sepolia also available; mainnet later).
+  Customer money is USD; USDC settles 1:1.
+- **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
+  with Apps and **My Payments**. Only Merkado Pay and Merkado Direct are
+  live. Not production auth.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
 - **Digital Participation Right (DPR)** = instrument name (book-entry in this
   demo). There is no token, NFT, or transferable position.
-- **Listing Score** = raw 0–100 underwriting/quality input used by the pricing
-  engine. Customer-facing replacement for earlier “Passport score” labels.
-- **Property Score** = derived presentation score from Listing Score ×
-  rent-to-market multiplier. Never fed back into pricing.
+- **Listing Score** (on screen: **Property quality**) = raw 0–100 listing
+  quality used to set the cash offer.
+- **Payer Score** (on screen: **Payment history**) = raw 0–100 renter
+  payment reliability used to set the cash offer.
+- **Property Score** (on screen: **Combined property view**) = presentation
+  score from Listing Score and rent vs typical nearby rent. Never prices
+  the quote.
+- **Rent vs typical rent** = contractual rent ÷ typical nearby rent. Below
+  typical is usually stronger. Internal name: rent-to-market.
+- **Connected landlord** = landlord has a link to Merkado; extra approval
+  and a slightly higher fee. Internal name: related party.
 - **Passport (legacy internal field)** = stored offer scorecard object
   (`passport.total` is the Listing Score). This is **not** the merkado.cw
   **Property Passport** (listing history on a property page).
@@ -74,10 +84,10 @@ framing where they conflict.
 | Portfolio | [LABS] Pre-seeded positions; automatic distributions |
 | Merkado Pay (mocked USDC) | [LABS] Buildathon scope; no real wallet |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
-| Login / admin | Removed — demo is open |
+| Login / admin | Removed — hosted demo will use a shared host password after deploy |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Real network / Safe / USDC | Unselected; Luis and Luuk own |
+| Real wallet / Safe transfer | Mocked; OP Sepolia + Base Sepolia selectable; mainnet later; Luis connects Web3 |
 
 ## Reading order
 

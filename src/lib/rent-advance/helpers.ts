@@ -226,7 +226,6 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     offeringCents: offer.offeringCents,
     fundedCents: offer.fundedCents,
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
-    agency: offer.agency,
     status: offer.status,
     relatedParty: offer.relatedParty,
   };
@@ -254,11 +253,6 @@ export function toPurchaserOffer(offer: Offer): PurchaserOfferDetail {
     payer: {
       bandLabel: payerBandLabel(offer.tenant.scores.total),
       onTimePercent: onTimePercent(offer.tenant.latePayments12m),
-      employmentStatus: offer.tenant.employmentStatus,
-      rentToIncomeBand: rentToIncomeBand(
-        offer.monthlyRentCents,
-        offer.tenant.monthlyIncomeCents,
-      ),
     },
     receivables: offer.receivables.map((row) => ({
       n: row.n,
@@ -361,14 +355,13 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
   const missed = book.offers.flatMap((offer) =>
     offer.receivables.filter((row) => row.status === "missed"),
   );
-  const unclaimedOffers = book.offers.filter((offer) => {
-    const received = offer.collections
-      .filter((row) => row.status === "reconciled" || row.status === "received")
-      .reduce((inner, row) => inner + row.amountCents, 0);
-    return received > 0 && offer.status !== "closed";
-  });
-  const unclaimed = unclaimedOffers.length;
-  const unclaimedOffer = unclaimedOffers[0];
+  const pendingDistributions = (book.distributions ?? []).filter(
+    (row) => row.status === "pending",
+  );
+  const pendingOffer = book.offers.find(
+    (offer) =>
+      pendingDistributions.some((row) => row.offerReference === offer.reference),
+  );
 
   return [
     {
@@ -400,13 +393,13 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
     },
     {
       tone: "info",
-      label: "Rent received, not yet released",
-      count: unclaimed,
-      detail: unclaimed
-        ? "Collected rent is waiting for a two-person release"
+      label: "Holder distribution pending",
+      count: pendingDistributions.length,
+      detail: pendingDistributions.length
+        ? `Collected rent is moving to holders · ${pendingOffer?.reference ?? "book"}`
         : "none waiting",
-      href: unclaimedOffer
-        ? `/originate/${unclaimedOffer.reference}`
+      href: pendingOffer
+        ? `/originate/${pendingOffer.reference}`
         : "/originate",
     },
   ];

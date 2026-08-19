@@ -4,12 +4,15 @@ export type WalletSession = {
   chainId: number | null;
 };
 
+export type PaymentMethod = "wallet" | "external";
+
 export type PaymentSubmitInput = {
   paymentRequestId: string;
   expectedAtomicAmount: number;
   recipient: string;
   offerReference: string;
   receivableId: string;
+  method?: PaymentMethod;
 };
 
 export type SubmittedPayment = {
@@ -30,5 +33,6 @@ export type PaymentProvider = {
   disconnect(): Promise<void>;
   session(): WalletSession | null;
   submitPayment(input: PaymentSubmitInput): Promise<SubmittedPayment>;
+  reportExternalTransfer(input: PaymentSubmitInput): Promise<SubmittedPayment>;
   getStatus(transactionId: string): Promise<SubmittedPayment | null>;
 };

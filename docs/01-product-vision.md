@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 ## 1. One-sentence vision
 
@@ -21,8 +21,8 @@ a public investment product.
 
 The Buildathon also needs one coherent walkthrough: landlord quote and offer
 book, renter USDC payment, shared account history, and automatic holder
-distribution — while legal, network, Safe, and production architecture
-decisions remain open.
+distribution — while legal, Safe execution, allocation, and production
+architecture decisions remain open. The demo default network is OP Sepolia.
 
 ## 3. Who it is for
 
@@ -49,7 +49,10 @@ for the Direct / Pay demo.
 
 Wallet, Safe, transaction, account, and payment behaviour in this demo is
 **mocked**. No real signature, RPC, token transfer, or blockchain write.
-Luis and Luuk own the later network, USDC contract, and Safe decisions.
+The selected demo networks are **OP Sepolia** (default) and **Base
+Sepolia**, with Circle native USDC. OP Mainnet and Base Mainnet stay available
+for later. Luis and Luuk own the real wallet adapter, Safe address, and
+allocation design.
 
 The landlord receives one upfront purchase amount. Later rent collections
 are not paid to the landlord a second time. They move into the holder
@@ -59,7 +62,7 @@ distribution flow, presented as automatic in this demo.
 
 - A visitor can walk MRA-001 from Get Now → Use this quote → My Offers →
   mocked Pay → My Payments → Portfolio, with one shared demo state.
-- Pricing reproduces the locked pack (Cg 10,206 purchase price, 5.50% fee,
+- Pricing reproduces the locked pack ($10,206 purchase price, 5.50% fee,
   ~21.6% effective annualised) and **blocks** anything over 24%.
 - Property Score never changes quote pricing.
 - The payer app never shows economics. The holder app never shows tenant

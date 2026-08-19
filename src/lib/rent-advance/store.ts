@@ -8,7 +8,12 @@ import {
   toPortfolioPositionDetail,
   toPurchaserOffer,
 } from "@/lib/rent-advance/helpers";
-import { normalizeBook } from "@/lib/rent-advance/payment-apply";
+import {
+  cryptoConfigFor,
+  mergeCryptoConfig,
+  normalizeBook,
+} from "@/lib/rent-advance/payment-apply";
+import { resolvePayNetworkKey } from "@/lib/pay/networks";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import type {
   BuyerOfferCard,
@@ -18,6 +23,7 @@ import type {
   PortfolioPositionDetail,
   PurchaserOfferDetail,
 } from "@/lib/rent-advance/types";
+import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 const STATE_ID = "live";
@@ -27,6 +33,7 @@ function cloneBook(): DemoBook {
 }
 
 export async function loadBook(): Promise<DemoBook> {
+  await assertDemoUnlocked();
   const supabase = createLabsAdminClient();
   const { data, error } = await supabase
     .from("ra_demo_state")
@@ -44,10 +51,40 @@ export async function loadBook(): Promise<DemoBook> {
     if (writeError) throw writeError;
     return seed;
   }
-  return normalizeBook(data.payload);
+  const book = normalizeBook(data.payload);
+  if (storedMoneyOrNetworkStale(data.payload, book)) {
+    return saveBook(book);
+  }
+  return book;
+}
+
+function storedMoneyOrNetworkStale(raw: unknown, book: DemoBook): boolean {
+  const incoming = (raw ?? {}) as DemoBook;
+  const storedConfig = incoming.cryptoConfig;
+  const nextConfig = book.cryptoConfig;
+  if (
+    !storedConfig?.networkKey ||
+    storedConfig.networkKey !== nextConfig?.networkKey ||
+    storedConfig.chainId !== nextConfig?.chainId ||
+    storedConfig.usdcContract !== nextConfig?.usdcContract ||
+    storedConfig.explorerBaseUrl !== nextConfig?.explorerBaseUrl ||
+    storedConfig.networkLabel !== nextConfig?.networkLabel
+  ) {
+    return true;
+  }
+  const stored = incoming.paymentRequests ?? [];
+  return (book.paymentRequests ?? []).some((row) => {
+    const previous = stored.find((item) => item.paymentRequestId === row.paymentRequestId);
+    return (
+      !previous ||
+      previous.amountUsdcAtomic !== row.amountUsdcAtomic ||
+      previous.receivingAddress !== row.receivingAddress
+    );
+  });
 }
 
 export async function saveBook(book: DemoBook): Promise<DemoBook> {
+  await assertDemoUnlocked();
   for (const offer of book.offers) {
     assertReleasesDistinct(offer.releases);
   }
@@ -63,7 +100,23 @@ export async function saveBook(book: DemoBook): Promise<DemoBook> {
 }
 
 export async function resetBook(): Promise<DemoBook> {
-  return saveBook(cloneBook());
+  await assertDemoUnlocked();
+  const seed = cloneBook();
+  try {
+    const supabase = createLabsAdminClient();
+    const { data } = await supabase
+      .from("ra_demo_state")
+      .select("payload")
+      .eq("id", STATE_ID)
+      .maybeSingle();
+    if (data?.payload) {
+      const current = mergeCryptoConfig((data.payload as DemoBook).cryptoConfig);
+      seed.cryptoConfig = cryptoConfigFor(resolvePayNetworkKey(current), current);
+    }
+  } catch {
+    // Keep the seed network if the current book cannot be read.
+  }
+  return saveBook(seed);
 }
 
 export async function getOffer(reference: string): Promise<Offer | null> {

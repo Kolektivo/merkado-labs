@@ -1,40 +1,39 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { ThemeMerkado } from "@/components/theme-merkado";
+import { redirectIfDemoLocked } from "@/lib/demo-gate-server";
 
-import { AccountNav } from "./account-nav";
+import { AccountBreadcrumb } from "./account-breadcrumb";
+import { AccountFooter } from "./account-footer";
+import { AccountNavbar } from "./account-navbar";
+import { AccountSidebar } from "./account-sidebar";
 
-export default function AccountLayout({
+export const dynamic = "force-dynamic";
+
+export default async function AccountLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+  await redirectIfDemoLocked();
   return (
-    <ThemeMerkado className="min-h-screen px-4 py-5 md:px-6">
-      <div className="mx-auto grid w-full max-w-[1030px] gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="account-sidebar">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Demo account
-          </p>
-          <p className="mt-2 text-lg font-semibold">L. Rosaria</p>
-          <p className="text-sm text-muted-foreground">Fictional Labs renter</p>
-          <AccountNav />
-          <Link
-            href="/"
-            className="mt-6 inline-block text-sm underline underline-offset-2"
-          >
-            Back to demo
-          </Link>
-        </aside>
-        <div>
-          <header className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-sm font-medium">Merkado account</p>
-            <span className="rounded-full bg-muted px-2 py-1 text-xs">
-              Demo account
-            </span>
-          </header>
-          <main id="main-content">{children}</main>
-        </div>
+    <ThemeMerkado className="account-shell flex min-h-screen min-h-dvh flex-col bg-background">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <AccountNavbar />
+        <main id="main-content" className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col bg-background">
+            <div className="mx-auto w-full max-w-[1030px] flex-1 px-4 pt-0 pb-4">
+              <div className="mb-4">
+                <AccountBreadcrumb />
+              </div>
+              <div className="flex flex-col gap-4 md:grid md:grid-cols-[280px_minmax(0,1fr)] md:items-start">
+                <AccountSidebar />
+                <div className="flex w-full min-w-0 flex-col gap-4">{children}</div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <AccountFooter />
       </div>
     </ThemeMerkado>
   );

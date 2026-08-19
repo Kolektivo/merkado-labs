@@ -28,9 +28,9 @@ import { cn } from "@/lib/utils";
 
 const STEPS = [
   { id: 1, label: "Property" },
-  { id: 2, label: "Payer" },
+  { id: 2, label: "Renter" },
   { id: 3, label: "Lease" },
-  { id: 4, label: "Listing Score" },
+  { id: 4, label: "Quality scores" },
   { id: 5, label: "Quote" },
   { id: 6, label: "Review" },
 ] as const;
@@ -125,7 +125,7 @@ export function NewOfferWizard({
   function saveDraft() {
     setError(null);
     if (!declared) {
-      setError("Confirm the related-party status before saving.");
+      setError("Confirm the connected-landlord status before saving.");
       return;
     }
     if (offer.months !== 6) {
@@ -282,6 +282,7 @@ export function NewOfferWizard({
               <Input
                 id="bathrooms"
                 type="number"
+                lang="en-US"
                 min={0}
                 step="0.5"
                 value={offer.property.bathrooms}
@@ -332,8 +333,10 @@ export function NewOfferWizard({
       {step === 2 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Payer</CardTitle>
-            <CardDescription>Holders never see any of this.</CardDescription>
+            <CardTitle>Renter</CardTitle>
+            <CardDescription>
+              Landlord file only. Holders never see a name, employer, or income.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field
@@ -413,7 +416,7 @@ export function NewOfferWizard({
             </Field>
             <Field
               id="income"
-              label="Monthly income (XCG)"
+              label="Monthly income (USD)"
               tip="Landlord file only. Holders never see this."
             >
               <Input
@@ -515,7 +518,7 @@ export function NewOfferWizard({
                 }
               />
             </Field>
-            <Field id="rent" label="Monthly rent (XCG)">
+            <Field id="rent" label="Monthly rent (USD)">
               <Input
                 id="rent"
                 type="number"
@@ -551,13 +554,15 @@ export function NewOfferWizard({
       {step === 4 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Listing Score</CardTitle>
+            <CardTitle>Quality scores</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field
               id="passport-total"
-              label="Listing Score"
-              tip="Raw property quality from 0 to 100. This is what prices the quote. Property Score is only a derived explanation."
+              label="Property quality"
+              tip={
+                "Also called Listing Score. How strong this listing looks, from 0 to 100. This is what prices the quote."
+              }
             >
               <Input
                 id="passport-total"
@@ -578,8 +583,10 @@ export function NewOfferWizard({
             </Field>
             <Field
               id="payer-total"
-              label="Payer score"
-              tip="How reliably this renter has paid. Weaker history raises the fee."
+              label="Payment history"
+              tip={
+                "Also called Payer Score. How reliably this renter has paid. Weaker history raises the fee."
+              }
             >
               <Input
                 id="payer-total"
@@ -601,7 +608,11 @@ export function NewOfferWizard({
                 }
               />
             </Field>
-            <Field id="market-rent" label="Market rent (XCG)">
+            <Field
+              id="market-rent"
+              label="Typical nearby rent (USD)"
+              tip="What similar homes nearby usually rent for. Used only to compare with this rent."
+            >
               <Input
                 id="market-rent"
                 type="number"
@@ -644,7 +655,8 @@ export function NewOfferWizard({
             <CardHeader>
               <CardTitle>Quote</CardTitle>
               <CardDescription>
-                Only the six-month term can be originated. A 24% cap blocks publish.
+                Only six months can be saved as an offer. Anything above the 24%
+                yearly comparison cannot be saved.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -681,14 +693,22 @@ export function NewOfferWizard({
                       relatedParty: event.target.checked,
                       relatedPartyNote: event.target.checked
                         ? current.relatedPartyNote ??
-                          "Related-party premium applies. Independent approver required."
+                          "Connected-landlord extra applies. Independent approval required."
                         : null,
                     }))
                   }
                   className="mt-0.5 size-4 rounded border border-input"
                 />
-                This offer is a related-party transaction (independent approver
-                required; related-party premium)
+                <span className="flex items-center gap-1.5">
+                  Landlord is connected to Merkado
+                  <HelpTip label="Connected landlord">
+                    Turn this on only when the landlord has a personal or
+                    business link to Merkado. Someone independent must then
+                    approve the deal. The fee is a little higher because of that
+                    extra check — so cash to the landlord is slightly lower.
+                    This is a fairness rule, not a discount.
+                  </HelpTip>
+                </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -697,7 +717,7 @@ export function NewOfferWizard({
                   onChange={(event) => setDeclared(event.target.checked)}
                   className="mt-0.5 size-4 rounded border border-input"
                 />
-                I confirm the related-party status above is correct
+                I confirm this is correct
               </label>
             </CardContent>
           </Card>

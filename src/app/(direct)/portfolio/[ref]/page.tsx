@@ -43,9 +43,14 @@ export default async function PortfolioDetailPage({
 
   return (
     <ThemeMerkado className="space-y-6">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/portfolio">← Portfolio</Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/portfolio">← Portfolio</Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/offers/${position.reference}`}>View offer</Link>
+        </Button>
+      </div>
       <div className="space-y-2">
         <StatusBadge tone={statusTone(position.status)}>
           {statusLabel(position.status)}
@@ -67,7 +72,7 @@ export default async function PortfolioDetailPage({
             value: <Money cents={position.collectedCents} compact />,
           },
           {
-            label: "Awaiting release",
+            label: "Awaiting distribution",
             value: <Money cents={position.pendingDistributionCents} compact />,
           },
           {

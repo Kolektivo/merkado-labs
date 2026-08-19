@@ -5,15 +5,20 @@
 
 ## Now
 
+- Set `LABS_DEMO_PASSWORD` on the Labs Vercel Production environment,
+  then approve commit and push so the host password is live on
+  `merkado-labs.vercel.app`.
 - Product Lead visual/product UAT of the verified Labs Buildathon demo
-  (hub, Direct, Pay, and account mock).
+  (hub, Direct, Pay, and account mock) before showing Luuk.
 - Keep Stage 0 questions visible; do not pretend they are closed.
 
 ## Next
 
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
-- Luis and Luuk select and verify network, native USDC contract, Safe
-  services, and explorer — then replace the mock provider.
+- After Product Lead approval, Luis and Luuk replace the mock provider
+  with a real wallet + native USDC adapter on **OP Sepolia** or **Base
+  Sepolia** first. OP Mainnet and Base Mainnet stay later. Safe address,
+  allocation, and confirmation depth are still theirs.
 - Decide production payment allocation (calldata, unique deposit addresses,
   or another verified design). A plain USDC memo is not reliable.
 - Attested collection evidence from a real foundation sub-ledger (still no
@@ -35,4 +40,4 @@
 | Real collection flow | M.1.3 |
 | Public Merkado Direct page | M.1.4 |
 | 3-month term origination | Separate short-dated advice |
-| Real wallet / Safe / USDC | Network and legal decisions still open |
+| Real wallet / Safe / USDC transfer | Product Lead must approve the integration task; start on a testnet; allocation and Safe execution still open |

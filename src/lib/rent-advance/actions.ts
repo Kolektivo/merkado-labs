@@ -2,13 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
+import { canPersistPayNetwork, parseExactPayNetworkKey } from "@/lib/pay/networks";
+import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import {
   applyOpsCollection,
   applyPaymentOutcome,
+  cryptoConfigFor,
   type PaymentMockOutcome,
+  type PaymentOutcomeMeta,
 } from "@/lib/rent-advance/payment-apply";
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
 import { getSeedBook } from "@/lib/rent-advance/seed";
@@ -21,6 +25,17 @@ function refresh() {
 
 export async function resetDemoAction() {
   await resetBook();
+  refresh();
+}
+
+export async function setPayNetworkAction(networkKey: string) {
+  const key = parseExactPayNetworkKey(networkKey);
+  if (!key || !canPersistPayNetwork(key)) {
+    throw new Error("That payment network is not available.");
+  }
+  const book = await loadBook();
+  book.cryptoConfig = cryptoConfigFor(key, book.cryptoConfig);
+  await saveBook(book);
   refresh();
 }
 
@@ -82,6 +97,7 @@ export async function recordCollectionAction(
 export async function confirmPaymentAction(
   paymentRequestId: string,
   outcome: PaymentMockOutcome = "confirmed",
+  meta?: PaymentOutcomeMeta,
 ) {
   const book = await loadBook();
   const request = book.paymentRequests?.find(
@@ -90,7 +106,7 @@ export async function confirmPaymentAction(
   if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
     throw new Error("Payment request not found.");
   }
-  const next = applyPaymentOutcome(book, paymentRequestId, outcome);
+  const next = applyPaymentOutcome(book, paymentRequestId, outcome, new Date().toISOString(), meta);
   await saveBook(next);
   refresh();
 }
@@ -142,6 +158,40 @@ export async function closeChecklistItemAction(id: string, evidence: string) {
   refresh();
 }
 
+export async function submitOfferForReviewAction(reference: string) {
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  if (offer.status !== "draft") {
+    throw new Error("Only a draft can be submitted for review.");
+  }
+  if (offer.months !== 6) {
+    throw new Error("Only the six-month term is approved for origination.");
+  }
+  priceOrBlock({
+    monthlyRentCents: offer.monthlyRentCents,
+    months: offer.months,
+    feeRate: offer.feeRate,
+    relatedParty: offer.relatedParty,
+  });
+  await updateOffer(reference, (current) => ({
+    ...current,
+    status: "under_review",
+    nextAction: "Independent approval",
+    events: [
+      {
+        id: `ev-${reference}-submit-${Date.now()}`,
+        at: new Date().toISOString(),
+        title: "Submitted for review",
+        detail: "Draft sent for independent approval before funding.",
+        actor: "D. Martina",
+      },
+      ...current.events,
+    ],
+  }));
+  refresh();
+}
+
 export async function saveDraftOfferAction(offer: Offer) {
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
@@ -180,6 +230,7 @@ export async function nextDraftReference(): Promise<string> {
 }
 
 export async function seedOfferTemplate(): Promise<Offer> {
+  await assertDemoUnlocked();
   const book = getSeedBook();
   const canonical = book.offers[0];
   const reference = await nextDraftReference();

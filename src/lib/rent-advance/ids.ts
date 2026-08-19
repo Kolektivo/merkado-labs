@@ -46,6 +46,17 @@ export function demoTxHash(seed: string): string {
   return `0xDEMO${padded}`;
 }
 
+export function isExplorableTxHash(value: string | null | undefined): boolean {
+  return Boolean(value && /^0x[a-fA-F0-9]{64}$/.test(value));
+}
+
+export function acceptedPaymentTxHash(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (value.startsWith("0xDEMO")) return value;
+  if (isExplorableTxHash(value)) return value;
+  return null;
+}
+
 export function periodLabelFromDueDate(dueDate: string): string {
   const [year, month] = dueDate.slice(0, 10).split("-").map(Number);
   const names = [

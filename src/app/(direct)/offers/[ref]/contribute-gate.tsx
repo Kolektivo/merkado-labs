@@ -13,7 +13,7 @@ export function ContributeGate() {
           Subscribe is closed
           <HelpTip label="Why subscribe is closed">
             Counsel has not closed M.1.2 (what this instrument is) or M.1.4
-            (whether holding investor funds needs a licence). This button
+            (whether a public holder product needs a licence). This button
             cannot complete a purchase.
           </HelpTip>
         </AlertTitle>

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { HelpTip } from "@/components/help-tip";
+import { PayNetworkControl } from "@/components/pay-network-control";
 import { PrototypeNotice } from "@/components/prototype-notice";
 import { ResetDemoButton } from "@/components/reset-demo-button";
+import { isTestnetConfig, mainnetSelectionAllowed } from "@/lib/pay/networks";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,9 +40,9 @@ export default async function DirectPage() {
           Merkado Labs demo
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Merkado Direct lets a landlord get future rent paid upfront. Merkado
-          Pay is the renter payment-link. One shared demo state. This is a sale
-          of receivables, not a loan.
+          A landlord can get the next few months of rent paid now. The renter
+          still pays the same rent through Merkado Pay. This is a sale of
+          future rent, not a loan. Everything here is a walkthrough.
         </p>
       </div>
 
@@ -49,21 +51,21 @@ export default async function DirectPage() {
           href="/originate"
           badge="Direct"
           title="Merkado Direct"
-          body="My Offers, Get Now, Marketplace, and Portfolio. Compare rent paid forward, then walk the seeded book."
+          body="Landlord and holder walkthrough: check the cash offer, create a draft, then see later rent go to holders."
           action="Open Direct"
         />
         <RoleCard
           href="/pay"
           badge="Pay"
           title="Merkado Pay"
-          body="A simple renter payment-link. Mocked USDC, same rent, same lease. English, Dutch, Papiamentu."
+          body="The renter payment page. Same rent, same lease. Demo only — nothing real is sent."
           action="Open Pay"
         />
         <RoleCard
-          href="/account/payments"
+          href="/account/apps"
           badge="Account"
           title="Merkado account"
-          body="A fictional Labs account with My Payments and Apps. Not production sign-in."
+          body="A fictional Merkado account for Luuk Weber, with My Payments and the two demo apps."
           action="Open account"
         />
       </div>
@@ -74,7 +76,7 @@ export default async function DirectPage() {
             <CardTitle className="flex items-center gap-2">
               MRA-001 in one glance
               <HelpTip label="MRA-001">
-                The locked reference deal: Sun Set Heights, Cg 1,800 rent, six
+                The locked reference deal: Sun Set Heights, $1,800 rent, six
                 months, 5.50% fee. All other demo offers copy this shape.
               </HelpTip>
             </CardTitle>
@@ -102,14 +104,14 @@ export default async function DirectPage() {
                 tip="One flat fee on the gross rent. No extra arrangement or exit charges."
               />
               <Fact
-                label="Effective annualised comparison"
+                label="Yearly comparison"
                 value="21.6%"
-                tip="A comparison figure so a landlord can compare the flat fee with other ways of getting cash today. This is not an interest rate. The engine blocks anything above 24%."
+                tip="A comparison figure so a landlord can compare the flat fee with other ways of getting cash today. This is not an interest rate. Anything above 24% is blocked."
               />
             </dl>
             <p className="mt-4 text-xs text-muted-foreground">
-              {offer?.property.district ?? "Sun Set Heights"} · related-party
-              premium · sale of receivables, not a loan.
+              {offer?.property.district ?? "Sun Set Heights"} · connected
+              landlord · sale of future rent, not a loan.
             </p>
           </CardContent>
         </Card>
@@ -142,12 +144,19 @@ export default async function DirectPage() {
         </Card>
       </div>
 
+      <PayNetworkControl
+        networkKey={book.cryptoConfig?.networkKey ?? ""}
+        networkLabel={book.cryptoConfig?.networkLabel?.trim() || "Network to be confirmed"}
+        isTestnet={isTestnetConfig(book.cryptoConfig)}
+        allowMainnet={mainnetSelectionAllowed()}
+      />
+
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium">Reset the walkthrough</p>
           <p className="text-sm text-muted-foreground">
             Restores the seeded offers, payments, transactions, and
-            distributions.
+            distributions. Keeps the selected test network.
           </p>
         </div>
         <ResetDemoButton />

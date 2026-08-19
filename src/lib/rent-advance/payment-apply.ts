@@ -1,8 +1,10 @@
+import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
   DEMO_RECEIVING_ADDRESS,
   RENTER_ACCOUNT_ID,
   SAFE_ACCOUNT_ID,
+  acceptedPaymentTxHash,
   collectionIdFor,
   demoTxHash,
   distributionIdFor,
@@ -14,7 +16,11 @@ import {
   receivableIdFor,
   settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
-import { usdcAtomicFromXcgCents } from "@/lib/rent-advance/money";
+import {
+  getPayNetwork,
+  resolvePayNetworkKey,
+} from "@/lib/pay/networks";
+import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -28,24 +34,46 @@ import type {
 
 export type PaymentMockOutcome = "pending" | "confirmed" | "failed" | "partial";
 
-export function emptyCryptoConfig(): CryptoConfig {
+export type PaymentOutcomeMeta = {
+  txHash?: string | null;
+  /** Ignored. Ledger ids are always `paymentTxIdFor(...)`. */
+  transactionId?: string | null;
+  /** Ignored. Labels stay server-owned. */
+  fromLabel?: string;
+  /** Ignored. Labels stay server-owned. */
+  toLabel?: string;
+};
+
+export function cryptoConfigFor(
+  key = resolvePayNetworkKey(),
+  incoming?: Partial<CryptoConfig> | null,
+): CryptoConfig {
+  const network = getPayNetwork(key);
   return {
-    networkKey: null,
-    chainId: null,
-    networkLabel: null,
-    usdcContract: null,
-    usdcDecimals: 6,
-    safeAccountId: SAFE_ACCOUNT_ID,
-    safeAddress: DEMO_RECEIVING_ADDRESS,
-    explorerBaseUrl: null,
+    networkKey: network.key,
+    chainId: network.chainId,
+    networkLabel: network.networkLabel,
+    usdcContract: network.usdcContract,
+    usdcDecimals: network.usdcDecimals,
+    safeAccountId: incoming?.safeAccountId ?? SAFE_ACCOUNT_ID,
+    safeAddress: incoming?.safeAddress?.trim() || DEMO_RECEIVING_ADDRESS,
+    explorerBaseUrl: network.explorerBaseUrl,
   };
+}
+
+export function emptyCryptoConfig(): CryptoConfig {
+  return cryptoConfigFor();
+}
+
+export function mergeCryptoConfig(raw?: Partial<CryptoConfig> | null): CryptoConfig {
+  return cryptoConfigFor(resolvePayNetworkKey(raw), raw);
 }
 
 export function defaultAccounts(): DemoAccount[] {
   return [
     {
       accountId: RENTER_ACCOUNT_ID,
-      displayName: "L. Rosaria",
+      displayName: DEMO_RENTER_PROFILE.fullName,
       roleLabel: "Renter",
       payerFileId: "tn-001",
     },
@@ -93,7 +121,11 @@ function settlementTransaction(offer: Offer): LedgerTransaction | null {
   };
 }
 
-function paymentRequestForReceivable(offer: Offer, n: number): PaymentRequest | null {
+function paymentRequestForReceivable(
+  offer: Offer,
+  n: number,
+  receivingAddress: string,
+): PaymentRequest | null {
   const receivable = offer.receivables.find((row) => row.n === n);
   if (!receivable) return null;
   const paymentRequestId =
@@ -112,9 +144,9 @@ function paymentRequestForReceivable(offer: Offer, n: number): PaymentRequest | 
     periodLabel: periodLabelFromDueDate(receivable.dueDate),
     dueDate: receivable.dueDate,
     amountXcgCents: receivable.amountCents,
-    amountUsdcAtomic: usdcAtomicFromXcgCents(receivable.amountCents),
+    amountUsdcAtomic: usdcAtomicFromUsdCents(receivable.amountCents),
     paymentReference: `${offer.reference}-${String(n).padStart(2, "0")}`,
-    receivingAddress: DEMO_RECEIVING_ADDRESS,
+    receivingAddress,
     status: confirmed ? "confirmed" : receivable.status === "missed" ? "overdue" : "due",
     initiatedAt: null,
     confirmedAt: confirmed ? receivable.dueDate : null,
@@ -155,6 +187,8 @@ function positionForOffer(offer: Offer): PositionRecord | null {
 
 export function normalizeBook(raw: unknown): DemoBook {
   const book = (raw ?? {}) as DemoBook;
+  const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
+  const receivingAddress = cryptoConfig.safeAddress ?? DEMO_RECEIVING_ADDRESS;
   const offers = (book.offers ?? []).map(ensureOfferIds);
   const seedAccounts = book.accounts?.length ? book.accounts : defaultAccounts();
   const existingRequests = new Map(
@@ -165,7 +199,7 @@ export function normalizeBook(raw: unknown): DemoBook {
     if (offer.reference !== "MRA-001") continue;
     if (offer.status === "draft" || offer.status === "under_review") continue;
     for (const receivable of offer.receivables) {
-      const next = paymentRequestForReceivable(offer, receivable.n);
+      const next = paymentRequestForReceivable(offer, receivable.n, receivingAddress);
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
       paymentRequests.push(
@@ -174,6 +208,9 @@ export function normalizeBook(raw: unknown): DemoBook {
               ...next,
               ...previous,
               receivableId: next.receivableId,
+              amountXcgCents: next.amountXcgCents,
+              amountUsdcAtomic: next.amountUsdcAtomic,
+              receivingAddress: next.receivingAddress,
               status: next.status === "confirmed" ? "confirmed" : previous.status,
               confirmedAt: previous.confirmedAt ?? next.confirmedAt,
               transactionId: previous.transactionId ?? next.transactionId,
@@ -252,7 +289,7 @@ export function normalizeBook(raw: unknown): DemoBook {
     checklist: book.checklist ?? [],
     openQuestions: book.openQuestions ?? [],
     assignedTenancies: book.assignedTenancies ?? [],
-    cryptoConfig: { ...emptyCryptoConfig(), ...book.cryptoConfig },
+    cryptoConfig,
     accounts: seedAccounts,
     paymentRequests,
     ledgerTransactions,
@@ -289,6 +326,7 @@ export function applyPaymentOutcome(
   paymentRequestId: string,
   outcome: PaymentMockOutcome,
   at = new Date().toISOString(),
+  meta: PaymentOutcomeMeta = {},
 ): DemoBook {
   const next = normalizeBook(structuredClone(book));
   const request = next.paymentRequests?.find((row) => row.paymentRequestId === paymentRequestId);
@@ -321,8 +359,9 @@ export function applyPaymentOutcome(
   if (outcome === "pending") {
     request.status = "pending";
     request.initiatedAt = request.initiatedAt ?? at;
-    request.transactionId = request.transactionId ?? paymentTxIdFor(paymentRequestId);
-    request.txHash = request.txHash ?? demoTxHash(paymentRequestId);
+    request.transactionId = paymentTxIdFor(paymentRequestId);
+    request.txHash =
+      acceptedPaymentTxHash(meta.txHash) ?? request.txHash ?? demoTxHash(paymentRequestId);
     upsertLedger(next, {
       transactionId: request.transactionId,
       kind: "rent_payment",
@@ -348,7 +387,8 @@ export function applyPaymentOutcome(
   request.initiatedAt = request.initiatedAt ?? at;
   request.confirmedAt = at;
   request.transactionId = paymentTxIdFor(paymentRequestId);
-  request.txHash = demoTxHash(paymentRequestId);
+  request.txHash =
+    acceptedPaymentTxHash(meta.txHash) ?? request.txHash ?? demoTxHash(paymentRequestId);
 
   const collection = ensureCollection(offer, request.receivableN, day);
   collection.status = "released";
@@ -474,6 +514,30 @@ export function applyOpsCollection(
       ...(next.distributions ?? []),
     ];
   }
+  const holder = offer.holders[0];
+  if (holder) {
+    holder.receivedCents = offer.collections
+      .filter(
+        (row) =>
+          row.status === "received" ||
+          row.status === "reconciled" ||
+          row.status === "released",
+      )
+      .reduce((sum, row) => sum + row.amountCents, 0);
+  }
+  if (offer.status === "live") offer.status = "collecting";
+  offer.nextAction = "Record the next scheduled month";
+  offer.events = [
+    {
+      id: `ev-${offer.reference}-ops-${receivableN}`,
+      at,
+      title: `Collection received · month ${receivableN}`,
+      detail:
+        "Rent collected. Later collections go to holders, not back to the landlord.",
+      actor: "D. Martina",
+    },
+    ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-ops-${receivableN}`),
+  ];
   return next;
 }
 

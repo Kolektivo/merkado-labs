@@ -1,3 +1,4 @@
+import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
 import type { Actor } from "@/lib/rent-advance/types";
 
 export const ACTORS: Actor[] = [
@@ -31,8 +32,8 @@ export const ACTORS: Actor[] = [
   },
   {
     id: "act-payer-001",
-    name: "L. Rosaria",
-    initials: "LR",
+    name: DEMO_RENTER_PROFILE.fullName,
+    initials: DEMO_RENTER_PROFILE.initials,
     role: "payer",
     title: "Payer · MRA-001",
   },

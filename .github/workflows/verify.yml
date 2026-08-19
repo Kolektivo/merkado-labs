@@ -19,6 +19,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://csaefdkpwukshtouyixg.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-fake-labs-publishable-key-not-a-secret
       SUPABASE_SECRET_KEY: ci-fake-labs-service-role-key-not-a-secret
+      # Do not set LABS_DEMO_PASSWORD here. CI must stay ungated.
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -11,10 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PLAIN } from "@/lib/rent-advance/copy";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { priceQuote, type Quote } from "@/lib/rent-advance/pricing";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
-import { bandLabel, compositeScore, maxTermMonths, scoreBand } from "@/lib/rent-advance/scoring";
+import {
+  bandLabel,
+  compositeScore,
+  maxTermMonths,
+  rentVsTypicalLabel,
+} from "@/lib/rent-advance/scoring";
 
 function quoteHref(input: {
   rent: number;
@@ -74,9 +80,9 @@ export function GetNowSimulator() {
     if (!quote) return;
     const text = [
       `Get Now ${quote.months} months`,
-      `Rent Cg ${(quote.monthlyRentCents / 100).toFixed(2)}`,
-      `Upfront Cg ${(quote.purchasePriceCents / 100).toFixed(2)}`,
-      `Fee ${formatPercent(quote.feeRate)} · Cg ${(quote.feeCents / 100).toFixed(2)}`,
+      `Rent $${(quote.monthlyRentCents / 100).toFixed(2)}`,
+      `Upfront $${(quote.purchasePriceCents / 100).toFixed(2)}`,
+      `Fee ${formatPercent(quote.feeRate)} · $${(quote.feeCents / 100).toFixed(2)}`,
       `Effective ${formatPercent(quote.effectiveAnnualised, 1)}`,
     ].join("\n");
     try {
@@ -128,7 +134,7 @@ export function GetNowSimulator() {
             </Button>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sim-rent">Monthly rent (XCG)</Label>
+            <Label htmlFor="sim-rent">Monthly rent (USD)</Label>
             <Input
               id="sim-rent"
               type="number"
@@ -140,11 +146,8 @@ export function GetNowSimulator() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sim-market" className="flex items-center gap-1.5">
-              Estimated market rent (XCG)
-              <HelpTip label="Estimated market rent">
-                Used only to show rent-to-market and Property Score. Pricing
-                still uses the Listing Score you set, not the derived score.
-              </HelpTip>
+              Typical nearby rent (USD)
+              <HelpTip label="Typical nearby rent">{PLAIN.marketRent}</HelpTip>
             </Label>
             <Input
               id="sim-market"
@@ -157,10 +160,9 @@ export function GetNowSimulator() {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="sim-related" className="flex items-center gap-1.5">
-              Related party
-              <HelpTip label="Related party">
-                Extra 25 basis points when the landlord and Merkado are
-                connected. An independent approver is required.
+              Landlord connected to Merkado
+              <HelpTip label="Landlord connected to Merkado">
+                {PLAIN.relatedParty}
               </HelpTip>
             </Label>
             <label htmlFor="sim-related" className="flex min-h-10 items-center gap-2 text-sm">
@@ -171,71 +173,55 @@ export function GetNowSimulator() {
                 onChange={(event) => setRelatedParty(event.target.checked)}
                 className="size-4 rounded border border-input"
               />
-              Apply related-party premium
+              Landlord is connected to Merkado
             </label>
           </div>
           <ScoreSlider
             id="sim-listing"
-            label="Listing Score"
+            label="Property quality"
             value={listingScore}
             onChange={setListingScore}
-            hint="Raw underwriting input used for pricing."
+            tip={PLAIN.listingScore}
           />
           <ScoreSlider
             id="sim-payer"
-            label="Payer Score"
+            label="Payment history"
             value={payerScore}
             onChange={setPayerScore}
-            hint="How reliably this renter has paid."
+            tip={PLAIN.payerScore}
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Live summary</CardTitle>
+          <CardTitle>Summary</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-          <p>
-            Rent-to-market{" "}
-            <strong>
-              {derived.marketDataAvailable && derived.rentToMarketRatio != null
-                ? derived.rentToMarketRatio.toFixed(2)
-                : "Unavailable"}
-            </strong>
-            {!derived.marketDataAvailable ? (
-              <span className="block text-xs text-muted-foreground">
-                Market data unavailable. Property Score uses a neutral
-                multiplier and is less certain.
-              </span>
-            ) : null}
-          </p>
-          <p>
-            Property Score <strong>{derived.propertyScore}</strong>
-            <span className="text-muted-foreground">
-              {" "}
-              · {bandLabel(derived.propertyScore)}
-            </span>
-          </p>
-          <p>
-            Composite / payer grade{" "}
-            <strong>
-              {composite.toFixed(1)} · {scoreBand(composite)}
-            </strong>
-            <span className="text-muted-foreground">
-              {" "}
-              · payer {scoreBand(payerScore)}
-            </span>
-          </p>
-          <p>
-            Maximum term <strong>{maxTerm} months</strong>
-            {quote ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · advance {formatPercent(quote.advanceRate, 1)}
-              </span>
-            ) : null}
-          </p>
+        <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+          <SummaryFact
+            label="Rent vs typical rent"
+            tip={
+              derived.marketDataAvailable
+                ? PLAIN.rentVsTypical
+                : "Typical rent is missing, so the combined property view is less certain."
+            }
+            value={rentVsTypicalLabel(derived.rentToMarketRatio)}
+          />
+          <SummaryFact
+            label="Combined property view"
+            tip={PLAIN.propertyScore}
+            value={`${derived.propertyScore} · ${bandLabel(derived.propertyScore)}`}
+          />
+          <SummaryFact
+            label="Longest term this file can use"
+            tip={PLAIN.longestTerm}
+            value={`${maxTerm} months`}
+          />
+          <SummaryFact
+            label="Share paid to the landlord now"
+            tip={PLAIN.sharePaidNow}
+            value={quote ? formatPercent(quote.advanceRate, 1) : "—"}
+          />
         </CardContent>
       </Card>
 
@@ -278,20 +264,35 @@ export function GetNowSimulator() {
                 ? "This quote is above the 24% cap and cannot be saved."
                 : "Only the approved six-month term can create an offer."}
             </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Use this quote to prefill Create Offer. Simulate first, then save
-              a draft.
-            </p>
-          )}
+          ) : null}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
           {rentValid
-            ? "Choose a priced term to see what the landlord would receive today. Three months stays unavailable."
+            ? "Choose how many months to sell to see the cash the landlord would receive. Three months stays unavailable."
             : "Enter a monthly rent above zero."}
         </p>
       )}
+    </div>
+  );
+}
+
+function SummaryFact({
+  label,
+  value,
+  tip,
+}: {
+  label: string;
+  value: string;
+  tip: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="flex items-center gap-1.5 text-muted-foreground">
+        {label}
+        <HelpTip label={label}>{tip}</HelpTip>
+      </p>
+      <p className="font-medium">{value}</p>
     </div>
   );
 }

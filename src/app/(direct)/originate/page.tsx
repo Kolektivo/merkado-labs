@@ -93,7 +93,7 @@ export default async function OriginatePage({
     <div className="space-y-6">
       <PageHeader
         title="My Offers"
-        description="Simulate in Get Now, then use the quote to prefill Create Offer. Open a reference to approve, collect, or release."
+        description="See every landlord offer. Check the cash amount in Get Now, save a draft in Create Offer, then open a live offer to see the one-time cash payment and later rent."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">

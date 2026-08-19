@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { appHref } from "@/lib/pay/config";
+import { appHref, merkadoPayAppHref, merkadoPayHref } from "@/lib/pay/config";
 import {
+  anonymizeOffer,
   canRecordCollection,
   formatDayMonthYear,
   onTimePercent,
   payerPayee,
   rentToIncomeBand,
+  toPurchaserOffer,
 } from "@/lib/rent-advance/helpers";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import type { OfferStatus } from "@/lib/rent-advance/types";
@@ -82,4 +84,31 @@ test("external app URLs open externally and invalid URLs stay internal", () => {
     href: "/pay",
     external: false,
   });
+});
+
+test("Pay app opens the payment link unless an external Pay URL is set", () => {
+  assert.deepEqual(merkadoPayHref(), {
+    href: "/pay",
+    external: false,
+  });
+  assert.deepEqual(merkadoPayAppHref(), {
+    href: "/pay",
+    external: false,
+  });
+});
+
+test("holder marketplace payloads omit agency, employment, and income band", () => {
+  const offer = getSeedBook().offers.find((row) => row.reference === "MRA-001");
+  assert.ok(offer);
+  const card = anonymizeOffer(offer);
+  const detail = toPurchaserOffer(offer);
+  assert.equal("agency" in card, false);
+  assert.equal("agency" in detail, false);
+  assert.equal("employmentStatus" in detail.payer, false);
+  assert.equal("rentToIncomeBand" in detail.payer, false);
+  assert.ok(detail.payer.bandLabel);
+});
+
+test("account payments opens Pay, not a second payments page", () => {
+  assert.deepEqual(merkadoPayAppHref(), merkadoPayHref());
 });

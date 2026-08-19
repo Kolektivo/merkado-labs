@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 ## 1. Surfaces
 
@@ -21,8 +21,9 @@ Customer-facing surfaces:
 - `/originate*` Merkado Direct operations (My Offers, Create Offer, Get Now)
 - `/offers*` Marketplace
 - `/portfolio*` Portfolio
-- `/pay` and `/pay/[paymentRequestId]` Merkado Pay
-- `/account`, `/account/payments`, `/account/apps` fictional account mock
+- `/pay` and `/pay/[paymentRequestId]` Merkado Pay. `/pay/payments` redirects to `/pay`.
+- `/account` → `/account/apps` fictional account mock (Apps launcher) inside
+  merkado-cw navbar / sidebar / footer chrome. Other account links are disabled.
 
 ## 2. Dashboard
 
@@ -30,7 +31,8 @@ Customer-facing surfaces:
   with a seed fallback and `normalizeBook()` for older JSON.
 - Mutations are server actions (record collection, dual-control release,
   save draft, confirm mocked payment, reset).
-- The demo is open. There is no login. Reset demo sits on Overview.
+- There is no Merkado login. After deploy, the hosted demo asks for a
+  shared host password at `/enter`. Reset demo sits on Overview.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
   its own Labs mock shell. Direct operations use the sidebar shell
   (`src/app/(direct)/layout.tsx`). The three shells are separate layouts
@@ -64,11 +66,15 @@ helper.
 
 ## 5. Mock crypto boundary
 
-UI does not call mock wallet functions directly. It uses a typed provider
-(`src/lib/pay/provider.ts`) with a mock adapter
-(`src/lib/pay/mock-provider.ts`). No wallet or Safe dependency is
-installed. Network, chain ID, USDC contract, Safe address, and explorer
-base URL are data-driven and may be unset.
+UI does not call mock wallet functions directly. It uses
+`createPaymentProvider()` (`src/lib/pay/create-provider.ts`) against
+`PaymentProvider` (`src/lib/pay/provider.ts`). The current adapter is
+still the mock (`src/lib/pay/mock-provider.ts`). No wallet or Safe
+dependency is installed. Demo `cryptoConfig` defaults to **OP Sepolia**
+with Circle native USDC. Base Sepolia is selectable. OP Mainnet and
+Base Mainnet are available later. The Safe address stays fictional until Luis
+replaces it. Explorer links render only for a real 64-hex transaction
+hash on an official catalog explorer.
 
 ## 6. Future home
 

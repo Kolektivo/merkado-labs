@@ -56,7 +56,7 @@ const navigationSections: NavSection[] = [
     label: "Demo",
     items: [
       { href: "/", label: "Overview", icon: LayoutDashboard },
-      { href: "/account/payments", label: "Account", icon: UserRound },
+      { href: "/account", label: "Merkado Account", icon: UserRound },
     ],
   },
   {
@@ -148,7 +148,7 @@ function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="hidden px-2 text-[11px] leading-relaxed text-sidebar-foreground/60 md:block">
-          Demo · sale of receivables, not a loan
+          Demo · sale of future rent, not a loan
         </div>
       </SidebarFooter>
       <SidebarRail />

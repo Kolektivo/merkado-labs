@@ -23,8 +23,20 @@ export function bandLabel(score: number): string {
   return "Weak";
 }
 
+export function bandPlainName(band: ScoreBand): string {
+  if (band === "A") return "Great";
+  if (band === "B") return "Strong";
+  if (band === "C") return "Fair";
+  return "Weak";
+}
+
 export function payerBandLabel(score: number): string {
-  return `Band ${scoreBand(score)}`;
+  return bandPlainName(scoreBand(score));
+}
+
+export function rentVsTypicalLabel(ratio: number | null | undefined): string {
+  if (ratio == null || !Number.isFinite(ratio)) return "Unavailable";
+  return `${Math.round(ratio * 100)}% of typical rent`;
 }
 
 export function compositeScore(passportScore: number, payerScore: number): number {

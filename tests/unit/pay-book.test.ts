@@ -1,21 +1,128 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { usdcAtomicFromXcgCents } from "@/lib/rent-advance/money";
-import { bookTotals } from "@/lib/rent-advance/helpers";
-import { CANONICAL_PAYMENT_REQUEST_ID, collectionIdFor } from "@/lib/rent-advance/ids";
+import {
+  BASE_SEPOLIA_CHAIN_ID,
+  BASE_SEPOLIA_NETWORK_KEY,
+  BASE_SEPOLIA_USDC_CONTRACT,
+  DEFAULT_PAY_NETWORK_KEY,
+  OP_MAINNET_CHAIN_ID,
+  OP_MAINNET_NETWORK_KEY,
+  OP_SEPOLIA_CHAIN_ID,
+  OP_SEPOLIA_EXPLORER_BASE_URL,
+  OP_SEPOLIA_NETWORK_KEY,
+  OP_SEPOLIA_NETWORK_LABEL,
+  OP_SEPOLIA_USDC_CONTRACT,
+  canPersistPayNetwork,
+  isOfficialExplorerBaseUrl,
+  parseExactPayNetworkKey,
+  parsePayNetworkKey,
+  resolvePayNetworkKey,
+} from "@/lib/pay/networks";
+import { formatUsd, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
+import { attentionItems, bookTotals } from "@/lib/rent-advance/helpers";
+import {
+  CANONICAL_PAYMENT_REQUEST_ID,
+  collectionIdFor,
+  isExplorableTxHash,
+  paymentTxIdFor,
+  settlementTxIdFor,
+} from "@/lib/rent-advance/ids";
 import {
   applyPaymentOutcome,
+  cryptoConfigFor,
   currentRenterPaymentRequest,
   earlierOpenPaymentRequest,
+  emptyCryptoConfig,
+  mergeCryptoConfig,
   normalizeBook,
 } from "@/lib/rent-advance/payment-apply";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 
-test("MRA-001 XCG 1800 becomes 1005586592 atomic USDC", () => {
-  const atomic = usdcAtomicFromXcgCents(180000);
-  assert.equal(atomic, 1005586592);
-  assert.equal((atomic / 1_000_000).toFixed(2), "1005.59");
+test("MRA-001 USD 1800 becomes 1800000000 atomic USDC", () => {
+  const atomic = usdcAtomicFromUsdCents(180000);
+  assert.equal(atomic, 1_800_000_000);
+  assert.equal((atomic / 1_000_000).toFixed(2), "1800.00");
+  assert.equal(formatUsd(180000), "$1,800.00");
+});
+
+test("demo crypto config defaults to OP Sepolia native USDC", () => {
+  const config = emptyCryptoConfig();
+  assert.equal(config.networkKey, DEFAULT_PAY_NETWORK_KEY);
+  assert.equal(config.networkLabel, OP_SEPOLIA_NETWORK_LABEL);
+  assert.equal(config.chainId, OP_SEPOLIA_CHAIN_ID);
+  assert.equal(config.usdcContract, OP_SEPOLIA_USDC_CONTRACT);
+  assert.equal(mergeCryptoConfig({ networkLabel: null }).networkLabel, OP_SEPOLIA_NETWORK_LABEL);
+
+  const request = getSeedBook().paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.ok(request);
+  assert.equal(request.amountUsdcAtomic, 1_800_000_000);
+});
+
+test("legacy OP Mainnet books rematch to the default testnet", () => {
+  assert.equal(resolvePayNetworkKey({ networkKey: "optimism" }), DEFAULT_PAY_NETWORK_KEY);
+  assert.equal(
+    mergeCryptoConfig({ networkKey: "optimism", chainId: OP_MAINNET_CHAIN_ID }).networkKey,
+    OP_SEPOLIA_NETWORK_KEY,
+  );
+});
+
+test("selected testnet and later mainnet facts stay catalog-owned", () => {
+  const baseSepolia = cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY);
+  assert.equal(baseSepolia.chainId, BASE_SEPOLIA_CHAIN_ID);
+  assert.equal(baseSepolia.usdcContract, BASE_SEPOLIA_USDC_CONTRACT);
+
+  const opMainnet = cryptoConfigFor(OP_MAINNET_NETWORK_KEY);
+  assert.equal(opMainnet.networkKey, OP_MAINNET_NETWORK_KEY);
+  assert.equal(opMainnet.chainId, OP_MAINNET_CHAIN_ID);
+});
+
+test("short names do not persist as mainnet", () => {
+  assert.equal(parsePayNetworkKey("base"), null);
+  assert.equal(parsePayNetworkKey("op"), null);
+  assert.equal(parseExactPayNetworkKey("op-mainnet"), OP_MAINNET_NETWORK_KEY);
+  assert.equal(parseExactPayNetworkKey("optimism"), null);
+});
+
+test("stored mainnet rematches to the default testnet unless mainnet is enabled", () => {
+  assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), false);
+  assert.equal(
+    mergeCryptoConfig({ networkKey: OP_MAINNET_NETWORK_KEY }).networkKey,
+    OP_SEPOLIA_NETWORK_KEY,
+  );
+});
+
+test("official explorers are allowlisted for every catalog network", () => {
+  assert.equal(isOfficialExplorerBaseUrl(OP_SEPOLIA_EXPLORER_BASE_URL), true);
+  assert.equal(isOfficialExplorerBaseUrl("https://optimistic.etherscan.io"), true);
+  assert.equal(isOfficialExplorerBaseUrl("https://sepolia.basescan.org"), true);
+  assert.equal(isOfficialExplorerBaseUrl("https://basescan.org"), true);
+  assert.equal(isOfficialExplorerBaseUrl("https://evil.example"), false);
+});
+
+test("normalizeBook refreshes a stale USDC amount to the 1:1 USD figure", () => {
+  const book = getSeedBook();
+  const stale = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.ok(stale);
+  stale.amountUsdcAtomic = 1_005_586_592;
+  const next = normalizeBook(book);
+  const request = next.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.equal(request?.amountUsdcAtomic, 1_800_000_000);
+});
+
+test("demo hashes are not explorer links", () => {
+  assert.equal(isExplorableTxHash("0xDEMO0000SAFE00MERKADOPAY000000000000000"), false);
+  assert.equal(
+    isExplorableTxHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+    true,
+  );
 });
 
 test("draft and unfunded offers are excluded from advanced totals", () => {
@@ -113,6 +220,110 @@ test("draft MRA-001 does not mint payment requests", () => {
     (next.paymentRequests ?? []).filter((row) => row.offerReference === "MRA-001"),
     [],
   );
+});
+
+test("provider transaction hash is stored on confirm", () => {
+  const book = getSeedBook();
+  const hash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const next = applyPaymentOutcome(
+    book,
+    CANONICAL_PAYMENT_REQUEST_ID,
+    "confirmed",
+    "2026-09-28T12:00:00.000Z",
+    { txHash: hash, transactionId: "tx-live-001" },
+  );
+  const request = next.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.equal(request?.txHash, hash);
+  assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
+});
+
+test("client transaction ids cannot overwrite the settlement ledger", () => {
+  const book = getSeedBook();
+  const settlementId = settlementTxIdFor("MRA-001");
+  const next = applyPaymentOutcome(
+    book,
+    CANONICAL_PAYMENT_REQUEST_ID,
+    "confirmed",
+    "2026-09-28T12:00:00.000Z",
+    { transactionId: settlementId, txHash: "not-a-hash", fromLabel: "<script>" },
+  );
+  const settlement = next.ledgerTransactions?.find((row) => row.transactionId === settlementId);
+  const request = next.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.equal(settlement?.kind, "advance_settlement");
+  assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
+  assert.notEqual(request?.txHash, "not-a-hash");
+  assert.equal(
+    next.ledgerTransactions?.find((row) => row.transactionId === request?.transactionId)
+      ?.fromLabel,
+    "Renter demo wallet",
+  );
+});
+
+test("copy-address path can submit without a connected wallet", async () => {
+  const provider = createMockPaymentProvider();
+  const submitted = await provider.reportExternalTransfer({
+    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
+    expectedAtomicAmount: 1_800_000_000,
+    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
+    offerReference: "MRA-001",
+    receivableId: "rec-mra-001-1",
+    method: "external",
+  });
+  assert.equal(submitted.status, "submitted");
+  assert.ok(submitted.txHash);
+});
+
+test("wallet path fails until the demo wallet is connected", async () => {
+  const provider = createMockPaymentProvider();
+  const submitted = await provider.submitPayment({
+    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
+    expectedAtomicAmount: 1_800_000_000,
+    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
+    offerReference: "MRA-001",
+    receivableId: "rec-mra-001-1",
+    method: "wallet",
+  });
+  assert.equal(submitted.status, "failed");
+  assert.equal(submitted.errorCode, "wallet_disconnected");
+});
+
+test("seeded collections are already in automatic holder distribution", () => {
+  const book = normalizeBook(getSeedBook());
+  const pending = attentionItems(book).find(
+    (item) => item.label === "Holder distribution pending",
+  );
+  assert.equal(pending?.count, 0);
+});
+
+test("confirming pay still updates the shared book on a Base testnet config", () => {
+  const book = normalizeBook({
+    ...getSeedBook(),
+    cryptoConfig: cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY),
+  });
+  const next = applyPaymentOutcome(
+    book,
+    CANONICAL_PAYMENT_REQUEST_ID,
+    "confirmed",
+    "2026-09-28T12:00:00.000Z",
+  );
+  const offer = next.offers.find((row) => row.reference === "MRA-001");
+  const request = next.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.equal(next.cryptoConfig?.networkKey, BASE_SEPOLIA_NETWORK_KEY);
+  assert.equal(request?.status, "confirmed");
+  assert.equal(offer?.receivables.find((row) => row.n === 1)?.status, "received");
+  assert.equal(offer?.collections.filter((row) => row.receivableN === 1).length, 1);
+  assert.equal(
+    (next.distributions ?? []).filter((row) => row.collectionId === collectionIdFor("MRA-001", 1))
+      .length,
+    1,
+  );
+  assert.equal(currentRenterPaymentRequest(next)?.periodLabel, "October 2026");
 });
 
 test("next renter payment is the earliest unpaid request", () => {

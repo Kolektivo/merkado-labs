@@ -28,7 +28,7 @@ export default async function PortfolioPage() {
     <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Portfolio"
-        description="Pre-seeded book-entry positions. Distributions are automatic when rent is collected."
+        description="What holders put in, and the later rent that arrives when the renter pays. Sharing is automatic."
       />
       <SummaryStrip
         items={[
@@ -36,7 +36,7 @@ export default async function PortfolioPage() {
             label: "Contributed",
             value: <Money cents={contributed} compact />,
             helper: `across ${positions.length} positions`,
-            tip: "What the sole holder paid in for these positions.",
+            tip: "What the holder contributed. The landlord receives a lower one-time purchase price.",
           },
           {
             label: "Collected",
@@ -63,7 +63,7 @@ export default async function PortfolioPage() {
               <TableHead>Position ID</TableHead>
               <TableHead>District</TableHead>
               <TableHead>Collected</TableHead>
-              <TableHead>Awaiting release</TableHead>
+              <TableHead>Awaiting distribution</TableHead>
               <TableHead>Distributed</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -96,26 +96,25 @@ export default async function PortfolioPage() {
                   <StatusBadge tone={statusTone(position.status)}>
                     {statusLabel(position.status)}
                   </StatusBadge>
+                  {position.settlementTxHash ? (
+                    <div className="mt-1">
+                      <CopyValue
+                        value={position.settlementTxHash}
+                        label="settlement reference"
+                        truncate
+                      />
+                    </div>
+                  ) : null}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-      {positions[0]?.settlementTxHash ? (
-        <p className="text-sm text-muted-foreground">
-          Advance settlement{" "}
-          <CopyValue
-            value={positions[0].settlementTxHash}
-            label="settlement reference"
-            truncate
-          />
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Positions are book-entries. There is no token and no Claim button.
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        Positions are book-entries. There is no token, no transfer, and no
+        Claim button. Settlement references sit on each funded row.
+      </p>
     </ThemeMerkado>
   );
 }

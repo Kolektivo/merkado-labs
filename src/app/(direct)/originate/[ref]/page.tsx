@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import {
-  DualControlForm,
-  OfferOpsForms,
-} from "./offer-ops-forms";
+import { OfferOpsForms } from "./offer-ops-forms";
 import { CopyValue, ExplorerLink } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
@@ -28,7 +25,6 @@ import {
   collectedCount,
   distributionTotals,
   landlordDisclosure,
-  propertyScoreFor,
   rentToMarket,
   statusLabel,
   statusTone,
@@ -72,7 +68,6 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
   const lateDays = missed ? Math.max(1, daysLate(missed.dueDate)) : 0;
   const currentArrears = missed ? arrearsStep(lateDays) : null;
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
-  const derived = propertyScoreFor(offer);
   const money = distributionTotals(book, offer);
   const settlement = book.ledgerTransactions?.find(
     (row) => row.offerReference === offer.reference && row.kind === "advance_settlement",
@@ -166,19 +161,19 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         <Alert>
           <AlertTitle>Draft</AlertTitle>
           <AlertDescription>
-            Nothing has been sold yet. Save and approve before collections
-            start.
+            Nothing has been sold yet. Submit this draft for independent
+            approval before funding.
           </AlertDescription>
         </Alert>
       ) : null}
 
       {offer.relatedParty ? (
         <Alert>
-          <AlertTitle>Related-party offer</AlertTitle>
+          <AlertTitle>Connected landlord</AlertTitle>
           <AlertDescription>
             {offer.status === "under_review" || offer.status === "draft"
-              ? "The landlord is connected to Merkado. An independent approver must sign before funding. The fee includes a related-party premium."
-              : "The landlord is connected to Merkado. The fee includes a related-party premium. Independent approval is already on the file."}
+              ? "The landlord is connected to Merkado. Someone independent must approve before funding, and the fee is a little higher."
+              : "The landlord is connected to Merkado. The fee is a little higher. Independent approval is already on the file."}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -188,20 +183,13 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         status={offer.status}
         nextReceivableN={nextReceivable?.n ?? null}
         actors={book.actors}
+        releasableCollections={releasable}
       />
-
-      {releasable.length > 0 ? (
-        <DualControlForm
-          reference={offer.reference}
-          releasableCollections={releasable}
-          actors={book.actors}
-        />
-      ) : null}
 
       <Tabs defaultValue="overview">
         <TabsList variant="line" className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="passport">Listing Score</TabsTrigger>
+          <TabsTrigger value="passport">Quality scores</TabsTrigger>
           <TabsTrigger value="servicing">Collections</TabsTrigger>
           <TabsTrigger value="holders">Holders</TabsTrigger>
         </TabsList>
@@ -213,6 +201,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
             totalCost={disclosure.totalCost}
             flatFee={disclosure.flatFee}
             effective={disclosure.effective}
+            received={offer.fundedCents > 0}
           />
           <Card className="gap-0 py-0">
             <CardHeader className="border-b py-4">
@@ -252,10 +241,10 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         <TabsContent value="passport" className="space-y-4 pt-4">
           {belowMarket ? (
             <Alert>
-              <AlertTitle>Below-market rent</AlertTitle>
+              <AlertTitle>Rent is below typical</AlertTitle>
               <AlertDescription>
-                Contractual rent is {formatPercent(rentToMarket(offer), 0)} of
-                the market estimate. That is a stronger rent-to-market reading.
+                This rent is {formatPercent(rentToMarket(offer), 0)} of typical
+                nearby rent. Below typical is usually stronger for this offer.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -263,10 +252,11 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Listing Score
-                  <HelpTip label="Listing Score">
-                    Raw underwriting input used for pricing. Property Score is
-                    derived for explanation only.
+                  Property quality
+                  <HelpTip label="Property quality">
+                    Also called Listing Score. How strong this listing looks.
+                    This number sets the cash offer. The combined property view
+                    is only for explanation.
                   </HelpTip>
                 </CardTitle>
               </CardHeader>
@@ -274,7 +264,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
                 <dl className="divide-y">
                   {(
                     [
-                      ["Rent vs market", offer.passport.rentVsMarket],
+                      ["Rent vs typical rent", offer.passport.rentVsMarket],
                       ["Market depth", offer.passport.marketDepth],
                       ["Condition", offer.passport.condition],
                       ["Accessibility", offer.passport.accessibility],
@@ -291,18 +281,17 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
                   ))}
                 </dl>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {bandLabel(offer.passport.total)} · Listing Score{" "}
-                  {offer.passport.total} · Property Score {derived.propertyScore}
+                  {offer.passport.total} · {bandLabel(offer.passport.total)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Payer scores
-                  <HelpTip label="Payer scores">
-                    How this renter has paid. Holders see a band only — never
-                    the name, employer, or income.
+                  Payment history
+                  <HelpTip label="Payment history">
+                    How this renter has paid. Holders see a simple grade only —
+                    never the name, employer, or income.
                   </HelpTip>
                 </CardTitle>
               </CardHeader>
@@ -311,7 +300,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
                   {(
                     [
                       ["Payment history", offer.tenant.scores.paymentHistory],
-                      ["Rent-to-income", offer.tenant.scores.rentToIncome],
+                      ["Rent vs income", offer.tenant.scores.rentToIncome],
                       ["Employment", offer.tenant.scores.employment],
                       ["Cash buffer", offer.tenant.scores.savings],
                       ["Total", offer.tenant.scores.total],

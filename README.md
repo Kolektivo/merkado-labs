@@ -1,8 +1,9 @@
 # Merkado Labs · Direct + Pay
 
 Working **[LABS]** demo of **Merkado Direct** (rent paid forward) and
-**Merkado Pay** (mocked USDC rent payments). A sale of rent receivables,
-not a loan. Not live on merkado.cw.
+**Merkado Pay** (mocked USDC rent payments on OP Sepolia by default). Money is USD
+(1:1 with USDC). A sale of rent receivables, not a loan. Not live on
+merkado.cw.
 
 ```powershell
 Copy-Item .env.example .env.local
@@ -13,7 +14,8 @@ npm run dev
 Open http://localhost:3000
 
 The hub opens Direct, Pay, and a fictional Merkado account. Use
-**Reset demo** to restore the seed.
+**Reset demo** to restore the seed. Local stays open. After deploy, the
+hosted Vercel URL asks for a shared host password first.
 
 Verify:
 

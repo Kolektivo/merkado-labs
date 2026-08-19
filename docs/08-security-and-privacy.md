@@ -59,9 +59,16 @@ Never:
 
 ## 3. Demo access
 
-- The demo is fully open. There is no login page and no admin cookie.
+- There is no Merkado login and no admin cookie.
+- After this change is deployed with `LABS_DEMO_PASSWORD` set on Vercel
+  Production, the hosted demo uses a shared host password. Visitors see
+  `/enter` until that password is entered. This is not a customer
+  account. Do not use the paid Vercel password add-on. The live URL is
+  still open until that deploy.
+- Local `npm run dev` stays open unless `LABS_DEMO_PASSWORD` is set.
+- Hosted production stays locked if that password is missing.
 - The Merkado account mock is fictional Labs UI. It does not reuse
-  production auth, cookies, middleware, or profile queries.
+  production auth or profile queries.
 - Reset demo is on Overview so a walkthrough can restore the seeded book.
 
 ## 4. Authorization and RLS
@@ -118,8 +125,16 @@ Operational detail: `12-deployment-runbook.md`.
   opaque, scoped, expiring authorization.
 - Do not silently report a successful saved payment if Labs persistence is
   unavailable.
-- Do not invent an explorer URL. Show an explorer link only when
-  `cryptoConfig.explorerBaseUrl` is provided.
+- Show an explorer link only when the base URL is an official catalog
+  explorer (OP Sepolia, Base Sepolia, OP Mainnet, or Base Mainnet) **and** the
+  hash is a real 64-hex `0x` value. Demo `0xDEMO…` hashes must not open
+  the explorer.
+- `confirmPaymentAction` is a Labs mock write. It must not trust a client
+  ledger id. Live Pay must confirm from chain data on the server.
+- The shared walkthrough can persist OP Sepolia or Base Sepolia. Mainnet
+  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `op-mainnet` or
+  `base-mainnet`. Short names such as `base` or `op` must not select
+  mainnet.
 
 ## 9. Service-role credential rules
 

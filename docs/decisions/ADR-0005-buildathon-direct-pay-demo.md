@@ -94,8 +94,25 @@ in this repository. ADR-0005 supersedes ADR-0004 only where they conflict:
 
 Do not rewrite ADR-0004.
 
+## Amendment — 2026-08-19
+
+Product Lead selected **OP Mainnet** and **USD as the default customer
+currency** (USDC 1:1). The mock wallet remains. Network, native USDC
+contract, and explorer are now filled in `cryptoConfig`. Luis and Luuk
+still own the real adapter, Safe address, allocation, and Safe execution.
+Do not treat this amendment as permission to install a wallet SDK.
+
 ## Approval
 
 - Product Lead: approved Buildathon handoff, 2026-08-18
+- Product Lead: approved OP Mainnet + USD default, 2026-08-19
+- Product Lead: approved OP Sepolia + Base Sepolia now, mainnet later, 2026-08-19
 - Technical owner: Merkado Labs agent implementation
-- Date: 2026-08-18
+- Date: 2026-08-18; amended 2026-08-19
+
+## Amendment — 2026-08-19 (testnets first)
+
+Product Lead asked to prepare the Luis handoff on **OP Sepolia** and
+**Base Sepolia**, with OP Mainnet and Base Mainnet available later. The mock
+wallet remains. One confirmed Pay write still updates the shared book
+once. Do not treat this amendment as permission to install a wallet SDK.

@@ -10,8 +10,8 @@ const ROUTE_LABELS: Record<string, string> = {
   "/offers": "Marketplace",
   "/portfolio": "Portfolio",
   "/pay": "Merkado Pay",
-  "/account": "Account",
-  "/account/payments": "My Payments",
+  "/pay/payments": "Payment history",
+  "/account": "Merkado Account",
   "/account/apps": "Apps",
 };
 

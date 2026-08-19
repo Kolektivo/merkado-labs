@@ -1,20 +1,55 @@
 export const SALE_NOT_LOAN =
-  "This is a sale of rent receivables, not a loan. The annualised figure is only so a landlord can compare the flat fee with other ways of getting cash today.";
+  "The landlord sells the next few months of rent for cash now. This is not a loan. The yearly comparison is only so they can compare the fee with other ways of getting cash today.";
 
 export const NO_OTHER_CHARGE =
   "No other charge of any kind: no arrangement fee, administration fee, onboarding fee, exit fee, or early-settlement charge.";
 
 export const NON_RECOURSE =
-  "If the payer fails to pay, pays late, or leaves early, the landlord keeps the purchase price in full and owes nothing.";
+  "If the renter fails to pay, pays late, or leaves early, the landlord keeps the cash already received and owes nothing back.";
 
 export const EFFECTIVE_RATE_PLAIN =
-  "The landlord receives the cash once but forgoes rent month by month, so the average amount outstanding is roughly half the face amount. That is why the effective annualised figure is higher than the flat fee.";
+  "The landlord gets the cash once, then gives up those later rent months. The yearly comparison looks higher than the flat fee because of that timing. It is not an interest rate.";
+
+export const PLAIN = {
+  listingScore:
+    "Also called Listing Score. How strong this listing looks, from 0 to 100. We use this number to set the cash offer.",
+  payerScore:
+    "Also called Payer Score. How reliably this renter has paid rent, from 0 to 100. We use this number to set the cash offer.",
+  propertyScore:
+    "Also called Property Score. A simple 0–100 snapshot for holders: listing quality plus how the rent compares to typical rent nearby. This does not change the cash offer.",
+  rentVsTypical:
+    "This rent compared with what similar homes usually rent for. Below typical is usually stronger for this offer.",
+  marketRent:
+    "What similar homes nearby usually rent for. Used only to compare with this rent. It does not set the cash offer.",
+  relatedParty:
+    "Turn this on only when the landlord has a personal or business link to Merkado — for example family or a board seat. That is not a normal arm’s-length sale, so someone independent must approve it. The fee is a little higher because of that extra check, which means slightly less cash to the landlord. It is a fairness rule, not a discount.",
+  totalRent:
+    "All of the rent for the months being sold. Example: $1,800 × 6 months = $10,800.",
+  fee: "The one cost for getting the rent paid now. No extra arrangement or exit charges.",
+  sharePaidNow:
+    "How much of that future rent is paid to the landlord now. The rest is the fee.",
+  yearlyComparison:
+    "A comparison figure so the landlord can compare this flat fee with other ways of getting cash today. It is not an interest rate, and it is not a promised return. Anything above 24% is blocked.",
+  cashNow:
+    "The one-time amount the landlord receives if this offer is funded. Later rent goes to holders, not back to the landlord.",
+  longestTerm:
+    "The longest number of months this file can sell, based on listing quality and payment history together.",
+  paymentHistory:
+    "How reliably rent has been paid. Holders never see the renter’s name.",
+  amountTaken:
+    "What holders have put in so the landlord can be paid now. The landlord receives a lower one-time cash amount.",
+  holders:
+    "People who put money in so the landlord can be paid now. They receive later rent only if the renter pays.",
+  usdc:
+    "Digital dollars for this demo payment. The amount matches the rent one-to-one. Nothing real is sent.",
+  network: "The demo network for this payment. Nothing real is sent.",
+} as const;
 
 export const HOLDER_NO_PROMISE =
   "Distributions depend entirely on collections received. If a month is missed, that month’s distribution is zero.";
 
 export const SOLE_HOLDER_GATE =
-  "Merkado Direct is unlaunched. The participation right stays in sole-holder mode while the characterisation opinion (M.1.2) and the investor-funds licensing question (M.1.4) are outstanding. This surface is not public, is not indexed, and nothing here is an offer or an invitation to subscribe.";
+  "Merkado Direct is unlaunched. The participation right stays in sole-holder mode while the characterisation opinion (M.1.2) and the public-holder licensing question (M.1.4) are outstanding. This surface is not public, is not indexed, and nothing here is an offer or an invitation to subscribe.";
 
 export const PAYER_UNCHANGED = [
   "Rent amount",
@@ -76,6 +111,8 @@ export const payerCopy = {
   en: {
     greeting: "Hello",
     allSet: "Your rent is unchanged.",
+    payThisMonth: "Pay this month’s rent",
+    copyPaymentDetails: "Copy address and amount",
     unchanged:
       "Your rent, your lease, your landlord and where you pay are unchanged.",
     nextPayment: "Next payment",
@@ -119,21 +156,34 @@ export const payerCopy = {
     copyAddress: "Copy address",
     network: "Network",
     receiving: "Receiving address",
-    demoOnly: "Demo only. No real wallet, signature, or transfer.",
+    demoOnly:
+      "Demo only. This walkthrough does not send a real transfer. Do not send real USDC to this demo address.",
     memoNote:
       "The payment reference is for your records. A plain transfer does not automatically carry this reference on-chain.",
     historyLink: "Payment history",
     myPayments: "My Payments",
     dueStatus: "Due",
     networkUnset: "Network to be confirmed",
+    sameAsRent: "Same as {amount} monthly rent",
+    usdcTip:
+      "Digital dollars for this demo. The amount matches your rent. Nothing real is sent.",
+    networkTip: "The selected payment network. Nothing real is sent in this walkthrough.",
     txRef: "Transaction",
     payEarlierFirst: "Pay {period} first.",
     payEarlierBody: "Earlier rent must be paid before this month.",
     openNextPayment: "Open the next payment",
+    payBySendTitle: "Send the exact amount",
+    payBySendBody:
+      "Copy the address and send the exact USDC amount from your wallet.",
+    iveSentPayment: "I’ve sent this payment",
+    payByWalletTitle: "Or pay here",
+    demoOutcomes: "Demo payment outcomes",
   },
   nl: {
     greeting: "Hallo",
     allSet: "Je huur blijft hetzelfde.",
+    payThisMonth: "Betaal deze maand huur",
+    copyPaymentDetails: "Kopieer adres en bedrag",
     unchanged:
       "Je huur, je contract, je verhuurder en waar je betaalt blijven hetzelfde.",
     nextPayment: "Volgende betaling",
@@ -178,21 +228,34 @@ export const payerCopy = {
     copyAddress: "Kopieer adres",
     network: "Netwerk",
     receiving: "Ontvangstadres",
-    demoOnly: "Alleen demo. Geen echte wallet, handtekening of overboeking.",
+    demoOnly:
+      "Alleen demo. Deze walkthrough stuurt geen echte overboeking. Stuur geen echte USDC naar dit demo-adres.",
     memoNote:
       "Het kenmerk is voor je administratie. Een gewone overboeking zet dit niet automatisch on-chain.",
     historyLink: "Betalingsgeschiedenis",
     myPayments: "Mijn betalingen",
     dueStatus: "Te betalen",
     networkUnset: "Netwerk nog te bevestigen",
+    sameAsRent: "Hetzelfde als {amount} maandelijkse huur",
+    usdcTip:
+      "Digitale dollars voor deze demo. Het bedrag is gelijk aan je huur. Er wordt niets echt verstuurd.",
+    networkTip: "Het gekozen betaalnetwerk. In deze walkthrough wordt niets echt verstuurd.",
     txRef: "Transactie",
     payEarlierFirst: "Betaal eerst {period}.",
     payEarlierBody: "Eerdere huur moet eerst betaald zijn.",
     openNextPayment: "Open de volgende betaling",
+    payBySendTitle: "Stuur het exacte bedrag",
+    payBySendBody:
+      "Kopieer het adres en stuur het exacte USDC-bedrag vanuit je wallet.",
+    iveSentPayment: "Ik heb deze betaling verstuurd",
+    payByWalletTitle: "Of betaal hier",
+    demoOutcomes: "Demo-betaaluitkomsten",
   },
   pap: {
     greeting: "Bon dia",
     allSet: "Bo huur no ta kambia.",
+    payThisMonth: "Paga e huur di e luna aki",
+    copyPaymentDetails: "Kopia adres i montante",
     unchanged:
       "Bo huur, bo kontrakt, bo dueño di kas i unda bo ta paga no ta kambia.",
     nextPayment: "Próksimo pago",
@@ -237,17 +300,28 @@ export const payerCopy = {
     copyAddress: "Kopia adres",
     network: "Red",
     receiving: "Adres di resepcion",
-    demoOnly: "Demo so. No tin wallet, firma ni transferensia real.",
+    demoOnly:
+      "Demo so. E walkthrough aki no ta manda un transferensia real. No manda USDC real na e adres di demo aki.",
     memoNote:
       "E referensia ta pa bo rekord. Un transferensia simpel no ta hiba e referensia automaticamente on-chain.",
     historyLink: "Historia di pago",
     myPayments: "Mi pagonan",
     dueStatus: "Pa paga",
     networkUnset: "Red ainda pa konfirmá",
+    sameAsRent: "Mismo ku {amount} huur mensualmente",
+    usdcTip:
+      "Dollar digital pa e demo aki. E montante ta koresponde ku bo huur. Nada real ta wordu mandá.",
+    networkTip: "E red di pago skohí. Nada real ta wordu mandá den e walkthrough aki.",
     txRef: "Transakshon",
     payEarlierFirst: "Paga {period} prome.",
     payEarlierBody: "Bo mester paga e huur anterior prome.",
     openNextPayment: "Habrie e próximo pago",
+    payBySendTitle: "Manda e montante eksakto",
+    payBySendBody:
+      "Kopia e adres i manda e montante eksakto di USDC for di bo wallet.",
+    iveSentPayment: "Mi a manda e pago aki",
+    payByWalletTitle: "Òf paga akinan",
+    demoOutcomes: "Resultadonan di pago di demo",
   },
 } as const;
 

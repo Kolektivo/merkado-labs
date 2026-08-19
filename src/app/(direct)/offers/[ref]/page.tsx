@@ -23,6 +23,7 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
+import { positionIdFor } from "@/lib/rent-advance/ids";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 
 import { ThemeMerkado } from "@/components/theme-merkado";
@@ -42,9 +43,18 @@ export default async function BuyerOfferPage({
 
   return (
     <ThemeMerkado className="space-y-6">
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/offers">← All offers</Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/offers">← All offers</Link>
+        </Button>
+        {offer.fundedCents > 0 ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/portfolio/${offer.reference}`}>
+              View position {positionIdFor(offer.reference)}
+            </Link>
+          </Button>
+        ) : null}
+      </div>
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge tone={statusTone(offer.status)}>
@@ -66,19 +76,19 @@ export default async function BuyerOfferPage({
 
       {offer.relatedParty ? (
         <Alert>
-          <AlertTitle>Related-party disclosure</AlertTitle>
+          <AlertTitle>Connected landlord</AlertTitle>
           <AlertDescription>
             {offer.relatedPartyNote ??
-              "This offer involves a related party and was priced above market."}
+              "The landlord on this offer is connected to Merkado. Someone independent had to approve it."}
           </AlertDescription>
         </Alert>
       ) : null}
 
       <Tabs defaultValue="passport">
         <TabsList variant="line">
-          <TabsTrigger value="passport">Property Score</TabsTrigger>
-          <TabsTrigger value="comparables">Comparables</TabsTrigger>
-          <TabsTrigger value="payer">Payer</TabsTrigger>
+          <TabsTrigger value="passport">Property view</TabsTrigger>
+          <TabsTrigger value="comparables">Similar homes</TabsTrigger>
+          <TabsTrigger value="payer">Payment history</TabsTrigger>
           <TabsTrigger value="terms">Terms</TabsTrigger>
         </TabsList>
 
@@ -86,10 +96,12 @@ export default async function BuyerOfferPage({
           <Card>
             <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-2">
-                Property Score {offer.propertyScore}/100 · {offer.propertyLabel}
-                <HelpTip label="Property Score">
-                  Derived from Listing Score and rent-to-market. Street address
-                  is never shown here.
+                Combined property view {offer.propertyScore}/100 ·{" "}
+                {offer.propertyLabel}
+                <HelpTip label="Combined property view">
+                  Listing quality plus how the rent compares to typical nearby
+                  rent. Street address is never shown here. This does not change
+                  the cash the landlord received.
                 </HelpTip>
               </CardTitle>
             </CardHeader>
@@ -101,14 +113,14 @@ export default async function BuyerOfferPage({
               </p>
               <p>{offer.summary}</p>
               <dl className="grid gap-2 sm:grid-cols-2">
-                <ScoreRow label="Rent vs market" value={offer.passport.rentVsMarket} />
+                <ScoreRow label="Rent vs typical rent" value={offer.passport.rentVsMarket} />
                 <ScoreRow label="Market depth" value={offer.passport.marketDepth} />
                 <ScoreRow label="Condition" value={offer.passport.condition} />
                 <ScoreRow label="Accessibility" value={offer.passport.accessibility} />
               </dl>
               <p className="text-muted-foreground">
                 {offer.marketDataAvailable
-                  ? "Rent-to-market is included in the Property Score."
+                  ? "How the rent compares to typical nearby rent is already included in this view."
                   : "Market data unavailable."}{" "}
                 Street address is not shown.
               </p>
@@ -119,7 +131,7 @@ export default async function BuyerOfferPage({
         <TabsContent value="comparables" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Comparables</CardTitle>
+              <CardTitle>Similar homes</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table className="min-w-[480px]">
@@ -151,11 +163,11 @@ export default async function BuyerOfferPage({
         <TabsContent value="payer" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Payer</CardTitle>
+              <CardTitle>Payment history</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <p>{offer.payer.bandLabel}</p>
-              <p>On-time {offer.payer.onTimePercent}%</p>
+              <p>Paid on time {offer.payer.onTimePercent}% of the last 12 months</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -168,12 +180,13 @@ export default async function BuyerOfferPage({
             <CardContent className="space-y-4 text-sm">
               <p>Term {offer.months} months</p>
               <p>
-                Funded <Money cents={offer.fundedCents} /> of{" "}
-                <Money cents={offer.offeringCents} /> offering
+                Holders put in <Money cents={offer.fundedCents} /> of{" "}
+                <Money cents={offer.offeringCents} />. The landlord received a
+                lower one-time cash amount. This is not a promised payout.
               </p>
               <div>
                 <p className="mb-2 font-medium">
-                  Six-month distribution schedule · scheduled, not promised
+                  Later rent months · only if the renter pays
                 </p>
                 <div className="overflow-x-auto">
                 <Table className="min-w-[480px]">

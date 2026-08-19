@@ -136,6 +136,7 @@ export type LedgerTransactionKind =
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
 
+/** Demo chain facts. Safe address stays fictional until Luis replaces it. */
 export type CryptoConfig = {
   networkKey: string | null;
   chainId: number | null;
@@ -164,6 +165,7 @@ export type PaymentRequest = {
   receivableN: number;
   periodLabel: string;
   dueDate: string;
+  /** USD cents. Legacy field name from the XCG book. */
   amountXcgCents: number;
   amountUsdcAtomic: number;
   paymentReference: string;
@@ -376,7 +378,6 @@ export type BuyerOfferCard = {
   offeringCents: number;
   fundedCents: number;
   scheduledAnnualised: number;
-  agency: string;
   status: OfferStatus;
   relatedParty: boolean;
 };
@@ -401,8 +402,6 @@ export type PurchaserOfferDetail = BuyerOfferCard & {
   payer: {
     bandLabel: string;
     onTimePercent: number;
-    employmentStatus: string;
-    rentToIncomeBand: string;
   };
   receivables: Array<{
     n: number;

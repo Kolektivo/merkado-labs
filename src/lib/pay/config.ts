@@ -19,6 +19,10 @@ export function merkadoPayHref(): { href: string; external: boolean } {
   return appHref(process.env.NEXT_PUBLIC_MERKADO_PAY_URL, "/pay");
 }
 
+export function merkadoPayAppHref(): { href: string; external: boolean } {
+  return merkadoPayHref();
+}
+
 export function merkadoDirectHref(): { href: string; external: boolean } {
   return appHref(process.env.NEXT_PUBLIC_MERKADO_DIRECT_URL, "/originate");
 }

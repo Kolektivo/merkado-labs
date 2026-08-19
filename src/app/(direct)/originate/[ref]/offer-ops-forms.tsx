@@ -20,6 +20,7 @@ import {
   recordCollectionAction,
   releaseCollectionAction,
   setOfferStatusAction,
+  submitOfferForReviewAction,
 } from "@/lib/rent-advance/actions";
 import { canRecordCollection, statusLabel } from "@/lib/rent-advance/helpers";
 import type { Actor, Collection, OfferStatus } from "@/lib/rent-advance/types";
@@ -69,11 +70,13 @@ export function OfferOpsForms({
   status,
   nextReceivableN,
   actors,
+  releasableCollections = [],
 }: {
   reference: string;
   status: OfferStatus;
   nextReceivableN: number | null;
   actors: Actor[];
+  releasableCollections?: Collection[];
 }) {
   const { pending, error, run } = useOfferAction();
   const approvers = actors.filter((actor) => actor.role === "independent_approver");
@@ -85,72 +88,39 @@ export function OfferOpsForms({
     <div className="space-y-4">
       <FormError message={error} />
 
-      {status === "under_review" ? (
+      {status === "draft" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Credit approval</CardTitle>
+            <CardTitle>Submit for review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              An independent approver must sign before this offer can be
-              funded. R. Girigoria is selected for the walkthrough.
+              Nothing has been sold yet. Submit this draft for independent
+              approval before funding.
             </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="approver">Approver</Label>
-              <Select value={approverId} onValueChange={setApproverId}>
-                <SelectTrigger id="approver" className="w-full min-w-56">
-                  <SelectValue placeholder="Select independent approver" />
-                </SelectTrigger>
-                <SelectContent>
-                  {approvers.map((actor) => (
-                    <SelectItem key={actor.id} value={actor.id}>
-                      {actor.name} · {actor.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <Button
               type="button"
-              disabled={pending || !approverId}
-              onClick={() => run(() => approveOfferAction(reference, approverId))}
+              disabled={pending}
+              onClick={() => run(() => submitOfferForReviewAction(reference))}
             >
-              Approve offer
+              Submit for review
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
+      {status === "under_review" ? (
+        <p className="text-sm text-muted-foreground">
+          This offer is waiting for independent approval before funding.
+        </p>
+      ) : null}
+
       {collecting ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Collections
-              <HelpTip label="Collections">
-                Record that this month’s rent arrived. Only live, collecting,
-                or defaulted offers can do this.
-              </HelpTip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2">
-            {nextReceivableN != null ? (
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  run(() => recordCollectionAction(reference, nextReceivableN))
-                }
-              >
-                Record collection · month {nextReceivableN}
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No scheduled receivable remains.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : status === "under_review" ? null : (
+        <p className="text-sm text-muted-foreground">
+          Later rent is collected for holders when the renter pays. The
+          landlord is not paid again.
+        </p>
+      ) : status === "draft" || status === "under_review" ? null : (
         <p className="text-sm text-muted-foreground">
           Collections start after this offer is live.
         </p>
@@ -160,33 +130,109 @@ export function OfferOpsForms({
         <summary className="cursor-pointer text-sm font-medium">
           Lab controls
         </summary>
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="offer-status">Set status</Label>
-            <Select
-              value={nextStatus}
-              onValueChange={(value) => setNextStatus(value as OfferStatus)}
+        <div className="mt-3 space-y-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="offer-status">Set status</Label>
+              <Select
+                value={nextStatus}
+                onValueChange={(value) => setNextStatus(value as OfferStatus)}
+              >
+                <SelectTrigger id="offer-status" className="min-w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {statusLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => run(() => setOfferStatusAction(reference, nextStatus))}
             >
-              <SelectTrigger id="offer-status" className="min-w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {statusLabel(value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              Update status
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={pending}
-            onClick={() => run(() => setOfferStatusAction(reference, nextStatus))}
-          >
-            Update status
-          </Button>
+          {status === "under_review" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Independent approval</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  An independent approver must sign before this offer can be
+                  funded. R. Girigoria is selected for the walkthrough.
+                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="approver">Approver</Label>
+                  <Select value={approverId} onValueChange={setApproverId}>
+                    <SelectTrigger id="approver" className="w-full min-w-56">
+                      <SelectValue placeholder="Select independent approver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approvers.map((actor) => (
+                        <SelectItem key={actor.id} value={actor.id}>
+                          {actor.name} · {actor.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  disabled={pending || !approverId}
+                  onClick={() => run(() => approveOfferAction(reference, approverId))}
+                >
+                  Approve offer
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {collecting ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Record collection
+                  <HelpTip label="Collections">
+                    Ops fallback if a month arrived outside Merkado Pay. Live
+                    renter payments already move to holders automatically.
+                  </HelpTip>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center gap-2">
+                {nextReceivableN != null ? (
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      run(() => recordCollectionAction(reference, nextReceivableN))
+                    }
+                  >
+                    Record collection · month {nextReceivableN}
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No scheduled receivable remains.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {releasableCollections.length > 0 ? (
+            <DualControlForm
+              reference={reference}
+              releasableCollections={releasableCollections}
+              actors={actors}
+            />
+          ) : null}
         </div>
       </details>
     </div>

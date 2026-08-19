@@ -10,8 +10,10 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { redirectIfDemoLocked } from "@/lib/demo-gate-server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  await redirectIfDemoLocked();
   return (
     <Empty className="min-h-[50vh] border border-dashed">
       <EmptyHeader>

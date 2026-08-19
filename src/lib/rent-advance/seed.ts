@@ -1,3 +1,4 @@
+import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
 import { ACTORS } from "@/lib/rent-advance/actors";
 import {
   offerIdFromReference,
@@ -496,7 +497,7 @@ function buildOffers(): Offer[] {
     nextAction: "Record month 1 · 30 Sep",
     relatedParty: true,
     relatedPartyNote:
-      "The landlord on this offer is a family member of an EcoLabs board member. An independent approver must credit-approve. The fee carries a +25 bp related-party premium.",
+      "The landlord on this offer is a family member of an EcoLabs board member. An independent approver must sign. The fee carries a +25 bp related-party premium.",
     months: 6,
     rent: 180000,
     passportTotal: 89,
@@ -514,8 +515,8 @@ function buildOffers(): Offer[] {
     }),
     payer: makePayer({
       id: "tn-001",
-      fullName: "L. Rosaria",
-      initials: "L.R.",
+      fullName: DEMO_RENTER_PROFILE.fullName,
+      initials: DEMO_RENTER_PROFILE.payerInitials,
     }),
   });
   mra001.feeRate = 0.055;
@@ -529,7 +530,7 @@ function buildOffers(): Offer[] {
       id: "ev-001-6",
       at: "2026-09-30",
       title: "Collection month 1 scheduled",
-      detail: "End of month · Cg 1,800.00",
+      detail: "End of month · $1,800.00",
       actor: "System",
     },
     {
