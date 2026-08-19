@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (hosted password door)
 
 ## 1. Scope
 
@@ -22,15 +22,15 @@ the Pay page.
 | Styling | Tailwind CSS v4 + CSS variables in `src/app/globals.css` |
 | Components | shadcn/ui (`radix-nova`, `neutral`, Lucide) — one library only |
 | Fonts | Geist Sans + Geist Mono on Direct ops; Inter on `.theme-merkado` surfaces |
-| Chrome | `AppShell` sidebar for Direct; payment-link shell for Pay; account shell for the Labs account mock |
+| Chrome | Standalone Merkado-themed door at `/enter`; `AppShell` sidebar for Direct; payment-link shell for Pay; account shell for the Labs account mock |
 
 ## 3. Tokens
 
 **Direct operations** (My Offers, Create Offer, Get Now, offer detail) keep
 the existing Labs light/dark semantic tokens.
 
-**Marketplace, Portfolio, Pay, and Account** use a scoped `.theme-merkado`
-layer:
+**Marketplace, Portfolio, Pay, Account, and the hosted password door
+(`/enter`)** use a scoped `.theme-merkado` layer:
 
 - Page background `#FAF9F8`
 - White surfaces; foreground `#171717`; surface-dark `#141414`
@@ -73,6 +73,9 @@ outside this scoped layer.
   payment history.
 - Overview carries the prototype notice. Other Direct pages use the header
   badge “Labs demo · not live on merkado.cw”
+- The hosted password door (`/enter`) is a single calm card: Merkado mark,
+  **Private walkthrough**, **Merkado Labs**, **Shared password**, and a
+  quiet “not a Merkado account” footer. No prototype alert stack.
 - Customer scores: show **Property quality**, **Payment history**, and
   **Combined property view**. Official names Listing Score, Payer Score,
   and Property Score stay inside tooltips only.
@@ -84,7 +87,9 @@ outside this scoped layer.
 ## 5. Accessibility
 
 Skip link to `#main-content`, `aria-current` on nav, focus-visible rings,
-`prefers-reduced-motion` in `globals.css`. Pay is mobile-first (~390px).
+`prefers-reduced-motion` in `globals.css`. The password door uses a
+40px-tall field, a show/hide control, and a full-width continue action.
+Pay is mobile-first (~390px).
 The amount, due badge, copy details, both pay actions, and payment
 history stay visible. Extra explainers stay in tooltips. Pay is
 English-only.

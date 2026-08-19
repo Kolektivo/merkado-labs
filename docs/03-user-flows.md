@@ -1,16 +1,25 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (hosted password door)
 
-## 1. Demo hub
+## 1. Hosted access
+
+On the hosted URL, the first screen is a shared-password door (`/enter`).
+It is a Merkado-branded private walkthrough, not a Merkado account. After
+the correct password, the visitor continues to the requested page
+(Overview by default). Local `npm run dev` skips this door unless
+`LABS_DEMO_PASSWORD` is set. Hosted production stays locked if that
+password is missing.
+
+## 2. Demo hub
 
 Visitor lands on Overview (`/`), sees entry points to **Merkado Direct**,
 **Merkado Pay**, and the **Merkado account** mock, plus MRA-001 figures,
 open legal questions, a **Payment network** control (OP Sepolia / Base
 Sepolia now; mainnet later), and **Reset demo**.
 
-## 2. Landlord (Merkado Direct)
+## 3. Landlord (Merkado Direct)
 
 1. **My Offers** — the six-offer book. Totals count only funded, non-draft
    offers as money already advanced or receivables already sold.
@@ -29,7 +38,7 @@ Sepolia now; mainnet later), and **Reset demo**.
    holder wallet details. Drafts keep **Submit for review**. Independent
    approval, Record collection, and dual-control stay in Lab controls.
 
-## 3. Holder (Merkado Direct)
+## 4. Holder (Merkado Direct)
 
 1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
@@ -42,7 +51,7 @@ Sepolia now; mainnet later), and **Reset demo**.
    transaction references. Distributions are automatic. There is no Claim
    button and no transfer or sale UI.
 
-## 4. Renter (Merkado Pay)
+## 5. Renter (Merkado Pay)
 
 1. `/pay` opens the seeded current payment request. `/pay/[id]` is the
    canonical deep link. Invalid IDs show a friendly not-found. A later
@@ -61,7 +70,7 @@ Sepolia now; mainnet later), and **Reset demo**.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 
-## 5. Merkado account (Labs mock)
+## 6. Merkado account (Labs mock)
 
 1. `/account` opens Apps (or redirects there) inside merkado-cw account
    chrome. Other account and marketplace links are visibly disabled.
@@ -72,14 +81,14 @@ Sepolia now; mainnet later), and **Reset demo**.
    payment link. Payment history sits on that same Pay page.
 3. Old `/account/payments` and `/pay/payments` redirect into Pay.
 
-## 6. Shared payment
+## 7. Shared payment
 
 One confirmed mock payment updates exactly once: the payment request,
 the matching receivable, one collection, and holder distribution
 activity. Refresh and retry are idempotent. Initiated / pending /
 confirmed stay distinct in the data model.
 
-## 7. Privacy walls
+## 8. Privacy walls
 
 - Payer never sees economics.
 - Purchaser never sees payer identity, employer, address, or exact income.

@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 19, 2026 (testnet payment networks + Luis handoff)
+**Last updated:** August 19, 2026 (hosted password door polish)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -32,15 +32,16 @@ a public product.
 ## 2. Labs demo today `[LABS]`
 
 Local automated checks were re-run from the repository root on 2026-08-19
-after the host-password page: lint, typecheck, unit tests, and a production
-build passed. The hosted URL is not gated until `LABS_DEMO_PASSWORD` is set
-on Vercel Production and this change is deployed.
+after the password-door polish: lint, typecheck, unit tests, and a
+production build passed. The hosted URL is not gated until
+`LABS_DEMO_PASSWORD` is set on Vercel Production and this change is
+deployed.
 
 Local stays open. No Merkado login, settings, or admin page.
 
 | Surface | What a visitor sees |
 |---|---|
-| Enter `/enter` | Shared host password for the hosted demo. Not a Merkado account. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
+| Enter `/enter` | Merkado-themed shared-password door: Private walkthrough, Merkado Labs, Shared password, show/hide, Continue. Footer says this is not a Merkado account and not live on merkado.cw. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
 | Overview `/` | Merkado Labs demo hub. Doors for Direct, Pay, and the account mock, plus Payment network and Reset. No prominent “Merkado Rent Advance” brand. |
 | My Offers `/originate` | Live and collecting offers appear first; drafts sit lower. Get Now and Create Offer as the obvious next steps. Advance totals exclude drafts, under-review, and unfunded rows. |
 | Create offer `/originate/new` | Six-step wizard. “Listing Score” replaces the old Passport step. A Get Now quote can prefill via `?quote=1&rent=&market=&listing=&payer=&related=&months=` and opens on Quote. Only six months can be saved. |
