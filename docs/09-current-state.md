@@ -41,7 +41,7 @@ Local stays open. No Merkado login, settings, or admin page.
 
 | Surface | What a visitor sees |
 |---|---|
-| Enter `/enter` | Merkado-themed shared-password door: Private walkthrough, Merkado Labs, Shared password, show/hide, Continue. Footer says this is not a Merkado account and not live on merkado.cw. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
+| Enter `/enter` | Compact shadcn card: Merkado Labs, Shared password, show/hide, Continue. Not a Merkado account. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
 | Overview `/` | Merkado Labs demo hub. Doors for Direct, Pay, and the account mock, plus Payment network and Reset. No prominent “Merkado Rent Advance” brand. |
 | My Offers `/originate` | Live and collecting offers appear first; drafts sit lower. Get Now and Create Offer as the obvious next steps. Advance totals exclude drafts, under-review, and unfunded rows. |
 | Create offer `/originate/new` | Six-step wizard. “Listing Score” replaces the old Passport step. A Get Now quote can prefill via `?quote=1&rent=&market=&listing=&payer=&related=&months=` and opens on Quote. Only six months can be saved. |

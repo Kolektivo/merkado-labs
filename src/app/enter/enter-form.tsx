@@ -20,9 +20,9 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
   const errorId = useId();
 
   return (
-    <form action={formAction} className="space-y-5" aria-busy={pending}>
+    <form action={formAction} className="flex flex-col gap-4" aria-busy={pending}>
       <input type="hidden" name="next" value={nextPath} />
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="demo-password">Shared password</Label>
         <div className="relative">
           <Input
@@ -34,15 +34,15 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
             autoCorrect="off"
             spellCheck={false}
             required
-            className="h-11 pr-12 text-base md:text-sm"
+            className="pr-9"
             aria-invalid={state.error ? true : undefined}
             aria-describedby={state.error ? errorId : undefined}
           />
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="absolute top-1/2 right-0.5 size-10 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            size="icon-xs"
+            className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
             aria-controls="demo-password"
             aria-label={visible ? "Hide password" : "Show password"}
             aria-pressed={visible}
@@ -52,20 +52,12 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
           </Button>
         </div>
         {state.error ? (
-          <p
-            id={errorId}
-            role="alert"
-            className="text-sm text-destructive"
-          >
+          <p id={errorId} role="alert" className="text-sm text-destructive">
             {state.error}
           </p>
         ) : null}
       </div>
-      <Button
-        type="submit"
-        disabled={pending}
-        className="h-11 w-full text-sm font-semibold"
-      >
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? (
           <>
             <Loader2 className="animate-spin" aria-hidden="true" />
@@ -75,6 +67,9 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
           "Continue"
         )}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        Not a Merkado account · not live on merkado.cw
+      </p>
     </form>
   );
 }
