@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto developer handoff.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (Luis handoff + access + rail-mode switch)
 
 ## Live
 
@@ -48,14 +48,18 @@ Open a new tab only when the app URL value is an absolute external URL.
 
 ## Crypto developer handoff (Luis / Luuk)
 
-Send this whole section. The product walkthrough already works. One
+**Send this whole file.** The product walkthrough already works. One
 confirmed rent payment already updates My Payments, the offer, and
 Portfolio **once**. The only missing piece is a real Web3 adapter behind
-the existing Pay interface.
+the existing Pay interface, plus flipping the mock labels when that
+adapter is live.
 
 **Do not install a wallet or Safe SDK until the Product Lead approves that
 integration task.** The current demo must keep working without a real
 wallet, RPC, or on-chain write.
+
+Product Lead access to grant you is listed under **Access Luis needs**
+below and, with click-by-click steps, in `docs/12-deployment-runbook.md`.
 
 ### What is already finished
 
@@ -278,21 +282,129 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 - Do not treat this instrument as a token, NFT, or transferable position.
 - Do not link demo `0xDEMO…` hashes on the explorer.
 
+### Flip the mock labels when the rail is live
+
+The UI is already wired so mocked wording does **not** have to be hunted
+down by hand. In the **same change** that points
+`createPaymentProvider` at your adapter:
+
+1. Open `src/lib/pay/mode.ts`.
+2. Set `PAYMENT_RAIL_MODE` from `"mock"` to `"live"`.
+
+That single switch updates:
+
+| Surface | Mock copy (today) | Live copy (after the flip) |
+|---|---|---|
+| Overview banner | Wallet and USDC payments are mocked | Pay sends USDC on the selected network |
+| Overview Pay card | Demo only — nothing real is sent | Pays in USDC on the selected network |
+| Payment network help | Luis uses this when he connects a real wallet | Choose the network Pay uses |
+| Payment network body | The demo wallet still does not send real money | A connected wallet sends USDC on this network |
+| Pay button | Pay with demo wallet | Pay with wallet |
+| Connected line | Demo wallet connected | Wallet connected |
+| USDC tip | Nothing real is sent | Amount matches rent one-to-one |
+| Network tip | Nothing real is sent in this walkthrough | Settles on the selected network (testnet named) |
+| Footer note | Demo only. This walkthrough does not send a real transfer | Testnet: this sends test USDC, not mainnet money. Mainnet: this sends real USDC |
+| Demo outcomes menu | Visible (Success / Failed / Incorrect amount) | Hidden |
+| Ledger from / to | Renter demo wallet / Demo receiving address | Renter wallet / Receiving Safe |
+
+Do **not** flip the switch while the factory still returns the mock
+provider. A live label on a fake transfer is worse than a mock label.
+
+If you add new Pay strings, put the mock default in `payerCopy` and the
+live override in `applyPaymentRailCopy` (`src/lib/rent-advance/copy.ts`).
+
+### Pay UI you must change (not only the factory)
+
+`src/app/pay/pay-app.tsx` still **trusts the browser** and then writes
+the book:
+
+1. `submitPayment` or `reportExternalTransfer`
+2. `confirmPaymentAction(id, "pending")`
+3. wait 1.4 seconds
+4. `confirmPaymentAction(id, "confirmed")`
+
+That is correct for the mock walkthrough. It is **not** correct once a
+real transfer exists.
+
+When the rail is live:
+
+- Keep pending until **your server** has seen the USDC transfer on the
+  selected chain (receipt + your confirmation depth).
+- Only then write the book as confirmed, with the real 64-hex `txHash`.
+- Do **not** let the client mark rent paid because a wallet popup closed.
+- Keep using `applyPaymentOutcome` / the existing book helper so one
+  confirm still updates Pay, the offer, and Portfolio once.
+- Hide or ignore the demo outcome menu (`showDemoPaymentOutcomes()`
+  already hides it when the rail is live).
+- Replace the fictional Safe (`0xDEMO0000SAFE00…`) in `cryptoConfig.safeAddress`.
+- Prompt a chain switch when the wallet `chainId` is not
+  `cryptoConfig.chainId`.
+
 ### Suggested implementation order (after approval)
 
 1. Confirm the selected **testnet** + native USDC + Safe services together.
 2. Put the real Safe address in `cryptoConfig`.
 3. Implement `PaymentProvider` against `provider.ts`.
 4. Switch `createPaymentProvider` to that adapter.
-5. Connect wallet → switch to `cryptoConfig.chainId` → USDC `transfer`.
-6. Map submitted / pending / confirmed / failed into `confirmPaymentAction`.
-7. Only then show explorer links for real hashes.
-8. Separately design allocation and holder-distribution execution.
-9. Only after a testnet walkthrough works, ask to move to OP Mainnet or Base Mainnet.
+5. Flip `PAYMENT_RAIL_MODE` to `"live"` in the same change.
+6. Connect wallet → switch to `cryptoConfig.chainId` → USDC `transfer`.
+7. Confirm on the **server** from chain data, then write the book.
+8. Only then show explorer links for real hashes.
+9. Separately design allocation and holder-distribution execution.
+10. Only after a testnet walkthrough works, ask to move to OP Mainnet or Base Mainnet.
 
 Useful references: Circle USDC contract addresses, Circle USDC faucet,
 Safe Smart Account overview, Safe Transaction Service, Safe supported
 networks.
+
+### Access Luis needs
+
+Ask the Product Lead for **only** the Labs surfaces below. Do not ask
+for merkado.cw production, production Supabase, or production Vercel.
+
+| Platform | What you need | Why |
+|---|---|---|
+| GitHub `Kolektivo/merkado-labs` | **Write** on this repo (collaborator or team) | Branch, pull request, review. Do not push straight to `main`. |
+| Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | Preview deploys of your branch. Not billing. Not the live merkado.cw project. |
+| Supabase **merkado-labs** `csaefdkpwukshtouyixg` | **Developer** | Read schema and the demo book if you must debug persistence. |
+| Labs env values | Secure copy of `.env.local` Labs keys | Run the demo locally against the Labs book. Never commit them. |
+| Hosted walkthrough password | The `LABS_DEMO_PASSWORD` value, shared privately | Open https://merkado-labs.vercel.app after deploy. |
+| Safe{Wallet} | Owner or signer on a **testnet** Safe you create or join | Receiving address for Pay. Start on OP Sepolia. |
+| Reown / WalletConnect Cloud | A project you create or are invited to | Wallet connect project ID for the adapter. |
+| RPC (optional) | Alchemy, Infura, or similar Labs-only key | More reliable than public RPCs. Not required to start. |
+| Circle faucet | None. Public. | Test USDC: https://faucet.circle.com |
+
+**Never:**
+
+- Production Supabase `jkrfyvukhhsapoivntms` / merkado-curaçao
+- Production Vercel / merkado.cw deploy
+- GitHub admin on the Kolektivo org
+- Supabase Owner on Labs (Developer is enough)
+- A mainnet Safe that already holds real USDC
+- Service-role or host password in the repo, a ticket, or chat history
+
+Expected later env names (add only when the adapter needs them; do not
+commit values):
+
+- Wallet connect project ID (public)
+- Server-only RPC URL, if you do not use the public catalog RPCs
+- Optional explorer API key if you watch transfers from the server
+
+### Done when
+
+- Renter can connect a real wallet on **OP Sepolia**, send **1,800.00**
+  native USDC to the real Safe, and see **Rent paid** only after the
+  chain confirms it.
+- The same confirmation updates My Payments, offer MRA-001, and
+  Portfolio `pos-mra-001` **once**.
+- Copy no longer says demo wallet / nothing real is sent (`PAYMENT_RAIL_MODE`
+  is `"live"`).
+- Explorer links open only for real 64-hex hashes.
+- Copy-address path still works by watching the Safe, not by trusting
+  the renter’s click.
+- Mainnet stays off unless the Product Lead turns it on.
+- Allocation and holder Safe execution are written up, even if not
+  built yet.
 
 ### Data ownership and privacy
 

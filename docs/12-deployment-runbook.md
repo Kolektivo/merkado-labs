@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (Luis access list)
 
 ## Local dashboard
 
@@ -74,6 +74,45 @@ Windows-generated lockfile. They are not a wallet or chain dependency.
 The first passing remote Verify run on `main` was 2026-08-19
 (run 32228015203).
 
+## Access to give Luis (Web3)
+
+Luis only needs the **Labs** demo. He does not need merkado.cw
+production. Full developer brief: `docs/07-integrations.md`.
+
+Share secrets through a password manager, not email, Slack, or GitHub.
+
+### Give (recommended)
+
+| Platform | Role | How |
+|---|---|---|
+| GitHub repo [Kolektivo/merkado-labs](https://github.com/Kolektivo/merkado-labs) | **Write** collaborator | Repo → **Settings** → **Collaborators** → **Add people** → choose **Write**. He should open a pull request, not push to `main`. |
+| Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
+| Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
+| Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
+| Safe{Wallet} | Owner or signer on a **testnet** Safe | After Luis creates or names a Safe on **OP Sepolia**, add him (and keep a second Kolektivo signer). Do not start with a mainnet Safe that holds real USDC. |
+| Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
+
+### Do not give
+
+| Platform | Why |
+|---|---|
+| Production Supabase `jkrfyvukhhsapoivntms` (merkado-curaçao) | Forbidden. Live customer data. |
+| Production Vercel / merkado.cw | He is not deploying the marketplace. |
+| GitHub **Admin** on the Kolektivo org | Write on `merkado-labs` is enough. |
+| Supabase **Owner** on Labs | Developer can read schema. Owner can destroy the project. |
+| A funded mainnet Safe | Real money. Testnet first. |
+| Circle, OP, or Base “admin” | Not needed. Faucet and public RPCs are enough to start. |
+| merkado-cw GitHub | Listing scrapers and the live storefront are out of this task. |
+
+### After you invite him
+
+1. Send the link to `docs/07-integrations.md` in this repo.
+2. Tell him to start on **OP Sepolia**, not mainnet.
+3. Tell him not to install a wallet SDK until you reply that the
+   integration task is approved.
+4. When his testnet pay walkthrough works, you still approve before
+   anyone turns on OP Mainnet or Base Mainnet.
+
 ## Do not
 
 - Deploy to Vercel from this repo unless the Product Lead asks
@@ -81,3 +120,4 @@ The first passing remote Verify run on `main` was 2026-08-19
 - Remove the host password or leave Production without `LABS_DEMO_PASSWORD`
 - Point env vars at project `jkrfyvukhhsapoivntms`
 - Publish a public Merkado Direct page
+- Invite Luis to production Supabase or the live merkado.cw Vercel project

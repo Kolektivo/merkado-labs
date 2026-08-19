@@ -28,3 +28,6 @@ npm run test:unit
 Labs Supabase only: `csaefdkpwukshtouyixg`. Production is forbidden.
 Wallet, Safe, and USDC behaviour is mocked. Do not deploy unless the
 Product Lead asks.
+
+Web3 developer handoff: `docs/07-integrations.md`.
+Access to give Luis: `docs/12-deployment-runbook.md`.

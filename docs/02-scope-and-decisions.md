@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (Pay rail-mode decision)
 
 ## 1. MVP goal
 
@@ -65,7 +65,7 @@ repo**. They live on merkado-cw.
 | Listing Score | Raw 0–100 pricing input |
 | Property Score | Derived for presentation/filtering only; never prices the quote |
 | Rent-to-market | contractual ÷ estimated market; lower is more favourable |
-| Crypto in this task | Mocked wallet; typed provider for Luis |
+| Crypto in this task | Mocked wallet; typed provider for Luis; `PAYMENT_RAIL_MODE` flips mock labels when the real adapter ships |
 | Network now | OP Sepolia (default) and Base Sepolia. Switch on Overview or via `NEXT_PUBLIC_PAY_NETWORK`. |
 | Network later | OP Mainnet and Base Mainnet, only when `NEXT_PUBLIC_PAY_NETWORK` is a mainnet key |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |

@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 19, 2026 (hosted password door)
+**Last updated:** August 19, 2026 (live-rail wallet chrome)
 
 ## 1. Scope
 
@@ -99,7 +99,8 @@ external app URLs include accessible new-tab text.
 
 ## 6. What not to invent
 
-No gradients-as-brand, no real wallet chrome, no “yield” badges, no loan
-calculators labeled as loans, no Claim button, no explorer link for demo hashes,
-no Base-as-default network label. OP Sepolia is the default demo
+No gradients-as-brand, no “yield” badges, no loan calculators labeled as
+loans, no Claim button, no explorer link for demo hashes, no
+Base-as-default network label. Wallet chrome stays mocked until
+`PAYMENT_RAIL_MODE` is `"live"`. OP Sepolia is the default demo
 network. Base Sepolia is an available testnet. Mainnet is later.

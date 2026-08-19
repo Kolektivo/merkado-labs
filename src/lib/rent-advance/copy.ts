@@ -1,3 +1,5 @@
+import { PAYMENT_RAIL_MODE, type PaymentRailMode } from "@/lib/pay/mode";
+
 export const SALE_NOT_LOAN =
   "The landlord sells the next few months of rent for cash now. This is not a loan. The yearly comparison is only so they can compare the fee with other ways of getting cash today.";
 
@@ -326,3 +328,96 @@ export const payerCopy = {
 } as const;
 
 export type PayerLocale = keyof typeof payerCopy;
+export type PayerCopy = {
+  [K in keyof (typeof payerCopy)["en"]]: string;
+};
+
+type LivePayCopy = {
+  confirmPay: string;
+  connected: string;
+  optionA: string;
+  optionATitle: string;
+  usdcTip: string;
+  networkTip: string;
+  demoOnly: string;
+  demoOnlyTestnet: string;
+  networkTipTestnet: string;
+};
+
+const LIVE_PAY_COPY: Record<PayerLocale, LivePayCopy> = {
+  en: {
+    confirmPay: "Pay with wallet",
+    connected: "Wallet connected",
+    optionATitle: "USDC rent payment",
+    optionA: "Pay the exact USDC amount. Your rent amount and lease stay the same.",
+    usdcTip: "Digital dollars. The amount matches your rent one-to-one.",
+    networkTip: "Payments settle on the selected network.",
+    networkTipTestnet: "Payments settle on {network}, a test network.",
+    demoOnly:
+      "This sends real USDC. Check the amount and network before you confirm.",
+    demoOnlyTestnet:
+      "This sends test USDC on {network}. It is not mainnet money. Double-check the network in your wallet.",
+  },
+  nl: {
+    confirmPay: "Betalen met wallet",
+    connected: "Wallet verbonden",
+    optionATitle: "USDC-huurbetaling",
+    optionA: "Betaal het exacte USDC-bedrag. Je huurbedrag en contract blijven hetzelfde.",
+    usdcTip: "Digitale dollars. Het bedrag is gelijk aan je huur.",
+    networkTip: "Betalingen worden afgehandeld op het gekozen netwerk.",
+    networkTipTestnet: "Betalingen worden afgehandeld op {network}, een testnetwerk.",
+    demoOnly:
+      "Dit stuurt echte USDC. Controleer bedrag en netwerk voordat je bevestigt.",
+    demoOnlyTestnet:
+      "Dit stuurt test-USDC op {network}. Dit is geen mainnet-geld. Controleer het netwerk in je wallet.",
+  },
+  pap: {
+    confirmPay: "Paga ku wallet",
+    connected: "Wallet konektá",
+    optionATitle: "Pago di huur den USDC",
+    optionA: "Paga e montante eksakto di USDC. Bo montante di huur i kontrakt ta keda igual.",
+    usdcTip: "Dollar digital. E montante ta koresponde ku bo huur.",
+    networkTip: "Pagonan ta keda na e red skohí.",
+    networkTipTestnet: "Pagonan ta keda na {network}, un red di prueba.",
+    demoOnly: "Esaki ta manda USDC real. Kontrolá montante i red prome ku bo konfirmá.",
+    demoOnlyTestnet:
+      "Esaki ta manda USDC di prueba na {network}. Esaki no ta sèn di mainnet. Kontrolá e red den bo wallet.",
+  },
+};
+
+/**
+ * When Luis flips `PAYMENT_RAIL_MODE` to `"live"`, Pay labels stop saying
+ * the wallet is a demo. Pass the selected network so testnet copy stays honest.
+ */
+export function applyPaymentRailCopy(
+  copy: PayerCopy,
+  options: {
+    locale?: PayerLocale;
+    mode?: PaymentRailMode;
+    isTestnet?: boolean;
+    networkLabel?: string | null;
+  } = {},
+): PayerCopy {
+  const mode = options.mode ?? PAYMENT_RAIL_MODE;
+  if (mode === "mock") return copy;
+
+  const locale = options.locale ?? "en";
+  const live = LIVE_PAY_COPY[locale];
+  const network = options.networkLabel?.trim() || "the selected network";
+  const testnet = options.isTestnet ?? true;
+
+  return {
+    ...copy,
+    confirmPay: live.confirmPay,
+    connected: live.connected,
+    optionATitle: live.optionATitle,
+    optionA: live.optionA,
+    usdcTip: live.usdcTip,
+    networkTip: testnet
+      ? live.networkTipTestnet.replace("{network}", network)
+      : live.networkTip,
+    demoOnly: testnet
+      ? live.demoOnlyTestnet.replace("{network}", network)
+      : live.demoOnly,
+  };
+}

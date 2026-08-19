@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (live Pay confirm rule)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -103,7 +103,9 @@ point any leftover script at those names.
 - Keep work focused on the Curaçao Direct / Pay demo.
 - Wallet, Safe, USDC, transactions, and distributions remain mocked until
   a separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK before that approval.
+  wallet or Safe SDK before that approval. When that adapter ships, flip
+  `PAYMENT_RAIL_MODE` to `"live"` in the same change and confirm Pay from
+  chain data on the server — do not keep the 1.4s client auto-confirm.
 - No real transaction can be initiated from any control.
 
 Operational detail: `12-deployment-runbook.md`.

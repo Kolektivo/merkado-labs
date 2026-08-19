@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 19, 2026 (hosted password door polish)
+**Last updated:** August 19, 2026 (Pay rail-mode switch + Luis handoff)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -135,10 +135,11 @@ Reset restores the seeded offers, payments, transactions, and distributions.
 UI talks to `createPaymentProvider()` (`src/lib/pay/create-provider.ts`)
 and `src/lib/pay/provider.ts`. The only implementation is still
 `src/lib/pay/mock-provider.ts`. There is no wallet, Safe, RPC, or USDC
-SDK. OP Sepolia is the default in `cryptoConfig`. Base Sepolia is
-available. OP Mainnet and Base are later. Luis/Luuk replace the factory
-with a real adapter after approval. See `docs/07-integrations.md` and
-ADR-0005.
+SDK. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts` is still `"mock"`, so
+Overview and Pay keep demo-wallet wording. OP Sepolia is the default in
+`cryptoConfig`. Base Sepolia is available. OP Mainnet and Base are later.
+Luis/Luuk replace the factory and flip that switch after approval. See
+`docs/07-integrations.md` and ADR-0005.
 
 ## 3. Database `[LABS]`
 

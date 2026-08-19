@@ -12,8 +12,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createPaymentProvider } from "@/lib/pay/create-provider";
+import { isTestnetConfig } from "@/lib/pay/networks";
+import { showDemoPaymentOutcomes, walletConnectError } from "@/lib/pay/mode";
 import type { SubmittedPayment } from "@/lib/pay/provider";
-import { PAYER_UNCHANGED, payerCopy } from "@/lib/rent-advance/copy";
+import {
+  applyPaymentRailCopy,
+  PAYER_UNCHANGED,
+  payerCopy,
+  type PayerCopy,
+} from "@/lib/rent-advance/copy";
 import { confirmPaymentAction } from "@/lib/rent-advance/actions";
 import { formatUsd, formatUsdcAtomic, formatUsdcAtomicAmount } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
@@ -48,7 +55,7 @@ function wait(ms: number) {
 
 function historyStatusLabel(
   status: PaymentRequestStatus,
-  copy: (typeof payerCopy)[keyof typeof payerCopy],
+  copy: PayerCopy,
 ) {
   if (status === "confirmed") return copy.paid;
   if (status === "pending" || status === "initiated") return copy.pending;
@@ -107,7 +114,16 @@ export function PayApp({
   offerReference: string;
   receivableId: string;
 }) {
-  const { copy } = usePayerLocale();
+  const { locale } = usePayerLocale();
+  const copy = useMemo(
+    () =>
+      applyPaymentRailCopy(payerCopy[locale], {
+        locale,
+        isTestnet: isTestnetConfig(cryptoConfig),
+        networkLabel: cryptoConfig?.networkLabel,
+      }),
+    [locale, cryptoConfig],
+  );
   const router = useRouter();
   const provider = useMemo(() => createPaymentProvider(cryptoConfig), [cryptoConfig]);
   const [wallet, setWallet] = useState<WalletUi>(
@@ -148,7 +164,7 @@ export function PayApp({
       setWallet("connected");
     } catch {
       setWallet("disconnected");
-      setError("The demo wallet could not connect. Try again.");
+      setError(walletConnectError());
     }
   }
 
@@ -401,20 +417,22 @@ export function PayApp({
                 ) : null}
               </div>
 
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer">{copy.demoOutcomes}</summary>
-                <select
-                  className="mt-2 h-10 w-full rounded-xl border bg-background px-3"
-                  value={simulate}
-                  onChange={(event) =>
-                    setSimulate(event.target.value as "ok" | "failed" | "partial")
-                  }
-                >
-                  <option value="ok">Success</option>
-                  <option value="failed">Failed</option>
-                  <option value="partial">Incorrect amount</option>
-                </select>
-              </details>
+              {showDemoPaymentOutcomes() ? (
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">{copy.demoOutcomes}</summary>
+                  <select
+                    className="mt-2 h-10 w-full rounded-xl border bg-background px-3"
+                    value={simulate}
+                    onChange={(event) =>
+                      setSimulate(event.target.value as "ok" | "failed" | "partial")
+                    }
+                  >
+                    <option value="ok">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="partial">Incorrect amount</option>
+                  </select>
+                </details>
+              ) : null}
 
               {error ? (
                 <Alert variant="destructive">

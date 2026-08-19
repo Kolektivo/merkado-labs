@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 19, 2026 (hosted password door)
+**Last updated:** August 19, 2026 (Pay rail-mode note)
 
 ## 1. Hosted access
 
@@ -62,7 +62,7 @@ Sepolia now; mainnet later), and **Reset demo**.
    network (**OP Sepolia** by default; Base Sepolia also available).
    A status badge and both payment paths sit with the amount so they stay
    visible on a phone.
-3. Two mocked payment paths:
+3. Two payment paths (mocked until `PAYMENT_RAIL_MODE` is `"live"`):
    - copy the address and amount, then **I’ve sent this payment**;
    - connect a demo wallet and pay here.
    Both paths show pending → confirmed / success, plus failure and

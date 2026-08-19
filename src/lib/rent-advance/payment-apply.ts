@@ -16,6 +16,7 @@ import {
   receivableIdFor,
   settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
+import { receivingLedgerLabel, renterWalletLedgerLabel } from "@/lib/pay/mode";
 import {
   getPayNetwork,
   resolvePayNetworkKey,
@@ -248,8 +249,8 @@ export function normalizeBook(raw: unknown): DemoBook {
       createdAt: request.initiatedAt ?? request.confirmedAt ?? request.dueDate,
       confirmedAt: request.confirmedAt,
       txHash: request.txHash,
-      fromLabel: "Renter demo wallet",
-      toLabel: "Demo receiving address",
+      fromLabel: renterWalletLedgerLabel(),
+      toLabel: receivingLedgerLabel(),
     };
     ledgerTransactions.push(existingTx.get(request.transactionId) ?? fallback);
   }
@@ -376,8 +377,8 @@ export function applyPaymentOutcome(
       createdAt: request.initiatedAt,
       confirmedAt: null,
       txHash: request.txHash,
-      fromLabel: "Renter demo wallet",
-      toLabel: "Demo receiving address",
+      fromLabel: renterWalletLedgerLabel(),
+      toLabel: receivingLedgerLabel(),
     });
     return next;
   }
@@ -428,8 +429,8 @@ export function applyPaymentOutcome(
     createdAt: request.initiatedAt,
     confirmedAt: at,
     txHash: request.txHash,
-    fromLabel: "Renter demo wallet",
-    toLabel: "Demo receiving address",
+    fromLabel: renterWalletLedgerLabel(),
+    toLabel: receivingLedgerLabel(),
   });
   upsertLedger(next, {
     transactionId: distribution.transactionId,

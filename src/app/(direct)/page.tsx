@@ -5,6 +5,7 @@ import { HelpTip } from "@/components/help-tip";
 import { PayNetworkControl } from "@/components/pay-network-control";
 import { PrototypeNotice } from "@/components/prototype-notice";
 import { ResetDemoButton } from "@/components/reset-demo-button";
+import { overviewPayCardBody, overviewPrototypeBody } from "@/lib/pay/mode";
 import { isTestnetConfig, mainnetSelectionAllowed } from "@/lib/pay/networks";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,7 @@ export default async function DirectPage() {
   return (
     <div className="space-y-8">
       <PrototypeNotice>
-        Labs walkthrough. Not live on merkado.cw. No public offering. Wallet
-        and USDC payments are mocked.
+        {overviewPrototypeBody()}
       </PrototypeNotice>
 
       <div className="space-y-3">
@@ -58,7 +58,7 @@ export default async function DirectPage() {
           href="/pay"
           badge="Pay"
           title="Merkado Pay"
-          body="The renter payment page. Same rent, same lease. Demo only — nothing real is sent."
+          body={overviewPayCardBody()}
           action="Open Pay"
         />
         <RoleCard

@@ -17,8 +17,11 @@
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
 - After Product Lead approval, Luis and Luuk replace the mock provider
   with a real wallet + native USDC adapter on **OP Sepolia** or **Base
-  Sepolia** first. OP Mainnet and Base Mainnet stay later. Safe address,
-  allocation, and confirmation depth are still theirs.
+  Sepolia** first. Send `docs/07-integrations.md`. Grant access using
+  `docs/12-deployment-runbook.md`. Flip `PAYMENT_RAIL_MODE` to `"live"`
+  in the same change so mocked Pay labels switch off. OP Mainnet and
+  Base Mainnet stay later. Safe address, allocation, and confirmation
+  depth are still theirs.
 - Decide production payment allocation (calldata, unique deposit addresses,
   or another verified design). A plain USDC memo is not reliable.
 - Attested collection evidence from a real foundation sub-ledger (still no

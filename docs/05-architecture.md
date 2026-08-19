@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (PAYMENT_RAIL_MODE)
 
 ## 1. Surfaces
 
@@ -70,11 +70,13 @@ UI does not call mock wallet functions directly. It uses
 `createPaymentProvider()` (`src/lib/pay/create-provider.ts`) against
 `PaymentProvider` (`src/lib/pay/provider.ts`). The current adapter is
 still the mock (`src/lib/pay/mock-provider.ts`). No wallet or Safe
-dependency is installed. Demo `cryptoConfig` defaults to **OP Sepolia**
-with Circle native USDC. Base Sepolia is selectable. OP Mainnet and
-Base Mainnet are available later. The Safe address stays fictional until Luis
-replaces it. Explorer links render only for a real 64-hex transaction
-hash on an official catalog explorer.
+dependency is installed. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts`
+is `"mock"` and drives Overview / Pay labels. Flip it to `"live"` in
+the same change that replaces the factory. Demo `cryptoConfig` defaults
+to **OP Sepolia** with Circle native USDC. Base Sepolia is selectable.
+OP Mainnet and Base Mainnet are available later. The Safe address stays
+fictional until Luis replaces it. Explorer links render only for a real
+64-hex transaction hash on an official catalog explorer.
 
 ## 6. Future home
 

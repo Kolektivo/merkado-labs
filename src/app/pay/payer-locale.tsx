@@ -3,7 +3,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { payerCopy, type PayerLocale } from "@/lib/rent-advance/copy";
+import {
+  applyPaymentRailCopy,
+  payerCopy,
+  type PayerCopy,
+  type PayerLocale,
+} from "@/lib/rent-advance/copy";
 
 const LOCALE_LABELS: Record<PayerLocale, string> = {
   en: "English",
@@ -20,7 +25,7 @@ const LOCALE_HTML: Record<PayerLocale, string> = {
 type PayerLocaleContextValue = {
   locale: PayerLocale;
   setLocale: (locale: PayerLocale) => void;
-  copy: (typeof payerCopy)[PayerLocale];
+  copy: PayerCopy;
 };
 
 const PayerLocaleContext = createContext<PayerLocaleContextValue | null>(null);
@@ -32,7 +37,11 @@ export function PayerLocaleProvider({
 }) {
   const [locale, setLocale] = useState<PayerLocale>("en");
   const value = useMemo(
-    () => ({ locale, setLocale, copy: payerCopy[locale] }),
+    () => ({
+      locale,
+      setLocale,
+      copy: applyPaymentRailCopy(payerCopy[locale], { locale }),
+    }),
     [locale],
   );
 

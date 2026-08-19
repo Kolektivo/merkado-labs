@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (live-rail copy check)
 
 ## Automated
 
@@ -131,7 +131,11 @@ Click **Reset demo** on Overview and confirm **Yes, reset**.
 - Copy the address, then click **I’ve sent this payment**. You should see
   a pending state, then **Rent paid**.
 - Reset, then walk Connect wallet → Pay with demo wallet → pending →
-  success. Rent and lease stay unchanged.
+  Rent paid. Rent and lease stay unchanged. The button still says
+  **Pay with demo wallet** while payments are mocked. After Luis flips
+  `PAYMENT_RAIL_MODE` to `"live"`, that button should say **Pay with
+  wallet** and the footer should no longer say the walkthrough does not
+  send a real transfer.
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.

@@ -63,7 +63,7 @@ framing where they conflict.
 | Design system / UI rules | `04-design-system.md` |
 | Architecture | `05-architecture.md` |
 | Data model, lifecycle, currency | `06-data-model.md` |
-| Integrations | `07-integrations.md` |
+| Integrations + Luis Web3 handoff | `07-integrations.md` |
 | Security and privacy | `08-security-and-privacy.md` |
 | Current implementation state | `09-current-state.md` |
 | Execution roadmap | `10-execution-roadmap.md` |
@@ -87,7 +87,7 @@ framing where they conflict.
 | Login / admin | Removed — hosted demo will use a shared host password after deploy |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Real wallet / Safe transfer | Mocked; OP Sepolia + Base Sepolia selectable; mainnet later; Luis connects Web3 |
+| Real wallet / Safe transfer | Mocked; OP Sepolia + Base Sepolia selectable; mainnet later; Luis handoff + access list in `07` / `12` |
 
 ## Reading order
 

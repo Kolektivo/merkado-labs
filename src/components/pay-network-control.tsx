@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { Label } from "@/components/ui/label";
+import { paymentNetworkBody, paymentNetworkHelp } from "@/lib/pay/mode";
 import { PAY_NETWORK_LIST, type PayNetworkKey } from "@/lib/pay/networks";
 import { setPayNetworkAction } from "@/lib/rent-advance/actions";
 
@@ -32,17 +33,13 @@ export function PayNetworkControl({
       <div className="space-y-1">
         <p className="flex items-center gap-2 font-medium">
           Payment network
-          <HelpTip label="Payment network">
-            Luis uses this when he connects a real wallet. Use a test network.
-            Mainnet stays off until we turn it on for real USDC.
-          </HelpTip>
+          <HelpTip label="Payment network">{paymentNetworkHelp()}</HelpTip>
           <StatusBadge tone={isTestnet ? "info" : "warning"}>
             {isTestnet ? "Test" : "Mainnet"}
           </StatusBadge>
         </p>
         <p className="text-sm text-muted-foreground">
-          Pay will show {networkLabel}. The demo wallet still does not send
-          real money.
+          {paymentNetworkBody(networkLabel)}
         </p>
       </div>
       <div className="space-y-1.5 sm:min-w-56">

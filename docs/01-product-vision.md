@@ -68,7 +68,8 @@ distribution flow, presented as automatic in this demo.
 - The payer app never shows economics. The holder app never shows tenant
   identity.
 - Stage 0 legal questions stay visible and unresolved.
-- Luis can replace the mock crypto layer from a typed provider boundary.
+- Luis can replace the mock crypto layer from a typed provider boundary
+  and flip `PAYMENT_RAIL_MODE` so mocked Pay labels switch off.
 
 ## 6. What we refuse to claim
 
