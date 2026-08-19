@@ -50,10 +50,11 @@ dual-control trigger remain. Do not apply this to production.
 ## GitHub verification
 
 `.github/workflows/verify.yml` runs lint, typecheck, unit tests, and build
-on pull requests and on pushes to `main`. It uses clearly fake CI-only
-configuration values and the approved Labs URL
+on pull requests and on pushes to `main`. It uses Node 24, clearly fake
+CI-only configuration values, and the approved Labs URL
 `https://csaefdkpwukshtouyixg.supabase.co`. It must not receive production
-credentials, write to Supabase, or expose secrets.
+credentials, write to Supabase, or expose secrets. The app requires
+Node 22 or newer.
 
 A workflow file in the repository is not a passing GitHub check. Treat
 GitHub CI as pending until a remote run has completed.
