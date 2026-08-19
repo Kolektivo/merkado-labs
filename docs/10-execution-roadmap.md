@@ -1,13 +1,14 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 ## Now
 
 - Product Lead visual/product UAT of the verified Labs Buildathon demo
   (hub, Direct, Pay, and account mock).
 - Keep Stage 0 questions visible; do not pretend they are closed.
+- First remote GitHub verify run is pending a Product Lead-approved push.
 
 ## Next
 

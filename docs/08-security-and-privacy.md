@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -94,7 +94,9 @@ point any leftover script at those names.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
 - Keep work focused on the Curaçao Direct / Pay demo.
-- Do not install a real wallet or Safe dependency in this task.
+- Wallet, Safe, USDC, transactions, and distributions remain mocked until
+  a separately approved Luis/Luuk integration task. Do not install a real
+  wallet or Safe SDK before that approval.
 - No real transaction can be initiated from any control.
 
 Operational detail: `12-deployment-runbook.md`.

@@ -6,7 +6,12 @@ alwaysApply: true
 # Merkado Labs Safety
 
 - This repository is the experimental Merkado Labs workspace for the Curaçao
-  Merkado Rent Advance / Merkado Direct demo. Listing scrapers live on merkado-cw.
+  Merkado Direct (umbrella) and Merkado Pay (renter payment) demo. Listing
+  scrapers live on merkado-cw. Merkado Direct · Rent Advance may remain as
+  the internal series name.
+- Wallet, Safe, USDC, transactions, and distributions remain mocked until a
+  separately approved Luis/Luuk integration task. Do not install a real
+  wallet or Safe SDK.
 - Product/architecture source of truth: `docs/00-docs-index.md` (`docs/01`–`12`); dashboard ops: `docs/12-deployment-runbook.md` + root `README.md`; safety narrative: `docs/08-security-and-privacy.md`. Detailed historical evidence is local-only under `docs/private/` (gitignored); do not commit it.
 - Supabase operations may target only Labs project reference `csaefdkpwukshtouyixg`.
 - Project reference `jkrfyvukhhsapoivntms` is production and is strictly forbidden.

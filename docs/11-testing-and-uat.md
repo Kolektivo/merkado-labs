@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 ## Automated
 
@@ -15,11 +15,18 @@ npm run test:unit
 npm run build
 ```
 
-Pricing unit tests must reproduce MRA-001 locked figures and the 24% block.
+Unit tests import the real application modules. They must fail if pricing,
+Property Score, payment book, or app-link behaviour changes incorrectly.
+
+Pricing tests must reproduce MRA-001 locked figures and the 24% block.
 Property Score tests must cover band boundaries, clamping, invalid market
 rent, the 0.60 → 1.10 example, and proof that derived Property Score does
 not change quote pricing. Payment tests must prove one confirmation cannot
-duplicate collection or distribution.
+duplicate collection or distribution. App-link tests must prove external
+HTTPS URLs open externally and missing or invalid URLs stay inside the demo.
+
+GitHub Actions runs the same commands via `.github/workflows/verify.yml`.
+Do not treat GitHub CI as passing until a remote run has completed.
 
 ## Critical flows (engineering)
 

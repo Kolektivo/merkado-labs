@@ -62,6 +62,11 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
 
 ### Merkado Labs safety (mandatory)
 
+- Merkado Direct is the umbrella Labs demo. Merkado Pay is the renter
+  payment experience.
+- Wallet, Safe, USDC, transactions, and distributions remain mocked until
+  a separately approved Luis/Luuk integration task. Do not install a real
+  wallet or Safe SDK.
 - Allowed Supabase target only: Labs project reference `csaefdkpwukshtouyixg`.
 - Production project reference `jkrfyvukhhsapoivntms` is forbidden.
 - Never access or copy production data, users, schemas, secrets, or config.

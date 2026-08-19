@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the Luis crypto handoff.
-**Last updated:** August 18, 2026
+**Last updated:** August 19, 2026
 
 ## Live
 
@@ -16,7 +16,7 @@
 | Listing scrapers / pipeline / Terra | merkado-cw |
 | Production Auth / merkado.cw storefront | merkado-cw |
 | OpenAI enrichment | not used in Labs |
-| Real Base / USDC / wallets / Safe | out of scope; mocked only |
+| Real network / USDC / wallet / Safe integration | Unselected; Luis and Luuk own. Mocked only until a separately approved integration task. |
 | Vercel production deploy | not authorised from this repo |
 
 ## Optional Labs configuration
@@ -41,8 +41,9 @@ Open a new tab only when the value is an absolute external URL.
 
 ## Luis crypto integration handoff
 
-All wallet, Safe, transaction, and payment behaviour in this task is mocked.
-Do not install a wallet or Safe SDK until a separate approved task.
+All wallet, Safe, USDC, transaction, and distribution behaviour remains
+mocked until a separately approved Luis/Luuk integration task. Do not
+install a wallet or Safe SDK before that approval.
 
 ### Adapter locations
 
