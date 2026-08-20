@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { subscribeOfferAction } from "@/lib/rent-advance/actions";
-import { positionIdFor } from "@/lib/rent-advance/ids";
 import {
   formatXcg,
   usdCentsToXcgInput,
   xcgMajorToUsdCents,
 } from "@/lib/rent-advance/money";
+import { cn } from "@/lib/utils";
 
 export function SubscribeForm({
   reference,
@@ -39,87 +39,134 @@ export function SubscribeForm({
 
   const closed = remainingCents <= 0;
   const canBuy = amountCents > 0 && amountCents <= remainingCents;
+  const filledPct =
+    offeringCents > 0 ? Math.min(100, (fundedCents / offeringCents) * 100) : 0;
 
-  function setShare(share: number) {
-    setAmountXcg(usdCentsToXcgInput(Math.max(1, Math.round(remainingCents * share))));
+  const share25 = Math.max(1, Math.round(remainingCents * 0.25));
+  const share50 = Math.max(1, Math.round(remainingCents * 0.5));
+  const selectedChip =
+    amountCents === remainingCents
+      ? "all"
+      : amountCents === share50
+        ? "50"
+        : amountCents === share25
+          ? "25"
+          : null;
+
+  function setShare(cents: number) {
+    setAmountXcg(usdCentsToXcgInput(cents));
   }
 
   if (closed) {
     return fundedCents > 0 ? (
-      <div className="rounded-xl border bg-card p-5">
-        <p className="text-sm text-muted-foreground">This offering is filled.</p>
-        <Button asChild className="mt-3">
-          <Link href={`/portfolio/${reference}`}>
-            View position {positionIdFor(reference)}
-          </Link>
+      <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
+        <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+          Offering
+        </p>
+        <p className="mt-2 text-3xl font-semibold tracking-tight text-surface-dark">
+          Filled
+        </p>
+        <p className="mt-1 text-sm text-grey-800">
+          {formatXcg(offeringCents)} committed
+        </p>
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-grey-200">
+          <div className="h-full w-full rounded-full bg-violet-500" />
+        </div>
+        <Button asChild className="mt-6 h-10 w-full">
+          <Link href={`/portfolio/${reference}`}>View in Portfolio</Link>
         </Button>
       </div>
     ) : null;
   }
 
   return (
-    <div className="space-y-4 rounded-xl border bg-card p-5">
+    <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-5">
           <AlertTitle>Could not complete purchase</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
-      <div>
-        <p className="text-sm font-medium">Buy a portion</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose any amount up to what is still open. Later rent from this
-          property goes to Portfolio when the renter pays.
+      <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+        Still open
+      </p>
+      <p className="mt-1.5 text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
+        {formatXcg(remainingCents)}
+      </p>
+      <p className="mt-1 text-sm text-grey-700">
+        of {formatXcg(offeringCents)}
+      </p>
+
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-grey-200">
+        <div
+          className="h-full rounded-full bg-violet-500"
+          style={{ width: `${filledPct}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs text-grey-700">
+        {formatXcg(fundedCents)} filled
+      </p>
+
+      <div className="mt-6 space-y-1.5">
+        <Label htmlFor="purchase-amount" className="text-xs text-grey-800">
+          Your amount
+        </Label>
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-grey-700">
+            XCG
+          </span>
+          <Input
+            id="purchase-amount"
+            type="text"
+            inputMode="decimal"
+            value={amountXcg}
+            aria-invalid={amountXcg.length > 0 && !canBuy}
+            aria-describedby="purchase-amount-hint"
+            onChange={(event) =>
+              setAmountXcg(event.target.value.replace(",", "."))
+            }
+            className="h-10 pl-12"
+          />
+        </div>
+        <p id="purchase-amount-hint" className="text-xs text-grey-800">
+          {amountXcg.length > 0 && amountCents > remainingCents
+            ? `Up to ${formatXcg(remainingCents)} is still open.`
+            : amountXcg.length > 0 && amountCents <= 0
+              ? "Enter an amount above zero."
+              : "25% and 50% are shares of what’s still open."}
         </p>
       </div>
 
-      <dl className="space-y-2 text-sm">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground">Filled</dt>
-          <dd className="tabular-nums">
-            {formatXcg(fundedCents)} of {formatXcg(offeringCents)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground">Still open</dt>
-          <dd className="font-medium tabular-nums">{formatXcg(remainingCents)}</dd>
-        </div>
-      </dl>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="purchase-amount">Amount (XCG)</Label>
-        <Input
-          id="purchase-amount"
-          type="number"
-          min={0}
-          step="0.01"
-          inputMode="decimal"
-          value={amountXcg}
-          onChange={(event) => setAmountXcg(event.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={() => setShare(0.25)}>
-          25%
-        </Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => setShare(0.5)}>
-          50%
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => setAmountXcg(usdCentsToXcgInput(remainingCents))}
-        >
-          All remaining
-        </Button>
+      <div className="mt-3 flex gap-1.5">
+        {(
+          [
+            { key: "25", label: "25%", cents: share25 },
+            { key: "50", label: "50%", cents: share50 },
+            { key: "all", label: "All", cents: remainingCents },
+          ] as const
+        ).map((chip) => (
+          <Button
+            key={chip.key}
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-pressed={selectedChip === chip.key}
+            className={cn(
+              "h-9 flex-1",
+              selectedChip === chip.key &&
+                "border-violet-500 bg-violet-50 text-surface-dark",
+            )}
+            onClick={() => setShare(chip.cents)}
+          >
+            {chip.label}
+          </Button>
+        ))}
       </div>
 
       <Button
         type="button"
-        className="min-h-10 w-full"
+        className="mt-6 h-10 w-full"
         disabled={pending || !canBuy}
         onClick={() => {
           setError(null);
@@ -138,12 +185,17 @@ export function SubscribeForm({
       </Button>
 
       {fundedCents > 0 ? (
-        <Button variant="ghost" size="sm" asChild className="w-full">
-          <Link href={`/portfolio/${reference}`}>
-            View current position {positionIdFor(reference)}
-          </Link>
-        </Button>
-      ) : null}
+        <Link
+          href={`/portfolio/${reference}`}
+          className="mt-4 block text-center text-xs text-grey-700 hover:text-surface-dark"
+        >
+          View current position
+        </Link>
+      ) : (
+        <p className="mt-4 text-center text-xs leading-5 text-grey-700">
+          Later rent goes to your portfolio when the renter pays.
+        </p>
+      )}
     </div>
   );
 }

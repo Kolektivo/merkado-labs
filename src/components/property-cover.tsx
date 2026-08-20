@@ -11,11 +11,13 @@ export function PropertyCover({
   alt = "",
   className,
   sizes = "(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw",
+  priority = false,
 }: {
   src: string;
   alt?: string;
   className?: string;
   sizes?: string;
+  priority?: boolean;
 }) {
   if (isInlineSrc(src)) {
     return (
@@ -30,6 +32,7 @@ export function PropertyCover({
       src={src}
       alt={alt}
       fill
+      priority={priority}
       sizes={sizes}
       className={cn("object-cover", className)}
     />

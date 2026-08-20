@@ -1,23 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, BedDouble, House, MapPin } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { HelpTip } from "@/components/help-tip";
-import { Money } from "@/components/money-display";
 import { PropertyCover } from "@/components/property-cover";
 import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeMerkado } from "@/components/theme-merkado";
-import { HOLDER_NO_PROMISE } from "@/lib/rent-advance/copy";
+import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
   canShowContribute,
   coverSrcFor,
@@ -26,6 +17,8 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
+import { formatXcg } from "@/lib/rent-advance/money";
+import { rentVsTypicalLabel } from "@/lib/rent-advance/scoring";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 
 import { SubscribeForm } from "./subscribe-form";
@@ -43,44 +36,60 @@ export default async function BuyerOfferPage({
 
   const remaining = remainingOfferingCents(offer);
   const bedsLabel = `${offer.bedrooms} ${offer.bedrooms === 1 ? "bed" : "beds"}`;
+  const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
+  const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
+  const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
+  const openToBuy = canShowContribute(offer.status);
 
   return (
-    <ThemeMerkado className="space-y-5">
-      <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit">
-        <Link href="/offers">← All offers</Link>
-      </Button>
+    <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
+      <Link
+        href="/offers"
+        className="inline-flex items-center gap-1.5 text-sm text-grey-800 hover:text-surface-dark"
+      >
+        <ArrowLeft className="size-3.5" aria-hidden />
+        All offers
+      </Link>
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone={statusTone(offer.status)}>
-            {statusLabel(offer.status)}
-          </StatusBadge>
-          <StatusBadge tone="neutral">
-            {offer.propertyScore} · {offer.propertyLabel}
-          </StatusBadge>
-        </div>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {offer.district} · {offer.type} · {bedsLabel}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {offer.summary} · {offer.interiorM2} m² · {offer.months} months ·{" "}
-            {offer.reference}
-          </p>
-        </div>
-      </div>
+      <div className="grid items-start gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-5">
+          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-grey-100">
+            <PropertyCover
+              src={coverSrcFor(offer.type, offer.coverImageSrc)}
+              alt={`${offer.type} in ${offer.district}`}
+              sizes="(min-width: 1024px) 640px, 100vw"
+              priority
+            />
+          </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-        <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted">
-          <PropertyCover
-            src={coverSrcFor(offer.type, offer.coverImageSrc)}
-            alt={`${offer.type} in ${offer.district}`}
-            sizes="(min-width: 1024px) 55vw, 100vw"
-          />
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge tone={statusTone(offer.status)}>
+                {statusLabel(offer.status)}
+              </StatusBadge>
+              <span className="text-xs tracking-wide text-grey-700">
+                {offer.reference}
+              </span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-surface-dark">
+              {title}
+            </h1>
+            <div className="flex flex-wrap items-center text-[13px] text-grey-800">
+              <Spec icon={<BedDouble className="size-3.5" />} label={bedsLabel} />
+              <SpecDivider />
+              <Spec icon={<House className="size-3.5" />} label={offer.type} />
+              <SpecDivider />
+              <Spec icon={<MapPin className="size-3.5" />} label={offer.district} />
+              <span className="px-2 text-grey-500">·</span>
+              <span>{offer.interiorM2} m²</span>
+              <span className="px-2 text-grey-500">·</span>
+              <span>{monthsLabel}</span>
+            </div>
+          </div>
         </div>
 
-        <aside className="lg:sticky lg:top-20">
-          {canShowContribute(offer.status) ? (
+        <aside className="lg:sticky lg:top-20 lg:row-span-2">
+          {openToBuy ? (
             <SubscribeForm
               reference={offer.reference}
               remainingCents={remaining}
@@ -88,140 +97,253 @@ export default async function BuyerOfferPage({
               offeringCents={offer.offeringCents}
             />
           ) : (
-            <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
-              This offering is not open to purchase.
-            </div>
+            <ClosedOfferCard
+              status={statusLabel(offer.status)}
+              offeringCents={offer.offeringCents}
+            />
           )}
         </aside>
-      </div>
 
-      <Tabs defaultValue="passport">
-        <TabsList variant="line">
-          <TabsTrigger value="passport">Property view</TabsTrigger>
-          <TabsTrigger value="comparables">Similar homes</TabsTrigger>
-          <TabsTrigger value="payer">Payment history</TabsTrigger>
-          <TabsTrigger value="terms">Terms</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="passport" className="min-w-0">
+          <TabsList
+            variant="line"
+            className="h-auto w-full justify-start gap-6 rounded-none border-b border-grey-200 bg-transparent p-0"
+          >
+            <TabsTrigger
+              value="passport"
+              className="rounded-none px-0 pb-2.5 after:bottom-0 after:h-px after:bg-surface-dark"
+            >
+              Property
+            </TabsTrigger>
+            <TabsTrigger
+              value="comparables"
+              className="rounded-none px-0 pb-2.5 after:bottom-0 after:h-px after:bg-surface-dark"
+            >
+              Similar
+            </TabsTrigger>
+            <TabsTrigger
+              value="payer"
+              className="rounded-none px-0 pb-2.5 after:bottom-0 after:h-px after:bg-surface-dark"
+            >
+              History
+            </TabsTrigger>
+            <TabsTrigger
+              value="terms"
+              className="rounded-none px-0 pb-2.5 after:bottom-0 after:h-px after:bg-surface-dark"
+            >
+              Schedule
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="passport" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex flex-wrap items-center gap-2">
-                Combined property view {offer.propertyScore}/100 ·{" "}
-                {offer.propertyLabel}
-                <HelpTip label="Combined property view">
-                  Listing quality plus how the rent compares to typical nearby
-                  rent.
-                </HelpTip>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <dl className="grid gap-2 sm:grid-cols-2">
-                <ScoreRow label="Rent vs typical rent" value={offer.passport.rentVsMarket} />
-                <ScoreRow label="Market depth" value={offer.passport.marketDepth} />
-                <ScoreRow label="Condition" value={offer.passport.condition} />
-                <ScoreRow label="Accessibility" value={offer.passport.accessibility} />
-              </dl>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="comparables" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Similar homes</CardTitle>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table className="min-w-[480px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Rent</TableHead>
-                    <TableHead>Beds</TableHead>
-                    <TableHead>m²</TableHead>
-                    <TableHead>Days</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {offer.comparables.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <Money cents={row.rentCents} />
-                      </TableCell>
-                      <TableCell>{row.bedrooms}</TableCell>
-                      <TableCell>{row.interiorM2}</TableCell>
-                      <TableCell>{row.daysListed}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payer" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment history</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>{offer.payer.bandLabel}</p>
-              <p>Paid on time {offer.payer.onTimePercent}% of the last 12 months</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="terms" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Terms</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <p>
-                Term {offer.months} months.{" "}
-                <Money cents={offer.fundedCents} /> of{" "}
-                <Money cents={offer.offeringCents} /> filled.
-              </p>
+          <TabsContent value="passport" className="mt-6">
+            <div className="flex items-start justify-between gap-6">
               <div>
-                <p className="mb-2 font-medium">Later rent months</p>
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[480px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Month</TableHead>
-                        <TableHead>Due</TableHead>
-                        <TableHead>Scheduled</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {offer.receivables.map((row) => (
-                        <TableRow key={row.n}>
-                          <TableCell>{row.n}</TableCell>
-                          <TableCell>{formatDayMonthYear(row.dueDate)}</TableCell>
-                          <TableCell>
-                            <Money cents={row.amountCents} />
-                          </TableCell>
-                          <TableCell className="capitalize">{row.status}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <h2 className="flex items-center gap-1 text-sm font-semibold text-surface-dark">
+                  Combined property view
+                  <HelpTip label="Combined property view">
+                    {PLAIN.propertyScore}
+                  </HelpTip>
+                </h2>
+                {offer.rentToMarket != null ? (
+                  <p className="mt-1 text-sm text-grey-800">
+                    {rentVsTypicalLabel(offer.rentToMarket)}
+                  </p>
+                ) : null}
               </div>
-              <p className="text-muted-foreground">{HOLDER_NO_PROMISE}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div className="text-right">
+                <p className="text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
+                  {offer.propertyScore}
+                </p>
+                <p className="text-sm text-grey-800">{offer.propertyLabel}</p>
+              </div>
+            </div>
+            <dl className="mt-6 space-y-4 border-t border-grey-200 pt-5">
+              <ScoreBar
+                label="Rent vs typical"
+                value={offer.passport.rentVsMarket}
+                max={40}
+              />
+              <ScoreBar
+                label="Market depth"
+                value={offer.passport.marketDepth}
+                max={25}
+              />
+              <ScoreBar
+                label="Condition"
+                value={offer.passport.condition}
+                max={20}
+              />
+              <ScoreBar
+                label="Accessibility"
+                value={offer.passport.accessibility}
+                max={20}
+              />
+            </dl>
+          </TabsContent>
+
+          <TabsContent value="comparables" className="mt-6">
+            {offer.comparables.length === 0 ? (
+              <p className="text-sm text-grey-800">
+                No nearby listings to compare yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-grey-200 border-t border-grey-200">
+                {offer.comparables.map((row) => (
+                  <li
+                    key={row.id}
+                    className="flex items-baseline justify-between gap-4 py-3.5"
+                  >
+                    <p className="text-sm font-semibold tabular-nums text-surface-dark">
+                      {formatXcg(row.rentCents)}
+                      <span className="ml-1.5 font-normal text-grey-700">
+                        / month
+                      </span>
+                    </p>
+                    <p className="text-sm text-grey-800">
+                      {row.bedrooms} {row.bedrooms === 1 ? "bed" : "beds"}
+                      <span className="px-1.5 text-grey-500">·</span>
+                      {row.interiorM2} m²
+                      <span className="px-1.5 text-grey-500">·</span>
+                      {row.daysListed} days listed
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+
+          <TabsContent value="payer" className="mt-6">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h2 className="flex items-center gap-1 text-sm font-semibold text-surface-dark">
+                  Payment history
+                  <HelpTip label="Payment history">{PLAIN.paymentHistory}</HelpTip>
+                </h2>
+                <p className="mt-1 text-sm text-grey-800">
+                  Paid on time {offer.payer.onTimePercent}% of the last 12
+                  months
+                </p>
+              </div>
+              <p className="text-3xl font-semibold tracking-tight text-surface-dark">
+                {offer.payer.bandLabel}
+              </p>
+            </div>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-grey-200">
+              <div
+                className="h-full rounded-full bg-surface-dark"
+                style={{ width: `${offer.payer.onTimePercent}%` }}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="terms" className="mt-6 space-y-5">
+            <p className="text-sm text-grey-800">
+              {monthsLabel}
+              {monthlyRentCents != null ? (
+                <>
+                  {" "}
+                  at {formatXcg(monthlyRentCents)} / month.{" "}
+                </>
+              ) : (
+                ". "
+              )}
+              {formatXcg(offer.fundedCents)} of {formatXcg(offer.offeringCents)}{" "}
+              filled.
+            </p>
+            <ul className="divide-y divide-grey-200 border-t border-grey-200">
+              {offer.receivables.map((row) => (
+                <li
+                  key={row.n}
+                  className="grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-3 text-sm"
+                >
+                  <span className="text-grey-800">Month {row.n}</span>
+                  <span className="text-grey-800">
+                    {formatDayMonthYear(row.dueDate)}
+                  </span>
+                  <span className="text-right">
+                    <span className="font-medium tabular-nums text-surface-dark">
+                      {formatXcg(row.amountCents)}
+                    </span>
+                    <span className="ml-2 capitalize text-grey-700">
+                      {row.status}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs leading-5 text-grey-700">{HOLDER_NO_PROMISE}</p>
+          </TabsContent>
+        </Tabs>
+      </div>
     </ThemeMerkado>
   );
 }
 
-function ScoreRow({ label, value }: { label: string; value: number }) {
+function ClosedOfferCard({
+  status,
+  offeringCents,
+}: {
+  status: string;
+  offeringCents: number;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+    <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
+      <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+        {status}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-surface-dark">
+        Closed
+      </p>
+      <p className="mt-1 text-sm text-grey-800">
+        {formatXcg(offeringCents)} offering · not open to purchase
+      </p>
+    </div>
+  );
+}
+
+function Spec({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {icon}
+      {label}
+    </span>
+  );
+}
+
+function SpecDivider() {
+  return (
+    <span className="flex shrink-0 items-center px-2.5" aria-hidden>
+      <svg width="1" height="12" viewBox="0 0 1 12" className="text-grey-500">
+        <rect width="1" height="12" rx="0.5" fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
+function ScoreBar({
+  label,
+  value,
+  max,
+}: {
+  label: string;
+  value: number;
+  max: number;
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="text-sm text-grey-800">{label}</dt>
+        <dd className="text-sm font-medium tabular-nums text-surface-dark">
+          {value}
+        </dd>
+      </div>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-grey-200">
+        <div
+          className="h-full rounded-full bg-grey-600"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }
