@@ -47,7 +47,7 @@ test("the payment provider exposes the documented contract", () => {
 // connection. No embedded wallet may fabricate one before connect().
 test("an external wallet connection is the only way to obtain an address", async () => {
   const provider = createPaymentProvider(cryptoConfigFor(OP_SEPOLIA_NETWORK_KEY));
-  assert.equal(provider.session().connected, false);
+  assert.equal(provider.session()?.connected, false);
 
   const connected = await provider.connect();
   assert.equal(connected.connected, true);
@@ -55,7 +55,7 @@ test("an external wallet connection is the only way to obtain an address", async
   assert.equal(connected.chainId, OP_SEPOLIA_CHAIN_ID);
 
   await provider.disconnect();
-  assert.equal(provider.session().connected, false);
+  assert.equal(provider.session()?.connected, false);
 });
 
 // docs/07 Flow A step 3b + docs/08 section 8: the selected testnet is
@@ -153,7 +153,7 @@ test("a payment is never confirmed before the five-block chain depth", async () 
 
   const status = await provider.getStatus(submitted.transactionId);
   assert.notEqual(
-    status.status,
+    status?.status,
     "confirmed",
     "confirmed requires chain confirmation, not a client-side event",
   );
