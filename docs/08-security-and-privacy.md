@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 19, 2026 (live Pay confirm rule)
+**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -101,12 +101,20 @@ point any leftover script at those names.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
 - Keep work focused on the Curaçao Direct / Pay demo.
-- Wallet, Safe, USDC, transactions, and distributions remain mocked until
-  a separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK before that approval. When that adapter ships, flip
-  `PAYMENT_RAIL_MODE` to `"live"` in the same change and confirm Pay from
-  chain data on the server — do not keep the 1.4s client auto-confirm.
-- No real transaction can be initiated from any control.
+- The approved Web3 MVP uses **Privy for external wallets only** (embedded
+  wallets are not enabled) and **viem** for wallet submission and server-side
+  verification. There is no Safe SDK, Safe watching, or holder-payout
+  execution. The receiving address is a **mock EOA**, not a Safe.
+  `PAYMENT_RAIL_MODE` stays `"mock"` until the live testnet walkthrough is
+  verified; then flip it to `"live"` and confirm Pay from chain data on the
+  server — do not keep the 1.4s client auto-confirm.
+- Live mode is **OP Sepolia only**. Base Sepolia is demo-selectable but not
+  live-verifiable. Mainnet (OP Mainnet / Base Mainnet) stays off and is not
+  reachable in live mode.
+- In mock mode no real transaction can be initiated from any control. In live
+  mode, a real USDC transfer is possible **only** when the renter's own
+  external wallet is connected and only on OP Sepolia; the server must
+  verify the chain before the book is confirmed.
 
 Operational detail: `12-deployment-runbook.md`.
 
@@ -119,9 +127,13 @@ Operational detail: `12-deployment-runbook.md`.
 - Related-party family facts are disclosed to holders; they are not an excuse
   for softer arrears.
 
-## 8. Mock wallet and payment-link safety
+## 8. Wallet and payment-link safety
 
-- Mock addresses must be obviously fictional and unusable for real funds.
+- The receiving address is the approved EOA
+  `0x1726cf86DA996BC4B2F393E713f6F8ef83f2e4f6`, labelled the **mock
+  receiving address** and treated as a mock EOA until the Product Lead
+  approves a real receiving wallet. It must stay obviously labelled as
+  mock. It is not a Safe and must never be described as escrow or custody.
 - Never put secrets or sensitive identity in a URL.
 - Payment deep-link IDs in this demo are fictional. Production links need
   opaque, scoped, expiring authorization.
@@ -132,11 +144,21 @@ Operational detail: `12-deployment-runbook.md`.
   hash is a real 64-hex `0x` value. Demo `0xDEMO…` hashes must not open
   the explorer.
 - `confirmPaymentAction` is a Labs mock write. It must not trust a client
-  ledger id. Live Pay must confirm from chain data on the server.
-- The shared walkthrough can persist OP Sepolia or Base Sepolia. Mainnet
-  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `op-mainnet` or
-  `base-mainnet`. Short names such as `base` or `op` must not select
-  mainnet.
+  ledger id. Live Pay must confirm on the server from chain data:
+  `verifyLivePaymentAction` verifies the receipt, the ERC-20 `Transfer`
+  event (exact amount, correct USDC contract, correct receiving EOA),
+  chain == OP Sepolia, and a **5-block** depth before writing the book
+  through the existing idempotent helper. The client cannot mark a live
+  payment confirmed.
+- Copy-address confirmation is disabled in live mode; only wallet-based
+  payment confirms.
+- The shared walkthrough can persist OP Sepolia or Base Sepolia in demo mode.
+  Live mode is **OP Sepolia only**. Mainnet stays off unless
+  `NEXT_PUBLIC_PAY_NETWORK` is `op-mainnet` or `base-mainnet` and the
+  Product Lead turns it on. Short names such as `base` or `op` must not
+  select mainnet.
+- Embedded Privy wallets are not enabled. Only the renter's own external
+  wallet signs; the demo never holds keys.
 
 ## 9. Service-role credential rules
 

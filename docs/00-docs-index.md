@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -20,9 +20,10 @@ retired.
 - **Merkado Direct** = umbrella Labs demo for landlords and holders: My Offers,
   Create Offer, Get Now, Marketplace, and Portfolio. Calm customer copy:
   “rent paid forward” or “get future rent paid upfront.”
-- **Merkado Pay** = renter payment-link for mocked USDC rent payments on
-  OP Sepolia by default (Base Sepolia also available; mainnet later).
-  Customer money is USD; USDC settles 1:1.
+- **Merkado Pay** = renter payment-link for USDC rent payments on
+  OP Sepolia by default (Base Sepolia remains demo-selectable; mainnet
+  later). Live mode uses an external wallet (Privy) with server-side on-chain
+  verification. Customer money is USD; USDC settles 1:1.
 - **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
   with Apps and **My Payments**. Only Merkado Pay and Merkado Direct are
   live. Not production auth.
@@ -82,12 +83,12 @@ framing where they conflict.
 | Get Now + Listing / Property Score | [LABS] Buildathon scope |
 | Marketplace | [LABS] Built; subscribe gated |
 | Portfolio | [LABS] Pre-seeded positions; automatic distributions |
-| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; no real wallet |
+| Merkado Pay (mocked USDC) | [LABS] OP Sepolia Web3 MVP approved; Privy + viem foundation implemented on feature branch — live flow not yet verified end-to-end |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
 | Login / admin | Removed — hosted demo will use a shared host password after deploy |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Real wallet / Safe transfer | Mocked; OP Sepolia + Base Sepolia selectable; mainnet later; Luis handoff + access list in `07` / `12` |
+| Web3 Pay (approved MVP) | [LABS] OP Sepolia only; Privy external wallet + viem server verification (5-block); mock receiving EOA; copy-address disabled in live; mainnet off; not yet verified — handoff in `07`, access in `12` |
 
 ## Reading order
 
