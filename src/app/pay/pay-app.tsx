@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 
 import { CopyValue } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
@@ -11,9 +12,13 @@ import { UsdcMark } from "@/components/usdc-mark";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { createPaymentProvider } from "@/lib/pay/create-provider";
+import { usePaymentProvider } from "@/hooks/use-payment-provider";
 import { isTestnetConfig } from "@/lib/pay/networks";
-import { showDemoPaymentOutcomes, walletConnectError } from "@/lib/pay/mode";
+import {
+  isMockPaymentRail,
+  showDemoPaymentOutcomes,
+  walletConnectError,
+} from "@/lib/pay/mode";
 import type { SubmittedPayment } from "@/lib/pay/provider";
 import {
   applyPaymentRailCopy,
@@ -21,7 +26,10 @@ import {
   payerCopy,
   type PayerCopy,
 } from "@/lib/rent-advance/copy";
-import { confirmPaymentAction } from "@/lib/rent-advance/actions";
+import {
+  confirmPaymentAction,
+  verifyLivePaymentAction,
+} from "@/lib/rent-advance/actions";
 import { formatUsd, formatUsdcAtomic, formatUsdcAtomicAmount } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import type { CryptoConfig, PaymentRequestStatus } from "@/lib/rent-advance/types";
@@ -125,7 +133,8 @@ export function PayApp({
     [locale, cryptoConfig],
   );
   const router = useRouter();
-  const provider = useMemo(() => createPaymentProvider(cryptoConfig), [cryptoConfig]);
+  const privy = usePrivy();
+  const provider = usePaymentProvider(cryptoConfig);
   const [wallet, setWallet] = useState<WalletUi>(
     status === "confirmed"
       ? "success"
@@ -141,6 +150,8 @@ export function PayApp({
   const [error, setError] = useState<string | null>(null);
   const [simulate, setSimulate] = useState<"ok" | "failed" | "partial">("ok");
   const [busy, setBusy] = useState(false);
+
+  const mockRail = isMockPaymentRail();
 
   const locked = status === "confirmed" || wallet === "success";
   const overdue = status === "overdue";
@@ -159,16 +170,50 @@ export function PayApp({
     setWallet("connecting");
     setError(null);
     try {
-      const session = await provider.connect();
-      setAddress(session.address);
+      if (mockRail) {
+        const session = await provider.connect();
+        setAddress(session.address);
+        setWallet("connected");
+        return;
+      }
+      privy.connectWallet();
       setWallet("connected");
+      const session = provider.session();
+      setAddress(session?.address || null);
     } catch {
       setWallet("disconnected");
       setError(walletConnectError());
     }
   }
 
+  async function verifyLive(txHash: string) {
+    setWallet("pending");
+    try {
+      for (let i = 0; i < 30; i += 1) {
+        const result = await verifyLivePaymentAction(paymentRequestId, txHash);
+        if (result.verified) {
+          setWallet("success");
+          router.refresh();
+          return;
+        }
+        if (result.status === "failed") {
+          setWallet("failed");
+          setError(result.reason ?? copy.failed);
+          return;
+        }
+        await wait(2000);
+      }
+      setWallet("pending");
+    } catch {
+      setWallet("pending");
+    }
+  }
+
   async function settle(submitted: SubmittedPayment) {
+    if (!mockRail && submitted.txHash) {
+      await verifyLive(submitted.txHash);
+      return;
+    }
     const meta = {
       txHash: submitted.txHash,
     };
@@ -223,6 +268,12 @@ export function PayApp({
   }
 
   async function reportSent() {
+    if (!mockRail) {
+      setError(
+        "This demo only confirms payments sent from your connected wallet. Sending from another wallet is not supported yet.",
+      );
+      return;
+    }
     setError(null);
     setBusy(true);
     setWallet("pending");
@@ -379,14 +430,16 @@ export function PayApp({
               </div>
 
               <div className="grid gap-2">
-                <Button
-                  type="button"
-                  className="min-h-11 w-full"
-                  disabled={inFlight}
-                  onClick={() => void reportSent()}
-                >
-                  {copy.iveSentPayment}
-                </Button>
+                {mockRail ? (
+                  <Button
+                    type="button"
+                    className="min-h-11 w-full"
+                    disabled={inFlight}
+                    onClick={() => void reportSent()}
+                  >
+                    {copy.iveSentPayment}
+                  </Button>
+                ) : null}
                 {wallet === "disconnected" || wallet === "connecting" ? (
                   <Button
                     type="button"
