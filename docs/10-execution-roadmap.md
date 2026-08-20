@@ -9,9 +9,9 @@
   then approve commit and push so the host password is live on
   `merkado-labs.vercel.app`.
 - **Luis** creates the **Base Sepolia** Safe receiving address. Owners are
-  Enrique (`0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8`) and Luuk
-  (`0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`) only (**2 of 2**).
-  Luis is not a signer. Testnet only. Do not use a Base Mainnet Safe.
+  Enrique (`0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8`), Luuk
+  (`0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`), and Luis (**2 of 3**),
+  as discussed. Testnet only. Do not use a Base Mainnet Safe.
   Send the address when it exists. Luis can still use the temporary
   receiving wallet on draft
   [PR 19](https://github.com/Kolektivo/merkado-labs/pull/19) while the
@@ -23,8 +23,8 @@
 
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
 - **Luis** completes an end-to-end **Base Sepolia** pay walkthrough on
-  draft PR 19 (Privy external wallet, native USDC, server receipt +
-  5-block check), sending test USDC to the new 2-of-2 Safe. He can use
+  draft PR 19 (Reown AppKit external wallet, native USDC, server receipt +
+  5-block check), sending test USDC to the new 2-of-3 Safe. He can use
   the temporary receiving wallet in the PR only until that Safe address
   is in the app. Do **not** merge and do **not** flip `PAYMENT_RAIL_MODE`
   to `"live"` until that walkthrough works and the Product Lead approves.

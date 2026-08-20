@@ -11,16 +11,20 @@ import { UsdcMark } from "@/components/usdc-mark";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { createPaymentProvider } from "@/lib/pay/create-provider";
+import { usePaymentProvider } from "@/hooks/use-payment-provider";
 import { isTestnetConfig } from "@/lib/pay/networks";
-import { walletConnectError } from "@/lib/pay/mode";
+import { useWalletBridge } from "@/lib/pay/wallet-bridge";
+import { isMockPaymentRail, walletConnectError } from "@/lib/pay/mode";
 import type { SubmittedPayment } from "@/lib/pay/provider";
 import {
   applyPaymentRailCopy,
   payerCopy,
   type PayerCopy,
 } from "@/lib/rent-advance/copy";
-import { confirmPaymentAction } from "@/lib/rent-advance/actions";
+import {
+  confirmPaymentAction,
+  verifyLivePaymentAction,
+} from "@/lib/rent-advance/actions";
 import { formatUsdcAtomic, formatUsdcAtomicAmount, formatXcg } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import type { CryptoConfig, PaymentRequestStatus } from "@/lib/rent-advance/types";
@@ -124,7 +128,8 @@ export function PayApp({
     [locale, cryptoConfig],
   );
   const router = useRouter();
-  const provider = useMemo(() => createPaymentProvider(cryptoConfig), [cryptoConfig]);
+  const bridge = useWalletBridge();
+  const provider = usePaymentProvider(cryptoConfig);
   const [wallet, setWallet] = useState<WalletUi>(
     status === "confirmed"
       ? "success"
@@ -140,10 +145,17 @@ export function PayApp({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const mockRail = isMockPaymentRail();
+
   const locked = status === "confirmed" || wallet === "success";
   const overdue = status === "overdue";
   const expired = status === "expired";
   const inFlight = wallet === "awaiting" || wallet === "pending" || busy;
+
+  // Mock mode tracks the demo address locally; live mode reads the connected
+  // external wallet straight from the Reown/AppKit bridge.
+  const liveAddress = mockRail ? address : bridge.address;
+  const connected = mockRail ? wallet === "connected" : Boolean(bridge.address);
 
   const submitInput = {
     paymentRequestId,
@@ -157,16 +169,48 @@ export function PayApp({
     setWallet("connecting");
     setError(null);
     try {
-      const session = await provider.connect();
-      setAddress(session.address);
-      setWallet("connected");
+      if (mockRail) {
+        const session = await provider.connect();
+        setAddress(session.address);
+        setWallet("connected");
+        return;
+      }
+      bridge.open();
+      setWallet(connected ? "connected" : "disconnected");
     } catch {
       setWallet("disconnected");
       setError(walletConnectError());
     }
   }
 
+  async function verifyLive(txHash: string) {
+    setWallet("pending");
+    try {
+      for (let i = 0; i < 30; i += 1) {
+        const result = await verifyLivePaymentAction(paymentRequestId, txHash);
+        if (result.verified) {
+          setWallet("success");
+          router.refresh();
+          return;
+        }
+        if (result.status === "failed") {
+          setWallet("failed");
+          setError(result.reason ?? copy.failed);
+          return;
+        }
+        await wait(2000);
+      }
+      setWallet("pending");
+    } catch {
+      setWallet("pending");
+    }
+  }
+
   async function settle(submitted: SubmittedPayment) {
+    if (!mockRail && submitted.txHash) {
+      await verifyLive(submitted.txHash);
+      return;
+    }
     const meta = {
       txHash: submitted.txHash,
     };
@@ -194,9 +238,13 @@ export function PayApp({
     setError(null);
     setBusy(true);
     try {
-      if (!address) {
-        const session = await provider.connect();
-        setAddress(session.address);
+      if (!liveAddress) {
+        if (mockRail) {
+          const session = await provider.connect();
+          setAddress(session.address);
+        } else {
+          bridge.open();
+        }
       }
       setWallet("awaiting");
       const submitted = await provider.submitPayment({
@@ -217,6 +265,12 @@ export function PayApp({
   }
 
   async function reportSent() {
+    if (!mockRail) {
+      setError(
+        "This demo only confirms payments sent from your connected wallet. Sending from another wallet is not supported yet.",
+      );
+      return;
+    }
     setError(null);
     setBusy(true);
     setWallet("pending");
@@ -370,15 +424,26 @@ export function PayApp({
               </div>
 
               <div className="grid gap-2">
-                <Button
-                  type="button"
-                  className="min-h-11 w-full"
-                  disabled={inFlight}
-                  onClick={() => void reportSent()}
-                >
-                  {copy.iveSentPayment}
-                </Button>
-                {wallet === "disconnected" || wallet === "connecting" ? (
+                {mockRail ? (
+                  <Button
+                    type="button"
+                    className="min-h-11 w-full"
+                    disabled={inFlight}
+                    onClick={() => void reportSent()}
+                  >
+                    {copy.iveSentPayment}
+                  </Button>
+                ) : null}
+                {wallet === "connecting" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full"
+                    disabled
+                  >
+                    {copy.connecting}
+                  </Button>
+                ) : !connected ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -386,7 +451,7 @@ export function PayApp({
                     disabled={inFlight}
                     onClick={() => void connect()}
                   >
-                    {wallet === "connecting" ? copy.connecting : copy.connectWallet}
+                    {copy.connectWallet}
                   </Button>
                 ) : (
                   <Button
@@ -401,9 +466,9 @@ export function PayApp({
                       : copy.confirmPay}
                   </Button>
                 )}
-                {address ? (
+                {liveAddress ? (
                   <p className="text-center text-xs text-muted-foreground">
-                    {copy.connected} · {truncateHash(address)}
+                    {copy.connected} · {truncateHash(liveAddress)}
                   </p>
                 ) : null}
               </div>

@@ -89,7 +89,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Not required as a lasting owner | Luis creates a **Base Sepolia** Safe with Enrique and Luuk as the only owners (**2 of 2**). Luis is not a signer. Do not start with a mainnet Safe that holds real USDC. |
+| Safe{Wallet} | Not required as a lasting owner | Luis creates a **Base Sepolia** Safe with Enrique, Luuk, and Luis as the owners (**2 of 3**). Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 
 ### Do not give

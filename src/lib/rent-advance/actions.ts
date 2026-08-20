@@ -2,11 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  canPersistPayNetwork,
-  isSelectablePayNetwork,
-  parseExactPayNetworkKey,
-} from "@/lib/pay/networks";
+import { canPersistPayNetwork, isSelectablePayNetwork, parseExactPayNetworkKey } from "@/lib/pay/networks";
+import { verifyLivePayment } from "@/lib/pay/verify";
+import { PAYMENT_RAIL_MODE } from "@/lib/pay/mode";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
@@ -114,6 +112,42 @@ export async function confirmPaymentAction(
   const next = applyPaymentOutcome(book, paymentRequestId, outcome, new Date().toISOString(), meta);
   await saveBook(next);
   refresh();
+}
+
+/**
+ * Server-side live confirmation. Verifies the on-chain receipt, USDC
+ * transfer, and confirmation depth before confirming the book through the
+ * existing idempotent helper. Only usable when the rail is live.
+ */
+export async function verifyLivePaymentAction(paymentRequestId: string, txHash: string) {
+  if (PAYMENT_RAIL_MODE !== "live") {
+    throw new Error("Live payment verification is not enabled.");
+  }
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+    throw new Error("Payment request not found.");
+  }
+  const config = book.cryptoConfig;
+  if (!config) {
+    throw new Error("Payment configuration is missing.");
+  }
+  const result = await verifyLivePayment({ txHash, config, request });
+  if (!result.verified) {
+    return result;
+  }
+  const next = applyPaymentOutcome(
+    book,
+    paymentRequestId,
+    "confirmed",
+    new Date().toISOString(),
+    { txHash },
+  );
+  await saveBook(next);
+  refresh();
+  return result;
 }
 
 export async function releaseCollectionAction(input: {

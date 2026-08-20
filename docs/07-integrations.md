@@ -119,7 +119,7 @@ only when mainnet is enabled.
 | Explorer | Official explorer for the selected network — only link a real 64-hex `0x` hash |
 | Customer money | **USD**. Stored as integer cents. |
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
-| Test Safe | Create on **Base Sepolia**. Threshold **2 of 2**. Owners only: Enrique `0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8` and Luuk `0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`. You are not a signer. |
+| Test Safe | Create on **Base Sepolia**. Threshold **2 of 3**. Owners: Enrique `0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8`, Luuk `0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`, and Luis (as discussed). |
 | Receiving Safe | Still a **fictional** demo address in the app. After you send the Base Sepolia Safe address and the Product Lead confirms it, put it in `cryptoConfig`. |
 | Wallet in this repo | Mocked. No SDK installed. |
 
@@ -267,8 +267,8 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
    memo. The on-screen reference will not appear in the transfer. Production
    must use payment-contract calldata, unique deposit addresses, or another
    verified matching design. Matching only amount and time is not enough.
-2. **Real Safe.** Create the 2-of-2 Safe on **Base Sepolia** with Enrique
-   and Luuk as the only owners. Confirm Safe services work there. Send
+2. **Real Safe.** Create the 2-of-3 Safe on **Base Sepolia** with Enrique,
+   Luuk, and Luis as the owners. Confirm Safe services work there. Send
    the address to the Product Lead. Put address + id into `cryptoConfig`
    only after that confirmation. Keep demo addresses obviously fake until
    then. Do not create this test Safe on Base Mainnet.
@@ -377,7 +377,7 @@ for merkado.cw production, production Supabase, or production Vercel.
 | Supabase **merkado-labs** `csaefdkpwukshtouyixg` | **Developer** | Read schema and the demo book if you must debug persistence. |
 | Labs env values | Secure copy of `.env.local` Labs keys | Run the demo locally against the Labs book. Never commit them. |
 | Hosted walkthrough password | The `LABS_DEMO_PASSWORD` value, shared privately | Open https://merkado-labs.vercel.app after deploy. |
-| Safe{Wallet} | Create a **Base Sepolia** Safe. You do **not** need to stay an owner. | Receiving address for Pay. Owners are Enrique and Luuk only (**2 of 2**). |
+| Safe{Wallet} | Create a **Base Sepolia** Safe. | Receiving address for Pay. Owners are Enrique, Luuk, and Luis (**2 of 3**). |
 | Reown / WalletConnect Cloud | A project you create or are invited to | Wallet connect project ID for the adapter. |
 | RPC (optional) | Alchemy, Infura, or similar Labs-only key | More reliable than public RPCs. Not required to start. |
 | Circle faucet | None. Public. | Test USDC: https://faucet.circle.com |
@@ -401,7 +401,7 @@ commit values):
 ### Done when
 
 - Renter can connect a real wallet on **Base Sepolia**, send **1,800.00**
-  native USDC to the real 2-of-2 Safe, and see **Rent paid** only after
+  native USDC to the real 2-of-3 Safe, and see **Rent paid** only after
   the chain confirms it.
 - The same confirmation updates My Payments, offer MRA-001, and
   Portfolio `pos-mra-001` **once**.

@@ -106,11 +106,11 @@ Do not treat this amendment as permission to install a wallet SDK.
 
 Product Lead accepted **Base Sepolia** for the test receiving Safe after
 Luis reported that Safe services do not support OP Sepolia. Owners are
-Enrique and Luuk only, threshold **2 of 2**. Luis creates the Safe and is
-not a signer. The mocked demo may still default to OP Sepolia. The live
-pay walkthrough uses Base Sepolia. Repeat the Safe setup on **OP Mainnet**
-only after that testnet works. This amendment does not allow installing a
-wallet or Safe SDK, merging PR 19, or flipping `PAYMENT_RAIL_MODE`.
+Enrique, Luuk, and Luis, threshold **2 of 3**. Luis creates the Safe. The
+live pay walkthrough uses Base Sepolia. Repeat the Safe setup on **Base
+Mainnet** only after that testnet works. This amendment does not allow
+installing a wallet or Safe SDK, merging PR 19, or flipping
+`PAYMENT_RAIL_MODE`.
 
 ## Amendment — 2026-08-20 (Base only)
 
@@ -127,7 +127,7 @@ or flipping `PAYMENT_RAIL_MODE`.
 - Product Lead: approved Buildathon handoff, 2026-08-18
 - Product Lead: approved OP Mainnet + USD default, 2026-08-19
 - Product Lead: approved OP Sepolia + Base Sepolia now, mainnet later, 2026-08-19
-- Product Lead: approved Base Sepolia test Safe (2 of 2, Enrique + Luuk), 2026-08-20
+- Product Lead: approved Base Sepolia test Safe (2 of 3, Enrique + Luuk + Luis), 2026-08-20
 - Product Lead: approved Base Sepolia now / Base Mainnet later as the only product networks, 2026-08-20
 - Technical owner: Merkado Labs agent implementation
 - Date: 2026-08-18; amended 2026-08-19 and 2026-08-20
