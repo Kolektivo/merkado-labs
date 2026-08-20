@@ -14,11 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePaymentProvider } from "@/hooks/use-payment-provider";
 import { isTestnetConfig } from "@/lib/pay/networks";
 import { useWalletBridge } from "@/lib/pay/wallet-bridge";
-import {
-  isMockPaymentRail,
-  showDemoPaymentOutcomes,
-  walletConnectError,
-} from "@/lib/pay/mode";
+import { isMockPaymentRail, walletConnectError } from "@/lib/pay/mode";
 import type { SubmittedPayment } from "@/lib/pay/provider";
 import {
   applyPaymentRailCopy,

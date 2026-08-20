@@ -1,6 +1,7 @@
 import { createPublicClient, http } from "viem";
-import { optimismSepolia } from "viem/chains";
+import { baseSepolia, optimismSepolia, type Chain } from "viem/chains";
 import { LIVE_CONFIRMATION_BLOCKS } from "@/lib/pay/live-provider";
+import { PAY_NETWORKS, resolvePayNetworkKey } from "@/lib/pay/networks";
 import type { CryptoConfig, PaymentRequest } from "@/lib/rent-advance/types";
 import { isExplorableTxHash } from "@/lib/rent-advance/ids";
 
@@ -22,9 +23,23 @@ const ERC20_TRANSFER_EVENT_ABI = [
   },
 ] as const;
 
-function rpcUrl(): string {
+function chainForNetworkKey(networkKey: string | null | undefined): Chain {
+  const resolved = resolvePayNetworkKey({ networkKey });
+  switch (resolved) {
+    case "base-sepolia":
+      return baseSepolia;
+    case "op-sepolia":
+      return optimismSepolia;
+    default:
+      throw new Error("This payment requires a test network.");
+  }
+}
+
+function rpcUrl(networkKey: string | null | undefined): string {
+  const resolved = resolvePayNetworkKey({ networkKey });
+  const catalog = PAY_NETWORKS[resolved];
   // TODO: replace with the Product Lead-provided RPC when supplied.
-  return "https://sepolia.optimism.io";
+  return catalog.publicRpcUrl;
 }
 
 /**
@@ -44,9 +59,11 @@ export async function verifyLivePayment({
   if (!isExplorableTxHash(txHash)) {
     return { verified: false, status: "failed", reason: "Invalid transaction hash." };
   }
-  if (config.chainId !== optimismSepolia.id) {
-    return { verified: false, status: "failed", reason: "This payment must settle on OP Sepolia." };
+  const networkKey = resolvePayNetworkKey(config);
+  if (networkKey === "op-mainnet" || networkKey === "base-mainnet") {
+    return { verified: false, status: "failed", reason: "Mainnet payments are not enabled yet." };
   }
+  const chain = chainForNetworkKey(networkKey);
   const usdcContract = config.usdcContract;
   const recipient = config.safeAddress;
   if (!usdcContract || !recipient) {
@@ -56,7 +73,7 @@ export async function verifyLivePayment({
     return { verified: false, status: "failed", reason: "Receiving address mismatch." };
   }
 
-  const client = createPublicClient({ chain: optimismSepolia, transport: http(rpcUrl()) });
+  const client = createPublicClient({ chain, transport: http(rpcUrl(networkKey)) });
   const hash = txHash as `0x${string}`;
 
   let receipt;

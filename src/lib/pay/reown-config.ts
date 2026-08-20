@@ -1,6 +1,7 @@
 import { createAppKit } from "@reown/appkit/react";
-import { optimismSepolia, type AppKitNetwork } from "@reown/appkit/networks";
+import { baseSepolia, optimismSepolia, type AppKitNetwork } from "@reown/appkit/networks";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { defaultPayNetworkKey } from "@/lib/pay/networks";
 
 /**
  * Public project ID from the Reown Dashboard (dashboard.reown.com).
@@ -21,12 +22,12 @@ const projectId = reownProjectId();
 const configured = isReownConfigured();
 
 /**
- * Live mode is OP Sepolia only in this MVP. Base Sepolia is a
- * demo-selectable fact for the mock walkthrough and is not
- * live-verifiable; mainnet stays off. Exposing only OP Sepolia in the
- * AppKit modal enforces that at the wallet-connection layer.
+ * The AppKit modal exposes only the live-verifiable test networks.
+ * Base Sepolia is the product default. OP Sepolia stays catalog-only
+ * unless the Product Lead opts in via env.
  */
-export const reownNetworks: [AppKitNetwork, ...AppKitNetwork[]] = [optimismSepolia];
+export const reownNetworks: [AppKitNetwork, ...AppKitNetwork[]] =
+  defaultPayNetworkKey() === "op-sepolia" ? [optimismSepolia, baseSepolia] : [baseSepolia, optimismSepolia];
 
 export const reownMetadata = {
   name: "Merkado Labs",

@@ -276,27 +276,27 @@ test("OP Sepolia catalog facts are fixed for the live rail", () => {
   );
 });
 
-// docs/02 + docs/07: live mode is OP Sepolia only. Base Sepolia stays a
-// demo-selectable fact; OP Mainnet and Base Mainnet are unreachable in live
-// mode and any stored mainnet key rematches to the default testnet.
-test("mainnet is unreachable in live mode; only OP Sepolia is live-verifiable", () => {
+// docs/02 + docs/07: live mode is Base Sepolia only. OP Sepolia is catalog-only
+// and hidden in Admin. Base Mainnet is unreachable in live mode and any stored
+// mainnet key rematches to the default testnet (Base Sepolia).
+test("mainnet is unreachable in live mode; only Base Sepolia is live-verifiable", () => {
   assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), false);
   assert.equal(canPersistPayNetwork("base-mainnet"), false);
   assert.equal(canPersistPayNetwork(BASE_SEPOLIA_NETWORK_KEY), true);
   assert.equal(parseExactPayNetworkKey("base-mainnet"), "base-mainnet");
   assert.equal(
     mergeCryptoConfig({ networkKey: "base-mainnet" }).networkKey,
-    OP_SEPOLIA_NETWORK_KEY,
+    BASE_SEPOLIA_NETWORK_KEY,
   );
 });
 
-// docs/07 approved networks: Base Sepolia remains demo-selectable in mock
-// mode and reports its own chain, never the OP Sepolia live chain.
-test("Base Sepolia stays demo-selectable in mock mode with its own chain", async () => {
-  const provider = createPaymentProvider(cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY));
+// docs/07 approved networks: OP Sepolia remains in the catalog (Luis may opt
+// in later) but stays demo-selectable only, never the Base Sepolia live chain.
+test("OP Sepolia stays catalog-only and reports its own chain", async () => {
+  const provider = createPaymentProvider(cryptoConfigFor(OP_SEPOLIA_NETWORK_KEY));
   const connected = await provider.connect();
-  assert.equal(connected.chainId, BASE_SEPOLIA_CHAIN_ID);
-  assert.notEqual(connected.chainId, OP_SEPOLIA_CHAIN_ID);
+  assert.equal(connected.chainId, OP_SEPOLIA_CHAIN_ID);
+  assert.notEqual(connected.chainId, BASE_SEPOLIA_CHAIN_ID);
 });
 
 // docs/06 lifecycle + docs/07 Flow A steps 5–6: submitted → pending →

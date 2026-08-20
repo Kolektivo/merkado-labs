@@ -7,13 +7,14 @@ import {
   type EIP1193Provider,
   type PublicClient,
 } from "viem";
-import { optimismSepolia } from "viem/chains";
+import { baseSepolia, optimismSepolia } from "viem/chains";
 import type {
   PaymentProvider,
   PaymentSubmitInput,
   SubmittedPayment,
   WalletSession,
 } from "@/lib/pay/provider";
+import { PAY_NETWORKS, resolvePayNetworkKey } from "@/lib/pay/networks";
 import type { CryptoConfig } from "@/lib/rent-advance/types";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 
@@ -51,19 +52,28 @@ const ERC20_TRANSFER_ABI = [
   },
 ] as const;
 
-function resolveChain(config?: CryptoConfig | null): Chain {
-  const chainId = config?.chainId;
-  if (chainId !== optimismSepolia.id) {
-    throw new Error("This payment requires the OP Sepolia network.");
+/** viem chain for each catalog test network that the live rail supports. */
+function chainForNetworkKey(networkKey: string | null | undefined): Chain {
+  const resolved = resolvePayNetworkKey({ networkKey });
+  switch (resolved) {
+    case "base-sepolia":
+      return baseSepolia;
+    case "op-sepolia":
+      return optimismSepolia;
+    default:
+      throw new Error("This payment requires a test network.");
   }
-  return optimismSepolia;
+}
+
+function resolveChain(config?: CryptoConfig | null): Chain {
+  return chainForNetworkKey(config?.networkKey);
 }
 
 function rpcUrl(config?: CryptoConfig | null): string {
+  const network = resolvePayNetworkKey({ networkKey: config?.networkKey });
+  const catalog = PAY_NETWORKS[network];
   // TODO: replace with the Product Lead-provided RPC when supplied.
-  return config?.networkKey === "op-sepolia"
-    ? "https://sepolia.optimism.io"
-    : "https://sepolia.optimism.io";
+  return catalog.publicRpcUrl;
 }
 
 function publicClient(config?: CryptoConfig | null): PublicClient {
@@ -93,7 +103,7 @@ export function createLivePaymentProvider(
       return {
         address: context.address,
         connected: true,
-        chainId: config?.chainId ?? optimismSepolia.id,
+        chainId: config?.chainId ?? resolveChain(config).id,
       };
     },
     async disconnect() {

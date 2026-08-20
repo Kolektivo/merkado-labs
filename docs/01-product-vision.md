@@ -51,8 +51,8 @@ for the Direct / Pay demo.
 Wallet, Safe, transaction, account, and payment behaviour in this demo is
 **mocked**. No real signature, RPC, token transfer, or blockchain write.
 The selected demo network is **Base Sepolia**, with Circle native USDC.
-The test receiving Safe is created on **Base Sepolia** (2 of 2, Enrique
-and Luuk). **Base Mainnet** stays later. Luis and Luuk own the real
+The test receiving Safe is created on **Base Sepolia** (2 of 3, Enrique,
+Luuk, and Luis). **Base Mainnet** stays later. Luis and Luuk own the real
 wallet adapter, Safe address, and allocation design.
 
 The landlord receives one upfront purchase amount. Later rent collections
