@@ -145,7 +145,7 @@ export async function verifyLivePaymentAction(paymentRequestId: string, txHash: 
   if (chainId == null || !tokenContract || !result.logIndex || !result.sender) {
     throw new Error("Verified payment facts are incomplete.");
   }
-  const verification = await recordPaymentVerification({
+  await recordPaymentVerification({
     paymentRequestId,
     chainId,
     txHash,
@@ -158,9 +158,19 @@ export async function verifyLivePaymentAction(paymentRequestId: string, txHash: 
     confirmations: result.confirmations ?? 0,
     status: "confirmed",
   });
-  if (!verification.firstConfirmed) {
+
+  // If the book is already confirmed for this request, there is nothing to do.
+  const alreadyBooked = book.paymentRequests?.some(
+    (row) => row.paymentRequestId === paymentRequestId && row.status === "confirmed",
+  );
+  if (alreadyBooked) {
     return result;
   }
+
+  // Apply the book through the idempotent helper. This runs both when this
+  // write created the confirmed verification row (firstConfirmed) and when a
+  // previous verification write succeeded but the book write did not complete
+  // (crash recovery): the book outcome is safe to apply again.
   const next = applyPaymentOutcome(
     book,
     paymentRequestId,

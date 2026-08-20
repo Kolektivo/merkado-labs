@@ -149,7 +149,7 @@ the catalog if Luis later opts in; they are not shown in Admin.
 Luis/Luuk replace the factory and flip that switch after approval. See
 `docs/07-integrations.md` and ADR-0005.
 
-On the PR #19 stack, the receiving address is the **verified Base Sepolia
+On the PR #20 stack, the receiving address is the **verified Base Sepolia
 deposit Safe** `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (Safe v1.4.1,
 2-of-3, owners Enrique, Luuk, and Luis) in `cryptoConfig.safeAddress`.
 `verify.ts` matches exactly one USDC Transfer to that Safe by

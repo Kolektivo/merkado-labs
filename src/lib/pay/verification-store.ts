@@ -32,6 +32,8 @@ export type VerificationWriteResult = {
  *
  * `firstConfirmed` is true only when THIS write created the confirmed row for
  * that payment request, so the caller can apply the book outcome exactly once.
+ * A second, different transfer for the same request is accepted without
+ * throwing (the confirmed-once constraint keeps the first row authoritative).
  */
 export async function recordPaymentVerification(
   input: PaymentVerificationRecord,
@@ -56,7 +58,7 @@ export async function recordPaymentVerification(
     .from("ra_payment_verifications")
     .upsert(row, { onConflict: "chain_id,tx_hash,log_index", ignoreDuplicates: true })
     .select("id,status");
-  if (error) throw error;
+  if (error && error.code !== "23505") throw error;
 
   if (data?.length) {
     return {
@@ -83,6 +85,6 @@ export async function recordPaymentVerification(
     .eq("chain_id", input.chainId)
     .eq("tx_hash", input.txHash)
     .eq("log_index", input.logIndex);
-  if (updateError) throw updateError;
+  if (updateError && updateError.code !== "23505") throw updateError;
   return { recorded: true, firstConfirmed: true };
 }
