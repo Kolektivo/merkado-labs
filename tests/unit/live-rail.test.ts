@@ -3,10 +3,15 @@ import test from "node:test";
 
 import { createPaymentProvider } from "@/lib/pay/create-provider";
 import {
+  BASE_SEPOLIA_CHAIN_ID,
+  BASE_SEPOLIA_NETWORK_KEY,
   OP_MAINNET_CHAIN_ID,
+  OP_MAINNET_NETWORK_KEY,
   OP_SEPOLIA_CHAIN_ID,
   OP_SEPOLIA_NETWORK_KEY,
   OP_SEPOLIA_USDC_CONTRACT,
+  canPersistPayNetwork,
+  parseExactPayNetworkKey,
 } from "@/lib/pay/networks";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
@@ -17,11 +22,14 @@ import {
   applyPaymentOutcome,
   cryptoConfigFor,
   currentRenterPaymentRequest,
+  mergeCryptoConfig,
 } from "@/lib/rent-advance/payment-apply";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 
 const RECIPIENT = "0xDEMO0000SAFE00MERKADOPAY000000000000000";
 const REAL_HASH = "0x" + "a".repeat(64);
+const APPROVED_RECEIVING_EOA = "0x1726cf86DA996BC4B2F393E713f6F8ef83f2e4f6";
+const OP_SEPOLIA_NATIVE_USDC = "0x5fd84259d66Cd46123540766Be93DFE6D43130D7";
 
 // docs/07 provider contract: connect, disconnect, session, submitPayment,
 // reportExternalTransfer, getStatus are the public PaymentProvider surface.
@@ -232,4 +240,134 @@ test("one confirmed payment updates Pay, Direct, and Portfolio exactly once", ()
     1,
   );
   assert.equal(currentRenterPaymentRequest(next)?.periodLabel, "October 2026");
+});
+
+// docs/07 "Inputs already on the payment request": the canonical seeded
+// request fixes the exact transfer target the live rail must submit —
+// 1,800.00 native USDC to the approved receiving EOA on OP Sepolia.
+test("the canonical seeded request fixes the exact USDC transfer target", () => {
+  const request = getSeedBook().paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.ok(request);
+  assert.equal(request.amountUsdcAtomic, 1_800_000_000);
+  assert.equal(typeof request.receivingAddress, "string");
+  assert.equal(
+    request.receivingAddress.toLowerCase(),
+    APPROVED_RECEIVING_EOA.toLowerCase(),
+  );
+});
+
+// docs/07 approved networks: OP Sepolia chain id 11155420 with Circle native
+// USDC and the approved receiving EOA (labelled a mock EOA, not a Safe).
+test("OP Sepolia catalog facts are fixed for the live rail", () => {
+  assert.equal(OP_SEPOLIA_CHAIN_ID, 11155420);
+  const config = cryptoConfigFor(OP_SEPOLIA_NETWORK_KEY);
+  assert.equal(config.networkKey, OP_SEPOLIA_NETWORK_KEY);
+  assert.equal(config.chainId, OP_SEPOLIA_CHAIN_ID);
+  assert.equal(
+    config.usdcContract?.toLowerCase(),
+    OP_SEPOLIA_NATIVE_USDC.toLowerCase(),
+  );
+  assert.equal(typeof config.safeAddress, "string");
+  assert.equal(
+    config.safeAddress?.toLowerCase(),
+    APPROVED_RECEIVING_EOA.toLowerCase(),
+  );
+});
+
+// docs/02 + docs/07: live mode is OP Sepolia only. Base Sepolia stays a
+// demo-selectable fact; OP Mainnet and Base Mainnet are unreachable in live
+// mode and any stored mainnet key rematches to the default testnet.
+test("mainnet is unreachable in live mode; only OP Sepolia is live-verifiable", () => {
+  assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), false);
+  assert.equal(canPersistPayNetwork("base-mainnet"), false);
+  assert.equal(canPersistPayNetwork(BASE_SEPOLIA_NETWORK_KEY), true);
+  assert.equal(parseExactPayNetworkKey("base-mainnet"), "base-mainnet");
+  assert.equal(
+    mergeCryptoConfig({ networkKey: "base-mainnet" }).networkKey,
+    OP_SEPOLIA_NETWORK_KEY,
+  );
+});
+
+// docs/07 approved networks: Base Sepolia remains demo-selectable in mock
+// mode and reports its own chain, never the OP Sepolia live chain.
+test("Base Sepolia stays demo-selectable in mock mode with its own chain", async () => {
+  const provider = createPaymentProvider(cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY));
+  const connected = await provider.connect();
+  assert.equal(connected.chainId, BASE_SEPOLIA_CHAIN_ID);
+  assert.notEqual(connected.chainId, OP_SEPOLIA_CHAIN_ID);
+});
+
+// docs/06 lifecycle + docs/07 Flow A steps 5–6: submitted → pending →
+// confirmed. Only the confirmed outcome may write the book; a pending or
+// failed outcome must never create a collection or distribution.
+test("pending and failed outcomes never confirm the book", () => {
+  for (const outcome of ["pending", "failed"] as const) {
+    const book = getSeedBook();
+    const next = applyPaymentOutcome(
+      book,
+      CANONICAL_PAYMENT_REQUEST_ID,
+      outcome,
+      "2026-09-28T12:00:00.000Z",
+    );
+    const request = next.paymentRequests?.find(
+      (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+    );
+    assert.equal(request?.status, outcome);
+    const offer = next.offers.find((row) => row.reference === "MRA-001");
+    assert.equal(offer?.collections.filter((row) => row.receivableN === 1).length, 0);
+    assert.equal(
+      (next.distributions ?? []).filter(
+        (row) => row.collectionId === collectionIdFor("MRA-001", 1),
+      ).length,
+      0,
+    );
+  }
+});
+
+// docs/07 "Revisit" + docs/09 shared book: a refresh or retry of an already
+// confirmed payment is idempotent — no duplicate collection, distribution, or
+// ledger row, the verified hash stays stored, and My Payments advances once.
+test("a confirmed payment survives refresh and retry without duplicate rows", () => {
+  const first = applyPaymentOutcome(
+    getSeedBook(),
+    CANONICAL_PAYMENT_REQUEST_ID,
+    "confirmed",
+    "2026-09-28T12:00:00.000Z",
+    { txHash: REAL_HASH },
+  );
+  const retried = applyPaymentOutcome(
+    first,
+    CANONICAL_PAYMENT_REQUEST_ID,
+    "confirmed",
+    "2026-09-28T12:01:00.000Z",
+    { txHash: REAL_HASH },
+  );
+
+  for (const next of [first, retried]) {
+    const request = next.paymentRequests?.find(
+      (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+    );
+    const offer = next.offers.find((row) => row.reference === "MRA-001");
+    assert.ok(request && offer);
+    assert.equal(request.status, "confirmed");
+    assert.equal(request.txHash, REAL_HASH);
+    assert.equal(request.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
+    assert.equal(offer.receivables.find((row) => row.n === 1)?.status, "received");
+    assert.equal(offer.collections.filter((row) => row.receivableN === 1).length, 1);
+    assert.equal(
+      (next.distributions ?? []).filter(
+        (row) => row.collectionId === collectionIdFor("MRA-001", 1),
+      ).length,
+      1,
+    );
+    assert.equal(
+      (next.ledgerTransactions ?? []).filter(
+        (row) => row.transactionId === paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID),
+      ).length,
+      1,
+    );
+    assert.equal(currentRenterPaymentRequest(next)?.periodLabel, "October 2026");
+  }
 });
