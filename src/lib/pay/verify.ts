@@ -9,19 +9,53 @@ export type LiveVerifyResult = {
   verified: boolean;
   status: "pending" | "confirmed" | "failed";
   reason?: string;
+  /** Block number the receipt was mined in. */
+  blockNumber?: bigint;
+  /** Confirmations counted at verification time. */
+  confirmations?: number;
+  /** The exact Transfer log index that matched. */
+  logIndex?: number;
+  /** Sender of the matched transfer. */
+  sender?: string;
 };
 
-const ERC20_TRANSFER_EVENT_ABI = [
-  {
-    type: "event",
-    name: "Transfer",
-    inputs: [
-      { indexed: true, name: "from", type: "address" },
-      { indexed: true, name: "to", type: "address" },
-      { indexed: false, name: "value", type: "uint256" },
-    ],
-  },
-] as const;
+export type TransferLogLike = {
+  address: string;
+  topics?: readonly (string | null)[] | null;
+  data: string;
+  logIndex: number | null;
+};
+
+/**
+ * Find exactly one USDC Transfer to `recipient` for `expectedAmount` in the
+ * receipt's logs. The transfer must come from a sender that is not the
+ * recipient (no self-transfer). Pure and side-effect free so the exact-match
+ * rule is unit-testable without an RPC call.
+ */
+export function matchExpectedUsdcTransfer(
+  logs: readonly TransferLogLike[],
+  usdcContract: string,
+  recipient: string,
+  expectedAmount: bigint,
+): { logIndex: number; sender: string } | null {
+  const recipientLower = recipient.toLowerCase();
+  const usdcContractLower = usdcContract.toLowerCase();
+  const matches = logs.filter((log) => {
+    if (log.address.toLowerCase() !== usdcContractLower) return false;
+    if (!log.topics || log.topics.length < 3) return false;
+    const to = (log.topics[2] as string).toLowerCase();
+    if (to !== recipientLower) return false;
+    if (BigInt(log.data) !== expectedAmount) return false;
+    const from = (log.topics[1] as string).toLowerCase();
+    if (from === recipientLower) return false;
+    return true;
+  });
+
+  if (matches.length !== 1) return null;
+  const matched = matches[0];
+  if (matched.logIndex == null) return null;
+  return { logIndex: matched.logIndex, sender: (matched.topics![1] as string).toLowerCase() };
+}
 
 function chainForNetworkKey(networkKey: string | null | undefined): Chain {
   const resolved = resolvePayNetworkKey({ networkKey });
@@ -93,31 +127,23 @@ export async function verifyLivePayment({
   }
 
   const expectedAmount = BigInt(request.amountUsdcAtomic);
-  let matched = false;
-  try {
-    const logs = await client.getLogs({
-      address: usdcContract as `0x${string}`,
-      event: ERC20_TRANSFER_EVENT_ABI[0],
-      args: { to: recipient as `0x${string}` },
-      fromBlock: receipt.blockNumber,
-      toBlock: receipt.blockNumber,
-    });
-    matched = logs.some(
-      (log) =>
-        log.args &&
-        (log.args as { value?: bigint }).value !== undefined &&
-        (log.args as { value: bigint }).value === expectedAmount,
-    );
-  } catch {
-    matched = false;
-  }
+  const matched = matchExpectedUsdcTransfer(
+    receipt.logs ?? [],
+    usdcContract,
+    recipient,
+    expectedAmount,
+  );
   if (!matched) {
-    return { verified: false, status: "failed", reason: "Expected USDC transfer not found." };
+    return {
+      verified: false,
+      status: "failed",
+      reason: "Expected exactly one matching USDC transfer to the receiving Safe.",
+    };
   }
 
   const blockNumber = await client.getBlockNumber();
-  const confirmations = blockNumber - receipt.blockNumber;
-  if (confirmations < BigInt(LIVE_CONFIRMATION_BLOCKS)) {
+  const confirmations = Number(blockNumber - receipt.blockNumber);
+  if (confirmations < LIVE_CONFIRMATION_BLOCKS) {
     return {
       verified: false,
       status: "pending",
@@ -125,5 +151,12 @@ export async function verifyLivePayment({
     };
   }
 
-  return { verified: true, status: "confirmed" };
+  return {
+    verified: true,
+    status: "confirmed",
+    blockNumber: receipt.blockNumber,
+    confirmations,
+    logIndex: matched.logIndex,
+    sender: matched.sender,
+  };
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { canPersistPayNetwork, isSelectablePayNetwork, parseExactPayNetworkKey } from "@/lib/pay/networks";
 import { verifyLivePayment } from "@/lib/pay/verify";
+import { recordPaymentVerification } from "@/lib/pay/verification-store";
 import { PAYMENT_RAIL_MODE } from "@/lib/pay/mode";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
@@ -116,7 +117,8 @@ export async function confirmPaymentAction(
 
 /**
  * Server-side live confirmation. Verifies the on-chain receipt, USDC
- * transfer, and confirmation depth before confirming the book through the
+ * transfer, and confirmation depth, records the verification idempotently
+ * in `ra_payment_verifications`, then confirms the book through the
  * existing idempotent helper. Only usable when the rail is live.
  */
 export async function verifyLivePaymentAction(paymentRequestId: string, txHash: string) {
@@ -136,6 +138,27 @@ export async function verifyLivePaymentAction(paymentRequestId: string, txHash: 
   }
   const result = await verifyLivePayment({ txHash, config, request });
   if (!result.verified) {
+    return result;
+  }
+  const chainId = config.chainId;
+  const tokenContract = config.usdcContract;
+  if (chainId == null || !tokenContract || !result.logIndex || !result.sender) {
+    throw new Error("Verified payment facts are incomplete.");
+  }
+  const verification = await recordPaymentVerification({
+    paymentRequestId,
+    chainId,
+    txHash,
+    logIndex: result.logIndex,
+    senderAddress: result.sender,
+    recipientAddress: request.receivingAddress,
+    tokenContract,
+    atomicAmount: request.amountUsdcAtomic,
+    blockNumber: result.blockNumber ?? BigInt(0),
+    confirmations: result.confirmations ?? 0,
+    status: "confirmed",
+  });
+  if (!verification.firstConfirmed) {
     return result;
   }
   const next = applyPaymentOutcome(

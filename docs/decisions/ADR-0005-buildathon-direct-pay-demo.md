@@ -106,11 +106,26 @@ Do not treat this amendment as permission to install a wallet SDK.
 
 Product Lead accepted **Base Sepolia** for the test receiving Safe after
 Luis reported that Safe services do not support OP Sepolia. Owners are
-Enrique, Luuk, and Luis, threshold **2 of 3**. Luis creates the Safe. The
-live pay walkthrough uses Base Sepolia. Repeat the Safe setup on **Base
-Mainnet** only after that testnet works. This amendment does not allow
-installing a wallet or Safe SDK, merging PR 19, or flipping
-`PAYMENT_RAIL_MODE`.
+Enrique, Luuk, and Luis, threshold **2 of 3**. Luis created the Safe and
+verified it on 2026-08-20: **Safe v1.4.1, 2-of-3**, address
+`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`. It is set in
+`cryptoConfig.safeAddress` on the PR #20 stack. The live pay walkthrough
+uses Base Sepolia. Repeat the Safe setup on **Base Mainnet** only after
+that testnet works. This amendment does not allow installing a wallet or
+Safe SDK, merging PR 19, or flipping `PAYMENT_RAIL_MODE`.
+
+## Amendment — 2026-08-20 (Wave 2 idempotency)
+
+Wave 2 (`task/pr20-safe-idempotency`) backs live USDC confirmation with a
+server-side verification record. `ra_payment_verifications` (migration
+`20260820100000`) stores one row per on-chain transfer log
+(unique `chain_id, tx_hash, log_index`) and at most one confirmed
+verification per payment request. `verify.ts` matches exactly one USDC
+Transfer to the verified Safe by `txHash`/`logIndex` before the
+5-block confirmation check; `verifyLivePaymentAction` writes the book
+once via `applyPaymentOutcome`. This stays dormant while
+`PAYMENT_RAIL_MODE` is `"mock"`. It does not authorise a live transfer or
+a wallet SDK.
 
 ## Amendment — 2026-08-20 (Base only)
 

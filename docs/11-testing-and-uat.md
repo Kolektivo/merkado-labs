@@ -23,8 +23,11 @@ Pricing tests must reproduce MRA-001 locked figures and the 24% block.
 Property Score tests must cover band boundaries, clamping, invalid market
 rent, the 0.60 → 1.10 example, and proof that derived Property Score does
 not change quote pricing. Payment tests must prove one confirmation cannot
-duplicate collection or distribution. App-link tests must prove external
-HTTPS URLs open externally and missing or invalid URLs stay inside the demo.
+duplicate collection or distribution, and that the live verification
+matches exactly one USDC Transfer to the verified Safe by `txHash`/`logIndex`
+(rejects self-transfers, wrong amounts, and duplicates). App-link tests must
+prove external HTTPS URLs open externally and missing or invalid URLs stay
+inside the demo.
 
 GitHub Actions runs the same commands via `.github/workflows/verify.yml`.
 The first passing remote run on `main` was 2026-08-19 (run 32228015203).

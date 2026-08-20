@@ -70,8 +70,8 @@ repo**. They live on merkado-cw.
 | Network later | **Base Mainnet**, only when `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
 | Explorer | Official explorer for the selected network (real hashes only) |
-| Test Safe | **Base Sepolia**, **2 of 3**, owners Enrique, Luuk, and Luis. Luis creates it. Address not in the app until Luis sends it and the Product Lead confirms. |
-| Safe address | Fictional in the mock until that verified Base Sepolia Safe is written in |
+| Test Safe | **Base Sepolia**, **2 of 3**, owners Enrique, Luuk, and Luis. Luis created it; verified Safe v1.4.1 on 2026-08-20. |
+| Safe address | **`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`** set in `cryptoConfig.safeAddress` on the PR #20 stack |
 | Other networks | Optimism keys stay in the catalog if Luis later opts in. They are hidden in Admin. |
 | Marketplace subscribe | A holder can buy any amount up to what is still open. The offer goes live and Pay requests mint when the offering is filled. Not a public offering. |
 | Demo book | Two seeded offers for the walkthrough: **MRA-001** (funded live reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |

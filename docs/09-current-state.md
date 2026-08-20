@@ -149,6 +149,15 @@ the catalog if Luis later opts in; they are not shown in Admin.
 Luis/Luuk replace the factory and flip that switch after approval. See
 `docs/07-integrations.md` and ADR-0005.
 
+On the PR #19 stack, the receiving address is the **verified Base Sepolia
+deposit Safe** `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (Safe v1.4.1,
+2-of-3, owners Enrique, Luuk, and Luis) in `cryptoConfig.safeAddress`.
+`verify.ts` matches exactly one USDC Transfer to that Safe by
+`txHash`/`logIndex` before any confirmation depth check, and
+`ra_payment_verifications` (migration `20260820100000`) stores the verified
+row idempotently (unique `chain_id, tx_hash, log_index`; one confirmed per
+payment request). This stays dormant while the rail is `"mock"`.
+
 ## 3. Database `[LABS]`
 
 Allowed project only: `csaefdkpwukshtouyixg`.
@@ -160,6 +169,12 @@ seeded on first load. Service role is server-only.
 
 A later Labs migration, `20260814140000_ra_demo_state_dual_control.sql`, adds a
 trigger that rejects same-person releases inside that JSON book.
+
+`20260820100000_ra_payment_verifications.sql` (PR #20 stack) adds
+`ra_payment_verifications` for DB-backed idempotency of live USDC payments:
+unique `(chain_id, tx_hash, log_index)`, a partial unique index for at most
+one confirmed verification per payment request, RLS on, and no
+`anon` / `authenticated` grants.
 
 The Buildathon book extension (accounts, payment requests, ledger,
 distributions, positions, crypto config) lives **inside the existing JSON
