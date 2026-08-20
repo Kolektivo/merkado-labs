@@ -1,37 +1,34 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
 
 import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
-import { createLivePaymentProvider, type LiveWalletContext } from "@/lib/pay/live-provider";
+import { createLivePaymentProvider } from "@/lib/pay/live-provider";
 import { PAYMENT_RAIL_MODE } from "@/lib/pay/mode";
 import type { PaymentProvider } from "@/lib/pay/provider";
+import { useWalletBridge } from "@/lib/pay/wallet-bridge";
 import type { CryptoConfig } from "@/lib/rent-advance/types";
 
 /**
  * Returns the active payment provider. In mock mode it returns the demo
- * provider; in live mode it returns a Privy + viem provider.
+ * provider; in live mode it returns a Reown/AppKit + viem provider. The
+ * hook itself stays agnostic of the wallet library: it reads the neutral
+ * `WalletBridge` context.
  */
 export function usePaymentProvider(
   config: CryptoConfig | null | undefined,
 ): PaymentProvider {
-  const privy = usePrivy();
-  const { wallets, ready } = useWallets();
-
-  const getContext = useMemo<() => LiveWalletContext>(
-    () => () => ({
-      wallets,
-      ready,
-      authenticated: privy.authenticated,
-    }),
-    [wallets, ready, privy.authenticated],
-  );
+  const bridge = useWalletBridge();
 
   return useMemo(() => {
     if (PAYMENT_RAIL_MODE === "live") {
-      return createLivePaymentProvider(config, getContext);
+      return createLivePaymentProvider(config, () => ({
+        provider: bridge.provider,
+        address: bridge.address,
+        chainId: bridge.chainId,
+        ready: bridge.ready,
+      }));
     }
     return createMockPaymentProvider({ config });
-  }, [config, getContext]);
+  }, [config, bridge]);
 }

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
 
 import { CopyValue } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePaymentProvider } from "@/hooks/use-payment-provider";
 import { isTestnetConfig } from "@/lib/pay/networks";
+import { useWalletBridge } from "@/lib/pay/wallet-bridge";
 import {
   isMockPaymentRail,
   showDemoPaymentOutcomes,
@@ -133,7 +133,7 @@ export function PayApp({
     [locale, cryptoConfig],
   );
   const router = useRouter();
-  const privy = usePrivy();
+  const bridge = useWalletBridge();
   const provider = usePaymentProvider(cryptoConfig);
   const [wallet, setWallet] = useState<WalletUi>(
     status === "confirmed"
@@ -158,6 +158,11 @@ export function PayApp({
   const expired = status === "expired";
   const inFlight = wallet === "awaiting" || wallet === "pending" || busy;
 
+  // Mock mode tracks the demo address locally; live mode reads the connected
+  // external wallet straight from the Reown/AppKit bridge.
+  const liveAddress = mockRail ? address : bridge.address;
+  const connected = mockRail ? wallet === "connected" : Boolean(bridge.address);
+
   const submitInput = {
     paymentRequestId,
     expectedAtomicAmount: amountUsdcAtomic,
@@ -176,10 +181,8 @@ export function PayApp({
         setWallet("connected");
         return;
       }
-      privy.connectWallet();
-      setWallet("connected");
-      const session = provider.session();
-      setAddress(session?.address || null);
+      bridge.open();
+      setWallet(connected ? "connected" : "disconnected");
     } catch {
       setWallet("disconnected");
       setError(walletConnectError());
@@ -245,9 +248,13 @@ export function PayApp({
     setError(null);
     setBusy(true);
     try {
-      if (!address) {
-        const session = await provider.connect();
-        setAddress(session.address);
+      if (!liveAddress) {
+        if (mockRail) {
+          const session = await provider.connect();
+          setAddress(session.address);
+        } else {
+          bridge.open();
+        }
       }
       setWallet("awaiting");
       const submitted = await provider.submitPayment({
@@ -440,7 +447,16 @@ export function PayApp({
                     {copy.iveSentPayment}
                   </Button>
                 ) : null}
-                {wallet === "disconnected" || wallet === "connecting" ? (
+                {wallet === "connecting" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full"
+                    disabled
+                  >
+                    {copy.connecting}
+                  </Button>
+                ) : !connected ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -448,7 +464,7 @@ export function PayApp({
                     disabled={inFlight}
                     onClick={() => void connect()}
                   >
-                    {wallet === "connecting" ? copy.connecting : copy.connectWallet}
+                    {copy.connectWallet}
                   </Button>
                 ) : (
                   <Button
@@ -463,9 +479,9 @@ export function PayApp({
                       : copy.confirmPay}
                   </Button>
                 )}
-                {address ? (
+                {liveAddress ? (
                   <p className="text-center text-xs text-muted-foreground">
-                    {copy.connected} · {truncateHash(address)}
+                    {copy.connected} · {truncateHash(liveAddress)}
                   </p>
                 ) : null}
               </div>

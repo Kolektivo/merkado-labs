@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { redirectIfDemoLocked } from "@/lib/demo-gate-server";
-import { PrivyShell } from "@/lib/pay/privy-provider";
+import { ReownShell } from "@/lib/pay/reown-provider";
 
 import { PayHeader } from "./pay-header";
 import { PayerLocaleProvider } from "./payer-locale";
@@ -18,9 +18,9 @@ export default async function PayLayout({
     <div className="theme-merkado min-h-screen">
       <PayHeader />
       <main id="main-content" className="mx-auto w-full max-w-lg px-4 py-6">
-        <PrivyShell>
+        <ReownShell>
           <PayerLocaleProvider>{children}</PayerLocaleProvider>
-        </PrivyShell>
+        </ReownShell>
       </main>
     </div>
   );

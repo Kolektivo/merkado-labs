@@ -4,10 +4,10 @@ import {
   custom,
   http,
   type Chain,
+  type EIP1193Provider,
   type PublicClient,
 } from "viem";
 import { optimismSepolia } from "viem/chains";
-import type { ConnectedWallet } from "@privy-io/react-auth";
 import type {
   PaymentProvider,
   PaymentSubmitInput,
@@ -20,10 +20,21 @@ import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 /** Number of additional blocks after inclusion before a payment is confirmed. */
 export const LIVE_CONFIRMATION_BLOCKS = 5;
 
+/**
+ * Library-agnostic wallet state. The Reown shell populates this from the
+ * connected external wallet (address, active chain, and the EIP-1193
+ * provider) and the hook passes it to the live adapter. No wallet SDK type
+ * leaks through this boundary.
+ */
 export type LiveWalletContext = {
-  wallets: ConnectedWallet[];
+  /** EIP-1193 provider of the connected external wallet, if any. */
+  provider: EIP1193Provider | null;
+  /** Connected wallet address, if any. */
+  address: string | null;
+  /** Chain id currently active in the wallet, if known. */
+  chainId: number | null;
+  /** Whether wallet state has been initialised. */
   ready: boolean;
-  authenticated: boolean;
 };
 
 /** ERC-20 transfer ABI fragment. */
@@ -59,13 +70,14 @@ function publicClient(config?: CryptoConfig | null): PublicClient {
   return createPublicClient({ chain: resolveChain(config), transport: http(rpcUrl(config)) });
 }
 
-function walletFrom(context: LiveWalletContext): ConnectedWallet {
-  if (!context.ready || !context.authenticated || context.wallets.length === 0) {
+function walletFrom(context: LiveWalletContext): {
+  provider: EIP1193Provider;
+  address: string;
+} {
+  if (!context.ready || !context.address || !context.provider) {
     throw new Error("Connect a wallet first.");
   }
-  const wallet = context.wallets[0];
-  if (!wallet) throw new Error("No wallet connected.");
-  return wallet;
+  return { provider: context.provider, address: context.address };
 }
 
 export function createLivePaymentProvider(
@@ -75,34 +87,37 @@ export function createLivePaymentProvider(
   return {
     async connect() {
       const context = getContext();
-      if (!context.ready || !context.authenticated || context.wallets.length === 0) {
+      if (!context.ready || !context.address || !context.provider) {
         throw new Error("Wallet connection is required.");
       }
-      const wallet = context.wallets[0];
       return {
-        address: wallet.address,
+        address: context.address,
         connected: true,
         chainId: config?.chainId ?? optimismSepolia.id,
       };
     },
     async disconnect() {
-      // Logout is handled by the Privy UI control.
+      // Disconnect is handled by the Reown/AppKit modal control.
     },
     session(): WalletSession {
       try {
-        const wallet = walletFrom(getContext());
-        return { address: wallet.address, connected: true, chainId: config?.chainId ?? null };
+        const { address } = walletFrom(getContext());
+        return { address, connected: true, chainId: config?.chainId ?? null };
       } catch {
         return { address: "", connected: false, chainId: null };
       }
     },
     async submitPayment(input: PaymentSubmitInput): Promise<SubmittedPayment> {
       const context = getContext();
-      const wallet = walletFrom(context);
+      const { provider, address } = walletFrom(context);
       const chain = resolveChain(config);
-      const provider = await wallet.getEthereumProvider();
+      if (context.chainId != null && context.chainId !== chain.id) {
+        throw new Error(
+          `This payment must settle on ${chain.name}. Switch your wallet to ${chain.name} and try again.`,
+        );
+      }
       const walletClient = createWalletClient({
-        account: wallet.address as `0x${string}`,
+        account: address as `0x${string}`,
         chain,
         transport: custom(provider),
       });
@@ -122,7 +137,7 @@ export function createLivePaymentProvider(
         transactionId: input.paymentRequestId,
         txHash: hash,
         chainId: chain.id,
-        from: wallet.address,
+        from: address,
         to: input.recipient,
         tokenContract: usdcContract,
         atomicAmount: input.expectedAtomicAmount,
