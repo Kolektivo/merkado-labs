@@ -6,7 +6,6 @@ import { HelpTip } from "@/components/help-tip";
 import { MarketplaceOfferCard } from "@/components/marketplace/marketplace-offer-card";
 import { PageHeader } from "@/components/page-header";
 import { ThemeMerkado } from "@/components/theme-merkado";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -15,7 +14,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { SOLE_HOLDER_GATE } from "@/lib/rent-advance/copy";
 import { listMarketplaceCards } from "@/lib/rent-advance/store";
 import type { ScoreBand } from "@/lib/rent-advance/scoring";
 
@@ -52,17 +50,8 @@ export default async function OffersPage({
     <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Marketplace"
-        description="Browse anonymised offers. You see the area and simple grades — never the renter’s name or street."
+        description="Open rent-advance offers in Curaçao. Amounts in XCG."
       />
-      <Alert>
-        <AlertTitle className="flex items-center gap-2">
-          Subscribe is closed
-          <HelpTip label="Why subscribe is closed">{SOLE_HOLDER_GATE}</HelpTip>
-        </AlertTitle>
-        <AlertDescription>
-          This is a walkthrough. Nobody can buy a position from this page.
-        </AlertDescription>
-      </Alert>
 
       <form className="flex flex-wrap items-end gap-3" method="get">
         <label className="grid gap-1 text-sm">

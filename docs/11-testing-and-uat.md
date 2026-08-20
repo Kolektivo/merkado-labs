@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 19, 2026 (live-wallet testnet UAT)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## Automated
 
@@ -31,38 +31,31 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 
 ## Critical flows (engineering)
 
-1. Overview shows Direct, Pay, and Account doors. No Merkado login. Reset
-   is here. After deploy, the hosted URL first shows the shared password
+1. Home shows Merkado Direct entry points. No Merkado login. Reset lives
+   in Admin. After deploy, the hosted URL first shows the shared password
    page.
-2. Direct nav is exactly My Offers, Create Offer, Get Now, Marketplace,
-   Portfolio.
-3. My Offers lists six offers; draft/unfunded rows are not counted as cash
-   already advanced.
-4. Get Now: Listing Score and Payer Score sliders; market rent; Property
-   Score; 3 months disabled; 9/12 simulation-only; Use this quote disabled
-   when unapproved or above 24%.
-5. Use this quote prefills Create Offer. 9/12 cannot save.
-6. Offer detail: mocked upfront settlement; later rent is not paid to the
-   landlord again.
-7. Marketplace: no tenant name or address; Subscribe is closed; Property
-   Score is the derived figure.
+2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
+   Portfolio, plus Pay, Account, and Admin at the bottom.
+3. My Offers lists the two seeded offers (**MRA-001** and **MRA-010**);
+   draft/unfunded rows are not counted as cash already advanced.
+4. Simulator: Listing Score and Payer Score sliders; market rent in XCG;
+   Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
+   disabled when unapproved or above 24%.
+5. Use this quote prefills Create Offer. 9/12 cannot submit.
+6. Offer detail: settlement card; later rent collected / awaiting /
+   distributed. Operations controls are only in Admin.
+7. Marketplace: no tenant name or address; a holder can buy any portion
+   still open; Property Score is the derived figure.
 8. Portfolio: Position ID; collected / pending / distributed; no Claim.
-9. Pay: seeded request **1,800.00 USDC** and $1,800 rent on the selected
-   network (**OP Sepolia** after Reset); copy-address and mock wallet
-   paths in mock mode; visible pending then success; invalid id is a safe
-   not-found. In live mode only the wallet path confirms and only after
-   server-side on-chain verification.
+9. Pay: seeded request **XCG 3,222.00** / **1,800.00 USDC** on the selected
+   network (**Base Sepolia** after Reset); copy-address and mock wallet
+   paths; visible pending then success; invalid id is a safe not-found.
 10. One confirmed payment appears once in Pay history, My Payments, offer
     collections, and holder distribution. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab
     behaviour only for absolute URLs.
-12. Sale explainer never uses interest rate, debt, or borrow — only
-    “not a loan.”
-13. Web3 MVP (when the live rail is on): Privy external-wallet login works;
-    non-OP-Sepolia chains are rejected; the book stays pending until the
-    server verifies receipt + Transfer event + exact amount + **5-block**
-    depth; copy-address confirmation is disabled; refresh is idempotent;
-    a reverted/failed transaction is never written as confirmed.
+12. Customer screens do not show a sale-not-loan wall, fee buildup, or
+    extra comparison figures. Those live in Admin if needed.
 
 ## Product Lead walkthrough
 
@@ -74,103 +67,61 @@ this as a loan. After each item, reply with what you saw if it felt wrong.
 
 ### Before you start
 
-Click **Reset demo** on Overview and confirm **Yes, reset**.
+Open **Admin** at the bottom of the left nav. Click **Reset the book** and
+confirm **Yes, reset**.
 
-### 1. Overview
+### 1. Home
 
-- You see doors into Merkado Direct, Merkado Pay, and the demo account.
-- The page does **not** prominently brand a separate Rent Advance product.
-- MRA-001 still shows $1,800 rent, six months, $10,206 cash, 5.50%
-  fee, ~21.6%.
-- “Still open” lists the legal questions in plain language.
-- Payment network shows **OP Sepolia** after Reset. You can switch to
-  **Base Sepolia**. Mainnet is not in the list unless it was turned on.
+- The page says **Merkado Direct** / **Rent paid forward**.
+- Featured Marketplace cards are visible. Buttons are violet, not black.
+- You do **not** see a long sale-not-loan box, Reset, or legal questions.
 
-### 2. My Offers
+### 2. Simulator
 
-- Sidebar group **Demo** lists Overview and Merkado Account.
-- Sidebar group **Merkado Direct** lists My Offers, Create Offer, Get Now,
-  Marketplace, Portfolio.
-- The table is first. Six rows after Reset. Collecting offers such as
-  MRA-001 appear before drafts. Advance is cash already paid — drafts and
-  unfunded offers are not in the totals as money already advanced.
-- Open **MRA-001**. You see the sale-not-loan explainer, a mocked one-time
-  settlement reference, and later rent going to holders — not paid again
-  to the landlord. **Record collection** and **Approve offer** sit inside
-  **Lab controls**. Drafts keep **Submit for review** in the main column.
-  Unfunded offers say the landlord **would receive** cash; funded offers
-  say **received**.
-
-### 3. Get Now
-
-- Monthly rent (USD) defaults to 1800. Estimated market rent defaults to 3000.
+- Monthly rent shows **3222.00** XCG. Typical nearby rent shows **5370.00**.
 - Property quality 89 and Payment history 95 are sliders with live numbers.
-- Combined property view updates from rent vs typical rent. 60% of typical
-  rent should look favourable.
-- 3 months is disabled. 6 months can use the quote. 9 and 12 simulate only.
-- Click **Demonstrate 24% cap**. Use this quote stays off. No quote is saved.
+- Click **Small studio**. Rent becomes **1.79**. The cash to the
+  landlord is about **XCG 10.17**.
+- 3 months is disabled. 6 months can use the quote.
 
-### 4. Use this quote
+### 3. Create offer and Admin
 
-- From a good 6-month quote, click **Use this quote**.
-- Create Offer opens with those non-sensitive values. You can save a draft.
+- From the XCG 10 example, click **Use this quote**.
+- Add a cover photo if you want. On Review, there is no “connected to
+  Merkado” checkbox. Click **Submit for review**.
+- Open **Admin** at the bottom of the left nav. Open the new offer.
+  Click **Approve offer**.
 
-### 5. Marketplace and Portfolio
+### 4. Marketplace and Portfolio
 
-- Marketplace cards look like merkado.cw listing cards. They still show
-  combined property view, payment history, term, and amount filled. Amount filled is
-  holder contribution (MRA-001: $10,500). The landlord purchase price is
-  lower ($10,206). No tenant name, employer, or street. The whole card
-  opens the offer.
-- Subscribe is closed. Open **MRA-001** and use **View position** to
-  reach Portfolio.
-- Portfolio shows a Position ID and collection / distribution language.
-- There is no Claim button and no transfer or sale control.
+- Open **Marketplace**. You see two cards with **XCG** amounts and photos:
+  the funded Sun Set Heights house and the open **Punda** studio.
+- Open the **Punda** studio (**MRA-010**). Enter a smaller amount or click
+  **25%**, then **Purchase**. You land on Portfolio. The studio should
+  still show some amount open.
+- Open the same studio again. Click **All remaining**, then **Purchase**,
+  so Pay can mint the XCG 1.79 rent.
+- There is no Claim button.
 
-### 6. Pay rent
+### 5. Pay rent
 
-- Open Pay from the hub. You see the USDC mark, **1,800.00 USDC**, the
-  same $1,800 rent, copy address and amount, and both **I’ve sent this
-  payment** and **Connect wallet** (mock mode).
-- **Payment history** is on the same Pay page. There is no second history page.
-- Network is **OP Sepolia** after Reset. On Overview you can switch to
-  **Base Sepolia** in demo mode. Mainnet is later and stays off unless turned on.
+- Open **Merkado Pay**. You see a list. MRA-001 is **XCG 3,222.00**.
+  After purchasing MRA-010, a **XCG 1.79** rent also appears.
+- Open the XCG 1.79 payment. You still confirm with the mocked wallet or
+  **I’ve sent this payment**. Settlement note shows **1.00 USDC**.
+- After it is paid, Portfolio for that position shows the collection.
 - Copy the address, then click **I’ve sent this payment**. You should see
   a pending state, then **Rent paid**.
 - Reset, then walk Connect wallet → Pay with demo wallet → pending →
   Rent paid. Rent and lease stay unchanged. The button still says
-  **Pay with demo wallet** while the rail is mocked.
+  **Pay with demo wallet** while payments are mocked. After Luis flips
+  `PAYMENT_RAIL_MODE` to `"live"`, that button should say **Pay with
+  wallet** and the footer should no longer say the walkthrough does not
+  send a real transfer. Pay should already show **Base Sepolia**. Base
+  Mainnet stays off until you turn it on.
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.
-
-### 6b. Pay rent — live wallet testnet UAT (only after `PAYMENT_RAIL_MODE` is `"live"`)
-
-Do this on a testnet with test USDC only. The button now says **Pay with
-wallet** and the footer no longer says the walkthrough does not send a
-real transfer.
-
-- **Connect external wallet**: the Privy login opens and connects a real
-  external wallet. No embedded/Privy wallet is offered.
-- **Wrong chain**: with the wallet on any network other than OP Sepolia,
-  Pay refuses to proceed (chain must be OP Sepolia, ID 11155420).
-- **Copy-address disabled**: the **I've sent this payment** button and the
-  demo outcome menu are gone. Only the wallet path confirms.
-- **Pending**: after signing the USDC transfer, the page shows pending and
-  keeps polling the server. It does **not** confirm on the client.
-- **5-block confirmation**: **Rent paid** appears only after the server
-  verifies the receipt, the ERC-20 `Transfer` event (exact 1,800.00 USDC,
-  correct USDC contract, correct receiving EOA `0x1726cf86…4f6`), and a
-  **5-block** depth.
-- **Refresh idempotency**: refresh before and after confirmation. The
-  payment appears exactly once in Pay history, My Payments, offer
-  collections, and Portfolio.
-- **Failed / reverted**: a rejected signature or a reverted transaction
-  shows a failed/error state and is never written as confirmed.
-- **Mainnet / Base Sepolia**: neither is reachable in live mode.
-
-Record what you see for each item before `docs/09-current-state.md` may
-describe the Web3 flow as verified.
 
 ### 7. Account Apps and Pay
 
@@ -189,8 +140,9 @@ describe the Web3 flow as verified.
 
 ### 8. Reset
 
-- Back to Overview. **Reset demo** restores the seeded book, payments,
-  and distributions. The payment network you selected stays.
+- Open **Admin**. **Reset the book** restores the two seeded offers
+  (**MRA-001** and the cheap Punda studio), payments, and distributions.
+  The payment network you selected stays.
 
 ### What you are judging
 

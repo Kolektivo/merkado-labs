@@ -86,6 +86,8 @@ export type PropertyRecord = {
   mortgagePresent: boolean;
   mortgagee: string | null;
   photoLabels: string[];
+  /** Uploaded cover, or empty to use the type fallback photo. */
+  coverImageSrc?: string | null;
 };
 
 export type LeaseRecord = {
@@ -380,6 +382,7 @@ export type BuyerOfferCard = {
   scheduledAnnualised: number;
   status: OfferStatus;
   relatedParty: boolean;
+  coverImageSrc?: string | null;
 };
 
 export type PurchaserOfferDetail = BuyerOfferCard & {

@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. One-sentence vision
 
@@ -22,13 +22,14 @@ a public investment product.
 The Buildathon also needs one coherent walkthrough: landlord quote and offer
 book, renter USDC payment, shared account history, and automatic holder
 distribution — while legal, Safe execution, allocation, and production
-architecture decisions remain open. The demo default network is OP Sepolia.
+architecture decisions remain open. Pay uses **Base Sepolia** now
+(the Base testnet) and **Base Mainnet** later.
 
 ## 3. Who it is for
 
 | Audience | Product name they see | What they need |
 |---|---|---|
-| Landlord / operations | Merkado Direct | A clear Get Now quote, My Offers, and one upfront purchase amount |
+| Landlord / operations | Merkado Direct | A clear Simulator quote, My Offers, and one upfront purchase amount |
 | Purchaser / holder | Merkado Direct | Anonymised offer facts, Portfolio IDs, and honest collection risk |
 | Payer / tenant | Merkado Pay | A payment link, same rent and lease, mocked USDC, no economics |
 | Buildathon / partners | Labs demo hub | Direct, Pay, and a fictional Merkado account, plus Reset demo |
@@ -47,15 +48,12 @@ This repository is **not** the live merkado.cw marketplace. Cars, listings,
 scrapers, and public browse now live in **merkado-cw**. Labs is the sandbox
 for the Direct / Pay demo.
 
-Wallet and payment behaviour in the verified walkthrough is still **mocked**
-(no real signature, RPC, token transfer, or blockchain write). The approved
-**OP Sepolia Web3 MVP** foundation — external-wallet login via **Privy** and
-on-chain submission/verification via **viem** — is implemented on the feature
-branch but not yet switched on or verified end-to-end. The selected demo
-networks are **OP Sepolia** (live scope) and **Base Sepolia**
-(demo-selectable only). OP Mainnet and Base Mainnet stay off. The receiving
-address is a **mock EOA**, not a Safe; allocation and any holder-payout
-execution remain open.
+Wallet, Safe, transaction, account, and payment behaviour in this demo is
+**mocked**. No real signature, RPC, token transfer, or blockchain write.
+The selected demo network is **Base Sepolia**, with Circle native USDC.
+The test receiving Safe is created on **Base Sepolia** (2 of 2, Enrique
+and Luuk). **Base Mainnet** stays later. Luis and Luuk own the real
+wallet adapter, Safe address, and allocation design.
 
 The landlord receives one upfront purchase amount. Later rent collections
 are not paid to the landlord a second time. They move into the holder
@@ -63,17 +61,17 @@ distribution flow, presented as automatic in this demo.
 
 ## 5. Success for this phase
 
-- A visitor can walk MRA-001 from Get Now → Use this quote → My Offers →
-  mocked Pay → My Payments → Portfolio, with one shared demo state.
+- A visitor can walk Simulator → Create Offer → Admin approval →
+  Marketplace purchase → Portfolio → mocked Pay, with one shared demo state.
 - Pricing reproduces the locked pack ($10,206 purchase price, 5.50% fee,
   ~21.6% effective annualised) and **blocks** anything over 24%.
 - Property Score never changes quote pricing.
 - The payer app never shows economics. The holder app never shows tenant
   identity.
-- Stage 0 legal questions stay visible and unresolved.
-- The Web3 MVP foundation (Privy external wallet + viem server verification)
-  is implemented behind the typed provider boundary; `PAYMENT_RAIL_MODE`
-  flips to `"live"` only after a verified OP Sepolia testnet walkthrough.
+- Stage 0 legal questions stay unresolved. They are not shown on
+  customer Home.
+- Luis can replace the mock crypto layer from a typed provider boundary
+  and flip `PAYMENT_RAIL_MODE` so mocked Pay labels switch off.
 
 ## 6. What we refuse to claim
 

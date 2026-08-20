@@ -28,7 +28,7 @@ export default async function PortfolioPage() {
     <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Portfolio"
-        description="What holders put in, and the later rent that arrives when the renter pays. Sharing is automatic."
+        description="Positions you purchased, and later rent that arrives when the renter pays."
       />
       <SummaryStrip
         items={[
@@ -112,8 +112,7 @@ export default async function PortfolioPage() {
         </Table>
       </div>
       <p className="text-sm text-muted-foreground">
-        Positions are book-entries. There is no token, no transfer, and no
-        Claim button. Settlement references sit on each funded row.
+        Collected rent is booked to the matching position when the renter pays.
       </p>
     </ThemeMerkado>
   );

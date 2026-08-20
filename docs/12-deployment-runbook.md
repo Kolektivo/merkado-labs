@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 19, 2026 (Privy App ID + temporary RPC)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## Local dashboard
 
@@ -14,7 +14,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000. Start at Overview. Local stays open unless
+Open http://localhost:3000. Start at Home. Local stays open unless
 `LABS_DEMO_PASSWORD` is set.
 
 Required env (Labs project `csaefdkpwukshtouyixg` only):
@@ -23,17 +23,7 @@ Required env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 
-Optional:
-
-- `NEXT_PUBLIC_PAY_NETWORK` (`op-sepolia` if empty)
-- `NEXT_PUBLIC_PRIVY_APP_ID` — public App ID from the Privy dashboard.
-  Empty = real wallet login is disabled. Public value, not a secret, but it
-  must be set in the environment to enable external-wallet login.
-
-Temporary RPC: the live provider and the server-side verifier use the public
-OP Sepolia RPC `https://sepolia.optimism.io` for now. The Product Lead will
-supply a specific RPC later; replace it where the adapter reads the URL. No
-RPC key is committed.
+Optional: `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty).
 
 ## Vercel (Labs demo host)
 
@@ -63,13 +53,7 @@ Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 - `LABS_DEMO_PASSWORD` (server only; Production)
-- `NEXT_PUBLIC_PAY_NETWORK` (optional; default `op-sepolia`)
-- `NEXT_PUBLIC_PRIVY_APP_ID` (public App ID; enables external-wallet login)
-
-Live mode is OP Sepolia only. Base Sepolia is demo-selectable only; mainnet
-stays off. The server-side verifier uses the temporary public OP Sepolia RPC
-until the Product Lead supplies a specific RPC. No secret is required or
-committed for the RPC today.
+- `NEXT_PUBLIC_PAY_NETWORK` (optional; default `base-sepolia`)
 
 ## Database
 
@@ -104,9 +88,9 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | GitHub repo [Kolektivo/merkado-labs](https://github.com/Kolektivo/merkado-labs) | **Write** collaborator | Repo → **Settings** → **Collaborators** → **Add people** → choose **Write**. He should open a pull request, not push to `main`. |
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
-| Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, `SUPABASE_SECRET_KEY`, and `NEXT_PUBLIC_PRIVY_APP_ID` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Privy app | Developer/owner on the Kolektivo Privy app | The public App ID enables external-wallet login. No embedded wallets. |
-| RPC (later) | Product Lead-supplied Labs-only RPC key | Replaces the temporary public `https://sepolia.optimism.io` for the server verifier. Not required to start. |
+| Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
+| Safe{Wallet} | Not required as a lasting owner | Luis creates a **Base Sepolia** Safe with Enrique and Luuk as the only owners (**2 of 2**). Luis is not a signer. Do not start with a mainnet Safe that holds real USDC. |
+| Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 
 ### Do not give
 
@@ -116,22 +100,18 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Production Vercel / merkado.cw | He is not deploying the marketplace. |
 | GitHub **Admin** on the Kolektivo org | Write on `merkado-labs` is enough. |
 | Supabase **Owner** on Labs | Developer can read schema. Owner can destroy the project. |
-| A funded mainnet wallet | Real money. Testnet first. |
+| A funded mainnet Safe | Real money. Testnet first. |
 | Circle, OP, or Base “admin” | Not needed. Faucet and public RPCs are enough to start. |
 | merkado-cw GitHub | Listing scrapers and the live storefront are out of this task. |
-| A real Safe / Safe SDK access | The receiving address is a mock EOA. No Safe SDK, Safe watching, or holder payout in this MVP. |
 
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him the receiving address is the mock EOA
-   `0x1726cf86DA996BC4B2F393E713f6F8ef83f2e4f6` and live mode is
-   **OP Sepolia only**. Base Sepolia is demo-selectable; mainnet is off.
-3. Tell him to verify the live walkthrough on **OP Sepolia** with test USDC
-   and keep `PAYMENT_RAIL_MODE` on `"mock"` until the Product Lead
-   walkthrough passes.
-4. When his testnet pay walkthrough works, you still approve before anyone
-   turns on OP Mainnet or Base Mainnet.
+2. Tell him to create the test Safe on **Base Sepolia**, not Base Mainnet.
+3. Tell him not to install a wallet SDK until you reply that the
+   integration task is approved.
+4. When his Base Sepolia pay walkthrough works, you still approve before
+   anyone repeats the Safe on **Base Mainnet**.
 
 ## Do not
 

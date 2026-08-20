@@ -8,6 +8,10 @@ export const RELATED_PARTY_PREMIUM = 0.0025;
 /** 1 USD = 1 USDC. Book amounts stay integer cents. */
 export const USD_USDC_PEG = 1;
 
+/** Caribbean guilder display peg. Book amounts stay USD cents. */
+export const USD_TO_XCG = 1.79;
+export const USD_TO_XCG_BPS = 179;
+
 export class CapExceededError extends Error {
   readonly effectiveAnnualised: number;
 
@@ -47,14 +51,39 @@ export function formatUsdWhole(cents: number): string {
   }).format(Math.round(cents / 100))}`;
 }
 
-/** @deprecated Demo money is USD. Kept so older call sites keep compiling. */
-export function formatXcg(cents: number, compact = false): string {
-  return formatUsd(cents, compact);
+/** Convert stored USD cents to XCG cents at 1.79. */
+export function usdCentsToXcgCents(usdCents: number): number {
+  return roundHalfUp((usdCents * USD_TO_XCG_BPS) / 100);
 }
 
-/** @deprecated Demo money is USD. Kept so older call sites keep compiling. */
-export function formatXcgWhole(cents: number): string {
-  return formatUsdWhole(cents);
+/** Convert a typed XCG amount (major units) back to stored USD cents. */
+export function xcgMajorToUsdCents(xcgMajor: number): number {
+  const xcgCents = roundHalfUp(xcgMajor * 100);
+  return roundHalfUp((xcgCents * 100) / USD_TO_XCG_BPS);
+}
+
+export function usdCentsToXcgInput(usdCents: number): string {
+  return (usdCentsToXcgCents(usdCents) / 100).toFixed(2);
+}
+
+export function formatXcg(usdCents: number, compact = false): string {
+  const xcgCents = usdCentsToXcgCents(usdCents);
+  const amount = xcgCents / 100;
+  if (compact && Math.abs(amount) >= 100) {
+    return `XCG ${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 0,
+    }).format(Math.round(amount))}`;
+  }
+  return `XCG ${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)}`;
+}
+
+export function formatXcgWhole(usdCents: number): string {
+  return `XCG ${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(usdCentsToXcgCents(usdCents) / 100))}`;
 }
 
 export function formatPercent(rate: number, digits = 2): string {

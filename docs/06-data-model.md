@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. Money
 
@@ -10,8 +10,8 @@
   XCG book; the values are USD cents.
 - Store USDC as integer atomic units with six decimals.
   `usdcAtomic = usdCents * 10_000` (1:1 with USD).
-- Direct operations screens show **USD / $**. Pay and My Payments show
-  USDC as the primary value and the matching USD rent beside it.
+- Direct operations screens show **XCG** at **1 USD = 1.79 XCG**.
+  Pay shows XCG as the primary value and USDC as the settlement amount.
 - Round fees half-up to the cent.
 
 MRA-001 Pay conversion: USD 1,800 → 1,800,000,000 atomic → **1,800.00 USDC**.
@@ -69,9 +69,7 @@ and checklist.
 
 Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
 `paymentRequestId`, `positionId`, `collectionId`, `distributionId`,
-`transactionId`, optional `txHash`, and `safeAccountId` (a legacy demo field
-name for the receiving account; the receiving address is a **mock EOA**, not
-a real Safe). Do not call any
+`transactionId`, optional `txHash`, and `safeAccountId`. Do not call any
 field a token ID in the UI. `externalTokenId` may exist as null.
 
 `property` series type exists on `ra_series` so the platform is not
@@ -96,17 +94,15 @@ Purchaser serialisation may include district, grades, Property Score, term.
 It may not include tenant name, employer, address, contact, or exact income.
 Marketplace and portfolio pages load that anonymised shape only.
 
-Payer serialisation may include rent, dates, USDC amount, and the mock
-receiving address (the approved EOA `0x1726cf86…4f6`). It may not include
-fee, purchase price, holders, or distribution economics.
+Payer serialisation may include rent, dates, USDC amount, and a fictional
+receiving address. It may not include fee, purchase price, holders, or
+distribution economics.
 
 ## 7. Persistence
 
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
 crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
-explorer, receiving address). Older `optimism` books rematch to the default
-testnet. Live mode is **OP Sepolia only**; Base Sepolia is demo-selectable
-and mainnet stays off. Reset
-restores the complete current seed and keeps the selected payment
-network. No new migration for this pivot.
+explorer). Older `optimism` and OP Sepolia books rematch to **Base
+Sepolia**. Reset restores the complete current seed and keeps the
+selected payment network. No new migration for this pivot.

@@ -26,7 +26,7 @@ export const PLAIN = {
   relatedParty:
     "Turn this on only when the landlord has a personal or business link to Merkado — for example family or a board seat. That is not a normal arm’s-length sale, so someone independent must approve it. The fee is a little higher because of that extra check, which means slightly less cash to the landlord. It is a fairness rule, not a discount.",
   totalRent:
-    "All of the rent for the months being sold. Example: $1,800 × 6 months = $10,800.",
+    "All of the rent for the months being sold. Example: XCG 3,222 × 6 months = XCG 19,332.",
   fee: "The one cost for getting the rent paid now. No extra arrangement or exit charges.",
   sharePaidNow:
     "How much of that future rent is paid to the landlord now. The rest is the fee.",
@@ -159,7 +159,7 @@ export const payerCopy = {
     network: "Network",
     receiving: "Receiving address",
     demoOnly:
-      "Demo only. This walkthrough does not send a real transfer. Do not send real USDC to this demo address.",
+      "Settlement is mocked here. Do not send real USDC to this address.",
     memoNote:
       "The payment reference is for your records. A plain transfer does not automatically carry this reference on-chain.",
     historyLink: "Payment history",
@@ -168,8 +168,8 @@ export const payerCopy = {
     networkUnset: "Network to be confirmed",
     sameAsRent: "Same as {amount} monthly rent",
     usdcTip:
-      "Digital dollars for this demo. The amount matches your rent. Nothing real is sent.",
-    networkTip: "The selected payment network. Nothing real is sent in this walkthrough.",
+      "Digital dollars. The amount matches your rent.",
+    networkTip: "The selected payment network.",
     txRef: "Transaction",
     payEarlierFirst: "Pay {period} first.",
     payEarlierBody: "Earlier rent must be paid before this month.",
@@ -231,7 +231,7 @@ export const payerCopy = {
     network: "Netwerk",
     receiving: "Ontvangstadres",
     demoOnly:
-      "Alleen demo. Deze walkthrough stuurt geen echte overboeking. Stuur geen echte USDC naar dit demo-adres.",
+      "Afwikkeling is hier nagebootst. Stuur geen echte USDC naar dit adres.",
     memoNote:
       "Het kenmerk is voor je administratie. Een gewone overboeking zet dit niet automatisch on-chain.",
     historyLink: "Betalingsgeschiedenis",
@@ -241,7 +241,7 @@ export const payerCopy = {
     sameAsRent: "Hetzelfde als {amount} maandelijkse huur",
     usdcTip:
       "Digitale dollars voor deze demo. Het bedrag is gelijk aan je huur. Er wordt niets echt verstuurd.",
-    networkTip: "Het gekozen betaalnetwerk. In deze walkthrough wordt niets echt verstuurd.",
+    networkTip: "Het gekozen betaalnetwerk.",
     txRef: "Transactie",
     payEarlierFirst: "Betaal eerst {period}.",
     payEarlierBody: "Eerdere huur moet eerst betaald zijn.",
@@ -303,7 +303,7 @@ export const payerCopy = {
     network: "Red",
     receiving: "Adres di resepcion",
     demoOnly:
-      "Demo so. E walkthrough aki no ta manda un transferensia real. No manda USDC real na e adres di demo aki.",
+      "Afwikkeling ta nagebootst aki. No manda USDC real na e adres aki.",
     memoNote:
       "E referensia ta pa bo rekord. Un transferensia simpel no ta hiba e referensia automaticamente on-chain.",
     historyLink: "Historia di pago",
@@ -313,7 +313,7 @@ export const payerCopy = {
     sameAsRent: "Mismo ku {amount} huur mensualmente",
     usdcTip:
       "Dollar digital pa e demo aki. E montante ta koresponde ku bo huur. Nada real ta wordu mandá.",
-    networkTip: "E red di pago skohí. Nada real ta wordu mandá den e walkthrough aki.",
+    networkTip: "E red di pago skohí.",
     txRef: "Transakshon",
     payEarlierFirst: "Paga {period} prome.",
     payEarlierBody: "Bo mester paga e huur anterior prome.",

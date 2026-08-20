@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { OfferOpsForms } from "./offer-ops-forms";
+import { OfferCustomerActions } from "./offer-ops-forms";
 import { CopyValue, ExplorerLink } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
-import { SaleNotLoan } from "@/components/sale-not-loan";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,11 +19,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime, titleCase } from "@/lib/format";
-import { ARREARS_LADDER, arrearsStep } from "@/lib/rent-advance/arrears";
 import {
   collectedCount,
   distributionTotals,
-  landlordDisclosure,
   rentToMarket,
   statusLabel,
   statusTone,
@@ -46,27 +43,12 @@ export async function generateMetadata({
   return { title: ref };
 }
 
-function daysLate(dueDate: string): number {
-  const due = Date.parse(`${dueDate}T12:00:00`);
-  if (!Number.isFinite(due)) return 0;
-  return Math.max(0, Math.floor((Date.now() - due) / 86_400_000));
-}
-
 export default async function OfferOpsPage({ params }: { params: Params }) {
   const { ref } = await params;
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();
 
-  const disclosure = landlordDisclosure(offer);
   const collected = collectedCount(offer);
-  const nextReceivable =
-    offer.receivables.find((row) => row.status === "scheduled") ?? null;
-  const releasable = offer.collections.filter(
-    (row) => row.status === "received" || row.status === "reconciled",
-  );
-  const missed = offer.receivables.find((row) => row.status === "missed");
-  const lateDays = missed ? Math.max(1, daysLate(missed.dueDate)) : 0;
-  const currentArrears = missed ? arrearsStep(lateDays) : null;
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
   const money = distributionTotals(book, offer);
   const settlement = book.ledgerTransactions?.find(
@@ -130,12 +112,15 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
       </div>
 
       {settlement ? (
-        <Alert>
-          <AlertTitle>One-time upfront settlement</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>
-              The landlord already received the purchase price. Later rent is
-              collected for holders and is not paid to the landlord again.
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle className="text-sm text-muted-foreground">
+              Landlord settlement
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="font-medium">
+              <Money cents={offer.purchasePriceCents} /> paid
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <CopyValue
@@ -148,13 +133,13 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
                 hash={settlement.txHash}
               />
             </div>
-            <p className="text-xs">
-              Collected <Money cents={money.collectedCents} /> · pending
+            <p className="text-xs text-muted-foreground">
+              Collected <Money cents={money.collectedCents} /> · awaiting
               distribution <Money cents={money.pendingDistributionCents} /> ·
               distributed <Money cents={money.distributedCents} />
             </p>
-          </AlertDescription>
-        </Alert>
+          </CardContent>
+        </Card>
       ) : null}
 
       {offer.status === "draft" ? (
@@ -167,24 +152,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         </Alert>
       ) : null}
 
-      {offer.relatedParty ? (
-        <Alert>
-          <AlertTitle>Connected landlord</AlertTitle>
-          <AlertDescription>
-            {offer.status === "under_review" || offer.status === "draft"
-              ? "The landlord is connected to Merkado. Someone independent must approve before funding, and the fee is a little higher."
-              : "The landlord is connected to Merkado. The fee is a little higher. Independent approval is already on the file."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <OfferOpsForms
-        reference={offer.reference}
-        status={offer.status}
-        nextReceivableN={nextReceivable?.n ?? null}
-        actors={book.actors}
-        releasableCollections={releasable}
-      />
+      <OfferCustomerActions reference={offer.reference} status={offer.status} />
 
       <Tabs defaultValue="overview">
         <TabsList variant="line" className="flex-wrap">
@@ -195,14 +163,6 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 pt-4">
-          <SaleNotLoan
-            netAdvance={disclosure.netAdvance}
-            grossForgone={disclosure.grossForgone}
-            totalCost={disclosure.totalCost}
-            flatFee={disclosure.flatFee}
-            effective={disclosure.effective}
-            received={offer.fundedCents > 0}
-          />
           <Card className="gap-0 py-0">
             <CardHeader className="border-b py-4">
               <CardTitle>Timeline</CardTitle>
@@ -424,31 +384,6 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
               </CardContent>
             </Card>
           </div>
-
-          <details className="rounded-xl border p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              Arrears ladder
-            </summary>
-            <ol className="mt-3 space-y-2">
-              {ARREARS_LADDER.map((step) => {
-                const active = currentArrears?.day === step.day;
-                return (
-                  <li
-                    key={step.day}
-                    className={
-                      active
-                        ? "rounded-lg border bg-muted/50 px-3 py-2 text-sm"
-                        : "px-3 py-1.5 text-sm"
-                    }
-                  >
-                    <span className="font-medium">Day {step.day}.</span>{" "}
-                    <span className="text-muted-foreground">{step.action}</span>
-                  </li>
-                );
-              })}
-            </ol>
-          </details>
-
         </TabsContent>
 
         <TabsContent value="holders" className="pt-4">

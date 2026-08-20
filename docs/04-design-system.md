@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 19, 2026 (live-rail wallet chrome)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. Scope
 
@@ -26,8 +26,8 @@ the Pay page.
 
 ## 3. Tokens
 
-**Direct operations** (My Offers, Create Offer, Get Now, offer detail) keep
-the existing Labs light/dark semantic tokens.
+**Direct operations** (My Offers, Create Offer, Simulator, offer detail, Admin)
+use Merkado violet as the primary action colour.
 
 **Marketplace, Portfolio, Pay, and Account** use a scoped `.theme-merkado`
 layer:
@@ -66,13 +66,12 @@ outside this scoped layer.
 - Renter link: **Merkado Pay**
 - Account: visible **Private seller** label with **Luuk Weber** and the
   supplied demo avatar
-- Money in Direct ops: `$` prefix, integer cents underneath, USD as the
-  currency name
-- Money in Pay: USDC primary, USD rent as the matching lease amount (1:1)
+- Money in Direct ops: **XCG** prefix (1.79 to the dollar)
+- Money in Pay: XCG primary, USDC as the settlement amount (1:1 with stored USD rent)
 - Apps **Open Pay** opens this month’s payment page, which includes
   payment history.
-- Overview carries the prototype notice. Other Direct pages use the header
-  badge “Labs demo · not live on merkado.cw”
+- Customer screens stay quiet. Reset, payment network, and fee buildup live
+  on **Admin**. Buttons use Merkado violet, not near-black.
 - The hosted password door (`/enter`) is a compact shadcn card: title,
   one line of copy, **Shared password**, and **Continue**. No logo, pill,
   or prototype alert.
@@ -100,7 +99,6 @@ external app URLs include accessible new-tab text.
 ## 6. What not to invent
 
 No gradients-as-brand, no “yield” badges, no loan calculators labeled as
-loans, no Claim button, no explorer link for demo hashes, no
-Base-as-default network label. Wallet chrome stays mocked until
-`PAYMENT_RAIL_MODE` is `"live"`. OP Sepolia is the default demo
-network. Base Sepolia is an available testnet. Mainnet is later.
+loans, no Claim button, no explorer link for demo hashes. Wallet chrome
+stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base Sepolia** is
+the default demo network. **Base Mainnet** is later.

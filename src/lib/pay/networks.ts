@@ -8,7 +8,8 @@ export const BASE_MAINNET_NETWORK_KEY = "base-mainnet";
 /** @deprecated Use OP_MAINNET_NETWORK_KEY. Stored "optimism" books rematch to the default testnet. */
 export const LEGACY_OP_MAINNET_NETWORK_KEY = "optimism";
 
-export const DEFAULT_PAY_NETWORK_KEY = OP_SEPOLIA_NETWORK_KEY;
+export const DEFAULT_PAY_NETWORK_KEY = BASE_SEPOLIA_NETWORK_KEY;
+export const DEFAULT_PAY_NETWORK_FAMILY = "base" as const;
 export const PAY_NETWORK_ENV = "NEXT_PUBLIC_PAY_NETWORK";
 
 export const OP_SEPOLIA_CHAIN_ID = 11155420;
@@ -36,6 +37,8 @@ export const OP_MAINNET_USDC_CONTRACT =
 export const BASE_MAINNET_USDC_CONTRACT =
   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
+export type PayNetworkFamily = "optimism" | "base";
+
 export type PayNetworkKey =
   | typeof OP_SEPOLIA_NETWORK_KEY
   | typeof BASE_SEPOLIA_NETWORK_KEY
@@ -52,7 +55,7 @@ export type PayNetwork = {
   explorerBaseUrl: string;
   publicRpcUrl: string;
   isTestnet: boolean;
-  family: "optimism" | "base";
+  family: PayNetworkFamily;
 };
 
 export const PAY_NETWORKS: Record<PayNetworkKey, PayNetwork> = {
@@ -140,6 +143,34 @@ export function defaultPayNetworkKey(): PayNetworkKey {
   return envPayNetworkKey() ?? DEFAULT_PAY_NETWORK_KEY;
 }
 
+export function preferredPayNetworkFamily(): PayNetworkFamily {
+  const env = envPayNetworkKey();
+  return env ? PAY_NETWORKS[env].family : DEFAULT_PAY_NETWORK_FAMILY;
+}
+
+export function visiblePayNetworks(allowMainnet = mainnetSelectionAllowed()): PayNetwork[] {
+  const family = preferredPayNetworkFamily();
+  return PAY_NETWORK_LIST.filter(
+    (network) => network.family === family && (network.isTestnet || allowMainnet),
+  );
+}
+
+export function isSelectablePayNetwork(key: PayNetworkKey): boolean {
+  return visiblePayNetworks().some((network) => network.key === key);
+}
+
+export function counterpartPayNetworkKey(
+  key: PayNetworkKey,
+  family: PayNetworkFamily,
+): PayNetworkKey {
+  const source = PAY_NETWORKS[key];
+  if (source.family === family) return key;
+  const match = PAY_NETWORK_LIST.find(
+    (network) => network.family === family && network.isTestnet === source.isTestnet,
+  );
+  return match?.key ?? defaultPayNetworkKey();
+}
+
 export function mainnetSelectionAllowed(): boolean {
   const env = envPayNetworkKey();
   return Boolean(env && !PAY_NETWORKS[env].isTestnet);
@@ -153,6 +184,12 @@ export function persistablePayNetworkKey(key: PayNetworkKey): PayNetworkKey {
   return canPersistPayNetwork(key) ? key : defaultPayNetworkKey();
 }
 
+function finishPayNetworkKey(key: PayNetworkKey): PayNetworkKey {
+  return persistablePayNetworkKey(
+    counterpartPayNetworkKey(key, preferredPayNetworkFamily()),
+  );
+}
+
 export function payNetworkByChainId(chainId: number | null | undefined): PayNetwork | null {
   if (chainId == null) return null;
   return PAY_NETWORK_LIST.find((network) => network.chainId === chainId) ?? null;
@@ -160,8 +197,8 @@ export function payNetworkByChainId(chainId: number | null | undefined): PayNetw
 
 /**
  * Resolve the active demo network.
- * Stored `optimism` books were the old OP Mainnet default and rematch to the
- * current default testnet unless an env override is set.
+ * Product default is Base. Stored OP / `optimism` books rematch to the
+ * matching Base network unless Luis opts into Optimism with env.
  */
 export function resolvePayNetworkKey(input?: {
   networkKey?: string | null;
@@ -172,13 +209,13 @@ export function resolvePayNetworkKey(input?: {
     return defaultPayNetworkKey();
   }
   const fromKey = parsePayNetworkKey(raw);
-  if (fromKey) return persistablePayNetworkKey(fromKey);
+  if (fromKey) return finishPayNetworkKey(fromKey);
   const fromChain = payNetworkByChainId(input?.chainId);
   if (fromChain) {
     if (!raw && fromChain.key === OP_MAINNET_NETWORK_KEY) {
       return defaultPayNetworkKey();
     }
-    return persistablePayNetworkKey(fromChain.key);
+    return finishPayNetworkKey(fromChain.key);
   }
   return defaultPayNetworkKey();
 }

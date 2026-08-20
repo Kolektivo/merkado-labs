@@ -24,8 +24,8 @@ export default async function NewOfferPage({
         title="Create offer"
         description={
           carry
-            ? `${initial.reference} is prefilled from your Get Now quote. Only a six-month quote under the 24% cap can be saved.`
-            : `${initial.reference} is prefilled from the locked MRA-001 shape. Simulate in Get Now, then use the quote here.`
+            ? `${initial.reference} is prefilled from your Simulator quote. Submit a six-month quote under the 24% cap.`
+            : `${initial.reference} is ready to complete. Add a photo, check the figures, then submit for review.`
         }
       />
       <NewOfferWizard initial={initial} startStep={carry ? 5 : 1} />

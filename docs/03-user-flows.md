@@ -1,48 +1,51 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. Hosted access
 
 On the hosted URL, the first screen is a shared-password door (`/enter`).
 It is a Merkado-branded private walkthrough, not a Merkado account. After
 the correct password, the visitor continues to the requested page
-(Overview by default). Local `npm run dev` skips this door unless
+(Home by default). Local `npm run dev` skips this door unless
 `LABS_DEMO_PASSWORD` is set. Hosted production stays locked if that
 password is missing.
 
-## 2. Demo hub
+## 2. Home
 
-Visitor lands on Overview (`/`), sees entry points to **Merkado Direct**,
-**Merkado Pay**, and the **Merkado account** mock, plus MRA-001 figures,
-open legal questions, a **Payment network** control (OP Sepolia / Base
-Sepolia now; mainnet later), and **Reset demo**.
+Visitor lands on Home (`/`), sees Merkado Direct totals, featured
+Marketplace offers, and doors to Simulator, Create offer, Portfolio, and
+Pay. Amounts are in XCG. Payment network and Reset live in **Admin**.
+Stage 0 legal questions stay open in documentation; they are not shown
+on customer Home.
 
 ## 3. Landlord (Merkado Direct)
 
-1. **My Offers** — the six-offer book. Totals count only funded, non-draft
-   offers as money already advanced or receivables already sold.
-2. **Get Now** — see the cash a landlord would get now. Defaults match
-   MRA-001 ($1,800 rent, $3,000 typical nearby rent, property quality 89,
-   payment history 95, connected landlord on, 6 months). 3 months
-   disabled. 9/12 are simulation-only.
+1. **My Offers** — the two-offer demo book (**MRA-001** funded live, **MRA-010**
+   open on Marketplace). Totals count only funded, non-draft offers as money
+   already advanced or receivables already sold. Create Offer can still add a
+   draft.
+2. **Simulator** — see the cash a landlord would get now, in XCG. Defaults
+   match MRA-001 (XCG 3,222 rent, XCG 5,370 typical nearby rent, property
+   quality 89, payment history 95, 6 months). Connected-landlord is
+   hidden. 3 months disabled. 9/12 are simulation-only. **Small studio**
+   loads the XCG 1.79 monthly rent / about XCG 10 purchase quote.
 3. **Use this quote** — eligible six-month quotes under the 24% cap carry
    non-sensitive values into Create Offer.
-4. **Create Offer** — six steps, then save as draft. 9/12 and cap-breached
-   quotes cannot be saved. A draft can be submitted for independent
-   approval.
-5. Offer detail — sale-not-loan, Listing Score / Property Score, one-time
-   mocked upfront settlement reference, and collection / automatic
-   distribution status. Later rent is not paid to the landlord again. No
-   holder wallet details. Drafts keep **Submit for review**. Independent
-   approval, Record collection, and dual-control stay in Lab controls.
+4. **Create Offer** — six steps including a cover photo, then **Submit for
+   review**. 9/12 and cap-breached quotes cannot be submitted.
+5. Offer detail — cash figures, one-time mocked upfront settlement, and
+   collection / automatic distribution status. Later rent is not paid to
+   the landlord again. Drafts keep **Submit for review**. Independent
+   approval, Record collection, and dual-control live in **Admin**.
 
 ## 4. Holder (Merkado Direct)
 
 1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
-   term, and amount filled. Subscribe is closed.
+   term, and amount filled. A holder can buy any portion still open. The
+   cheap Punda studio (MRA-010) is the small walkthrough purchase.
 2. Offer detail stays privacy-walled. No tenant name, employer, income,
    contact, or street address. A funded offer links to its Portfolio
    position.
@@ -58,20 +61,15 @@ Sepolia now; mainnet later), and **Reset demo**.
    month cannot be paid while an earlier month on the same deal is still
    open — the page sends the renter back to the next payment.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
-   unique reference, mock receiving address (approved EOA
-   `0x1726cf86…4f6`), selected payment
-   network (**OP Sepolia** by default; Base Sepolia demo-selectable).
-   A status badge and the payment actions sit with the amount so they stay
+   unique reference, fictional receiving address, selected payment
+   network (**Base Sepolia**).
+   A status badge and both payment paths sit with the amount so they stay
    visible on a phone.
-3. Payment paths. In mock mode: two paths — copy the address and amount
-   then **I've sent this payment**, or connect a demo wallet and pay here.
-   In live mode (`PAYMENT_RAIL_MODE` is `"live"`): only the wallet path is
-   available. An external wallet connects via Privy; the server verifies the
-   USDC transfer on OP Sepolia (receipt + Transfer event + exact amount +
-   **5-block** depth) before the book is confirmed. Copy-address confirmation
-   is disabled in live mode. Both paths show pending → confirmed / success,
-   plus failure and incorrect-amount outcomes. Already paid and overdue
-   remain.
+3. Two payment paths (mocked until `PAYMENT_RAIL_MODE` is `"live"`):
+   - copy the address and amount, then **I’ve sent this payment**;
+   - connect a demo wallet and pay here.
+   Both paths show pending → confirmed / success, plus failure and
+   incorrect-amount outcomes. Already paid and overdue remain.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 
@@ -88,11 +86,10 @@ Sepolia now; mainnet later), and **Reset demo**.
 
 ## 7. Shared payment
 
-One confirmed payment (mock or live) updates exactly once: the payment
-request, the matching receivable, one collection, and holder distribution
+One confirmed mock payment updates exactly once: the payment request,
+the matching receivable, one collection, and holder distribution
 activity. Refresh and retry are idempotent. Initiated / pending /
-confirmed stay distinct in the data model. A live payment is confirmed only
-after the server verifies the chain.
+confirmed stay distinct in the data model.
 
 ## 8. Privacy walls
 

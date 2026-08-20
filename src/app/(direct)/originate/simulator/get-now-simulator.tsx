@@ -12,7 +12,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PLAIN } from "@/lib/rent-advance/copy";
-import { formatPercent } from "@/lib/rent-advance/money";
+import {
+  formatPercent,
+  formatXcg,
+  usdCentsToXcgInput,
+  xcgMajorToUsdCents,
+} from "@/lib/rent-advance/money";
+import { quoteHref } from "@/lib/rent-advance/quote-carry";
 import { priceQuote, type Quote } from "@/lib/rent-advance/pricing";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
 import {
@@ -22,37 +28,19 @@ import {
   rentVsTypicalLabel,
 } from "@/lib/rent-advance/scoring";
 
-function quoteHref(input: {
-  rent: number;
-  market: number;
-  listing: number;
-  payer: number;
-  related: boolean;
-  months: number;
-}) {
-  const params = new URLSearchParams({
-    quote: "1",
-    rent: String(input.rent),
-    market: String(input.market),
-    listing: String(input.listing),
-    payer: String(input.payer),
-    related: input.related ? "1" : "0",
-    months: String(input.months),
-  });
-  return `/originate/new?${params.toString()}`;
-}
+const MRA001 = { rent: 180000, market: 300000, listing: 89, payer: 95 };
+const CHEAP = { rent: 100, market: 200, listing: 89, payer: 95 };
 
 export function GetNowSimulator() {
-  const [rentGuilders, setRentGuilders] = useState("1800");
-  const [marketGuilders, setMarketGuilders] = useState("3000");
-  const [relatedParty, setRelatedParty] = useState(true);
-  const [listingScore, setListingScore] = useState(89);
-  const [payerScore, setPayerScore] = useState(95);
+  const [rentXcg, setRentXcg] = useState(usdCentsToXcgInput(MRA001.rent));
+  const [marketXcg, setMarketXcg] = useState(usdCentsToXcgInput(MRA001.market));
+  const [listingScore, setListingScore] = useState(MRA001.listing);
+  const [payerScore, setPayerScore] = useState(MRA001.payer);
   const [months, setMonths] = useState(6);
   const [copied, setCopied] = useState(false);
 
-  const monthlyRentCents = Math.round(Number(rentGuilders) * 100);
-  const marketRentCents = Math.round(Number(marketGuilders) * 100);
+  const monthlyRentCents = xcgMajorToUsdCents(Number(rentXcg));
+  const marketRentCents = xcgMajorToUsdCents(Number(marketXcg));
   const rentValid = Number.isInteger(monthlyRentCents) && monthlyRentCents > 0;
 
   const derived = derivePropertyScore(listingScore, monthlyRentCents, marketRentCents);
@@ -67,7 +55,7 @@ export function GetNowSimulator() {
         months,
         passportScore: listingScore,
         payerScore,
-        relatedParty,
+        relatedParty: false,
       });
     } catch {
       quote = null;
@@ -76,14 +64,21 @@ export function GetNowSimulator() {
 
   const canUseQuote = Boolean(quote && quote.termApproved && !quote.capBreached);
 
+  function loadPreset(preset: typeof MRA001) {
+    setRentXcg(usdCentsToXcgInput(preset.rent));
+    setMarketXcg(usdCentsToXcgInput(preset.market));
+    setListingScore(preset.listing);
+    setPayerScore(preset.payer);
+    setMonths(6);
+  }
+
   async function copyQuote() {
     if (!quote) return;
     const text = [
-      `Get Now ${quote.months} months`,
-      `Rent $${(quote.monthlyRentCents / 100).toFixed(2)}`,
-      `Upfront $${(quote.purchasePriceCents / 100).toFixed(2)}`,
-      `Fee ${formatPercent(quote.feeRate)} · $${(quote.feeCents / 100).toFixed(2)}`,
-      `Effective ${formatPercent(quote.effectiveAnnualised, 1)}`,
+      `Simulator ${quote.months} months`,
+      `Rent ${formatXcg(quote.monthlyRentCents)}`,
+      `Upfront ${formatXcg(quote.purchasePriceCents)}`,
+      `Fee ${formatPercent(quote.feeRate)} · ${formatXcg(quote.feeCents)}`,
     ].join("\n");
     try {
       await navigator.clipboard.writeText(text);
@@ -106,75 +101,43 @@ export function GetNowSimulator() {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => {
-                setRentGuilders("1800");
-                setMarketGuilders("3000");
-                setRelatedParty(true);
-                setListingScore(89);
-                setPayerScore(95);
-                setMonths(6);
-              }}
+              onClick={() => loadPreset(MRA001)}
             >
-              Load MRA-001
+              Typical home
             </Button>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => {
-                setRentGuilders("1800");
-                setMarketGuilders("3000");
-                setRelatedParty(true);
-                setListingScore(40);
-                setPayerScore(40);
-                setMonths(6);
-              }}
+              onClick={() => loadPreset(CHEAP)}
             >
-              Demonstrate 24% cap
+              Small studio
             </Button>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sim-rent">Monthly rent (USD)</Label>
+            <Label htmlFor="sim-rent">Monthly rent (XCG)</Label>
             <Input
               id="sim-rent"
               type="number"
               min={0}
-              step={50}
-              value={rentGuilders}
-              onChange={(event) => setRentGuilders(event.target.value)}
+              step="0.01"
+              value={rentXcg}
+              onChange={(event) => setRentXcg(event.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sim-market" className="flex items-center gap-1.5">
-              Typical nearby rent (USD)
+              Typical nearby rent (XCG)
               <HelpTip label="Typical nearby rent">{PLAIN.marketRent}</HelpTip>
             </Label>
             <Input
               id="sim-market"
               type="number"
               min={0}
-              step={50}
-              value={marketGuilders}
-              onChange={(event) => setMarketGuilders(event.target.value)}
+              step="0.01"
+              value={marketXcg}
+              onChange={(event) => setMarketXcg(event.target.value)}
             />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="sim-related" className="flex items-center gap-1.5">
-              Landlord connected to Merkado
-              <HelpTip label="Landlord connected to Merkado">
-                {PLAIN.relatedParty}
-              </HelpTip>
-            </Label>
-            <label htmlFor="sim-related" className="flex min-h-10 items-center gap-2 text-sm">
-              <input
-                id="sim-related"
-                type="checkbox"
-                checked={relatedParty}
-                onChange={(event) => setRelatedParty(event.target.checked)}
-                className="size-4 rounded border border-input"
-              />
-              Landlord is connected to Merkado
-            </label>
           </div>
           <ScoreSlider
             id="sim-listing"
@@ -234,18 +197,17 @@ export function GetNowSimulator() {
         <div className="space-y-4">
           <QuoteResult quote={quote} />
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={copyQuote}>
+            <Button type="button" variant="outline" onClick={() => void copyQuote()}>
               {copied ? "Copied" : "Copy quote"}
             </Button>
             {canUseQuote ? (
               <Button asChild>
                 <Link
                   href={quoteHref({
-                    rent: Number(rentGuilders),
-                    market: Number(marketGuilders),
+                    rentCents: monthlyRentCents,
+                    marketCents: marketRentCents,
                     listing: listingScore,
                     payer: payerScore,
-                    related: relatedParty,
                     months,
                   })}
                 >

@@ -29,7 +29,7 @@ export default async function NotFound() {
       <EmptyContent>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link href="/">Go to Overview</Link>
+            <Link href="/">Go to Home</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/originate">Open offers</Link>
