@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 19, 2026
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. Money
 
@@ -10,8 +10,8 @@
   XCG book; the values are USD cents.
 - Store USDC as integer atomic units with six decimals.
   `usdcAtomic = usdCents * 10_000` (1:1 with USD).
-- Direct operations screens show **USD / $**. Pay and My Payments show
-  USDC as the primary value and the matching USD rent beside it.
+- Direct operations screens show **XCG** at **1 USD = 1.79 XCG**.
+  Pay shows XCG as the primary value and USDC as the settlement amount.
 - Round fees half-up to the cent.
 
 MRA-001 Pay conversion: USD 1,800 → 1,800,000,000 atomic → **1,800.00 USDC**.
@@ -103,6 +103,6 @@ distribution economics.
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
 crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
-explorer). Older `optimism` books rematch to the default testnet. Reset
-restores the complete current seed and keeps the selected payment
-network. No new migration for this pivot.
+explorer). Older `optimism` and OP Sepolia books rematch to **Base
+Sepolia**. Reset restores the complete current seed and keeps the
+selected payment network. No new migration for this pivot.

@@ -16,7 +16,7 @@ export function formatCurrency(
       : new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(
           Math.round(value),
         );
-    return `Cg ${amount}`;
+    return `XCG ${amount}`;
   }
   try {
     return new Intl.NumberFormat("en", {

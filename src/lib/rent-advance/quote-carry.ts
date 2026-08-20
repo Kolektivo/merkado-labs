@@ -3,11 +3,10 @@ import type { Offer } from "@/lib/rent-advance/types";
 
 export type QuoteCarry = {
   quote: boolean;
-  rentGuilders: number;
-  marketGuilders: number;
+  rentCents: number;
+  marketCents: number;
   listingScore: number;
   payerScore: number;
-  related: boolean;
   months: number;
 };
 
@@ -16,45 +15,50 @@ function one(params: Record<string, string | string[] | undefined>, key: string)
   return (Array.isArray(value) ? value[0] : value) ?? "";
 }
 
+function centsFrom(params: Record<string, string | string[] | undefined>, key: string) {
+  const raw = Number(one(params, key));
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+}
+
 export function parseQuoteCarry(
   params: Record<string, string | string[] | undefined>,
 ): QuoteCarry | null {
   if (one(params, "quote") !== "1") return null;
-  const rentGuilders = Number(one(params, "rent"));
-  const marketGuilders = Number(one(params, "market"));
+  const rentCents =
+    centsFrom(params, "rentCents") ||
+    Math.round(Number(one(params, "rent")) * 100);
+  const marketCents =
+    centsFrom(params, "marketCents") ||
+    Math.round(Number(one(params, "market")) * 100);
   const listingRaw = one(params, "listing");
   const payerRaw = one(params, "payer");
   const listingScore = listingRaw === "" ? 89 : Number(listingRaw);
   const payerScore = payerRaw === "" ? 95 : Number(payerRaw);
   const months = Number(one(params, "months") || "6");
-  if (!Number.isFinite(rentGuilders) || rentGuilders <= 0) return null;
+  if (!Number.isFinite(rentCents) || rentCents <= 0) return null;
   return {
     quote: true,
-    rentGuilders,
-    marketGuilders: Number.isFinite(marketGuilders) && marketGuilders > 0 ? marketGuilders : 3000,
+    rentCents,
+    marketCents: Number.isFinite(marketCents) && marketCents > 0 ? marketCents : 300000,
     listingScore: Number.isFinite(listingScore)
       ? Math.min(100, Math.max(0, listingScore))
       : 89,
     payerScore: Number.isFinite(payerScore)
       ? Math.min(100, Math.max(0, payerScore))
       : 95,
-    related: one(params, "related") !== "0",
     months: Number.isFinite(months) ? months : 6,
   };
 }
 
 export function applyQuoteCarry(offer: Offer, carry: QuoteCarry): Offer {
-  const monthlyRentCents = Math.round(carry.rentGuilders * 100);
   return {
     ...offer,
     months: carry.months,
-    monthlyRentCents,
-    marketRentCents: Math.round(carry.marketGuilders * 100),
-    relatedParty: carry.related,
-    relatedPartyNote: carry.related
-      ? offer.relatedPartyNote
-      : null,
-    lease: { ...offer.lease, monthlyRentCents },
+    monthlyRentCents: carry.rentCents,
+    marketRentCents: carry.marketCents,
+    relatedParty: false,
+    relatedPartyNote: null,
+    lease: { ...offer.lease, monthlyRentCents: carry.rentCents },
     passport: { ...offer.passport, total: carry.listingScore },
     tenant: {
       ...offer.tenant,
@@ -62,8 +66,26 @@ export function applyQuoteCarry(offer: Offer, carry: QuoteCarry): Offer {
     },
     receivables: buildScheduledReceivables(
       offer.reference,
-      monthlyRentCents,
+      carry.rentCents,
       carry.months === 6 ? 6 : offer.receivables.length || 6,
     ),
   };
+}
+
+export function quoteHref(input: {
+  rentCents: number;
+  marketCents: number;
+  listing: number;
+  payer: number;
+  months: number;
+}) {
+  const params = new URLSearchParams({
+    quote: "1",
+    rentCents: String(input.rentCents),
+    marketCents: String(input.marketCents),
+    listing: String(input.listing),
+    payer: String(input.payer),
+    months: String(input.months),
+  });
+  return `/originate/new?${params.toString()}`;
 }

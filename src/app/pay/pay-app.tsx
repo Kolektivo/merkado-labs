@@ -13,16 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createPaymentProvider } from "@/lib/pay/create-provider";
 import { isTestnetConfig } from "@/lib/pay/networks";
-import { showDemoPaymentOutcomes, walletConnectError } from "@/lib/pay/mode";
+import { walletConnectError } from "@/lib/pay/mode";
 import type { SubmittedPayment } from "@/lib/pay/provider";
 import {
   applyPaymentRailCopy,
-  PAYER_UNCHANGED,
   payerCopy,
   type PayerCopy,
 } from "@/lib/rent-advance/copy";
 import { confirmPaymentAction } from "@/lib/rent-advance/actions";
-import { formatUsd, formatUsdcAtomic, formatUsdcAtomicAmount } from "@/lib/rent-advance/money";
+import { formatUsdcAtomic, formatUsdcAtomicAmount, formatXcg } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import type { CryptoConfig, PaymentRequestStatus } from "@/lib/rent-advance/types";
 
@@ -139,7 +138,6 @@ export function PayApp({
   );
   const [address, setAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [simulate, setSimulate] = useState<"ok" | "failed" | "partial">("ok");
   const [busy, setBusy] = useState(false);
 
   const locked = status === "confirmed" || wallet === "success";
@@ -172,17 +170,13 @@ export function PayApp({
     const meta = {
       txHash: submitted.txHash,
     };
-    if (simulate === "partial" || submitted.errorCode === "amount_mismatch") {
+    if (submitted.errorCode === "amount_mismatch") {
       await confirmPaymentAction(paymentRequestId, "partial", meta);
       setWallet("partial");
       setError(copy.partial);
       return;
     }
-    if (
-      simulate === "failed" ||
-      submitted.errorCode === "mock_failed" ||
-      submitted.status === "failed"
-    ) {
+    if (submitted.errorCode === "mock_failed" || submitted.status === "failed") {
       await confirmPaymentAction(paymentRequestId, "failed", meta);
       setWallet("failed");
       setError(submitted.errorMessage ?? copy.failed);
@@ -269,15 +263,13 @@ export function PayApp({
           <Card>
             <CardContent className="space-y-4 pt-6">
               <StatusBadge tone="success">{copy.paid}</StatusBadge>
-              <div className="flex items-center gap-3">
-                <UsdcMark size={32} />
+              <div>
                 <p className="text-3xl font-semibold tabular-nums">
-                  {formatUsdcAtomic(amountUsdcAtomic)}
+                  {formatXcg(amountXcgCents)}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                {copy.sameAsRent.replace("{amount}", formatUsd(amountXcgCents))} ·{" "}
-                {periodLabel}
+                Settles as {formatUsdcAtomic(amountUsdcAtomic)} · {periodLabel}
               </p>
               <p className="text-sm">
                 {copy.reference} {paymentReference}
@@ -296,10 +288,9 @@ export function PayApp({
         ) : blockedByEarlier ? (
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <div className="flex items-center gap-3">
-                <UsdcMark size={32} />
+              <div>
                 <p className="text-3xl font-semibold tabular-nums">
-                  {formatUsdcAtomic(amountUsdcAtomic)}
+                  {formatXcg(amountXcgCents)}
                 </p>
               </div>
               <Alert>
@@ -330,17 +321,17 @@ export function PayApp({
                 <p className="text-sm text-muted-foreground">{periodLabel}</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <UsdcMark size={36} />
-                <div>
-                  <p className="flex items-center gap-1.5 text-3xl font-semibold tabular-nums leading-none">
-                    {formatUsdcAtomic(amountUsdcAtomic)}
-                    <HelpTip label="USDC">{copy.usdcTip}</HelpTip>
-                  </p>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    {copy.sameAsRent.replace("{amount}", formatUsd(amountXcgCents))}
-                  </p>
-                </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-3xl font-semibold tabular-nums leading-none">
+                  {formatXcg(amountXcgCents)}
+                  <HelpTip label="XCG">
+                    Caribbean guilders. Settlement is {formatUsdcAtomic(amountUsdcAtomic)}.
+                  </HelpTip>
+                </p>
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UsdcMark size={16} />
+                  Settles as {formatUsdcAtomic(amountUsdcAtomic)}
+                </p>
               </div>
 
               <p className="text-sm">
@@ -417,23 +408,6 @@ export function PayApp({
                 ) : null}
               </div>
 
-              {showDemoPaymentOutcomes() ? (
-                <details className="text-xs text-muted-foreground">
-                  <summary className="cursor-pointer">{copy.demoOutcomes}</summary>
-                  <select
-                    className="mt-2 h-10 w-full rounded-xl border bg-background px-3"
-                    value={simulate}
-                    onChange={(event) =>
-                      setSimulate(event.target.value as "ok" | "failed" | "partial")
-                    }
-                  >
-                    <option value="ok">Success</option>
-                    <option value="failed">Failed</option>
-                    <option value="partial">Incorrect amount</option>
-                  </select>
-                </details>
-              ) : null}
-
               {error ? (
                 <Alert variant="destructive">
                   <AlertTitle>{copy.failed}</AlertTitle>
@@ -465,7 +439,7 @@ export function PayApp({
                       </span>
                     </span>
                     <span className="tabular-nums">
-                      {formatUsdcAtomic(row.amountUsdcAtomic)}
+                      {formatXcg(row.amountXcgCents)}
                     </span>
                   </Link>
                 </li>
@@ -474,15 +448,6 @@ export function PayApp({
           )}
         </CardContent>
       </Card>
-
-      <details className="rounded-xl border px-4 py-3">
-        <summary className="cursor-pointer text-sm font-medium">{copy.whatDoesNotChange}</summary>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
-          {PAYER_UNCHANGED.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </details>
 
       <p className="text-center text-xs text-muted-foreground" role="note">
         {copy.demoOnly}

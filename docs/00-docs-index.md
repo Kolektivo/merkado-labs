@@ -3,26 +3,27 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 19, 2026
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
 and `docs/decisions/ADR-0002-private-local-evidence.md`.
 **Buildathon pivot:** `docs/decisions/ADR-0005-buildathon-direct-pay-demo.md`.
 **Product naming:** **Merkado Direct** is the umbrella app (My Offers, Create
-Offer, Get Now, Marketplace, Portfolio). **Merkado Pay** is the renter
-payment-link. Do not prominently brand a separate “Merkado Rent Advance”
-product. Internal series/legal wording may remain. “Merkado Premium” is
-retired.
+Offer, Simulator, Marketplace, Portfolio). **Merkado Pay** is the renter
+payment-link. **Admin** is the operations page at the bottom of the left nav.
+Do not prominently brand a separate “Merkado Rent Advance” product. Internal
+series/legal wording may remain. “Merkado Premium” is retired.
 
 ## Terminology (canonical)
 
 - **Merkado Direct** = umbrella Labs demo for landlords and holders: My Offers,
-  Create Offer, Get Now, Marketplace, and Portfolio. Calm customer copy:
+  Create Offer, Simulator, Marketplace, and Portfolio. Calm customer copy:
   “rent paid forward” or “get future rent paid upfront.”
 - **Merkado Pay** = renter payment-link for mocked USDC rent payments on
-  OP Sepolia by default (Base Sepolia also available; mainnet later).
-  Customer money is USD; USDC settles 1:1.
+  Base Sepolia by default (Base Mainnet later).
+  Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
+  1:1 with the stored USD rent.
 - **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
   with Apps and **My Payments**. Only Merkado Pay and Merkado Direct are
   live. Not production auth.
@@ -38,8 +39,9 @@ retired.
   the quote.
 - **Rent vs typical rent** = contractual rent ÷ typical nearby rent. Below
   typical is usually stronger. Internal name: rent-to-market.
-- **Connected landlord** = landlord has a link to Merkado; extra approval
-  and a slightly higher fee. Internal name: related party.
+- **Connected landlord** = internal related-party flag only. Hidden from
+  customer screens. Extra fee still exists in the engine if the seed book
+  has it. Operations manage approval in **Admin**.
 - **Passport (legacy internal field)** = stored offer scorecard object
   (`passport.total` is the Listing Score). This is **not** the merkado.cw
   **Property Passport** (listing history on a property page).
@@ -79,15 +81,15 @@ framing where they conflict.
 |---|---|
 | Merkado Direct umbrella | [LABS] Buildathon demo (see `09` after verify) |
 | Pricing engine + 24% cap | [LABS] Built |
-| Get Now + Listing / Property Score | [LABS] Buildathon scope |
-| Marketplace | [LABS] Built; subscribe gated |
-| Portfolio | [LABS] Pre-seeded positions; automatic distributions |
-| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; no real wallet |
+| Simulator + Listing / Property Score | [LABS] Buildathon scope |
+| Marketplace | [LABS] Built; demo purchase fills a position |
+| Portfolio | [LABS] Seeded positions plus purchases from Marketplace |
+| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; UI in XCG; no real wallet |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
-| Login / admin | Removed — hosted demo will use a shared host password after deploy |
+| Admin | [LABS] Bottom of left nav — approval, collections, reset |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Real wallet / Safe transfer | Mocked; OP Sepolia + Base Sepolia selectable; mainnet later; Luis handoff + access list in `07` / `12` |
+| Real wallet / Safe transfer | Still mocked on `main`. Draft PR 19 is **not merged**. Test Safe is being created on **Base Sepolia**. Address **not in the app yet**. Base Mainnet later. Handoff in `07` / `12` |
 
 ## Reading order
 

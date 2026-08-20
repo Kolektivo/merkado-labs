@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BASE_MAINNET_NETWORK_KEY,
   BASE_SEPOLIA_CHAIN_ID,
   BASE_SEPOLIA_NETWORK_KEY,
+  BASE_SEPOLIA_NETWORK_LABEL,
   BASE_SEPOLIA_USDC_CONTRACT,
   DEFAULT_PAY_NETWORK_KEY,
   OP_MAINNET_CHAIN_ID,
@@ -11,13 +13,13 @@ import {
   OP_SEPOLIA_CHAIN_ID,
   OP_SEPOLIA_EXPLORER_BASE_URL,
   OP_SEPOLIA_NETWORK_KEY,
-  OP_SEPOLIA_NETWORK_LABEL,
-  OP_SEPOLIA_USDC_CONTRACT,
   canPersistPayNetwork,
   isOfficialExplorerBaseUrl,
+  isSelectablePayNetwork,
   parseExactPayNetworkKey,
   parsePayNetworkKey,
   resolvePayNetworkKey,
+  visiblePayNetworks,
 } from "@/lib/pay/networks";
 import { formatUsd, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
@@ -38,7 +40,12 @@ import {
   mergeCryptoConfig,
   normalizeBook,
 } from "@/lib/rent-advance/payment-apply";
-import { getSeedBook } from "@/lib/rent-advance/seed";
+import {
+  CANONICAL_REFERENCE,
+  CHEAP_OFFER_REFERENCE,
+  dropRetiredDemoOffers,
+  getSeedBook,
+} from "@/lib/rent-advance/seed";
 
 test("MRA-001 USD 1800 becomes 1800000000 atomic USDC", () => {
   const atomic = usdcAtomicFromUsdCents(180000);
@@ -47,13 +54,13 @@ test("MRA-001 USD 1800 becomes 1800000000 atomic USDC", () => {
   assert.equal(formatUsd(180000), "$1,800.00");
 });
 
-test("demo crypto config defaults to OP Sepolia native USDC", () => {
+test("demo crypto config defaults to Base Sepolia native USDC", () => {
   const config = emptyCryptoConfig();
   assert.equal(config.networkKey, DEFAULT_PAY_NETWORK_KEY);
-  assert.equal(config.networkLabel, OP_SEPOLIA_NETWORK_LABEL);
-  assert.equal(config.chainId, OP_SEPOLIA_CHAIN_ID);
-  assert.equal(config.usdcContract, OP_SEPOLIA_USDC_CONTRACT);
-  assert.equal(mergeCryptoConfig({ networkLabel: null }).networkLabel, OP_SEPOLIA_NETWORK_LABEL);
+  assert.equal(config.networkLabel, BASE_SEPOLIA_NETWORK_LABEL);
+  assert.equal(config.chainId, BASE_SEPOLIA_CHAIN_ID);
+  assert.equal(config.usdcContract, BASE_SEPOLIA_USDC_CONTRACT);
+  assert.equal(mergeCryptoConfig({ networkLabel: null }).networkLabel, BASE_SEPOLIA_NETWORK_LABEL);
 
   const request = getSeedBook().paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
@@ -62,11 +69,27 @@ test("demo crypto config defaults to OP Sepolia native USDC", () => {
   assert.equal(request.amountUsdcAtomic, 1_800_000_000);
 });
 
-test("legacy OP Mainnet books rematch to the default testnet", () => {
+test("Admin only offers Base networks until Luis opts into Optimism", () => {
+  const visible = visiblePayNetworks(false);
+  assert.deepEqual(
+    visible.map((network) => network.key),
+    [BASE_SEPOLIA_NETWORK_KEY],
+  );
+  assert.equal(isSelectablePayNetwork(BASE_SEPOLIA_NETWORK_KEY), true);
+  assert.equal(isSelectablePayNetwork(OP_SEPOLIA_NETWORK_KEY), false);
+  assert.equal(isSelectablePayNetwork(BASE_MAINNET_NETWORK_KEY), false);
+});
+
+test("legacy OP books rematch to Base Sepolia", () => {
   assert.equal(resolvePayNetworkKey({ networkKey: "optimism" }), DEFAULT_PAY_NETWORK_KEY);
   assert.equal(
     mergeCryptoConfig({ networkKey: "optimism", chainId: OP_MAINNET_CHAIN_ID }).networkKey,
-    OP_SEPOLIA_NETWORK_KEY,
+    BASE_SEPOLIA_NETWORK_KEY,
+  );
+  assert.equal(
+    mergeCryptoConfig({ networkKey: OP_SEPOLIA_NETWORK_KEY, chainId: OP_SEPOLIA_CHAIN_ID })
+      .networkKey,
+    BASE_SEPOLIA_NETWORK_KEY,
   );
 });
 
@@ -91,7 +114,7 @@ test("stored mainnet rematches to the default testnet unless mainnet is enabled"
   assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), false);
   assert.equal(
     mergeCryptoConfig({ networkKey: OP_MAINNET_NETWORK_KEY }).networkKey,
-    OP_SEPOLIA_NETWORK_KEY,
+    BASE_SEPOLIA_NETWORK_KEY,
   );
 });
 
@@ -125,28 +148,65 @@ test("demo hashes are not explorer links", () => {
   );
 });
 
+test("the demo book seeds only the two walkthrough offers", () => {
+  const book = getSeedBook();
+  assert.deepEqual(
+    book.offers.map((offer) => offer.reference),
+    [CANONICAL_REFERENCE, CHEAP_OFFER_REFERENCE],
+  );
+});
+
+test("retired filler offers are dropped without removing new drafts", () => {
+  const book = getSeedBook();
+  const cheap = book.offers.find((offer) => offer.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(cheap);
+  const filler = structuredClone(cheap);
+  filler.reference = "MRA-002";
+  filler.offerId = "offer-mra-002";
+  const draft = structuredClone(cheap);
+  draft.reference = "MRA-007";
+  draft.offerId = "offer-mra-007";
+  draft.status = "draft";
+  const next = dropRetiredDemoOffers({
+    ...book,
+    offers: [...book.offers, filler, draft],
+    assignedTenancies: [...book.assignedTenancies, "tn-002"],
+  });
+  assert.deepEqual(
+    next.offers.map((offer) => offer.reference),
+    [CANONICAL_REFERENCE, CHEAP_OFFER_REFERENCE, "MRA-007"],
+  );
+  assert.equal(next.assignedTenancies.includes("tn-002"), false);
+});
+
 test("draft and unfunded offers are excluded from advanced totals", () => {
   const book = getSeedBook();
-  const mra001 = book.offers.find((offer) => offer.reference === "MRA-001");
-  const funding = book.offers.find((offer) => offer.reference === "MRA-002");
-  const review = book.offers.find((offer) => offer.reference === "MRA-004");
-  const draft = book.offers.find((offer) => offer.reference === "MRA-006");
+  const mra001 = book.offers.find((offer) => offer.reference === CANONICAL_REFERENCE);
+  const cheap = book.offers.find((offer) => offer.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(mra001 && cheap);
 
-  assert.ok(mra001 && funding && review && draft);
-  assert.equal(review.status, "under_review");
-  assert.equal(review.fundedCents, 0);
-  assert.equal(draft.status, "draft");
-  assert.equal(draft.fundedCents, 0);
+  const funding = structuredClone(cheap);
+  funding.reference = "MRA-FUNDING";
+  funding.status = "funding";
+  funding.fundedCents = 200;
+  funding.purchasePriceCents = 500;
+
+  const review = structuredClone(cheap);
+  review.reference = "MRA-REVIEW";
+  review.status = "under_review";
+  review.fundedCents = 0;
+
+  const draft = structuredClone(cheap);
+  draft.reference = "MRA-DRAFT";
+  draft.status = "draft";
+  draft.fundedCents = 0;
 
   const totals = bookTotals({
     ...book,
     offers: [mra001, funding, review, draft],
   });
 
-  assert.equal(
-    totals.totalAdvanced,
-    mra001.purchasePriceCents + funding.purchasePriceCents,
-  );
+  assert.equal(totals.totalAdvanced, mra001.purchasePriceCents + funding.purchasePriceCents);
   assert.ok(totals.totalAdvanced < totals.totalAdvanced + draft.purchasePriceCents);
   assert.ok(totals.totalAdvanced < totals.totalAdvanced + review.purchasePriceCents);
 });

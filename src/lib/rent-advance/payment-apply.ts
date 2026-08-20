@@ -21,7 +21,7 @@ import {
   getPayNetwork,
   resolvePayNetworkKey,
 } from "@/lib/pay/networks";
-import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import { formatXcg, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -100,8 +100,102 @@ function ensureOfferIds(offer: Offer): Offer {
   };
 }
 
+function renterAccountIdFor(): string {
+  return RENTER_ACCOUNT_ID;
+}
+
+function shouldMintPaymentRequests(offer: Offer): boolean {
+  return offer.status === "live" || offer.status === "collecting" || offer.status === "default";
+}
+
+export function canSubscribeOffer(offer: Offer): boolean {
+  return (
+    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting") &&
+    offer.offeringCents > offer.fundedCents
+  );
+}
+
+export function applySubscribe(
+  book: DemoBook,
+  reference: string,
+  at = new Date().toISOString(),
+  amountCents?: number,
+): DemoBook {
+  const next = structuredClone(book);
+  const offer = next.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  if (!canSubscribeOffer(offer)) {
+    throw new Error("This offer is not open to purchase.");
+  }
+
+  const remaining = offer.offeringCents - offer.fundedCents;
+  const purchaseCents =
+    amountCents == null ? remaining : Math.round(amountCents);
+  if (!Number.isFinite(purchaseCents) || purchaseCents <= 0) {
+    throw new Error("Enter an amount above zero.");
+  }
+  if (purchaseCents > remaining) {
+    throw new Error("That amount is more than is still open.");
+  }
+
+  offer.fundedCents += purchaseCents;
+  const filled = offer.fundedCents >= offer.offeringCents;
+  if (filled && offer.status === "funding") offer.status = "live";
+  if (filled) {
+    offer.publishedAt = offer.publishedAt ?? at;
+    offer.settlementTransactionId = settlementTxIdFor(offer.reference);
+    offer.nextAction = "Collect first rent";
+  } else {
+    offer.nextAction = "Wait for remaining funding";
+  }
+
+  const existingHolder = offer.holders[0];
+  if (existingHolder) {
+    existingHolder.contributedCents = offer.fundedCents;
+    existingHolder.units = Math.max(1, existingHolder.units || offer.unitsIssued || 1);
+  } else {
+    offer.holders = [
+      {
+        holderId: "act-purchaser",
+        holderName: "Merkado Receivables I B.V.",
+        units: Math.max(1, offer.unitsIssued || 1),
+        contributedCents: offer.fundedCents,
+        receivedCents: 0,
+        anonymised: true,
+      },
+    ];
+  }
+
+  const purchaseEvent = {
+    id: `ev-${reference}-subscribe-${at}`,
+    at,
+    title: filled ? "Offer filled" : "Participation purchased",
+    detail: filled
+      ? `${formatXcg(purchaseCents)} filled the offering. The landlord settlement is recorded.`
+      : `${formatXcg(purchaseCents)} purchased. ${formatXcg(offer.offeringCents - offer.fundedCents)} still open.`,
+    actor: "System",
+  };
+  const settlementEvent = filled
+    ? {
+        id: `ev-${reference}-settled`,
+        at,
+        title: "Settled to the landlord",
+        detail: "Purchase price released in one payment",
+        actor: "System",
+      }
+    : null;
+
+  offer.events = [
+    purchaseEvent,
+    ...(settlementEvent ? [settlementEvent] : []),
+    ...offer.events.filter((row) => row.id !== `ev-${reference}-settled`),
+  ];
+
+  return normalizeBook(next);
+}
+
 function settlementTransaction(offer: Offer): LedgerTransaction | null {
-  if (offer.fundedCents <= 0) return null;
+  if (offer.fundedCents <= 0 || offer.fundedCents < offer.offeringCents) return null;
   const transactionId = settlementTxIdFor(offer.reference);
   return {
     transactionId,
@@ -136,7 +230,7 @@ function paymentRequestForReceivable(
   const confirmed = receivable.status === "received";
   return {
     paymentRequestId,
-    accountId: offer.tenant.id === "tn-001" ? RENTER_ACCOUNT_ID : `acc-${offer.tenant.id}`,
+    accountId: renterAccountIdFor(),
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     propertyId: offer.property.id,
@@ -197,8 +291,7 @@ export function normalizeBook(raw: unknown): DemoBook {
   );
   const paymentRequests: PaymentRequest[] = [];
   for (const offer of offers) {
-    if (offer.reference !== "MRA-001") continue;
-    if (offer.status === "draft" || offer.status === "under_review") continue;
+    if (!shouldMintPaymentRequests(offer)) continue;
     for (const receivable of offer.receivables) {
       const next = paymentRequestForReceivable(offer, receivable.n, receivingAddress);
       if (!next) continue;

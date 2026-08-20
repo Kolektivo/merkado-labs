@@ -37,8 +37,8 @@ export function overviewPayCardBody(mode: PaymentRailMode = PAYMENT_RAIL_MODE): 
 
 export function paymentNetworkHelp(mode: PaymentRailMode = PAYMENT_RAIL_MODE): string {
   return isMockPaymentRail(mode)
-    ? "Luis uses this when he connects a real wallet. Use a test network. Mainnet stays off until we turn it on for real USDC."
-    : "Choose the network Pay uses. Keep a test network until the Product Lead turns on mainnet.";
+    ? "Luis uses this when he connects a real wallet. Stay on Base Sepolia. Base Mainnet stays off until we turn it on for real USDC."
+    : "Choose the network Pay uses. Stay on Base Sepolia until the Product Lead turns on Base Mainnet.";
 }
 
 export function paymentNetworkBody(

@@ -5,13 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  BookOpen,
   Briefcase,
   Home,
   LayoutDashboard,
   LineChart,
   Plus,
+  Shield,
+  Store,
   UserRound,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -46,29 +48,18 @@ type NavItem = {
   icon: LucideIcon;
 };
 
-type NavSection = {
-  label: string;
-  items: NavItem[];
-};
+const productNav: NavItem[] = [
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/originate", label: "My Offers", icon: Home },
+  { href: "/originate/new", label: "Create Offer", icon: Plus },
+  { href: "/originate/simulator", label: "Simulator", icon: LineChart },
+  { href: "/offers", label: "Marketplace", icon: Store },
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+];
 
-const navigationSections: NavSection[] = [
-  {
-    label: "Demo",
-    items: [
-      { href: "/", label: "Overview", icon: LayoutDashboard },
-      { href: "/account", label: "Merkado Account", icon: UserRound },
-    ],
-  },
-  {
-    label: "Merkado Direct",
-    items: [
-      { href: "/originate", label: "My Offers", icon: Home },
-      { href: "/originate/new", label: "Create Offer", icon: Plus },
-      { href: "/originate/simulator", label: "Get Now", icon: LineChart },
-      { href: "/offers", label: "Marketplace", icon: BookOpen },
-      { href: "/portfolio", label: "Portfolio", icon: Briefcase },
-    ],
-  },
+const utilityNav: NavItem[] = [
+  { href: "/pay", label: "Merkado Pay", icon: Wallet },
+  { href: "/account", label: "Account", icon: UserRound },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -76,7 +67,38 @@ function isActivePath(pathname: string, href: string) {
   if (href === "/originate") {
     return pathname === "/originate" || /^\/originate\/MRA-/.test(pathname);
   }
+  if (href === "/admin") {
+    return pathname === "/admin" || pathname.startsWith("/admin/");
+  }
+  if (href === "/pay") {
+    return pathname === "/pay" || pathname.startsWith("/pay/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavLinks({ items, pathname }: { items: NavItem[]; pathname: string }) {
+  return (
+    <SidebarMenu>
+      {items.map(({ href, label, icon: Icon }) => (
+        <SidebarMenuItem key={href}>
+          <SidebarMenuButton
+            asChild
+            isActive={isActivePath(pathname, href)}
+            tooltip={label}
+            className="min-h-9"
+          >
+            <Link
+              href={href}
+              aria-current={isActivePath(pathname, href) ? "page" : undefined}
+            >
+              <Icon />
+              <span>{label}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
 }
 
 function AppSidebar() {
@@ -87,7 +109,7 @@ function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Merkado Labs">
+            <SidebarMenuButton size="lg" asChild tooltip="Merkado Direct">
               <Link href="/">
                 <Image
                   src="/cw-logo.png"
@@ -98,13 +120,9 @@ function AppSidebar() {
                   priority
                 />
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Merkado Labs</span>
+                  <span className="truncate font-semibold">Merkado Direct</span>
                   <span className="truncate text-xs text-sidebar-foreground/60">
-                    {pathname.startsWith("/account")
-                      ? "Demo account"
-                      : pathname.startsWith("/pay")
-                        ? "Merkado Pay"
-                        : "Merkado Direct"}
+                    Rent paid forward
                   </span>
                 </div>
               </Link>
@@ -115,41 +133,39 @@ function AppSidebar() {
 
       <SidebarContent>
         <nav aria-label="Primary navigation">
-          {navigationSections.map((section) => (
-            <SidebarGroup key={section.label}>
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {section.items.map(({ href, label, icon: Icon }) => (
-                    <SidebarMenuItem key={href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActivePath(pathname, href)}
-                        tooltip={label}
-                        className="min-h-9"
-                      >
-                        <Link
-                          href={href}
-                          aria-current={
-                            isActivePath(pathname, href) ? "page" : undefined
-                          }
-                        >
-                          <Icon />
-                          <span>{label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
+          <SidebarGroup>
+            <SidebarGroupLabel>Merkado Direct</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavLinks items={productNav} pathname={pathname} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>More</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavLinks items={utilityNav} pathname={pathname} />
+            </SidebarGroupContent>
+          </SidebarGroup>
         </nav>
       </SidebarContent>
       <SidebarFooter>
-        <div className="hidden px-2 text-[11px] leading-relaxed text-sidebar-foreground/60 md:block">
-          Demo · sale of future rent, not a loan
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isActivePath(pathname, "/admin")}
+              tooltip="Admin"
+              className="min-h-9"
+            >
+              <Link
+                href="/admin"
+                aria-current={isActivePath(pathname, "/admin") ? "page" : undefined}
+              >
+                <Shield />
+                <span>Admin</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
@@ -191,9 +207,6 @@ function SiteHeader() {
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
       <SidebarTrigger className="-ml-1 shrink-0" />
       <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
-      <p className="ml-auto hidden shrink-0 text-xs font-medium text-muted-foreground sm:block">
-        Labs demo · not live on merkado.cw
-      </p>
     </header>
   );
 }

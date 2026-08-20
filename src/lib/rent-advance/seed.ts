@@ -212,6 +212,7 @@ function makeOffer(input: {
   payer: PayerFile;
   agency: string;
   fundedCents?: number;
+  offeringCents?: number;
   receivedCount?: number;
   missedCount?: number;
   createdAt?: string;
@@ -225,9 +226,10 @@ function makeOffer(input: {
     input.passportTotal,
     input.payerScore,
   );
-  const units = 1000;
-  const subscriptionPriceCents = 1050;
-  const offeringCents = units * subscriptionPriceCents;
+  const units = input.offeringCents != null ? 1 : 1000;
+  const subscriptionPriceCents =
+    input.offeringCents != null ? input.offeringCents : 1050;
+  const offeringCents = input.offeringCents ?? units * subscriptionPriceCents;
   const schedule = holderSchedule({
     offeringCents,
     purchasePriceCents: quote.purchasePriceCents,
@@ -329,16 +331,21 @@ function makeOffer(input: {
         actor: "D. Martina",
       },
     ],
-    holders: [
-      {
-        holderId: "act-purchaser",
-        holderName: "Merkado Receivables I B.V.",
-        units,
-        contributedCents: offeringCents,
-        receivedCents: receivedCount * input.rent,
-        anonymised: true,
-      },
-    ],
+    holders:
+      (input.fundedCents ?? (input.status === "draft" ? 0 : offeringCents)) > 0
+        ? [
+            {
+              holderId: "act-purchaser",
+              holderName: "Merkado Receivables I B.V.",
+              units,
+              contributedCents:
+                input.fundedCents ??
+                (input.status === "draft" ? 0 : offeringCents),
+              receivedCents: receivedCount * input.rent,
+              anonymised: true,
+            },
+          ]
+        : [],
     releases: [],
     agency: input.agency,
   };
@@ -530,7 +537,7 @@ function buildOffers(): Offer[] {
       id: "ev-001-6",
       at: "2026-09-30",
       title: "Collection month 1 scheduled",
-      detail: "End of month · $1,800.00",
+      detail: "End of month · XCG 3,222.00",
       actor: "System",
     },
     {
@@ -580,136 +587,34 @@ function buildOffers(): Offer[] {
   return [
     mra001,
     makeOffer({
-      reference: "MRA-002",
+      reference: "MRA-010",
       status: "funding",
-      nextAction: "Wait for remaining funding",
+      nextAction: "Open on Marketplace",
+      relatedParty: false,
       months: 6,
-      rent: 260000,
-      passportTotal: 82,
-      payerScore: 88,
-      agency: "Keller Williams Curaçao",
-      fundedCents: 480000,
-      property: makeProperty({
-        id: "prop-002",
-        address: "Demo address · Jan Thiel",
-        district: "Jan Thiel",
-        type: "Apartment",
-        summary: "Apartment, ground floor, pool access",
-        features: ["AC", "pool"],
-      }),
-      payer: makePayer({
-        id: "tn-002",
-        fullName: "M. C.",
-        initials: "M.C.",
-        scores: { paymentHistory: 36, rentToIncome: 20, employment: 18, savings: 14, total: 88 },
-      }),
-    }),
-    makeOffer({
-      reference: "MRA-003",
-      status: "closed",
-      nextAction: "Archive",
-      months: 6,
-      rent: 155000,
-      passportTotal: 76,
-      payerScore: 80,
-      agency: "RE/MAX BonBini",
-      receivedCount: 6,
-      property: makeProperty({
-        id: "prop-003",
-        address: "Demo address · Otrobanda",
-        district: "Otrobanda",
-        type: "Townhouse",
-        summary: "Townhouse near the boulevard",
-        bedrooms: 3,
-      }),
-      payer: makePayer({
-        id: "tn-003",
-        fullName: "K. A.",
-        initials: "K.A.",
-        scores: { paymentHistory: 34, rentToIncome: 18, employment: 16, savings: 12, total: 80 },
-      }),
-    }),
-    makeOffer({
-      reference: "MRA-004",
-      status: "under_review",
-      nextAction: "Approve",
-      months: 6,
-      rent: 390000,
-      passportTotal: 91,
-      payerScore: 90,
-      agency: "Keller Williams Curaçao",
-      fundedCents: 0,
-      property: makeProperty({
-        id: "prop-004",
-        address: "Demo address · Blue Bay",
-        district: "Blue Bay",
-        type: "Villa",
-        summary: "3-bed villa with sea view",
-        bedrooms: 3,
-        bathrooms: 2,
-        interiorM2: 160,
-        features: ["AC", "sea view"],
-      }),
-      payer: makePayer({
-        id: "tn-004",
-        fullName: "S. D.",
-        initials: "S.D.",
-        monthlyIncomeCents: 1200000,
-        scores: { paymentHistory: 38, rentToIncome: 22, employment: 18, savings: 12, total: 90 },
-      }),
-    }),
-    makeOffer({
-      reference: "MRA-005",
-      status: "default",
-      nextAction: "Start recovery",
-      months: 6,
-      rent: 105000,
-      passportTotal: 64,
-      payerScore: 58,
+      rent: 100,
+      passportTotal: 89,
+      payerScore: 95,
       agency: "Moret Real Estate",
-      receivedCount: 2,
-      missedCount: 1,
-      property: makeProperty({
-        id: "prop-005",
-        address: "Demo address · Vista Royal",
-        district: "Vista Royal",
-        type: "Studio",
-        summary: "Studio in a gated block",
-        bedrooms: 1,
-        interiorM2: 42,
-      }),
-      payer: makePayer({
-        id: "tn-005",
-        fullName: "R. B.",
-        initials: "R.B.",
-        monthlyIncomeCents: 280000,
-        monthsEvidenced: 6,
-        latePayments12m: 2,
-        scores: { paymentHistory: 22, rentToIncome: 14, employment: 12, savings: 10, total: 58 },
-      }),
-    }),
-    makeOffer({
-      reference: "MRA-006",
-      status: "draft",
-      nextAction: "Finish draft",
-      months: 6,
-      rent: 200000,
-      passportTotal: 71,
-      payerScore: 74,
-      agency: "SeriDomi",
       fundedCents: 0,
+      offeringCents: quoteFor(100, 6, false, 89, 95).purchasePriceCents,
+      marketRentCents: 200,
       property: makeProperty({
-        id: "prop-006",
-        address: "Demo address · Brakkeput",
-        district: "Brakkeput",
-        type: "Apartment",
-        summary: "2-bed apartment, renovated",
+        id: "prop-010",
+        address: "Demo address · Punda",
+        district: "Punda",
+        type: "Studio",
+        summary: "Compact studio near the waterfront",
+        bedrooms: 1,
+        bathrooms: 1,
+        interiorM2: 28,
+        features: ["AC", "furnished"],
       }),
       payer: makePayer({
-        id: "tn-006",
-        fullName: "J. W.",
-        initials: "J.W.",
-        scores: { paymentHistory: 30, rentToIncome: 18, employment: 14, savings: 12, total: 74 },
+        id: "tn-010",
+        fullName: DEMO_RENTER_PROFILE.fullName,
+        initials: DEMO_RENTER_PROFILE.payerInitials,
+        monthlyIncomeCents: 45000,
       }),
     }),
   ];
@@ -728,8 +633,36 @@ export function getSeedBook(): DemoBook {
     offers: buildOffers(),
     checklist: CHECKLIST,
     openQuestions: OPEN_QUESTIONS,
-    assignedTenancies: ["tn-001", "tn-002", "tn-003", "tn-005"],
+    assignedTenancies: ["tn-001", "tn-010"],
   });
 }
 
 export const CANONICAL_REFERENCE = "MRA-001";
+export const CHEAP_OFFER_REFERENCE = "MRA-010";
+export const DEMO_SEED_OFFER_REFERENCES = [CANONICAL_REFERENCE, CHEAP_OFFER_REFERENCE] as const;
+
+/** Filler offers retired so the walkthrough only shows the two demo deals. */
+export const RETIRED_DEMO_OFFER_REFERENCES = [
+  "MRA-002",
+  "MRA-003",
+  "MRA-004",
+  "MRA-005",
+  "MRA-006",
+] as const;
+
+const RETIRED_DEMO_TENANCY_IDS = new Set(["tn-002", "tn-003", "tn-004", "tn-005", "tn-006"]);
+
+export function dropRetiredDemoOffers(book: DemoBook): DemoBook {
+  const retired = new Set<string>(RETIRED_DEMO_OFFER_REFERENCES);
+  const offers = book.offers.filter((offer) => !retired.has(offer.reference));
+  const assignedTenancies = (book.assignedTenancies ?? []).filter(
+    (id) => !RETIRED_DEMO_TENANCY_IDS.has(id),
+  );
+  if (
+    offers.length === book.offers.length &&
+    assignedTenancies.length === (book.assignedTenancies ?? []).length
+  ) {
+    return book;
+  }
+  return { ...book, offers, assignedTenancies };
+}

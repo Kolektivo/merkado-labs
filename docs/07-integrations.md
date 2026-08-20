@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto developer handoff.
-**Last updated:** August 19, 2026 (Luis handoff + access + rail-mode switch)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## Live
 
@@ -27,12 +27,15 @@ These are local/demo direction only. They do not authorise deployment.
 |---|---|
 | `NEXT_PUBLIC_MERKADO_PAY_URL` | Apps card uses `/pay` |
 | `NEXT_PUBLIC_MERKADO_DIRECT_URL` | Apps card uses `/originate` |
-| `NEXT_PUBLIC_PAY_NETWORK` | Demo defaults to **OP Sepolia** (`op-sepolia`) |
+| `NEXT_PUBLIC_PAY_NETWORK` | Demo defaults to **Base Sepolia** (`base-sepolia`) |
 
-Allowed `NEXT_PUBLIC_PAY_NETWORK` values: `op-sepolia`, `base-sepolia`,
-`op-mainnet`, `base-mainnet`. Use the full keys only. Overview can switch
-the two testnets. Mainnet choices appear only when this env is already a
-mainnet. Reset keeps the selected test network.
+Allowed `NEXT_PUBLIC_PAY_NETWORK` values for this walkthrough:
+`base-sepolia` now, `base-mainnet` later. Use the full keys only. Admin
+shows Base Sepolia. Base Mainnet appears only when this env is already
+`base-mainnet`. Reset keeps the selected Base testnet.
+
+Optimism keys (`op-sepolia`, `op-mainnet`) stay in the catalog if Luis
+later opts in. They are hidden in Admin until then.
 
 Open a new tab only when the app URL value is an absolute external URL.
 
@@ -40,8 +43,8 @@ Open a new tab only when the app URL value is an absolute external URL.
 
 - Bank / Stichting statements as attested collection evidence
 - Written counsel opinions to lift Stage 0 gates
-- Real wallet connection and native USDC transfer on a testnet first,
-  then OP Mainnet or Base Mainnet when approved
+- Real wallet connection and native USDC transfer on **Base Sepolia** first,
+  then **Base Mainnet** when approved
 - Optional move of this demo toward `direct.merkado.cw` and `pay.merkado.cw`
 
 ---
@@ -71,12 +74,13 @@ The demo is a working rent-paid-forward walkthrough, not a sketch:
 3. That one confirmation updates My Payments, the offer collection, and
    the holder distribution **once**. Refresh does not double-pay.
 4. A later month cannot be paid while an earlier month is still open.
-5. Reset on Overview restores the seeded book and keeps the selected
+5. Reset in Admin restores the seeded book and keeps the selected
    payment network.
 
-Your job is to make the same buttons talk to **native USDC on the selected
-network**, without rewriting pricing, offers, collections, or the demo
-book rules. Start on a testnet.
+Your job is to make the same buttons talk to **native USDC on Base
+Sepolia**, without rewriting pricing, offers, collections, or the demo
+book rules. Move to **Base Mainnet** only after the Product Lead turns
+it on.
 
 ### Approved networks
 
@@ -85,37 +89,38 @@ hard-code a chain. Read `config.chainId` and `config.usdcContract`.
 
 | Key | Label | Use now | Chain ID | Native USDC | Explorer |
 |---|---|---|---|---|---|
-| `op-sepolia` | OP Sepolia | **Default testnet** (Optimism / OP Mainnet test network) | 11155420 | `0x5fd84259d66Cd46123540766Be93DFE6D43130D7` | `https://sepolia-optimism.etherscan.io` |
-| `base-sepolia` | Base Sepolia | **Optional testnet** | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | `https://sepolia.basescan.org` |
-| `op-mainnet` | OP Mainnet | Later / real USDC | 10 | `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85` | `https://optimistic.etherscan.io` |
-| `base-mainnet` | Base Mainnet | Later / real USDC | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `https://basescan.org` |
+| `base-sepolia` | Base Sepolia | **Now — Base testnet, test Safe, live walkthrough** | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | `https://sepolia.basescan.org` |
+| `base-mainnet` | Base Mainnet | **Later / real USDC** | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `https://basescan.org` |
+| `op-sepolia` | OP Sepolia | Catalog only. Hidden in Admin unless Luis later opts in. | 11155420 | `0x5fd84259d66Cd46123540766Be93DFE6D43130D7` | `https://sepolia-optimism.etherscan.io` |
+| `op-mainnet` | OP Mainnet | Catalog only. Hidden in Admin unless Luis later opts in. | 10 | `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85` | `https://optimistic.etherscan.io` |
 
 Public RPCs (for your adapter only; this repo does not call them):
 
-- OP Sepolia: `https://sepolia.optimism.io`
 - Base Sepolia: `https://sepolia.base.org`
-- OP Mainnet: `https://mainnet.optimism.io`
 - Base: `https://mainnet.base.org`
+- OP Sepolia: `https://sepolia.optimism.io` (later / opt-in)
+- OP Mainnet: `https://mainnet.optimism.io` (later / opt-in)
 
 Circle testnet USDC: [faucet.circle.com](https://faucet.circle.com).
 Token is always Circle **native USDC**, 6 decimals. Not USDC.e / USDbC.
 
-Older stored books used network key `optimism` (OP Mainnet). Those rematch
-to the current default testnet. An explicit `op-mainnet` or `base-mainnet`
-selection is kept.
+Older stored books used network key `optimism` or `op-sepolia`. Those
+rematch to **Base Sepolia**. An explicit `base-mainnet` selection is kept
+only when mainnet is enabled.
 
 ### Product decisions already made
 
 | Topic | Decision |
 |---|---|
-| Network now | **OP Sepolia** default, **Base Sepolia** also available |
-| Network later | OP Mainnet and Base, when the Product Lead is ready for real USDC |
+| Network now | **Base Sepolia** (Base testnet) |
+| Network later | **Base Mainnet**, when the Product Lead is ready for real USDC |
 | Token | Circle **native USDC** for the selected network. Not USDC.e. |
 | Decimals | 6 |
 | Explorer | Official explorer for the selected network — only link a real 64-hex `0x` hash |
 | Customer money | **USD**. Stored as integer cents. |
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
-| Receiving Safe | Still a **fictional** demo address. You choose and verify the real Safe on the selected network. |
+| Test Safe | Create on **Base Sepolia**. Threshold **2 of 2**. Owners only: Enrique `0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8` and Luuk `0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`. You are not a signer. |
+| Receiving Safe | Still a **fictional** demo address in the app. After you send the Base Sepolia Safe address and the Product Lead confirms it, put it in `cryptoConfig`. |
 | Wallet in this repo | Mocked. No SDK installed. |
 
 MRA-001 locked Pay request:
@@ -222,10 +227,10 @@ No wallet. No USDC.
 
 | Step | Screen | Your work |
 |---|---|---|
-| Quote | Get Now | None. Money is USD |
+| Quote | Simulator | None. Book stores USD; UI shows XCG at 1.79 |
 | Save draft | Create Offer | None |
 | See settlement | Offer detail MRA-001 | Optional explorer link only if a **real** tx hash exists |
-| Record collection | Offer detail → Lab controls | None. This is the off-chain fallback, same book helper |
+| Record collection | Admin offer → Record collection | None. This is the off-chain fallback, same book helper |
 
 #### Flow D — Holder (Marketplace + Portfolio)
 
@@ -251,7 +256,7 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 - `receivingAddress` (today fictional; replace via `cryptoConfig.safeAddress`)
 - `paymentReference` (human only)
 - `dueDate` / `periodLabel`
-- `cryptoConfig.networkKey` (`op-sepolia` by default)
+- `cryptoConfig.networkKey` (`base-sepolia` by default)
 - `cryptoConfig.chainId`
 - `cryptoConfig.usdcContract`
 - `cryptoConfig.explorerBaseUrl`
@@ -262,9 +267,11 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
    memo. The on-screen reference will not appear in the transfer. Production
    must use payment-contract calldata, unique deposit addresses, or another
    verified matching design. Matching only amount and time is not enough.
-2. **Real Safe.** Create or name a Safe on the selected testnet first,
-   confirm Safe services work there, and put address + id into
-   `cryptoConfig`. Keep demo addresses obviously fake until then.
+2. **Real Safe.** Create the 2-of-2 Safe on **Base Sepolia** with Enrique
+   and Luuk as the only owners. Confirm Safe services work there. Send
+   the address to the Product Lead. Put address + id into `cryptoConfig`
+   only after that confirmation. Keep demo addresses obviously fake until
+   then. Do not create this test Safe on Base Mainnet.
 3. **Safe execution for holder payouts.** Threshold confirmations, a module,
    a backend relayer, or batching — pick one and get it approved. Do not
    describe the Safe as escrow or custody without counsel.
@@ -297,7 +304,7 @@ That single switch updates:
 |---|---|---|
 | Overview banner | Wallet and USDC payments are mocked | Pay sends USDC on the selected network |
 | Overview Pay card | Demo only — nothing real is sent | Pays in USDC on the selected network |
-| Payment network help | Luis uses this when he connects a real wallet | Choose the network Pay uses |
+| Payment network help | Stay on Base Sepolia. Base Mainnet stays off until we turn it on | Stay on Base Sepolia until the Product Lead turns on Base Mainnet |
 | Payment network body | The demo wallet still does not send real money | A connected wallet sends USDC on this network |
 | Pay button | Pay with demo wallet | Pay with wallet |
 | Connected line | Demo wallet connected | Wallet connected |
@@ -342,7 +349,7 @@ When the rail is live:
 
 ### Suggested implementation order (after approval)
 
-1. Confirm the selected **testnet** + native USDC + Safe services together.
+1. Confirm **Base Sepolia** + native USDC + Safe services together.
 2. Put the real Safe address in `cryptoConfig`.
 3. Implement `PaymentProvider` against `provider.ts`.
 4. Switch `createPaymentProvider` to that adapter.
@@ -351,7 +358,8 @@ When the rail is live:
 7. Confirm on the **server** from chain data, then write the book.
 8. Only then show explorer links for real hashes.
 9. Separately design allocation and holder-distribution execution.
-10. Only after a testnet walkthrough works, ask to move to OP Mainnet or Base Mainnet.
+10. Only after the Base Sepolia walkthrough works, ask to repeat the Safe
+    setup and pay flow on **Base Mainnet**.
 
 Useful references: Circle USDC contract addresses, Circle USDC faucet,
 Safe Smart Account overview, Safe Transaction Service, Safe supported
@@ -369,7 +377,7 @@ for merkado.cw production, production Supabase, or production Vercel.
 | Supabase **merkado-labs** `csaefdkpwukshtouyixg` | **Developer** | Read schema and the demo book if you must debug persistence. |
 | Labs env values | Secure copy of `.env.local` Labs keys | Run the demo locally against the Labs book. Never commit them. |
 | Hosted walkthrough password | The `LABS_DEMO_PASSWORD` value, shared privately | Open https://merkado-labs.vercel.app after deploy. |
-| Safe{Wallet} | Owner or signer on a **testnet** Safe you create or join | Receiving address for Pay. Start on OP Sepolia. |
+| Safe{Wallet} | Create a **Base Sepolia** Safe. You do **not** need to stay an owner. | Receiving address for Pay. Owners are Enrique and Luuk only (**2 of 2**). |
 | Reown / WalletConnect Cloud | A project you create or are invited to | Wallet connect project ID for the adapter. |
 | RPC (optional) | Alchemy, Infura, or similar Labs-only key | More reliable than public RPCs. Not required to start. |
 | Circle faucet | None. Public. | Test USDC: https://faucet.circle.com |
@@ -392,9 +400,9 @@ commit values):
 
 ### Done when
 
-- Renter can connect a real wallet on **OP Sepolia**, send **1,800.00**
-  native USDC to the real Safe, and see **Rent paid** only after the
-  chain confirms it.
+- Renter can connect a real wallet on **Base Sepolia**, send **1,800.00**
+  native USDC to the real 2-of-2 Safe, and see **Rent paid** only after
+  the chain confirms it.
 - The same confirmation updates My Payments, offer MRA-001, and
   Portfolio `pos-mra-001` **once**.
 - Copy no longer says demo wallet / nothing real is sent (`PAYMENT_RAIL_MODE`
@@ -402,7 +410,7 @@ commit values):
 - Explorer links open only for real 64-hex hashes.
 - Copy-address path still works by watching the Safe, not by trusting
   the renter’s click.
-- Mainnet stays off unless the Product Lead turns it on.
+- Mainnet stays off unless the Product Lead turns on **Base Mainnet**.
 - Allocation and holder Safe execution are written up, even if not
   built yet.
 

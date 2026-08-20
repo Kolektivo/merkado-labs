@@ -1,16 +1,13 @@
-import Image from "next/image";
 import Link from "next/link";
 import { BedDouble, House, MapPin } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { HelpTip } from "@/components/help-tip";
+import { PropertyCover } from "@/components/property-cover";
 import { PLAIN } from "@/lib/rent-advance/copy";
-import { formatUsd } from "@/lib/rent-advance/money";
+import { formatXcg } from "@/lib/rent-advance/money";
 import { bandPlainName } from "@/lib/rent-advance/scoring";
-import {
-  propertyCoverSrc,
-  statusLabel,
-} from "@/lib/rent-advance/helpers";
+import { coverSrcFor, statusLabel } from "@/lib/rent-advance/helpers";
 import type { BuyerOfferCard } from "@/lib/rent-advance/types";
 
 function SpecDivider() {
@@ -71,12 +68,9 @@ export function MarketplaceOfferCard({ card }: { card: BuyerOfferCard }) {
       />
       <div className="pointer-events-none relative z-10 flex h-full flex-col">
         <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-t-[12px] bg-grey-100">
-          <Image
-            src={propertyCoverSrc(card.type)}
-            alt=""
-            fill
+          <PropertyCover
+            src={coverSrcFor(card.type, card.coverImageSrc)}
             sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-            className="object-cover"
           />
         </div>
 
@@ -105,10 +99,10 @@ export function MarketplaceOfferCard({ card }: { card: BuyerOfferCard }) {
           <div className="mt-auto flex flex-col gap-2">
             <div className="border-t border-grey-300 pt-3">
               <p className="text-xl font-semibold leading-6 text-surface-dark">
-                <span className="tabular-nums">{formatUsd(card.fundedCents, true)}</span>
+                <span className="tabular-nums">{formatXcg(card.fundedCents, true)}</span>
                 <span className="text-[14px] font-medium leading-5 text-grey-800">
                   {" "}
-                  of {formatUsd(card.offeringCents, true)} filled
+                  of {formatXcg(card.offeringCents, true)} filled
                 </span>
                 <span className="pointer-events-auto relative z-20 ml-1 inline-flex align-middle">
                   <HelpTip label="Amount filled">{PLAIN.amountTaken}</HelpTip>

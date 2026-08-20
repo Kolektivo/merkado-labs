@@ -7,7 +7,11 @@ import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { Label } from "@/components/ui/label";
 import { paymentNetworkBody, paymentNetworkHelp } from "@/lib/pay/mode";
-import { PAY_NETWORK_LIST, type PayNetworkKey } from "@/lib/pay/networks";
+import {
+  defaultPayNetworkKey,
+  visiblePayNetworks,
+  type PayNetworkKey,
+} from "@/lib/pay/networks";
 import { setPayNetworkAction } from "@/lib/rent-advance/actions";
 
 export function PayNetworkControl({
@@ -24,9 +28,10 @@ export function PayNetworkControl({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const selected = PAY_NETWORK_LIST.some((network) => network.key === networkKey)
+  const networks = visiblePayNetworks(allowMainnet);
+  const selected = networks.some((network) => network.key === networkKey)
     ? networkKey
-    : PAY_NETWORK_LIST[0].key;
+    : defaultPayNetworkKey();
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -63,19 +68,23 @@ export function PayNetworkControl({
           }}
         >
           <optgroup label="Use now">
-            {PAY_NETWORK_LIST.filter((network) => network.isTestnet).map((network) => (
-              <option key={network.key} value={network.key}>
-                {network.networkLabel}
-              </option>
-            ))}
-          </optgroup>
-          {allowMainnet ? (
-            <optgroup label="Later · real USDC">
-              {PAY_NETWORK_LIST.filter((network) => !network.isTestnet).map((network) => (
+            {networks
+              .filter((network) => network.isTestnet)
+              .map((network) => (
                 <option key={network.key} value={network.key}>
                   {network.networkLabel}
                 </option>
               ))}
+          </optgroup>
+          {allowMainnet ? (
+            <optgroup label="Later · real USDC">
+              {networks
+                .filter((network) => !network.isTestnet)
+                .map((network) => (
+                  <option key={network.key} value={network.key}>
+                    {network.networkLabel}
+                  </option>
+                ))}
             </optgroup>
           ) : null}
         </select>

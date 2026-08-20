@@ -19,9 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { saveDraftOfferAction } from "@/lib/rent-advance/actions";
-import { buildScheduledReceivables } from "@/lib/rent-advance/helpers";
-import { CapExceededError } from "@/lib/rent-advance/money";
+import { PropertyCover } from "@/components/property-cover";
+import { submitNewOfferAction } from "@/lib/rent-advance/actions";
+import { readCoverImage } from "@/lib/rent-advance/cover-image";
+import { buildScheduledReceivables, coverSrcFor } from "@/lib/rent-advance/helpers";
+import { CapExceededError, usdCentsToXcgInput, xcgMajorToUsdCents } from "@/lib/rent-advance/money";
 import { priceOrBlock, priceQuote, type Quote } from "@/lib/rent-advance/pricing";
 import type { Offer } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,32 @@ const STEPS = [
   { id: 5, label: "Quote" },
   { id: 6, label: "Review" },
 ] as const;
+
+function XcgMoneyInput({
+  id,
+  cents,
+  onCents,
+}: {
+  id: string;
+  cents: number;
+  onCents: (cents: number) => void;
+}) {
+  const [text, setText] = useState(usdCentsToXcgInput(cents));
+  return (
+    <Input
+      id={id}
+      type="number"
+      min={0}
+      step="0.01"
+      value={text}
+      onChange={(event) => {
+        setText(event.target.value);
+        const next = xcgMajorToUsdCents(Number(event.target.value));
+        if (Number.isFinite(next) && next > 0) onCents(next);
+      }}
+    />
+  );
+}
 
 function Field({
   id,
@@ -93,7 +121,7 @@ export function NewOfferWizard({
   const router = useRouter();
   const [step, setStep] = useState(startStep);
   const [offer, setOffer] = useState(initial);
-  const [declared, setDeclared] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -105,7 +133,7 @@ export function NewOfferWizard({
         months: offer.months,
         passportScore: offer.passport.total,
         payerScore: offer.tenant.scores.total,
-        relatedParty: offer.relatedParty,
+        relatedParty: false,
       });
     } catch {
       return null;
@@ -115,17 +143,48 @@ export function NewOfferWizard({
     offer.monthlyRentCents,
     offer.passport.total,
     offer.tenant.scores.total,
-    offer.relatedParty,
   ]);
 
   function patch(updater: (current: Offer) => Offer) {
     setOffer((current) => updater(current));
   }
 
-  function saveDraft() {
+  function stepIssue(currentStep: number): string | null {
+    if (currentStep === 1) {
+      if (!offer.property.address.trim()) return "Add the property address.";
+      if (!offer.property.district.trim()) return "Add the district.";
+      if (!offer.property.summary.trim()) return "Add a short property summary.";
+    }
+    if (currentStep === 2) {
+      if (!offer.tenant.fullName.trim()) return "Add the renter’s full name.";
+      if (!offer.tenant.initials.trim()) return "Add the renter’s initials.";
+    }
+    if (currentStep === 3) {
+      if (offer.monthlyRentCents <= 0) return "Enter a monthly rent above zero.";
+      if (!offer.lease.startDate || !offer.lease.expiryDate) {
+        return "Add the lease start and expiry dates.";
+      }
+    }
+    if (currentStep === 4) {
+      if (offer.passport.total < 0 || offer.passport.total > 100) {
+        return "Property quality must be between 0 and 100.";
+      }
+      if (offer.tenant.scores.total < 0 || offer.tenant.scores.total > 100) {
+        return "Payment history must be between 0 and 100.";
+      }
+    }
+    if (currentStep === 5) {
+      if (offer.months !== 6) return "Only the six-month term can be submitted.";
+      if (!quote) return "Enter a valid rent to see a quote.";
+      if (quote.capBreached) return "This quote is above the 24% cap.";
+    }
+    return null;
+  }
+
+  function submitForReview() {
     setError(null);
-    if (!declared) {
-      setError("Confirm the connected-landlord status before saving.");
+    if (!confirmed) {
+      setError("Confirm the details before submitting.");
       return;
     }
     if (offer.months !== 6) {
@@ -139,18 +198,18 @@ export function NewOfferWizard({
           months: offer.months,
           passportScore: offer.passport.total,
           payerScore: offer.tenant.scores.total,
-          relatedParty: offer.relatedParty,
+          relatedParty: false,
         });
-        const next = applyQuote(offer, priced);
-        await saveDraftOfferAction(next);
+        const next = applyQuote({ ...offer, relatedParty: false, relatedPartyNote: null }, priced);
+        await submitNewOfferAction(next);
         router.push(`/originate/${next.reference}`);
         router.refresh();
       } catch (err) {
         if (err instanceof CapExceededError) {
-          setError(err.message);
+          setError("This quote is above the 24% cap.");
           return;
         }
-        setError(err instanceof Error ? err.message : "Unable to save draft.");
+        setError(err instanceof Error ? err.message : "Unable to submit this offer.");
       }
     });
   }
@@ -168,7 +227,7 @@ export function NewOfferWizard({
                   type="button"
                   className={cn(
                     "flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg px-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-2 sm:text-sm",
-                    current && "bg-foreground text-background",
+                    current && "bg-primary text-primary-foreground",
                     complete && "bg-muted text-foreground hover:bg-muted/80",
                     !current && !complete && "text-muted-foreground",
                   )}
@@ -195,8 +254,7 @@ export function NewOfferWizard({
         </ol>
       </nav>
       <p className="text-sm text-muted-foreground">
-        Fields are prefilled from the MRA-001 shape. Jump to Quote or Review
-        if you only need the ending.
+        Add the property, renter, and lease. The quote uses those figures.
       </p>
 
       {error ? (
@@ -210,7 +268,7 @@ export function NewOfferWizard({
         <Card>
           <CardHeader>
             <CardTitle>Property</CardTitle>
-            <CardDescription>Prefill follows the MRA-001 shape.</CardDescription>
+            <CardDescription>This photo appears on Marketplace.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field id="address" label="Address">
@@ -326,6 +384,55 @@ export function NewOfferWizard({
                 }
               />
             </Field>
+            <div className="sm:col-span-2 space-y-3">
+              <Field
+                id="cover"
+                label="Cover photo"
+                hint="JPG, PNG, or WebP. This is the Marketplace image."
+              >
+                <Input
+                  id="cover"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    void readCoverImage(file)
+                      .then((dataUrl) => {
+                        patch((current) => ({
+                          ...current,
+                          property: { ...current.property, coverImageSrc: dataUrl },
+                        }));
+                        setError(null);
+                      })
+                      .catch((err: unknown) => {
+                        setError(err instanceof Error ? err.message : "Could not read that photo.");
+                      });
+                  }}
+                />
+              </Field>
+              <div className="relative aspect-[3/2] w-full max-w-sm overflow-hidden rounded-xl bg-muted">
+                <PropertyCover
+                  src={coverSrcFor(offer.property.type, offer.property.coverImageSrc)}
+                />
+              </div>
+              {offer.property.coverImageSrc ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() =>
+                    patch((current) => ({
+                      ...current,
+                      property: { ...current.property, coverImageSrc: null },
+                    }))
+                  }
+                >
+                  Remove photo
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -416,22 +523,16 @@ export function NewOfferWizard({
             </Field>
             <Field
               id="income"
-              label="Monthly income (USD)"
+              label="Monthly income (XCG)"
               tip="Landlord file only. Holders never see this."
             >
-              <Input
+              <XcgMoneyInput
                 id="income"
-                type="number"
-                min={0}
-                step="0.01"
-                value={offer.tenant.monthlyIncomeCents / 100}
-                onChange={(event) =>
+                cents={offer.tenant.monthlyIncomeCents}
+                onCents={(monthlyIncomeCents) =>
                   patch((current) => ({
                     ...current,
-                    tenant: {
-                      ...current.tenant,
-                      monthlyIncomeCents: Math.round(Number(event.target.value) * 100) || 0,
-                    },
+                    tenant: { ...current.tenant, monthlyIncomeCents },
                   }))
                 }
               />
@@ -518,21 +619,17 @@ export function NewOfferWizard({
                 }
               />
             </Field>
-            <Field id="rent" label="Monthly rent (USD)">
-              <Input
+            <Field id="rent" label="Monthly rent (XCG)">
+              <XcgMoneyInput
                 id="rent"
-                type="number"
-                min={0}
-                step="0.01"
-                value={offer.monthlyRentCents / 100}
-                onChange={(event) => {
-                  const cents = Math.round(Number(event.target.value) * 100) || 0;
+                cents={offer.monthlyRentCents}
+                onCents={(cents) =>
                   patch((current) => ({
                     ...current,
                     monthlyRentCents: cents,
                     lease: { ...current.lease, monthlyRentCents: cents },
-                  }));
-                }}
+                  }))
+                }
               />
             </Field>
             <Field id="includes" label="Rent includes">
@@ -610,19 +707,16 @@ export function NewOfferWizard({
             </Field>
             <Field
               id="market-rent"
-              label="Typical nearby rent (USD)"
+              label="Typical nearby rent (XCG)"
               tip="What similar homes nearby usually rent for. Used only to compare with this rent."
             >
-              <Input
+              <XcgMoneyInput
                 id="market-rent"
-                type="number"
-                min={0}
-                step="0.01"
-                value={offer.marketRentCents / 100}
-                onChange={(event) =>
+                cents={offer.marketRentCents}
+                onCents={(marketRentCents) =>
                   patch((current) => ({
                     ...current,
-                    marketRentCents: Math.round(Number(event.target.value) * 100) || 0,
+                    marketRentCents,
                   }))
                 }
               />
@@ -655,8 +749,7 @@ export function NewOfferWizard({
             <CardHeader>
               <CardTitle>Quote</CardTitle>
               <CardDescription>
-                Only six months can be saved as an offer. Anything above the 24%
-                yearly comparison cannot be saved.
+                Only a six-month quote under the 24% cap can be submitted.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -678,46 +771,27 @@ export function NewOfferWizard({
             <CardHeader>
               <CardTitle>Review</CardTitle>
               <CardDescription>
-                {offer.reference} · {offer.property.summary} · payer{" "}
-                {offer.tenant.initials}
+                {offer.reference} · {offer.property.summary}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="relative aspect-[3/2] w-full max-w-sm overflow-hidden rounded-xl bg-muted">
+                <PropertyCover
+                  src={coverSrcFor(offer.property.type, offer.property.coverImageSrc)}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {offer.property.district} · {offer.property.type} ·{" "}
+                {offer.months} months
+              </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={offer.relatedParty}
-                  onChange={(event) =>
-                    patch((current) => ({
-                      ...current,
-                      relatedParty: event.target.checked,
-                      relatedPartyNote: event.target.checked
-                        ? current.relatedPartyNote ??
-                          "Connected-landlord extra applies. Independent approval required."
-                        : null,
-                    }))
-                  }
+                  checked={confirmed}
+                  onChange={(event) => setConfirmed(event.target.checked)}
                   className="mt-0.5 size-4 rounded border border-input"
                 />
-                <span className="flex items-center gap-1.5">
-                  Landlord is connected to Merkado
-                  <HelpTip label="Connected landlord">
-                    Turn this on only when the landlord has a personal or
-                    business link to Merkado. Someone independent must then
-                    approve the deal. The fee is a little higher because of that
-                    extra check — so cash to the landlord is slightly lower.
-                    This is a fairness rule, not a discount.
-                  </HelpTip>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={declared}
-                  onChange={(event) => setDeclared(event.target.checked)}
-                  className="mt-0.5 size-4 rounded border border-input"
-                />
-                I confirm this is correct
+                I confirm these details are correct
               </label>
             </CardContent>
           </Card>
@@ -739,19 +813,20 @@ export function NewOfferWizard({
             type="button"
             disabled={pending || (step === 5 && Boolean(quote?.capBreached))}
             onClick={() => {
-              setError(null);
-              if (step === 5 && quote?.capBreached) {
-                setError("The 24% cap blocks this quote.");
+              const issue = stepIssue(step);
+              if (issue) {
+                setError(issue);
                 return;
               }
+              setError(null);
               setStep((current) => Math.min(6, current + 1));
             }}
           >
             Continue
           </Button>
         ) : (
-          <Button type="button" disabled={pending} onClick={saveDraft}>
-            Save as draft
+          <Button type="button" disabled={pending} onClick={submitForReview}>
+            Submit for review
           </Button>
         )}
       </div>

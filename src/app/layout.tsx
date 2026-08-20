@@ -22,11 +22,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Merkado Labs · Direct + Pay",
-    template: "%s · Merkado Labs",
+    default: "Merkado Direct",
+    template: "%s · Merkado Direct",
   },
   description:
-    "Labs demo of Merkado Direct and Merkado Pay. Rent paid forward, not a loan. Not live on merkado.cw.",
+    "Merkado Direct and Merkado Pay. Get future rent paid now. Amounts in XCG.",
   robots: { index: false, follow: false },
   icons: {
     icon: [{ url: "/cw-logo.png", type: "image/png" }],

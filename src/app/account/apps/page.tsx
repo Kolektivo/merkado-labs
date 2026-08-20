@@ -53,14 +53,14 @@ export default function AppsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <AppCard
           title="Merkado Pay"
-          body="See rent payments and pay this month in USDC."
+          body="See rent payments and pay this month. Shown in XCG, settled in USDC."
           href={pay.href}
           external={pay.external}
           actionLabel="Open Pay"
         />
         <AppCard
           title="Merkado Direct"
-          body="Open the landlord walkthrough: My Offers, Get Now, Marketplace, and Portfolio."
+          body="Open Merkado Direct: My Offers, Simulator, Marketplace, and Portfolio."
           href={direct.href}
           external={direct.external}
           actionLabel="Open Direct"

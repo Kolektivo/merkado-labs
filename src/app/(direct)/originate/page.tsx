@@ -93,11 +93,11 @@ export default async function OriginatePage({
     <div className="space-y-6">
       <PageHeader
         title="My Offers"
-        description="See every landlord offer. Check the cash amount in Get Now, save a draft in Create Offer, then open a live offer to see the one-time cash payment and later rent."
+        description="See every landlord offer. Use Simulator for a cash quote, then Create Offer to submit one for review."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
-              <Link href="/originate/simulator">Get Now</Link>
+              <Link href="/originate/simulator">Simulator</Link>
             </Button>
             <Button asChild>
               <Link href="/originate/new">
@@ -254,12 +254,12 @@ export default async function OriginatePage({
       />
 
       {attention.filter((item) => item.count > 0).length > 0 ? (
-        <details className="rounded-xl border bg-card p-4">
-          <summary className="cursor-pointer text-sm font-medium">
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium">
             Needs attention ·{" "}
             {attention.reduce((sum, item) => sum + item.count, 0)}
-          </summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {attention
               .filter((item) => item.count > 0)
               .map((item) => (
@@ -278,7 +278,7 @@ export default async function OriginatePage({
                 </Link>
               ))}
           </div>
-        </details>
+        </section>
       ) : null}
     </div>
   );

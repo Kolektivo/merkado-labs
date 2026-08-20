@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 19, 2026 (live Pay confirm rule)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -69,7 +69,7 @@ Never:
 - Hosted production stays locked if that password is missing.
 - The Merkado account mock is fictional Labs UI. It does not reuse
   production auth or profile queries.
-- Reset demo is on Overview so a walkthrough can restore the seeded book.
+- Reset the book is in Admin so a walkthrough can restore the seeded book.
 
 ## 4. Authorization and RLS
 
@@ -128,15 +128,14 @@ Operational detail: `12-deployment-runbook.md`.
 - Do not silently report a successful saved payment if Labs persistence is
   unavailable.
 - Show an explorer link only when the base URL is an official catalog
-  explorer (OP Sepolia, Base Sepolia, OP Mainnet, or Base Mainnet) **and** the
+  explorer (Base Sepolia, Base Mainnet, or a later catalog network) **and** the
   hash is a real 64-hex `0x` value. Demo `0xDEMO…` hashes must not open
   the explorer.
 - `confirmPaymentAction` is a Labs mock write. It must not trust a client
   ledger id. Live Pay must confirm from chain data on the server.
-- The shared walkthrough can persist OP Sepolia or Base Sepolia. Mainnet
-  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `op-mainnet` or
-  `base-mainnet`. Short names such as `base` or `op` must not select
-  mainnet.
+- The shared walkthrough persists **Base Sepolia**. Mainnet
+  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
+  Short names such as `base` or `op` must not select mainnet.
 
 ## 9. Service-role credential rules
 

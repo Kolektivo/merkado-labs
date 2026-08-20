@@ -6,9 +6,10 @@ export type BreadcrumbCrumb = {
 const ROUTE_LABELS: Record<string, string> = {
   "/originate": "My Offers",
   "/originate/new": "Create offer",
-  "/originate/simulator": "Get Now",
+  "/originate/simulator": "Simulator",
   "/offers": "Marketplace",
   "/portfolio": "Portfolio",
+  "/admin": "Admin",
   "/pay": "Merkado Pay",
   "/pay/payments": "Payment history",
   "/account": "Merkado Account",
@@ -17,10 +18,10 @@ const ROUTE_LABELS: Record<string, string> = {
 
 export function resolveCrumbs(pathname: string): BreadcrumbCrumb[] {
   if (pathname === "/") {
-    return [{ label: "Overview", href: null }];
+    return [{ label: "Home", href: null }];
   }
 
-  const crumbs: BreadcrumbCrumb[] = [{ label: "Overview", href: "/" }];
+  const crumbs: BreadcrumbCrumb[] = [{ label: "Home", href: "/" }];
   const segments = pathname.split("/").filter(Boolean);
   let path = "";
   for (const [index, segment] of segments.entries()) {

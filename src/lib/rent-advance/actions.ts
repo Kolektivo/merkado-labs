@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { canPersistPayNetwork, parseExactPayNetworkKey } from "@/lib/pay/networks";
+import {
+  canPersistPayNetwork,
+  isSelectablePayNetwork,
+  parseExactPayNetworkKey,
+} from "@/lib/pay/networks";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
@@ -10,6 +14,7 @@ import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import {
   applyOpsCollection,
   applyPaymentOutcome,
+  applySubscribe,
   cryptoConfigFor,
   type PaymentMockOutcome,
   type PaymentOutcomeMeta,
@@ -30,7 +35,7 @@ export async function resetDemoAction() {
 
 export async function setPayNetworkAction(networkKey: string) {
   const key = parseExactPayNetworkKey(networkKey);
-  if (!key || !canPersistPayNetwork(key)) {
+  if (!key || !isSelectablePayNetwork(key) || !canPersistPayNetwork(key)) {
     throw new Error("That payment network is not available.");
   }
   const book = await loadBook();
@@ -59,7 +64,7 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
 
 export async function approveOfferAction(reference: string, actorId: string) {
   if (actorId !== "act-girigoria") {
-    throw new Error("Only R. Girigoria can approve this offer in the walkthrough.");
+    throw new Error("Only R. Girigoria can approve this offer.");
   }
   await updateOffer(reference, (offer) => ({
     ...offer,
@@ -192,6 +197,73 @@ export async function submitOfferForReviewAction(reference: string) {
   refresh();
 }
 
+export async function subscribeOfferAction(reference: string, amountCents: number) {
+  const book = await loadBook();
+  await saveBook(applySubscribe(book, reference, new Date().toISOString(), amountCents));
+  refresh();
+}
+
+export async function submitNewOfferAction(offer: Offer) {
+  if (offer.reference === "MRA-001") {
+    throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
+  }
+  if (offer.months !== 6) {
+    throw new Error("Only the six-month term is approved for origination.");
+  }
+  const priced = priceOrBlock({
+    monthlyRentCents: offer.monthlyRentCents,
+    months: offer.months,
+    passportScore: offer.passport.total,
+    payerScore: offer.tenant.scores.total,
+    relatedParty: false,
+  });
+  assertReleasesDistinct(offer.releases);
+  const book = await loadBook();
+  const toSave: Offer = {
+    ...offer,
+    monthlyRentCents: priced.monthlyRentCents,
+    months: priced.months,
+    feeRate: priced.feeRate,
+    baseFeeRate: priced.baseFeeRate,
+    relatedPartyPremiumBps: 0,
+    feeCents: priced.feeCents,
+    purchasePriceCents: priced.purchasePriceCents,
+    advanceRate: priced.advanceRate,
+    monthlyIrr: priced.monthlyIrr,
+    nominalAnnualised: priced.nominalAnnualised,
+    effectiveAnnualised: priced.effectiveAnnualised,
+    status: "under_review",
+    nextAction: "Independent approval",
+    relatedParty: false,
+    relatedPartyNote: null,
+    fundedCents: 0,
+    offeringCents: priced.purchasePriceCents,
+    subscriptionPriceCents: priced.purchasePriceCents,
+    unitsIssued: 1,
+    originationSpreadCents: 0,
+    holders: [],
+    publishedAt: null,
+    events: [
+      {
+        id: `ev-${offer.reference}-submit-${Date.now()}`,
+        at: new Date().toISOString(),
+        title: "Submitted for review",
+        detail: "Sent for independent approval before it can open on Marketplace.",
+        actor: "D. Martina",
+      },
+      ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-submit`),
+    ],
+  };
+  const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index === -1) book.offers.unshift(toSave);
+  else book.offers[index] = toSave;
+  if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {
+    book.assignedTenancies.push(toSave.tenant.id);
+  }
+  await saveBook(book);
+  refresh();
+}
+
 export async function saveDraftOfferAction(offer: Offer) {
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
@@ -244,6 +316,9 @@ export async function seedOfferTemplate(): Promise<Offer> {
     collections: [],
     releases: [],
     publishedAt: null,
+    relatedParty: false,
+    relatedPartyNote: null,
+    holders: [],
     tenant: {
       ...canonical.tenant,
       id: `tn-${reference.toLowerCase()}`,
@@ -259,7 +334,7 @@ export async function seedOfferTemplate(): Promise<Offer> {
         id: `ev-${reference}-new`,
         at: new Date().toISOString(),
         title: "Draft created",
-        detail: "Copied from the MRA-001 reference shape",
+        detail: "Draft started from the current quote",
         actor: "D. Martina",
       },
     ],

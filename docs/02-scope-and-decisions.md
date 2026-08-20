@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 19, 2026 (Pay rail-mode decision)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. MVP goal
 
@@ -18,21 +18,21 @@ repo**. They live on merkado-cw.
 | Priority | Deliverable | Completion test |
 |---|---|---|
 | P0 | Pricing engine | Reproduces MRA-001 cents and IRR; blocks >24% with no override |
-| P0 | Direct IA | Nav is My Offers, Create Offer, Get Now, Marketplace, Portfolio |
-| P0 | Get Now | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote |
+| P0 | Direct IA | Nav is Home, My Offers, Create Offer, Simulator, Marketplace, Portfolio, Pay, Account; Admin at the bottom |
+| P0 | Simulator | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote. Amounts in XCG |
 | P0 | My Offers | Draft/unfunded totals excluded; settlement + collection/distribution status |
-| P0 | Merkado Pay | Working mocked USDC payment-link on selectable OP Sepolia / Base Sepolia facts (mainnet later); copy-address and wallet paths; English-only; no real wallet |
+| P0 | Merkado Pay | Working mocked USDC payment-link on **Base Sepolia** facts (Base Mainnet later); copy-address and wallet paths; English-only; no real wallet |
 | P0 | Shared state | One confirmed payment updates request, receivable, collection, distribution once |
 | P0 | Portfolio | Pre-seeded positions; Position ID; automatic distributions; no Claim |
 | P0 | Account mock | Apps launcher for Pay and Direct; fictional renter only |
-| P1 | Open gates | Stage 0 questions visible on the demo hub |
+| P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
 | P1 | Luis boundary | Typed mock provider; no wallet/Safe SDK installed |
 | P1 | Labs schema | RLS on; service-role only; no production project; no new migration |
 
 ## 3. Out of scope
 
 - Public Merkado Direct marketing page
-- Third-party subscription or holder onboarding
+- Public third-party holder onboarding (demo Marketplace purchase is in-scope)
 - Secondary transfer, token, NFT, or transferable position
 - 3-month term origination
 - Real wallet connection, signing, RPC, Safe SDK/API, or live USDC transfer
@@ -57,7 +57,7 @@ repo**. They live on merkado-cw.
 | Commercial form | True sale of receivables (*koop en cessie*) |
 | Landlord money | One upfront purchase amount; later collections go to holders |
 | Holder distributions | Automatic in this demo; no Claim button |
-| Currency | USD integer cents; USDC integer atomic units (6 decimals); 1:1 |
+| Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |
 | Fee model | Single % of gross receivables; no flat fees |
 | Related-party | Explicit +25 bp; independent approver; never cheaper than market |
@@ -66,15 +66,18 @@ repo**. They live on merkado-cw.
 | Property Score | Derived for presentation/filtering only; never prices the quote |
 | Rent-to-market | contractual ÷ estimated market; lower is more favourable |
 | Crypto in this task | Mocked wallet; typed provider for Luis; `PAYMENT_RAIL_MODE` flips mock labels when the real adapter ships |
-| Network now | OP Sepolia (default) and Base Sepolia. Switch on Overview or via `NEXT_PUBLIC_PAY_NETWORK`. |
-| Network later | OP Mainnet and Base Mainnet, only when `NEXT_PUBLIC_PAY_NETWORK` is a mainnet key |
+| Network now | **Base Sepolia** (Base testnet). Shown in Admin and via `NEXT_PUBLIC_PAY_NETWORK`. |
+| Network later | **Base Mainnet**, only when `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
 | Explorer | Official explorer for the selected network (real hashes only) |
-| Safe address | Fictional until Luis/Luuk set a verified Safe on the selected network |
-| Marketplace subscribe | Closed; pre-seeded Portfolio positions |
+| Test Safe | **Base Sepolia**, **2 of 2**, owners Enrique and Luuk only. Luis creates it and is not a signer. Address not in the app until Luis sends it and the Product Lead confirms. |
+| Safe address | Fictional in the mock until that verified Base Sepolia Safe is written in |
+| Other networks | Optimism keys stay in the catalog if Luis later opts in. They are hidden in Admin. |
+| Marketplace subscribe | A holder can buy any amount up to what is still open. The offer goes live and Pay requests mint when the offering is filled. Not a public offering. |
+| Demo book | Two seeded offers for the walkthrough: **MRA-001** (funded live reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |
 | Production marketplace | merkado-cw only |
 | Supabase | Labs `csaefdkpwukshtouyixg` only |
-| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, settings, and other chrome stay visibly disabled. Admin is hidden. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live. **My Payments** lives inside Merkado Pay. |
+| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, settings, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live. **My Payments** lives inside Merkado Pay. |
 | Demo account identity | Labs account and seeded renter are **Luuk Weber**, with the Product Lead–supplied avatar. |
 | Hosted demo access | Shared host password in the app (`LABS_DEMO_PASSWORD`). Not a Merkado account and not the paid Vercel password add-on. Local stays open unless that env is set. Hosted production stays locked if the password is missing. |
 

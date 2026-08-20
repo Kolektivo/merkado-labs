@@ -65,7 +65,53 @@ function useOfferAction() {
   return { pending, error, run };
 }
 
-export function OfferOpsForms({
+export function OfferCustomerActions({
+  reference,
+  status,
+}: {
+  reference: string;
+  status: OfferStatus;
+}) {
+  const { pending, error, run } = useOfferAction();
+
+  if (status === "draft") {
+    return (
+      <div className="space-y-3">
+        <FormError message={error} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Submit for review</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Nothing has been sold yet. Submit this draft for approval before
+              it can open on Marketplace.
+            </p>
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => submitOfferForReviewAction(reference))}
+            >
+              Submit for review
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === "under_review") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Waiting for approval. After approval this offer can open on Marketplace.
+      </p>
+    );
+  }
+
+  return null;
+}
+
+export function OfferAdminForms({
   reference,
   status,
   nextReceivableN,
@@ -88,63 +134,54 @@ export function OfferOpsForms({
     <div className="space-y-4">
       <FormError message={error} />
 
-      {status === "draft" ? (
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="offer-status">Set status</Label>
+          <Select
+            value={nextStatus}
+            onValueChange={(value) => setNextStatus(value as OfferStatus)}
+          >
+            <SelectTrigger id="offer-status" className="min-w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {statusLabel(value)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={pending}
+          onClick={() => run(() => setOfferStatusAction(reference, nextStatus))}
+        >
+          Update status
+        </Button>
+      </div>
+
+      {status === "under_review" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Submit for review</CardTitle>
+            <CardTitle>Independent approval</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Nothing has been sold yet. Submit this draft for independent
-              approval before funding.
+              Approval moves this offer to funding so it can open on Marketplace.
             </p>
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={() => run(() => submitOfferForReviewAction(reference))}
-            >
-              Submit for review
-            </Button>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {status === "under_review" ? (
-        <p className="text-sm text-muted-foreground">
-          This offer is waiting for independent approval before funding.
-        </p>
-      ) : null}
-
-      {collecting ? (
-        <p className="text-sm text-muted-foreground">
-          Later rent is collected for holders when the renter pays. The
-          landlord is not paid again.
-        </p>
-      ) : status === "draft" || status === "under_review" ? null : (
-        <p className="text-sm text-muted-foreground">
-          Collections start after this offer is live.
-        </p>
-      )}
-
-      <details className="rounded-xl border p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Lab controls
-        </summary>
-        <div className="mt-3 space-y-4">
-          <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1.5">
-              <Label htmlFor="offer-status">Set status</Label>
-              <Select
-                value={nextStatus}
-                onValueChange={(value) => setNextStatus(value as OfferStatus)}
-              >
-                <SelectTrigger id="offer-status" className="min-w-44">
-                  <SelectValue />
+              <Label htmlFor="approver">Approver</Label>
+              <Select value={approverId} onValueChange={setApproverId}>
+                <SelectTrigger id="approver" className="w-full min-w-56">
+                  <SelectValue placeholder="Select independent approver" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {statusLabel(value)}
+                  {approvers.map((actor) => (
+                    <SelectItem key={actor.id} value={actor.id}>
+                      {actor.name} · {actor.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -152,89 +189,53 @@ export function OfferOpsForms({
             </div>
             <Button
               type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => run(() => setOfferStatusAction(reference, nextStatus))}
+              disabled={pending || !approverId}
+              onClick={() => run(() => approveOfferAction(reference, approverId))}
             >
-              Update status
+              Approve offer
             </Button>
-          </div>
-          {status === "under_review" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Independent approval</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  An independent approver must sign before this offer can be
-                  funded. R. Girigoria is selected for the walkthrough.
-                </p>
-                <div className="space-y-1.5">
-                  <Label htmlFor="approver">Approver</Label>
-                  <Select value={approverId} onValueChange={setApproverId}>
-                    <SelectTrigger id="approver" className="w-full min-w-56">
-                      <SelectValue placeholder="Select independent approver" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {approvers.map((actor) => (
-                        <SelectItem key={actor.id} value={actor.id}>
-                          {actor.name} · {actor.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  type="button"
-                  disabled={pending || !approverId}
-                  onClick={() => run(() => approveOfferAction(reference, approverId))}
-                >
-                  Approve offer
-                </Button>
-              </CardContent>
-            </Card>
-          ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
-          {collecting ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Record collection
-                  <HelpTip label="Collections">
-                    Ops fallback if a month arrived outside Merkado Pay. Live
-                    renter payments already move to holders automatically.
-                  </HelpTip>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-center gap-2">
-                {nextReceivableN != null ? (
-                  <Button
-                    type="button"
-                    disabled={pending}
-                    onClick={() =>
-                      run(() => recordCollectionAction(reference, nextReceivableN))
-                    }
-                  >
-                    Record collection · month {nextReceivableN}
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No scheduled receivable remains.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
+      {collecting ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Record collection
+              <HelpTip label="Collections">
+                Ops fallback if a month arrived outside Merkado Pay. Live
+                renter payments already move to holders automatically.
+              </HelpTip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            {nextReceivableN != null ? (
+              <Button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  run(() => recordCollectionAction(reference, nextReceivableN))
+                }
+              >
+                Record collection · month {nextReceivableN}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No scheduled receivable remains.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
-          {releasableCollections.length > 0 ? (
-            <DualControlForm
-              reference={reference}
-              releasableCollections={releasableCollections}
-              actors={actors}
-            />
-          ) : null}
-        </div>
-      </details>
+      {releasableCollections.length > 0 ? (
+        <DualControlForm
+          reference={reference}
+          releasableCollections={releasableCollections}
+          actors={actors}
+        />
+      ) : null}
     </div>
   );
 }
@@ -275,7 +276,6 @@ export function DualControlForm({
         <FormError message={error} />
         <p className="text-sm text-muted-foreground">
           Two different people must approve. Same person twice is rejected.
-          Walkthrough defaults: D. Martina instructs, A. Sambo signs.
         </p>
         {releasableCollections.length ? (
           <>

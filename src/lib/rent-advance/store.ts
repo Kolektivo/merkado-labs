@@ -14,7 +14,7 @@ import {
   normalizeBook,
 } from "@/lib/rent-advance/payment-apply";
 import { resolvePayNetworkKey } from "@/lib/pay/networks";
-import { getSeedBook } from "@/lib/rent-advance/seed";
+import { dropRetiredDemoOffers, getSeedBook } from "@/lib/rent-advance/seed";
 import type {
   BuyerOfferCard,
   DemoBook,
@@ -51,7 +51,15 @@ export async function loadBook(): Promise<DemoBook> {
     if (writeError) throw writeError;
     return seed;
   }
-  const book = normalizeBook(data.payload);
+  const incoming = normalizeBook(data.payload);
+  const book = dropRetiredDemoOffers(incoming);
+  const seed = cloneBook();
+  const known = new Set(book.offers.map((offer) => offer.reference));
+  const missing = seed.offers.filter((offer) => !known.has(offer.reference));
+  if (missing.length || book !== incoming) {
+    book.offers.push(...missing);
+    return saveBook(book);
+  }
   if (storedMoneyOrNetworkStale(data.payload, book)) {
     return saveBook(book);
   }

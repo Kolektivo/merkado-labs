@@ -143,6 +143,22 @@ export function propertyCoverSrc(type: string): string {
   return "/properties/house.webp";
 }
 
+export function coverSrcFor(type: string, custom?: string | null): string {
+  const uploaded = custom?.trim();
+  return uploaded ? uploaded : propertyCoverSrc(type);
+}
+
+export function remainingOfferingCents(offer: { offeringCents: number; fundedCents: number }): number {
+  return Math.max(0, offer.offeringCents - offer.fundedCents);
+}
+
+export function canSubscribe(status: OfferStatus, offeringCents: number, fundedCents: number): boolean {
+  return (
+    (status === "funding" || status === "live" || status === "collecting") &&
+    remainingOfferingCents({ offeringCents, fundedCents }) > 0
+  );
+}
+
 export function outstandingCents(offer: Offer): number {
   return offer.receivables
     .filter((row) => row.status !== "received")
@@ -228,6 +244,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
     status: offer.status,
     relatedParty: offer.relatedParty,
+    coverImageSrc: offer.property.coverImageSrc ?? null,
   };
 }
 
@@ -378,7 +395,7 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
       label: "Not yet settled",
       count: unsettled.length,
       detail: unsettled[0]
-        ? `Funded, cash not yet sent · ${unsettled[0].reference}`
+        ? `Still open on Marketplace · ${unsettled[0].reference}`
         : "none",
       href: unsettled[0] ? `/originate/${unsettled[0].reference}` : "/originate",
     },

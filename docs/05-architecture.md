@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 19, 2026 (PAYMENT_RAIL_MODE)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## 1. Surfaces
 
@@ -18,7 +18,8 @@ publish listings.
 Customer-facing surfaces:
 
 - `/` Labs demo hub
-- `/originate*` Merkado Direct operations (My Offers, Create Offer, Get Now)
+- `/originate*` Merkado Direct operations (My Offers, Create Offer, Simulator)
+- `/admin*` operations (approval, collections, reset)
 - `/offers*` Marketplace
 - `/portfolio*` Portfolio
 - `/pay` and `/pay/[paymentRequestId]` Merkado Pay. `/pay/payments` redirects to `/pay`.
@@ -30,9 +31,9 @@ Customer-facing surfaces:
 - Server components load one demo book from Labs Supabase (`ra_demo_state`)
   with a seed fallback and `normalizeBook()` for older JSON.
 - Mutations are server actions (record collection, dual-control release,
-  save draft, confirm mocked payment, reset).
+  submit for review, confirm mocked payment, reset).
 - There is no Merkado login. After deploy, the hosted demo asks for a
-  shared host password at `/enter`. Reset demo sits on Overview.
+  shared host password at `/enter`. Reset the book sits in Admin.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
   its own Labs mock shell. Direct operations use the sidebar shell
   (`src/app/(direct)/layout.tsx`). The three shells are separate layouts
@@ -73,9 +74,11 @@ still the mock (`src/lib/pay/mock-provider.ts`). No wallet or Safe
 dependency is installed. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts`
 is `"mock"` and drives Overview / Pay labels. Flip it to `"live"` in
 the same change that replaces the factory. Demo `cryptoConfig` defaults
-to **OP Sepolia** with Circle native USDC. Base Sepolia is selectable.
-OP Mainnet and Base Mainnet are available later. The Safe address stays
-fictional until Luis replaces it. Explorer links render only for a real
+to **Base Sepolia** with Circle native USDC. Admin shows that Base
+testnet now. **Base Mainnet** is later and stays hidden unless
+`NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Optimism networks stay in
+the catalog if Luis later opts in; they are not shown in Admin.
+The Safe address stays fictional until Luis replaces it. Explorer links render only for a real
 64-hex transaction hash on an official catalog explorer.
 
 ## 6. Future home

@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
+import { PropertyCover } from "@/components/property-cover";
 import { StatusBadge } from "@/components/status-badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,19 +16,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE } from "@/lib/rent-advance/copy";
 import {
   canShowContribute,
+  coverSrcFor,
   formatDayMonthYear,
+  remainingOfferingCents,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { positionIdFor } from "@/lib/rent-advance/ids";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 
-import { ThemeMerkado } from "@/components/theme-merkado";
-
-import { ContributeGate } from "./contribute-gate";
+import { SubscribeForm } from "./subscribe-form";
 
 export const dynamic = "force-dynamic";
 
@@ -41,48 +41,59 @@ export default async function BuyerOfferPage({
   const offer = await getPurchaserOffer(ref);
   if (!offer) notFound();
 
+  const remaining = remainingOfferingCents(offer);
+  const bedsLabel = `${offer.bedrooms} ${offer.bedrooms === 1 ? "bed" : "beds"}`;
+
   return (
-    <ThemeMerkado className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/offers">← All offers</Link>
-        </Button>
-        {offer.fundedCents > 0 ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/portfolio/${offer.reference}`}>
-              View position {positionIdFor(offer.reference)}
-            </Link>
-          </Button>
-        ) : null}
-      </div>
+    <ThemeMerkado className="space-y-5">
+      <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit">
+        <Link href="/offers">← All offers</Link>
+      </Button>
+
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge tone={statusTone(offer.status)}>
             {statusLabel(offer.status)}
           </StatusBadge>
           <StatusBadge tone="neutral">
-            Property score {offer.propertyScore} · {offer.propertyLabel}
+            {offer.propertyScore} · {offer.propertyLabel}
           </StatusBadge>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {offer.district} · {offer.type} · {offer.bedrooms}{" "}
-          {offer.bedrooms === 1 ? "bed" : "beds"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Offer {offer.reference}. District only — no street address, tenant
-          name, employer, or income figure.
-        </p>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            {offer.district} · {offer.type} · {bedsLabel}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {offer.summary} · {offer.interiorM2} m² · {offer.months} months ·{" "}
+            {offer.reference}
+          </p>
+        </div>
       </div>
 
-      {offer.relatedParty ? (
-        <Alert>
-          <AlertTitle>Connected landlord</AlertTitle>
-          <AlertDescription>
-            {offer.relatedPartyNote ??
-              "The landlord on this offer is connected to Merkado. Someone independent had to approve it."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted">
+          <PropertyCover
+            src={coverSrcFor(offer.type, offer.coverImageSrc)}
+            alt={`${offer.type} in ${offer.district}`}
+            sizes="(min-width: 1024px) 55vw, 100vw"
+          />
+        </div>
+
+        <aside className="lg:sticky lg:top-20">
+          {canShowContribute(offer.status) ? (
+            <SubscribeForm
+              reference={offer.reference}
+              remainingCents={remaining}
+              fundedCents={offer.fundedCents}
+              offeringCents={offer.offeringCents}
+            />
+          ) : (
+            <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+              This offering is not open to purchase.
+            </div>
+          )}
+        </aside>
+      </div>
 
       <Tabs defaultValue="passport">
         <TabsList variant="line">
@@ -100,30 +111,17 @@ export default async function BuyerOfferPage({
                 {offer.propertyLabel}
                 <HelpTip label="Combined property view">
                   Listing quality plus how the rent compares to typical nearby
-                  rent. Street address is never shown here. This does not change
-                  the cash the landlord received.
+                  rent.
                 </HelpTip>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <p>
-                {offer.district} · {offer.type} · {offer.bedrooms}{" "}
-                {offer.bedrooms === 1 ? "bed" : "beds"} ·{" "}
-                {offer.interiorM2} m²
-              </p>
-              <p>{offer.summary}</p>
               <dl className="grid gap-2 sm:grid-cols-2">
                 <ScoreRow label="Rent vs typical rent" value={offer.passport.rentVsMarket} />
                 <ScoreRow label="Market depth" value={offer.passport.marketDepth} />
                 <ScoreRow label="Condition" value={offer.passport.condition} />
                 <ScoreRow label="Accessibility" value={offer.passport.accessibility} />
               </dl>
-              <p className="text-muted-foreground">
-                {offer.marketDataAvailable
-                  ? "How the rent compares to typical nearby rent is already included in this view."
-                  : "Market data unavailable."}{" "}
-                Street address is not shown.
-              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -178,50 +176,43 @@ export default async function BuyerOfferPage({
               <CardTitle>Terms</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <p>Term {offer.months} months</p>
               <p>
-                Holders put in <Money cents={offer.fundedCents} /> of{" "}
-                <Money cents={offer.offeringCents} />. The landlord received a
-                lower one-time cash amount. This is not a promised payout.
+                Term {offer.months} months.{" "}
+                <Money cents={offer.fundedCents} /> of{" "}
+                <Money cents={offer.offeringCents} /> filled.
               </p>
               <div>
-                <p className="mb-2 font-medium">
-                  Later rent months · only if the renter pays
-                </p>
+                <p className="mb-2 font-medium">Later rent months</p>
                 <div className="overflow-x-auto">
-                <Table className="min-w-[480px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Due</TableHead>
-                      <TableHead>Scheduled</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {offer.receivables.map((row) => (
-                      <TableRow key={row.n}>
-                        <TableCell>{row.n}</TableCell>
-                        <TableCell>{formatDayMonthYear(row.dueDate)}</TableCell>
-                        <TableCell>
-                          <Money cents={row.amountCents} />
-                        </TableCell>
-                        <TableCell className="capitalize">{row.status}</TableCell>
+                  <Table className="min-w-[480px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Month</TableHead>
+                        <TableHead>Due</TableHead>
+                        <TableHead>Scheduled</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {offer.receivables.map((row) => (
+                        <TableRow key={row.n}>
+                          <TableCell>{row.n}</TableCell>
+                          <TableCell>{formatDayMonthYear(row.dueDate)}</TableCell>
+                          <TableCell>
+                            <Money cents={row.amountCents} />
+                          </TableCell>
+                          <TableCell className="capitalize">{row.status}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
-              <p className="flex items-start gap-1.5 text-muted-foreground">
-                {HOLDER_NO_PROMISE}
-              </p>
+              <p className="text-muted-foreground">{HOLDER_NO_PROMISE}</p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {canShowContribute(offer.status) ? <ContributeGate /> : null}
     </ThemeMerkado>
   );
 }

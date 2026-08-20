@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 19, 2026 (Luis access list)
+**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
 
 ## Local dashboard
 
@@ -14,7 +14,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000. Start at Overview. Local stays open unless
+Open http://localhost:3000. Start at Home. Local stays open unless
 `LABS_DEMO_PASSWORD` is set.
 
 Required env (Labs project `csaefdkpwukshtouyixg` only):
@@ -23,7 +23,7 @@ Required env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 
-Optional: `NEXT_PUBLIC_PAY_NETWORK` (`op-sepolia` if empty).
+Optional: `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty).
 
 ## Vercel (Labs demo host)
 
@@ -53,7 +53,7 @@ Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 - `LABS_DEMO_PASSWORD` (server only; Production)
-- `NEXT_PUBLIC_PAY_NETWORK` (optional; default `op-sepolia`)
+- `NEXT_PUBLIC_PAY_NETWORK` (optional; default `base-sepolia`)
 
 ## Database
 
@@ -89,7 +89,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Owner or signer on a **testnet** Safe | After Luis creates or names a Safe on **OP Sepolia**, add him (and keep a second Kolektivo signer). Do not start with a mainnet Safe that holds real USDC. |
+| Safe{Wallet} | Not required as a lasting owner | Luis creates a **Base Sepolia** Safe with Enrique and Luuk as the only owners (**2 of 2**). Luis is not a signer. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 
 ### Do not give
@@ -107,11 +107,11 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him to start on **OP Sepolia**, not mainnet.
+2. Tell him to create the test Safe on **Base Sepolia**, not Base Mainnet.
 3. Tell him not to install a wallet SDK until you reply that the
    integration task is approved.
-4. When his testnet pay walkthrough works, you still approve before
-   anyone turns on OP Mainnet or Base Mainnet.
+4. When his Base Sepolia pay walkthrough works, you still approve before
+   anyone repeats the Safe on **Base Mainnet**.
 
 ## Do not
 
