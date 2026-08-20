@@ -1,7 +1,12 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 19, 2026 (Pay rail-mode switch + Luis handoff)
+**Last updated:** August 19, 2026 (Web3 MVP foundation on feature branch — live flow not yet verified)
+
+> **Update rule:** this file must **not** describe the Web3/live wallet flow
+> as live or verified until a real OP Sepolia testnet walkthrough has been
+> completed and verified end-to-end. Until then it records the implemented
+> foundation separately from the verified mock walkthrough.
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -10,10 +15,14 @@ lives at the repository root. There is no Merkado login. The hosted URL
 uses a shared host password.
 
 This demo is **not** live on merkado.cw. It may later sit at a surface such as
-`app.merkado.cw`. There is no public offering. Wallet and USDC payments are
-**mocked**. Direct operations use **USD**. Pay settles in USDC 1:1 on
-**OP Sepolia** facts by default (Base Sepolia also available; mainnet
-later). The wallet is still mocked.
+`app.merkado.cw`. There is no public offering. The walkthrough that is
+verified today still runs on the **mocked** payment rail. The approved
+OP Sepolia Web3 MVP foundation (Privy external wallet + viem verification) is
+implemented on the feature branch `web3-privy-viem-opsepolia` but is **not yet
+switched on** (`PAYMENT_RAIL_MODE` is still `"mock"`) and **not yet verified
+end-to-end**. Direct operations use **USD**. Pay settles in USDC 1:1 on
+**OP Sepolia** facts by default (Base Sepolia remains demo-selectable; mainnet
+stays off).
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo’s **Listing Score**
@@ -49,7 +58,7 @@ Local stays open. No Merkado login, settings, or admin page.
 | Offer detail `/originate/MRA-*` | One-time settlement reference. Later rent shows collected / pending distribution / distributed. Landlord is not paid again. Drafts keep **Submit for review**. Independent approval, Record collection, and dual-control stay in Lab controls. Funded offers say the landlord **received** the purchase price; unfunded offers say **would receive**. |
 | Marketplace `/offers` | Anonymised cards in merkado-cw listing chrome (photo, spec row, price block). Combined property view, payment history, term, and amount filled stay on the card. Amount filled is holder contribution; a tip explains the landlord receives a lower cash amount. Subscribe closed. Funded offers link to the matching Portfolio position. No tenant name, employer, street, agency, or income. |
 | Portfolio `/portfolio` | Stable Position IDs. Collected / awaiting distribution / distributed. Automatic distributions. No Claim and no transfer UI. Truncated hash with copy of the full value. Explorer link only for a real 64-hex hash. |
-| Pay `/pay` → `/pay/[paymentRequestId]` | Mocked USDC payment-link on the selected network (**OP Sepolia** after Reset). Canonical seeded request `payreq-mra-001-202609`. `/pay` opens the next unpaid renter request. The same page shows the USDC amount, due date, copy details, both pay actions, and **Payment history**. `/pay/payments` redirects here. Both paths show pending, then success, plus failed and incorrect-amount outcomes. Amount is **1,800.00 USDC**, same as $1,800 rent. A later month cannot be paid while an earlier month is still open. Unknown IDs show a friendly not-found. English only. |
+| Pay `/pay` → `/pay/[paymentRequestId]` | Mocked USDC payment-link on the selected network (**OP Sepolia** after Reset). Canonical seeded request `payreq-mra-001-202609`. `/pay` opens the next unpaid renter request. The same page shows the USDC amount, due date, copy details, both pay actions, and **Payment history**. `/pay/payments` redirects here. Both paths show pending, then success, plus failed and incorrect-amount outcomes. Amount is **1,800.00 USDC**, same as $1,800 rent. A later month cannot be paid while an earlier month is still open. Unknown IDs show a friendly not-found. English only. The approved OP Sepolia Web3 MVP foundation (Privy external wallet + viem server verification) is implemented on the feature branch but not yet switched on or verified. |
 | Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**, shown as a private seller with the supplied avatar. Full merkado-cw account chrome (logo, top nav, sidebar groups, footer pinned to the bottom of the screen). Marketplace, listing, billing, settings, and other chrome look disabled. Admin is hidden. **Apps** sits above **Account**. Only **Merkado Pay** and **Merkado Direct** are live, with external-link icons. **My Payments** is not an account page. Old `/account/payments` redirects into Pay. |
 
 Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
@@ -99,8 +108,8 @@ Reset restores the seeded offers, payments, transactions, and distributions.
 - Subscribe is closed and does not complete a purchase.
 - Drafts are not shown as marketplace offers.
 - Pay and account show rent to the property, USDC + matching USD rent, due date, and a
-  fictional receiving address. No fee, purchase price, holder, or
-  distribution economics.
+  mock receiving address (the approved EOA `0x1726cf86…4f6`). No fee, purchase
+  price, holder, or distribution economics.
 - Holder pages stay district-only. Street address is off those screens.
 - Invalid Pay links do not reveal other payment requests.
 
@@ -130,16 +139,25 @@ Reset restores the seeded offers, payments, transactions, and distributions.
   update. Reset keeps the selected test network.
 - Overview Reset demo asks to confirm, then restores the seeded book.
 
-### Mock crypto boundary (Labs only)
+### Mock crypto boundary (verified today) + Web3 MVP foundation (not yet verified)
 
-UI talks to `createPaymentProvider()` (`src/lib/pay/create-provider.ts`)
-and `src/lib/pay/provider.ts`. The only implementation is still
-`src/lib/pay/mock-provider.ts`. There is no wallet, Safe, RPC, or USDC
-SDK. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts` is still `"mock"`, so
-Overview and Pay keep demo-wallet wording. OP Sepolia is the default in
-`cryptoConfig`. Base Sepolia is available. OP Mainnet and Base are later.
-Luis/Luuk replace the factory and flip that switch after approval. See
-`docs/07-integrations.md` and ADR-0005.
+**Verified today:** the walkthrough runs on the mock rail. UI talks to
+`createPaymentProvider()` / `usePaymentProvider()` against
+`PaymentProvider` (`src/lib/pay/provider.ts`). The active adapter is the
+mock (`src/lib/pay/mock-provider.ts`). `PAYMENT_RAIL_MODE` in
+`src/lib/pay/mode.ts` is still `"mock"`, so Overview and Pay keep
+demo-wallet wording, the copy-address button, and the demo outcome menu.
+OP Sepolia is the default in `cryptoConfig`; Base Sepolia is demo-selectable.
+
+**Implemented on the feature branch, not yet switched on or verified:**
+the approved Web3 MVP foundation — Privy external-wallet login
+(`src/lib/pay/privy-config.ts`, `src/lib/pay/privy-provider.tsx`), a viem
+live provider (`src/lib/pay/live-provider.ts`), server-side on-chain
+verification (`src/lib/pay/verify.ts` + `verifyLivePaymentAction`), and the
+mock receiving EOA `0x1726cf86DA996BC4B2F393E713f6F8ef83f2e4f6`. Live mode
+is **OP Sepolia only**; Base Sepolia is not live-verifiable; mainnet stays
+off. The live flow is **not** described as verified until a real testnet
+walkthrough passes. See `docs/07-integrations.md` and ADR-0005.
 
 ## 3. Database `[LABS]`
 
@@ -172,7 +190,11 @@ overwrites the live book with seed.
 
 - Not live on merkado.cw
 - Not a loan, yield product, fund, or public offering
-- Not a real wallet, Safe, or USDC product
+- Not yet a verified live USDC product — the Web3 MVP foundation is
+  implemented on the feature branch; the live wallet flow is not verified
+  end-to-end until a real testnet walkthrough passes
+- Not a real Safe, custody, or escrow arrangement — the receiving address is
+  a mock EOA
 - Not authorised for third-party subscribe until M.1.2 and M.1.4 are closed
   in writing
 - Not a token, NFT, or secondary market

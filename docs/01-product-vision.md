@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 19, 2026
+**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
 
 ## 1. One-sentence vision
 
@@ -47,12 +47,15 @@ This repository is **not** the live merkado.cw marketplace. Cars, listings,
 scrapers, and public browse now live in **merkado-cw**. Labs is the sandbox
 for the Direct / Pay demo.
 
-Wallet, Safe, transaction, account, and payment behaviour in this demo is
-**mocked**. No real signature, RPC, token transfer, or blockchain write.
-The selected demo networks are **OP Sepolia** (default) and **Base
-Sepolia**, with Circle native USDC. OP Mainnet and Base Mainnet stay available
-for later. Luis and Luuk own the real wallet adapter, Safe address, and
-allocation design.
+Wallet and payment behaviour in the verified walkthrough is still **mocked**
+(no real signature, RPC, token transfer, or blockchain write). The approved
+**OP Sepolia Web3 MVP** foundation — external-wallet login via **Privy** and
+on-chain submission/verification via **viem** — is implemented on the feature
+branch but not yet switched on or verified end-to-end. The selected demo
+networks are **OP Sepolia** (live scope) and **Base Sepolia**
+(demo-selectable only). OP Mainnet and Base Mainnet stay off. The receiving
+address is a **mock EOA**, not a Safe; allocation and any holder-payout
+execution remain open.
 
 The landlord receives one upfront purchase amount. Later rent collections
 are not paid to the landlord a second time. They move into the holder
@@ -68,8 +71,9 @@ distribution flow, presented as automatic in this demo.
 - The payer app never shows economics. The holder app never shows tenant
   identity.
 - Stage 0 legal questions stay visible and unresolved.
-- Luis can replace the mock crypto layer from a typed provider boundary
-  and flip `PAYMENT_RAIL_MODE` so mocked Pay labels switch off.
+- The Web3 MVP foundation (Privy external wallet + viem server verification)
+  is implemented behind the typed provider boundary; `PAYMENT_RAIL_MODE`
+  flips to `"live"` only after a verified OP Sepolia testnet walkthrough.
 
 ## 6. What we refuse to claim
 

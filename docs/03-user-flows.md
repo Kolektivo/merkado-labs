@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 19, 2026 (Pay rail-mode note)
+**Last updated:** August 19, 2026 (approved OP Sepolia Web3 MVP)
 
 ## 1. Hosted access
 
@@ -58,15 +58,20 @@ Sepolia now; mainnet later), and **Reset demo**.
    month cannot be paid while an earlier month on the same deal is still
    open — the page sends the renter back to the next payment.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
-   unique reference, fictional receiving address, selected payment
-   network (**OP Sepolia** by default; Base Sepolia also available).
-   A status badge and both payment paths sit with the amount so they stay
+   unique reference, mock receiving address (approved EOA
+   `0x1726cf86…4f6`), selected payment
+   network (**OP Sepolia** by default; Base Sepolia demo-selectable).
+   A status badge and the payment actions sit with the amount so they stay
    visible on a phone.
-3. Two payment paths (mocked until `PAYMENT_RAIL_MODE` is `"live"`):
-   - copy the address and amount, then **I’ve sent this payment**;
-   - connect a demo wallet and pay here.
-   Both paths show pending → confirmed / success, plus failure and
-   incorrect-amount outcomes. Already paid and overdue remain.
+3. Payment paths. In mock mode: two paths — copy the address and amount
+   then **I've sent this payment**, or connect a demo wallet and pay here.
+   In live mode (`PAYMENT_RAIL_MODE` is `"live"`): only the wallet path is
+   available. An external wallet connects via Privy; the server verifies the
+   USDC transfer on OP Sepolia (receipt + Transfer event + exact amount +
+   **5-block** depth) before the book is confirmed. Copy-address confirmation
+   is disabled in live mode. Both paths show pending → confirmed / success,
+   plus failure and incorrect-amount outcomes. Already paid and overdue
+   remain.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 
@@ -83,10 +88,11 @@ Sepolia now; mainnet later), and **Reset demo**.
 
 ## 7. Shared payment
 
-One confirmed mock payment updates exactly once: the payment request,
-the matching receivable, one collection, and holder distribution
+One confirmed payment (mock or live) updates exactly once: the payment
+request, the matching receivable, one collection, and holder distribution
 activity. Refresh and retry are idempotent. Initiated / pending /
-confirmed stay distinct in the data model.
+confirmed stay distinct in the data model. A live payment is confirmed only
+after the server verifies the chain.
 
 ## 8. Privacy walls
 

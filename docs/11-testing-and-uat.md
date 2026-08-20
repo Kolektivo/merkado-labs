@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 19, 2026 (live-rail copy check)
+**Last updated:** August 19, 2026 (live-wallet testnet UAT)
 
 ## Automated
 
@@ -49,13 +49,20 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 8. Portfolio: Position ID; collected / pending / distributed; no Claim.
 9. Pay: seeded request **1,800.00 USDC** and $1,800 rent on the selected
    network (**OP Sepolia** after Reset); copy-address and mock wallet
-   paths; visible pending then success; invalid id is a safe not-found.
+   paths in mock mode; visible pending then success; invalid id is a safe
+   not-found. In live mode only the wallet path confirms and only after
+   server-side on-chain verification.
 10. One confirmed payment appears once in Pay history, My Payments, offer
     collections, and holder distribution. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab
     behaviour only for absolute URLs.
 12. Sale explainer never uses interest rate, debt, or borrow — only
     “not a loan.”
+13. Web3 MVP (when the live rail is on): Privy external-wallet login works;
+    non-OP-Sepolia chains are rejected; the book stays pending until the
+    server verifies receipt + Transfer event + exact amount + **5-block**
+    depth; copy-address confirmation is disabled; refresh is idempotent;
+    a reverted/failed transaction is never written as confirmed.
 
 ## Product Lead walkthrough
 
@@ -124,21 +131,46 @@ Click **Reset demo** on Overview and confirm **Yes, reset**.
 
 - Open Pay from the hub. You see the USDC mark, **1,800.00 USDC**, the
   same $1,800 rent, copy address and amount, and both **I’ve sent this
-  payment** and **Connect wallet**.
+  payment** and **Connect wallet** (mock mode).
 - **Payment history** is on the same Pay page. There is no second history page.
 - Network is **OP Sepolia** after Reset. On Overview you can switch to
-  **Base Sepolia**. Mainnet is later and stays off unless turned on.
+  **Base Sepolia** in demo mode. Mainnet is later and stays off unless turned on.
 - Copy the address, then click **I’ve sent this payment**. You should see
   a pending state, then **Rent paid**.
 - Reset, then walk Connect wallet → Pay with demo wallet → pending →
   Rent paid. Rent and lease stay unchanged. The button still says
-  **Pay with demo wallet** while payments are mocked. After Luis flips
-  `PAYMENT_RAIL_MODE` to `"live"`, that button should say **Pay with
-  wallet** and the footer should no longer say the walkthrough does not
-  send a real transfer.
+  **Pay with demo wallet** while the rail is mocked.
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.
+
+### 6b. Pay rent — live wallet testnet UAT (only after `PAYMENT_RAIL_MODE` is `"live"`)
+
+Do this on a testnet with test USDC only. The button now says **Pay with
+wallet** and the footer no longer says the walkthrough does not send a
+real transfer.
+
+- **Connect external wallet**: the Privy login opens and connects a real
+  external wallet. No embedded/Privy wallet is offered.
+- **Wrong chain**: with the wallet on any network other than OP Sepolia,
+  Pay refuses to proceed (chain must be OP Sepolia, ID 11155420).
+- **Copy-address disabled**: the **I've sent this payment** button and the
+  demo outcome menu are gone. Only the wallet path confirms.
+- **Pending**: after signing the USDC transfer, the page shows pending and
+  keeps polling the server. It does **not** confirm on the client.
+- **5-block confirmation**: **Rent paid** appears only after the server
+  verifies the receipt, the ERC-20 `Transfer` event (exact 1,800.00 USDC,
+  correct USDC contract, correct receiving EOA `0x1726cf86…4f6`), and a
+  **5-block** depth.
+- **Refresh idempotency**: refresh before and after confirmation. The
+  payment appears exactly once in Pay history, My Payments, offer
+  collections, and Portfolio.
+- **Failed / reverted**: a rejected signature or a reverted transaction
+  shows a failed/error state and is never written as confirmed.
+- **Mainnet / Base Sepolia**: neither is reachable in live mode.
+
+Record what you see for each item before `docs/09-current-state.md` may
+describe the Web3 flow as verified.
 
 ### 7. Account Apps and Pay
 
