@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { canPersistPayNetwork, isSelectablePayNetwork, parseExactPayNetworkKey } from "@/lib/pay/networks";
 import { verifyLivePayment } from "@/lib/pay/verify";
+import { recordPaymentVerification } from "@/lib/pay/verification-store";
 import { PAYMENT_RAIL_MODE } from "@/lib/pay/mode";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
@@ -116,7 +117,8 @@ export async function confirmPaymentAction(
 
 /**
  * Server-side live confirmation. Verifies the on-chain receipt, USDC
- * transfer, and confirmation depth before confirming the book through the
+ * transfer, and confirmation depth, records the verification idempotently
+ * in `ra_payment_verifications`, then confirms the book through the
  * existing idempotent helper. Only usable when the rail is live.
  */
 export async function verifyLivePaymentAction(paymentRequestId: string, txHash: string) {
@@ -138,6 +140,37 @@ export async function verifyLivePaymentAction(paymentRequestId: string, txHash: 
   if (!result.verified) {
     return result;
   }
+  const chainId = config.chainId;
+  const tokenContract = config.usdcContract;
+  if (chainId == null || !tokenContract || !result.logIndex || !result.sender) {
+    throw new Error("Verified payment facts are incomplete.");
+  }
+  await recordPaymentVerification({
+    paymentRequestId,
+    chainId,
+    txHash,
+    logIndex: result.logIndex,
+    senderAddress: result.sender,
+    recipientAddress: request.receivingAddress,
+    tokenContract,
+    atomicAmount: request.amountUsdcAtomic,
+    blockNumber: result.blockNumber ?? BigInt(0),
+    confirmations: result.confirmations ?? 0,
+    status: "confirmed",
+  });
+
+  // If the book is already confirmed for this request, there is nothing to do.
+  const alreadyBooked = book.paymentRequests?.some(
+    (row) => row.paymentRequestId === paymentRequestId && row.status === "confirmed",
+  );
+  if (alreadyBooked) {
+    return result;
+  }
+
+  // Apply the book through the idempotent helper. This runs both when this
+  // write created the confirmed verification row (firstConfirmed) and when a
+  // previous verification write succeeded but the book write did not complete
+  // (crash recovery): the book outcome is safe to apply again.
   const next = applyPaymentOutcome(
     book,
     paymentRequestId,

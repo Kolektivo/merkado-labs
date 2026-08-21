@@ -78,7 +78,9 @@ to **Base Sepolia** with Circle native USDC. Admin shows that Base
 testnet now. **Base Mainnet** is later and stays hidden unless
 `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Optimism networks stay in
 the catalog if Luis later opts in; they are not shown in Admin.
-The Safe address stays fictional until Luis replaces it. Explorer links render only for a real
+The verified Base Sepolia deposit Safe
+(`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) is in
+`cryptoConfig.safeAddress`. Explorer links render only for a real
 64-hex transaction hash on an official catalog explorer.
 
 ## 6. Future home

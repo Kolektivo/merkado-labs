@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPaymentProvider } from "@/lib/pay/create-provider";
+import { matchExpectedUsdcTransfer } from "@/lib/pay/verify";
 import {
   BASE_SEPOLIA_CHAIN_ID,
   BASE_SEPOLIA_NETWORK_KEY,
@@ -28,7 +29,7 @@ import { getSeedBook } from "@/lib/rent-advance/seed";
 
 const RECIPIENT = "0xDEMO0000SAFE00MERKADOPAY000000000000000";
 const REAL_HASH = "0x" + "a".repeat(64);
-const APPROVED_RECEIVING_EOA = "0x1726cf86DA996BC4B2F393E713f6F8ef83f2e4f6";
+const APPROVED_RECEIVING_SAFE = "0xfC6ec9718d89d4935594E7DB78399913071FcDc4";
 const OP_SEPOLIA_NATIVE_USDC = "0x5fd84259d66Cd46123540766Be93DFE6D43130D7";
 
 // docs/07 provider contract: connect, disconnect, session, submitPayment,
@@ -244,7 +245,7 @@ test("one confirmed payment updates Pay, Direct, and Portfolio exactly once", ()
 
 // docs/07 "Inputs already on the payment request": the canonical seeded
 // request fixes the exact transfer target the live rail must submit —
-// 1,800.00 native USDC to the approved receiving EOA on OP Sepolia.
+// 1,800.00 native USDC to the verified Base Sepolia deposit Safe.
 test("the canonical seeded request fixes the exact USDC transfer target", () => {
   const request = getSeedBook().paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
@@ -254,13 +255,13 @@ test("the canonical seeded request fixes the exact USDC transfer target", () => 
   assert.equal(typeof request.receivingAddress, "string");
   assert.equal(
     request.receivingAddress.toLowerCase(),
-    APPROVED_RECEIVING_EOA.toLowerCase(),
+    APPROVED_RECEIVING_SAFE.toLowerCase(),
   );
 });
 
-// docs/07 approved networks: OP Sepolia chain id 11155420 with Circle native
-// USDC and the approved receiving EOA (labelled a mock EOA, not a Safe).
-test("OP Sepolia catalog facts are fixed for the live rail", () => {
+// docs/07 approved networks: the selected testnet carries Circle native
+// USDC and the verified Base Sepolia deposit Safe as the receiving address.
+test("catalog facts carry native USDC and the deposit Safe for the live rail", () => {
   assert.equal(OP_SEPOLIA_CHAIN_ID, 11155420);
   const config = cryptoConfigFor(OP_SEPOLIA_NETWORK_KEY);
   assert.equal(config.networkKey, OP_SEPOLIA_NETWORK_KEY);
@@ -272,7 +273,7 @@ test("OP Sepolia catalog facts are fixed for the live rail", () => {
   assert.equal(typeof config.safeAddress, "string");
   assert.equal(
     config.safeAddress?.toLowerCase(),
-    APPROVED_RECEIVING_EOA.toLowerCase(),
+    APPROVED_RECEIVING_SAFE.toLowerCase(),
   );
 });
 
@@ -370,4 +371,52 @@ test("a confirmed payment survives refresh and retry without duplicate rows", ()
     );
     assert.equal(currentRenterPaymentRequest(next)?.periodLabel, "October 2026");
   }
+});
+
+// docs/07 Flow A steps 6–9 + docs/08 section 8: server verification binds the
+// USDC Transfer to the exact txHash + logIndex, checks the sender, and accepts
+// exactly one qualifying transfer for the expected amount.
+test("exactly one matching USDC transfer to the Safe is required", () => {
+  const usdc = OP_SEPOLIA_USDC_CONTRACT;
+  const recipient = APPROVED_RECEIVING_SAFE;
+  const payer = "0x" + "11".repeat(20);
+  const other = "0x" + "22".repeat(20);
+  const amount = BigInt(1_800_000_000);
+  const transfer = (from: string) => ({
+    address: usdc,
+    topics: [
+      usdc,
+      from.toLowerCase() as `0x${string}`,
+      recipient.toLowerCase() as `0x${string}`,
+    ],
+    data: "0x" + amount.toString(16).padStart(64, "0"),
+    logIndex: 3,
+  });
+
+  const single = [transfer(payer)];
+  assert.deepEqual(matchExpectedUsdcTransfer(single, usdc, recipient, amount), {
+    logIndex: 3,
+    sender: payer.toLowerCase(),
+  });
+
+  const none = [
+    {
+      address: usdc,
+      topics: [usdc, other.toLowerCase() as `0x${string}`, "0x" + "33".repeat(20)],
+      data: "0x" + amount.toString(16).padStart(64, "0"),
+      logIndex: 1,
+    },
+  ];
+  assert.equal(matchExpectedUsdcTransfer(none, usdc, recipient, amount), null);
+
+  const wrongAmount = [
+    { ...transfer(payer), data: "0x" + (amount - BigInt(1)).toString(16).padStart(64, "0") },
+  ];
+  assert.equal(matchExpectedUsdcTransfer(wrongAmount, usdc, recipient, amount), null);
+
+  const selfTransfer = [transfer(recipient)];
+  assert.equal(matchExpectedUsdcTransfer(selfTransfer, usdc, recipient, amount), null);
+
+  const duplicate = [transfer(payer), transfer(payer)];
+  assert.equal(matchExpectedUsdcTransfer(duplicate, usdc, recipient, amount), null);
 });

@@ -119,8 +119,8 @@ only when mainnet is enabled.
 | Explorer | Official explorer for the selected network — only link a real 64-hex `0x` hash |
 | Customer money | **USD**. Stored as integer cents. |
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
-| Test Safe | Create on **Base Sepolia**. Threshold **2 of 3**. Owners: Enrique `0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8`, Luuk `0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`, and Luis (as discussed). |
-| Receiving Safe | Still a **fictional** demo address in the app. After you send the Base Sepolia Safe address and the Product Lead confirms it, put it in `cryptoConfig`. |
+| Test Safe | Created on **Base Sepolia**. Threshold **2 of 3**. Owners: Enrique `0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8`, Luuk `0x91e12A2b577Fc2823aD13bE2F9Ac746cc9e6f421`, and Luis. Verified on 2026-08-20: Safe v1.4.1, 2-of-3, nonce 1. |
+| Receiving Safe | **`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`** — the verified Base Sepolia deposit Safe. Set in `cryptoConfig.safeAddress` (PR #20). |
 | Wallet in this repo | Mocked. No SDK installed. |
 
 MRA-001 locked Pay request:
@@ -189,6 +189,36 @@ Do **not** reuse `confirmPaymentAction` as the live confirmation API.
 When Pay goes live, confirm on the server from chain data, then write
 the book.
 
+### Wave 2 — Deposit Safe + DB-backed idempotency (PR #20)
+
+Landed on the PR #19 stack (`task/pr20-safe-idempotency`):
+
+- **Receiving Safe**: the verified Base Sepolia deposit Safe
+  `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` is now the default
+  `cryptoConfig.safeAddress` (Safe v1.4.1, 2-of-3, owners Enrique,
+  Luuk, and Luis). The old temporary receiving EOA (`0x1726…`) is no
+  longer the fallback.
+- **Verification table**: `supabase/migrations/20260820100000_ra_payment_verifications.sql`
+  creates `ra_payment_verifications` with RLS on and no
+  `anon` / `authenticated` grants. Unique `(chain_id, tx_hash, log_index)`
+  means one row per on-chain transfer log; a partial unique index on
+  `(payment_request_id) where status = 'confirmed'` means at most one
+  confirmed verification per payment request.
+- **Strict matching**: `src/lib/pay/verify.ts` now reads the receipt’s own
+  logs (bound to the exact `txHash` + `logIndex`), requires the sender not
+  to be the recipient, rejects self-transfers, and accepts exactly one
+  Transfer of the expected atomic amount before any confirmation depth
+  check (5 blocks).
+- **One write**: `verifyLivePaymentAction` calls `recordPaymentVerification`
+  (`src/lib/pay/verification-store.ts`, service-role only). The book is
+  confirmed through the existing idempotent `applyPaymentOutcome` helper
+  only when this write created the confirmed row (`firstConfirmed`).
+  Repeats and retries never double-collect.
+
+This stays dormant while `PAYMENT_RAIL_MODE` is `"mock"`. Do not flip it
+until the Base Sepolia end-to-end walkthrough works and the Product Lead
+approves.
+
 ### Which flow, which step, what you hook
 
 #### Flow A — Renter pays rent (Merkado Pay)
@@ -198,12 +228,12 @@ This is the only flow that needs a live wallet and USDC transfer.
 | Step | What the user sees | What happens now | What you add |
 |---|---|---|---|
 | 1. Open Pay | Hub → Merkado Pay, or `/pay` | Loads the next unpaid request for the demo renter | Nothing |
-| 2. Deep link | `/pay/payreq-mra-001-202609` | Shows 1,800.00 USDC, $1,800.00 rent, selected network, fictional receiving address | Show the real Safe address from `cryptoConfig.safeAddress` once you set it |
+| 2. Deep link | `/pay/payreq-mra-001-202609` | Shows 1,800.00 USDC, $1,800.00 rent, selected network, the verified Base Sepolia Safe | Shows the real Safe address from `cryptoConfig.safeAddress` (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) |
 | 3a. Copy and send | Copy address + **I’ve sent this payment** | `reportExternalTransfer`, then pending → confirmed | Watch the Safe for an inbound native USDC transfer of `expectedAtomicAmount` and match it to this request |
 | 3b. Connect wallet | **Connect wallet** | Mock address, selected `chainId` | Real wallet on the selected network. Reject or prompt switch if `chainId` does not match `cryptoConfig.chainId` |
 | 4. Confirm | **Pay with demo wallet** | Mock submit, then pending → confirmed | `transfer` native USDC for `expectedAtomicAmount` to `recipient` |
 | 5. Submitted | “Payment submitted” | Book status `pending` | Keep pending until the tx is indexed |
-| 6. Confirmed | “Rent paid” | Book writes collection + holder distribution once | Call `confirmPaymentAction(id, "confirmed", { txHash })` only after you consider it confirmed |
+| 6. Confirmed | “Rent paid” | Book writes collection + holder distribution once | `verifyLivePaymentAction(id, txHash)` on the server: verify on chain, record in `ra_payment_verifications`, then write the book exactly once |
 | 7. Revisit | Same page stays paid | Idempotent. Second confirm does nothing | Do not send a second transfer |
 | 8. Later month | November while September is open | Page says pay the earlier month first | Do not allow a transfer for a blocked month |
 | 9. Failed / wrong amount | Demo outcome menu, or your error | Book `failed` or `partial` | Map wallet reject, revert, and amount mismatch to those outcomes |
@@ -253,7 +283,7 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 - `offerReference` (example `MRA-001`)
 - `receivableId`
 - `amountUsdcAtomic` (example `1800000000`)
-- `receivingAddress` (today fictional; replace via `cryptoConfig.safeAddress`)
+- `receivingAddress` (the verified Base Sepolia deposit Safe from `cryptoConfig.safeAddress`)
 - `paymentReference` (human only)
 - `dueDate` / `periodLabel`
 - `cryptoConfig.networkKey` (`base-sepolia` by default)
@@ -343,19 +373,21 @@ When the rail is live:
   confirm still updates Pay, the offer, and Portfolio once.
 - Hide or ignore the demo outcome menu (`showDemoPaymentOutcomes()`
   already hides it when the rail is live).
-- Replace the fictional Safe (`0xDEMO0000SAFE00…`) in `cryptoConfig.safeAddress`.
+- The verified Base Sepolia deposit Safe
+  (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) is already in
+  `cryptoConfig.safeAddress` (PR #20).
 - Prompt a chain switch when the wallet `chainId` is not
   `cryptoConfig.chainId`.
 
 ### Suggested implementation order (after approval)
 
-1. Confirm **Base Sepolia** + native USDC + Safe services together.
-2. Put the real Safe address in `cryptoConfig`.
-3. Implement `PaymentProvider` against `provider.ts`.
-4. Switch `createPaymentProvider` to that adapter.
-5. Flip `PAYMENT_RAIL_MODE` to `"live"` in the same change.
+1. Confirm **Base Sepolia** + native USDC + Safe services together. ✓ done (2026-08-20).
+2. Put the real Safe address in `cryptoConfig`. ✓ done on the PR #19 stack (PR #20).
+3. Implement `PaymentProvider` against `provider.ts`. ✓ Reown/AppKit foundation (PR #19).
+4. Switch `createPaymentProvider` to that adapter. (still the mock until the rail flips)
+5. Flip `PAYMENT_RAIL_MODE` to `"live"` in the same change. (do not flip yet)
 6. Connect wallet → switch to `cryptoConfig.chainId` → USDC `transfer`.
-7. Confirm on the **server** from chain data, then write the book.
+7. Confirm on the **server** from chain data, then write the book. ✓ verify + idempotency scaffold (PR #20).
 8. Only then show explorer links for real hashes.
 9. Separately design allocation and holder-distribution execution.
 10. Only after the Base Sepolia walkthrough works, ask to repeat the Safe
