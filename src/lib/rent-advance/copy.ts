@@ -33,7 +33,7 @@ export const PLAIN = {
   yearlyComparison:
     "A comparison figure so the landlord can compare this flat fee with other ways of getting cash today. It is not an interest rate, and it is not a promised return. Anything above 24% is blocked.",
   cashNow:
-    "The one-time amount the landlord can claim after this offer is bought. Later rent goes to this listing, then to holders — not back to the landlord. No wallet is needed to request an offer.",
+    "The one-time amount paid automatically to the landlord after this offer is bought. Later rent goes to this listing, then to holders — not back to the landlord. No wallet is needed to request an offer.",
   walletlessRequest:
     "You request this from your Merkado account. After review, Merkado creates one offer for this listing. You do not connect a wallet.",
   claimProceeds:
@@ -44,7 +44,7 @@ export const PLAIN = {
   mockClaimDisclosure:
     "No wallet ownership was verified and no on-chain transfer was sent.",
   payoutAddressUnverified:
-    "Use a fictional address beginning with 0xDEMO. It is unverified and demo-only. You do not connect a wallet. This address locks after you claim.",
+    "Use a fictional address beginning with 0xDEMO. It is unverified and demo-only. You do not connect a wallet. This address is saved before submission for automatic payout.",
   payoutAddressLocked:
     "This payout address is locked. A retry can only go to this same address. It was never verified as yours.",
   payoutAddressFinal:
@@ -53,9 +53,9 @@ export const PLAIN = {
   claimRent:
     "When rent arrives, this listing’s offer holds it. Claim it here. It is not paid back to the landlord.",
   payoutAddress:
-    "Enter a fictional payout address beginning with 0xDEMO. You do not connect a wallet. Bank payout through Girasol is planned later and is not part of this walkthrough.",
+    "Enter a fictional payout address beginning with 0xDEMO before submitting. The sale amount is paid there automatically after the whole offer is bought. Bank payout through Girasol is a coming-soon preview.",
   payoutMethod:
-    "For this walkthrough, sale proceeds go to a fictional 0xDEMO address. You never connect a wallet. Bank payout is later.",
+    "For this walkthrough, sale proceeds go automatically to a fictional 0xDEMO address saved before submission. You never connect a wallet. Bank payout is later.",
   bankPayoutLater:
     "Bank payout through Girasol is planned after the pilot. It is not available in this walkthrough.",
   longestTerm:
@@ -63,7 +63,7 @@ export const PLAIN = {
   paymentHistory:
     "How reliably rent has been paid. Holders never see the renter’s name.",
   amountTaken:
-    "What holders have put in so the landlord can be paid now. The landlord receives a lower one-time cash amount.",
+    "The complete price for 100% ownership of this offer. Fractional purchases are not available.",
   holders:
     "People who put money in so the landlord can be paid now. They receive later rent only if the renter pays.",
   usdc:

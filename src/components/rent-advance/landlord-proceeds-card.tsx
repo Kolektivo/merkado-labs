@@ -2,7 +2,6 @@
 
 import { CheckCircle2, Clock3, LockKeyhole } from "lucide-react";
 
-import { ClaimProceedsForm } from "@/components/rent-advance/claim-proceeds-form";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { StatusBadge, type StatusTone } from "@/components/status-badge";
@@ -48,7 +47,7 @@ function LockedAddress({ address }: { address: string }) {
         <p className="flex items-center gap-1 text-sm font-medium">
           Demo address locked
           <HelpTip label="Locked payout address">
-            It cannot be changed after claiming.
+            This destination was saved before the offer was submitted.
           </HelpTip>
         </p>
         <p className="truncate font-mono text-xs text-muted-foreground">
@@ -60,25 +59,19 @@ function LockedAddress({ address }: { address: string }) {
 }
 
 export function LandlordProceedsCard({
-  reference,
   propertyName,
   status,
   purchasePriceCents,
   feeCents,
   amountCents,
   lockedAddress,
-  savedAddress,
-  successHref,
 }: {
-  reference: string;
   propertyName: string;
   status: LandlordProceedsUiStatus;
   purchasePriceCents: number;
   feeCents: number;
   amountCents: number;
   lockedAddress?: string | null;
-  savedAddress?: string | null;
-  successHref?: string;
 }) {
   const funded = status !== "waiting";
 
@@ -115,7 +108,9 @@ export function LandlordProceedsCard({
             <div>
               <p className="font-medium">Wait for the full purchase</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Then <Money cents={purchasePriceCents} /> will be ready to claim.
+                When the whole offer is bought,{" "}
+                <Money cents={purchasePriceCents} /> is paid automatically to
+                the saved payout destination.
               </p>
             </div>
           </div>
@@ -125,12 +120,12 @@ export function LandlordProceedsCard({
               <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <CheckCircle2 className="text-primary" aria-hidden />
                 {status === "paid"
-                  ? "Paid"
+                  ? "Paid automatically"
                   : status === "available"
-                    ? "Ready to claim"
+                    ? "Preparing automatic payout"
                     : status === "failed"
-                      ? "Claim failed"
-                      : "Claim in progress"}
+                      ? "Payout failed"
+                      : "Payout in progress"}
                 <HelpTip label="Offer fully bought">
                   The demo has recorded the full purchase of this offer.
                 </HelpTip>
@@ -156,15 +151,6 @@ export function LandlordProceedsCard({
           </>
         )}
 
-        {status === "available" ? (
-          <ClaimProceedsForm
-            reference={reference}
-            amountCents={amountCents}
-            savedAddress={savedAddress ?? null}
-            successHref={successHref}
-          />
-        ) : null}
-
         {status === "processing" && lockedAddress ? (
           <LockedAddress address={lockedAddress} />
         ) : null}
@@ -172,7 +158,8 @@ export function LandlordProceedsCard({
         {status === "failed" && lockedAddress ? (
           <>
             <p className="text-sm text-muted-foreground">
-              The demo payout failed. Retry with the same locked address.
+              The automatic demo payout failed. Operations can retry only to
+              the same saved destination.
             </p>
             <LockedAddress address={lockedAddress} />
           </>
@@ -185,7 +172,7 @@ export function LandlordProceedsCard({
         {funded ? (
           <Alert className="py-2">
             <AlertDescription>
-              Demo only — no wallet check or transfer.
+              Demo only — no bank, wallet, or transfer was used.
             </AlertDescription>
           </Alert>
         ) : null}

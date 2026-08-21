@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -25,8 +25,8 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
 - **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
-  with Apps. Merkado Pay and Merkado Direct are the enabled apps. Landlord
-  sale claims stay on My Offers. Account Settings stays visible in
+  with Apps. Merkado Pay and Merkado Direct are the enabled apps. Automatic
+  landlord payout status stays on My Offers. Account Settings stays visible in
   marketplace account chrome but is inactive. Not production auth.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
 - **Digital Participation Right (DPR)** = instrument name. In this demo the
@@ -75,7 +75,7 @@ framing where they conflict.
 | Execution roadmap | `10-execution-roadmap.md` |
 | Testing and Product Lead UAT | `11-testing-and-uat.md` |
 | Deployment and local ops | `12-deployment-runbook.md` |
-| Decision records | `decisions/` (walletless landlord: ADR-0006) |
+| Decision records | `decisions/` (walletless landlord: ADR-0006; payout-first whole offer: ADR-0007) |
 | AI prompts | `ai/` |
 | Private local material | `private/` (gitignored) |
 
@@ -86,14 +86,14 @@ framing where they conflict.
 | Merkado Direct umbrella | [LABS] Buildathon demo (see `09` after verify) |
 | Pricing engine + 24% cap | [LABS] Built |
 | Simulator + Listing / Property Score | [LABS] Buildathon scope |
-| Marketplace | [LABS] Built; demo purchase fills a position |
+| Marketplace | [LABS] Built; 100% whole-offer purchase with mocked Connect wallet step and 60-day expiry |
 | Portfolio | [LABS] Seeded positions plus purchases from Marketplace |
-| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; UI in XCG; no real wallet |
+| Merkado Pay (mocked USDC) | [LABS] Buildathon scope; UI in XCG; stablecoin QR; disabled Sentoo preview; no real wallet or bank transfer |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
 | Admin | [LABS] Bottom of left nav — approval, collections, reset |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Walletless landlord | [LABS] Offer request + one Landlord proceeds card + saved payout address. Crypto still mocked |
+| Walletless landlord | [LABS] Payout selected before request; automatic mocked sale payout; Girasol bank preview is Coming soon |
 | Real wallet / Safe transfer | Still mocked on `main`. Draft PRs 19, 20, and 22 are **not merged**. Luis has a 2-of-3 Base Sepolia Safe on that stack. NFT flow still mocked. Handoff in `07` / `12`. Architecture: `ADR-0006` |
 
 ## Reading order

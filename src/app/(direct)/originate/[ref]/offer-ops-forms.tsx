@@ -28,11 +28,13 @@ import type { Actor, Collection, OfferStatus } from "@/lib/rent-advance/types";
 const STATUSES: OfferStatus[] = [
   "draft",
   "under_review",
+  "denied",
   "funding",
   "live",
   "collecting",
   "closed",
   "default",
+  "expired",
 ];
 
 function FormError({ message }: { message: string | null }) {

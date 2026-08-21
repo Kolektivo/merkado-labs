@@ -22,7 +22,16 @@ test("cheap seeded offer is open on Marketplace at about XCG 10", () => {
     relatedParty: false,
   });
   assert.equal(offer.offeringCents, quote.purchasePriceCents);
-  assert.equal(canSubscribe(offer.status, offer.offeringCents, offer.fundedCents), true);
+  assert.equal(
+    canSubscribe(
+      offer.status,
+      offer.offeringCents,
+      offer.fundedCents,
+      offer.expiresAt,
+      "2026-08-20T12:00:00.000Z",
+    ),
+    true,
+  );
 });
 
 test("subscribing the cheap offer creates a live position and $1 rent requests", () => {
@@ -64,31 +73,35 @@ test("a newly created cheap offer still lands in the renter Pay inbox", () => {
   assert.equal(requests[0]?.amountXcgCents, 100);
 });
 
-test("a holder can buy a portion without filling the offering", () => {
+test("a fractional purchase is rejected", () => {
   const book = getSeedBook();
   const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(offer);
   const remaining = offer.offeringCents - offer.fundedCents;
   assert.ok(remaining > 200);
-  const next = applySubscribe(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z", 200);
-  const updated = next.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-  assert.ok(updated);
-  assert.equal(updated.status, "funding");
-  assert.equal(updated.fundedCents, offer.fundedCents + 200);
-  const requests = (next.paymentRequests ?? []).filter(
-    (row) => row.offerReference === CHEAP_OFFER_REFERENCE,
+  assert.throws(
+    () =>
+      applySubscribe(
+        book,
+        CHEAP_OFFER_REFERENCE,
+        "2026-08-20T12:00:00.000Z",
+        200,
+      ),
+    /purchased in full/,
   );
-  assert.equal(requests.length, 0);
 });
 
-test("filling the last portion opens the offer and mints Pay requests", () => {
+test("an explicit whole-offer amount opens the offer and mints Pay requests", () => {
   const book = getSeedBook();
-  const first = applySubscribe(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z", 200);
-  const cheap = first.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  const cheap = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(cheap);
-  assert.equal(cheap.status, "funding");
-  const rest = cheap.offeringCents - cheap.fundedCents;
-  const next = applySubscribe(first, CHEAP_OFFER_REFERENCE, "2026-08-20T12:01:00.000Z", rest);
+  const whole = cheap.offeringCents - cheap.fundedCents;
+  const next = applySubscribe(
+    book,
+    CHEAP_OFFER_REFERENCE,
+    "2026-08-20T12:01:00.000Z",
+    whole,
+  );
   const filled = next.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(filled);
   assert.equal(filled.status, "live");
@@ -99,14 +112,64 @@ test("filling the last portion opens the offer and mints Pay requests", () => {
   assert.equal(requests.length, 6);
 });
 
-test("a purchase above the remaining amount is rejected", () => {
+test("any amount other than the whole offer is rejected", () => {
   const book = getSeedBook();
   const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(offer);
   assert.throws(
     () => applySubscribe(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z", offer.offeringCents + 1),
-    /more than is still open/,
+    /purchased in full/,
   );
+});
+
+test("a non-integer cent amount is rejected", () => {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  assert.throws(
+    () =>
+      applySubscribe(
+        book,
+        CHEAP_OFFER_REFERENCE,
+        "2026-08-20T12:00:00.000Z",
+        offer.offeringCents + 0.1,
+      ),
+    /purchased in full/,
+  );
+});
+
+test("an offer cannot be purchased after its 60-day window", () => {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  offer.expiresAt = "2026-10-01T00:00:00.000Z";
+  assert.throws(
+    () =>
+      applySubscribe(
+        book,
+        CHEAP_OFFER_REFERENCE,
+        "2026-10-01T00:00:00.000Z",
+      ),
+    /60-day purchase window has ended/,
+  );
+});
+
+test("a listed offer with a missing or invalid deadline cannot be purchased", () => {
+  for (const expiresAt of [null, "not-a-date"]) {
+    const book = getSeedBook();
+    const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+    assert.ok(offer);
+    offer.expiresAt = expiresAt;
+    assert.throws(
+      () =>
+        applySubscribe(
+          book,
+          CHEAP_OFFER_REFERENCE,
+          "2026-08-20T12:00:00.000Z",
+        ),
+      /not open|60-day purchase window/,
+    );
+  }
 });
 
 test("already funded offers cannot be purchased again", () => {

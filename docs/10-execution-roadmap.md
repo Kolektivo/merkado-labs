@@ -1,14 +1,14 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 21, 2026 (Luis Wave 3 landlord proceeds)
+**Last updated:** August 21, 2026 (Luuk flow decisions and Luis handoff)
 
 ## Now
 
-- Product Lead reviews the **Landlord proceeds** card: local `main`
-  working tree for Waiting / Available / Paid, and Luis PR #22 (local
-  `http://localhost:3001` or the Vercel preview after login) for
-  Processing / Failed / Retry. Do not merge.
+- Product Lead reviews the payout-first local walkthrough: payout selection
+  before submission, 60-day listing, whole-offer wallet-gated purchase,
+  automatic landlord Paid state, holder wallet-gated claim, Pay QR, and disabled
+  Girasol / Sentoo previews.
 - **Luis** finishes the deposit walkthrough and the mocked NFT /
   listing-offer flow (expected next working slice tomorrow night). Keep
   renter-payment verification in PR #20 untouched.
@@ -29,19 +29,19 @@
   [PR 19](https://github.com/Kolektivo/merkado-labs/pull/19),
   [PR 20](https://github.com/Kolektivo/merkado-labs/pull/20), and
   [PR 22](https://github.com/Kolektivo/merkado-labs/pull/22) stay unmerged.
-- Send Luis the updated `docs/07-integrations.md` (one NFT per listing,
-  two Safes, rent-to-listing, landlord claim, holder claim, sponsorship
-  of `claim()` still for Luis to confirm).
+- Send Luis the updated `docs/07-integrations.md` (one NFT per listing, two
+  Safes, whole-offer purchase, rent-to-listing, automatic landlord payout,
+  wallet ownership, holder claim, 60-day expiry, and sponsorship of `claim()`).
 - Stage 0 questions stay unresolved. Do not pretend they are closed.
   They are not shown on customer Home.
 
 ## Next
 
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
-- **Luis** designs the per-listing offer contract, landlord-claim send,
+- **Luis** designs the per-listing offer contract, automatic landlord-payout send,
   and holder `claim()`, then completes an end-to-end **Base Sepolia**
   walkthrough on the draft stack (create listing offer from company Safe,
-  sale into proceeds Safe, fee sweep, landlord claim, rent to listing,
+  sale into proceeds Safe, fee sweep, automatic landlord payout, rent to listing,
   holder claim). Confirm whether holder `claim()` can be sponsored. Do
   **not** merge and do **not** flip `PAYMENT_RAIL_MODE` to `"live"` until
   that walkthrough works and the Product Lead approves.
@@ -54,7 +54,11 @@
 
 ## Later
 
-- Girasol bank payout for landlord proceeds.
+- Girasol bank payout for landlord proceeds after commercial/API/KYC approval.
+- Sentoo renter bank payment after consent, callback, reconciliation, and
+  bank-data handling approval.
+- Product Lead chooses WalletConnect, Privy, or both for production holder
+  onboarding after Luis recommends the safest maintainable option.
 - Merkado Direct · Property series (not authorised to start).
 - Third-party holders after written opinions.
 - Production Auth and merkado.cw embedding.

@@ -46,6 +46,7 @@ export function HelpTip({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
+            setOpen((current) => !current);
           }}
         >
           <CircleHelp className="size-4" />

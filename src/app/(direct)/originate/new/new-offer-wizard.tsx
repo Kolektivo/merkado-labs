@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, Landmark, WalletCards } from "lucide-react";
 
 import { HelpTip } from "@/components/help-tip";
 import { QuoteResult } from "@/components/rent-advance/quote-result";
@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PropertyCover } from "@/components/property-cover";
 import { submitNewOfferAction } from "@/lib/rent-advance/actions";
 import { readCoverImage } from "@/lib/rent-advance/cover-image";
+import { isClaimableAddress } from "@/lib/rent-advance/custody";
 import { buildScheduledReceivables, coverSrcFor } from "@/lib/rent-advance/helpers";
 import { CapExceededError, usdCentsToXcgInput, xcgMajorToUsdCents } from "@/lib/rent-advance/money";
 import { priceOrBlock, priceQuote, type Quote } from "@/lib/rent-advance/pricing";
@@ -34,7 +35,8 @@ const STEPS = [
   { id: 3, label: "Lease" },
   { id: 4, label: "Quality scores" },
   { id: 5, label: "Quote" },
-  { id: 6, label: "Review" },
+  { id: 6, label: "Payout" },
+  { id: 7, label: "Review" },
 ] as const;
 
 function XcgMoneyInput({
@@ -122,6 +124,8 @@ export function NewOfferWizard({
   const [step, setStep] = useState(startStep);
   const [offer, setOffer] = useState(initial);
   const [confirmed, setConfirmed] = useState(false);
+  const [bankAccountName, setBankAccountName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -178,6 +182,14 @@ export function NewOfferWizard({
       if (!quote) return "Enter a valid rent to see a quote.";
       if (quote.capBreached) return "This quote is above the 24% cap.";
     }
+    if (currentStep === 6) {
+      if (offer.payout.method === "bank") {
+        return "Girasol bank payout is a preview and cannot be used in this demo. Choose crypto payout.";
+      }
+      if (!isClaimableAddress(offer.payout.cryptoAddress)) {
+        return "Use a fictional payout address beginning with 0xDEMO.";
+      }
+    }
     return null;
   }
 
@@ -217,7 +229,7 @@ export function NewOfferWizard({
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
       <nav aria-label="Create offer progress">
-        <ol className="grid grid-cols-3 gap-1 rounded-xl border bg-card p-1.5 sm:grid-cols-6 sm:gap-2 sm:p-2">
+        <ol className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1.5 sm:grid-cols-7 sm:gap-2 sm:p-2">
           {STEPS.map((item) => {
             const complete = item.id < step;
             const current = item.id === step;
@@ -232,7 +244,8 @@ export function NewOfferWizard({
                     !current && !complete && "text-muted-foreground",
                   )}
                   aria-current={current ? "step" : undefined}
-                  disabled={pending}
+                  aria-label={`Step ${item.id}: ${item.label}`}
+                  disabled={pending || item.id > step}
                   onClick={() => setStep(item.id)}
                 >
                   <span
@@ -446,6 +459,13 @@ export function NewOfferWizard({
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            <Alert className="sm:col-span-2">
+              <AlertTitle>Shared Labs demo — use fictional details only</AlertTitle>
+              <AlertDescription>
+                Do not enter a real name, contact, employer, income, or bank
+                information. Demo records may be visible to other reviewers.
+              </AlertDescription>
+            </Alert>
             <Field
               id="full-name"
               label="Full name"
@@ -766,6 +786,139 @@ export function NewOfferWizard({
       ) : null}
 
       {step === 6 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Choose your payout</CardTitle>
+            <CardDescription>
+              Your sale amount is sent automatically after the whole offer is
+              bought. Choose this before submitting.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                aria-pressed={offer.payout.method === "crypto"}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  offer.payout.method === "crypto"
+                    ? "border-primary bg-primary/5"
+                    : "hover:bg-muted/50",
+                )}
+                onClick={() =>
+                  patch((current) => ({
+                    ...current,
+                    payout: { ...current.payout, method: "crypto" },
+                  }))
+                }
+              >
+                <WalletCards className="mb-3 size-5 text-primary" aria-hidden />
+                <p className="font-medium">Stablecoin address</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Available in this mock. No real funds are sent.
+                </p>
+              </button>
+              <button
+                type="button"
+                aria-pressed={offer.payout.method === "bank"}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  offer.payout.method === "bank"
+                    ? "border-primary bg-primary/5"
+                    : "hover:bg-muted/50",
+                )}
+                onClick={() =>
+                  patch((current) => ({
+                    ...current,
+                    payout: { ...current.payout, method: "bank" },
+                  }))
+                }
+              >
+                <Landmark className="mb-3 size-5 text-primary" aria-hidden />
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">Bank account</p>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                    Coming soon
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Planned with Girasol · additional 1.5% demo fee.
+                </p>
+              </button>
+            </div>
+
+            {offer.payout.method === "crypto" ? (
+              <Field
+                id="payout-address"
+                label="Recipient address"
+                hint="Demo only. Use a fictional address beginning with 0xDEMO. This is saved with the offer."
+              >
+                <Input
+                  id="payout-address"
+                  autoComplete="off"
+                  value={offer.payout.cryptoAddress ?? ""}
+                  onChange={(event) =>
+                    patch((current) => ({
+                      ...current,
+                      payout: {
+                        ...current.payout,
+                        cryptoAddress: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="0xDEMOLANDLORDPAYOUT0001"
+                />
+              </Field>
+            ) : (
+              <div className="space-y-4 rounded-xl bg-muted/40 p-4">
+                <Alert>
+                  <AlertTitle>Girasol payout preview</AlertTitle>
+                  <AlertDescription>
+                    These fields are visual only and are never saved or sent.
+                    Use fictional details. Crypto payout is required to submit
+                    this demo.
+                  </AlertDescription>
+                </Alert>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field id="bank-account-name" label="Account holder">
+                    <Input
+                      id="bank-account-name"
+                      autoComplete="off"
+                      value={bankAccountName}
+                      onChange={(event) => setBankAccountName(event.target.value)}
+                      placeholder="Demo Landlord"
+                    />
+                  </Field>
+                  <Field id="bank-account-number" label="Bank account number">
+                    <Input
+                      id="bank-account-number"
+                      autoComplete="off"
+                      value={bankAccountNumber}
+                      onChange={(event) => setBankAccountNumber(event.target.value)}
+                      placeholder="DEMO-0000"
+                    />
+                  </Field>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Future partner:{" "}
+                  <a
+                    href="https://www.girasolpayments.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    Girasol Payments
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                  . Final fees and integration terms still require confirmation.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {step === 7 ? (
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -786,6 +939,14 @@ export function NewOfferWizard({
                 {offer.property.district} · {offer.property.type} ·{" "}
                 {offer.months} months
               </p>
+              <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                <p className="font-medium">Automatic payout</p>
+                <p className="mt-1 text-muted-foreground">
+                  {offer.payout.method === "crypto"
+                    ? `Stablecoin demo address · ${offer.payout.cryptoAddress}`
+                    : "Girasol bank payout preview · Coming soon (cannot submit)"}
+                </p>
+              </div>
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -810,7 +971,7 @@ export function NewOfferWizard({
         >
           Back
         </Button>
-        {step < 6 ? (
+        {step < 7 ? (
           <Button
             type="button"
             disabled={pending || (step === 5 && Boolean(quote?.capBreached))}
@@ -821,7 +982,7 @@ export function NewOfferWizard({
                 return;
               }
               setError(null);
-              setStep((current) => Math.min(6, current + 1));
+              setStep((current) => Math.min(7, current + 1));
             }}
           >
             Continue

@@ -1,9 +1,12 @@
 import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
-import { offerDisplayName } from "@/lib/rent-advance/helpers";
+import {
+  formatDayMonthYear,
+  offerDisplayName,
+} from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
 import type { DemoBook } from "@/lib/rent-advance/types";
 
-export type DashboardNotificationKind = "sale_proceeds" | "rent_claim";
+export type DashboardNotificationKind = "offer_update" | "rent_claim";
 
 export type DashboardNotification = {
   id: string;
@@ -12,6 +15,7 @@ export type DashboardNotification = {
   subject: string;
   detail: string;
   href: string;
+  actionLabel: string;
 };
 
 export function visibleNotifications(
@@ -27,7 +31,7 @@ export function navNotificationCounts(
 ) {
   const visible = visibleNotifications(items, clearedIds);
   return {
-    originate: visible.filter((item) => item.kind === "sale_proceeds").length,
+    originate: visible.filter((item) => item.kind === "offer_update").length,
     portfolio: visible.filter((item) => item.kind === "rent_claim").length,
   };
 }
@@ -39,15 +43,39 @@ export function dashboardNotifications(
 
   for (const offer of book.offers) {
     const proceeds = landlordProceedsPresentation(offer);
-    if (proceeds.status !== "available") continue;
-    items.push({
-      id: `sale:${offer.reference}`,
-      kind: "sale_proceeds",
-      title: "Sale amount ready to claim",
-      subject: offerDisplayName(offer),
-      detail: formatXcg(proceeds.amountCents),
-      href: `/originate/${offer.reference}`,
-    });
+    if (proceeds.status === "paid") {
+      items.push({
+        id: `sale-paid:${offer.reference}`,
+        kind: "offer_update",
+        title: "Sale amount paid automatically",
+        subject: offerDisplayName(offer),
+        detail: formatXcg(proceeds.amountCents),
+        href: `/originate/${offer.reference}`,
+        actionLabel: "View payout",
+      });
+    } else if (offer.status === "funding") {
+      items.push({
+        id: `listed:${offer.reference}`,
+        kind: "offer_update",
+        title: "Offer accepted and listed",
+        subject: offerDisplayName(offer),
+        detail: offer.expiresAt
+          ? `Available until ${formatDayMonthYear(offer.expiresAt)}`
+          : "Available for 60 days",
+        href: `/originate/${offer.reference}`,
+        actionLabel: "View offer",
+      });
+    } else if (offer.status === "denied") {
+      items.push({
+        id: `denied:${offer.reference}`,
+        kind: "offer_update",
+        title: "Offer request denied",
+        subject: offerDisplayName(offer),
+        detail: "Open the offer for the decision",
+        href: `/originate/${offer.reference}`,
+        actionLabel: "View decision",
+      });
+    }
   }
 
   const pendingByOffer = new Map<string, number>();
@@ -68,6 +96,7 @@ export function dashboardNotifications(
       subject: offer ? offerDisplayName(offer) : reference,
       detail: formatXcg(amountCents),
       href: `/portfolio/${reference}`,
+      actionLabel: "Open and claim",
     });
   }
 

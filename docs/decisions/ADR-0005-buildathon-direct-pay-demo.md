@@ -140,6 +140,15 @@ settlement is removed. Every offer uses the landlord proceeds claim.
 - Technical owner: Merkado Labs agent implementation
 - Date: 2026-08-18; amended 2026-08-19 and 2026-08-20
 
+## Amendment — 2026-08-21 (payout-first whole offer)
+
+ADR-0007 supersedes the landlord-claim and fractional-purchase parts inherited
+through ADR-0006. The Labs demo now requires payout selection before submission,
+sells 100% of an offer to one mocked connected holder, lists for 60 days, and
+marks the landlord purchase price paid automatically. Per-listing rent and the
+holder claim remain. Stablecoin QR plus disabled Girasol / Sentoo previews are
+mock UI only; no real rail is enabled.
+
 ## Amendment — 2026-08-19 (testnets first)
 
 Product Lead asked to prepare the Luis handoff on **OP Sepolia** and

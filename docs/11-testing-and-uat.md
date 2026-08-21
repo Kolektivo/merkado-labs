@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 21, 2026 (notification polish)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## Automated
 
@@ -42,16 +42,17 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
    Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
    disabled when unapproved or above 24%.
 5. Use this quote prefills Create Offer. 9/12 cannot submit.
-6. Offer detail: Merkado-created offer; claim card after sale; later rent
-   collected / ready to claim / claimed. Operations controls are only in
-   Admin.
-7. Marketplace: no tenant name or address; a holder can buy any portion
-   still open; Property Score is the derived figure.
+6. Offer detail: landlord sees review/listed/sold/paid, automatic payout, and
+   60-day availability; no holder or monthly collection detail. Operations
+   controls are only in Admin.
+7. Marketplace: no tenant name or address; server rejects fractional and expired
+   purchases; a mocked **Connect wallet** button gates a 100% purchase.
 8. Portfolio: Position ID; collected / ready to claim / claimed;
-   **Claim rent** after rent arrives.
+   per-offer rent address; mocked wallet-gated **Claim rent** after rent arrives.
 9. Pay: seeded request **XCG 3,222.00** / **1,800.00 USDC** on the selected
-   network (**Base Sepolia** after Reset); copy-address and mock wallet
-   paths; visible pending then success; invalid id is a safe not-found.
+   network (**Base Sepolia** after Reset); QR, copy-address, and **I’ve sent
+   this payment** only; collapsed Sentoo preview; visible pending then success;
+   invalid id is a safe not-found.
 10. One confirmed payment appears once in Pay history, My Payments, offer
     collections, and holder distribution. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab
@@ -75,20 +76,17 @@ checklist.
 
 Open **Admin** at the bottom of the left nav. Click **Reset the book** and
 confirm **Yes, reset**. After Reset, **MRA-001** is fully purchased and
-available to claim. **MRA-010** is created by Merkado and still open on
-Marketplace.
+marked **Paid** automatically. **MRA-010** is created by Merkado and still open
+on Marketplace.
 
 ### 1. Home
 
 - The page starts with **Rent paid forward**. It does not repeat
   “Merkado Direct” as a small eyebrow above the heading.
 - Featured Marketplace cards are visible. Buttons are violet, not black.
-- After Reset, **Needs your attention** shows **Sun Set Heights** as
-  ready to claim. The header bell has a clear count. **My Offers** has
-  a **1** on the right. Opening the item lands on the offer page. After
-  you claim, the count disappears. **Clear all** hides the reminders
-  without claiming. **Reset the book** brings them back if the amount is
-  still ready.
+- After Reset, the header bell and **My Offers** count show the paid Sun Set
+  Heights offer and the listed Punda offer as updates, not amounts the landlord
+  must claim. Home does not repeat those cards. **Clear all** hides the updates.
 - You do **not** see a long sale-not-loan box, Reset, or legal questions.
 
 ### 2. Simulator
@@ -102,8 +100,11 @@ Marketplace.
 ### 3. Create offer and Admin
 
 - From the XCG 10 example, click **Use this quote**.
-- Add a cover photo if you want. On Review, the page should say you do
-  not need a wallet. Click **Submit request**.
+- Add a cover photo if you want. On **Payout**, choose **Stablecoin address** and
+  keep or enter a fictional value beginning with `0xDEMO`. Select **Bank
+  account** once to confirm Girasol, Coming soon, the illustrative fee, and
+  browser-only fictional fields are clear. Return to Stablecoin. On Review, the
+  page should say you do not need a wallet. Click **Submit request**.
 - Open **Admin** at the bottom of the left nav. Open the new offer.
   The approver choices should be **Enrique** and **Luuk**. Pick either
   one, then click **Approve offer**.
@@ -115,67 +116,33 @@ Marketplace.
   and **Book overview** should be collapsed.
 - Open **Marketplace**. You see two cards with **XCG** amounts and photos:
   the funded Sun Set Heights house and the open **Punda** studio.
-- Open the **Punda** studio (**MRA-010**). Enter a smaller amount or click
-  **25%**, then **Purchase**. A **Purchase recorded** dialog appears on
-  Portfolio. Close it. The studio should still show some amount open.
-- Open the same studio again. Click **All**, then **Purchase**,
-  so Pay can mint the XCG 1.79 rent.
-- Open the header **bell**. After Reset, **Sun Set Heights** should
-  already show as **Sale amount ready to claim**. Opening it should land
-  on that offer page, not a separate Payouts page.
-- Open **My Offers** for the Punda studio after it is fully bought. The
-  **Landlord proceeds** card should say **Available** and **Ready to
-  claim**. Portfolio must not show an automatic settlement hash or
-  explorer link. Paste `0xDEMOLANDLORD001` on that offer page to claim.
-
-### 4b. Landlord proceeds
-
-Do this on the local app you were asked to review.
-
-**On this computer (`npm run dev`, usually http://localhost:3000):**
-
-- After Reset, **Sun Set Heights** shows **Available** and **Ready to
-  claim**. The available amount equals the purchase price. No transaction
-  hash. No explorer link.
-- **Punda** studio shows **Waiting** until it is fully bought, then
-  **Available**. Paste `0xDEMOLANDLORD001` and click the violet **Claim
-  XCG…** button.
-  A **Proceeds claimed** dialog shows the amount. Close it. The card becomes
-  **Paid** and the address locks.
-- Processing and Failed are not on this local book yet.
-
-**On Luis’s Wave 3 preview (http://localhost:3001, or the PR #22
-Vercel preview after you log in to Vercel):**
-
-- The Vercel login only passes Vercel SSO. The app then asks for the
-  separate **Labs shared password**. Stop and ask Enrique / Luuk if you
-  do not have it; do not paste it into chat or the repository.
-- After Reset, open **My Offers** → **Sun Set Heights**.
-- The card says **Mock funding recorded** and **Available**.
-- Open **Marketplace** → **Punda** studio. Buy part of it. The card
-  stays **Waiting**.
-- Buy the rest. The card becomes **Available**.
-- Enter `0xa1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4`.
-- Click **Claim proceeds**. The address locks. Status is **Processing**.
-- Click **Mark as paid**. Status is **Paid**. No hash. No explorer.
-- Reset, refill Punda, claim again, then **Mark as failed** →
-  **Retry claim**. Retry must keep the same locked address.
-- No offer shows the old automatic settlement card.
+- Open the **Punda** studio (**MRA-010**). The card shows one whole-offer price,
+  100% ownership, and a 60-day deadline. There is no amount input, 25%, or 50%.
+- Click **Connect wallet**. It shows a fictional connected wallet. Click
+  **Purchase whole offer**. A **Purchase recorded** dialog appears on Portfolio.
+- Open **My Offers** for Punda. It is **Sold** and its Landlord proceeds card is
+  **Paid automatically** to the saved demo destination. There is no landlord
+  claim button, transaction hash, or explorer link.
 
 ### 5. Pay rent
 
 - Open **Merkado Pay**. You see a list. MRA-001 is **XCG 3,222.00**.
   After purchasing MRA-010, a **XCG 1.79** rent also appears.
-- Open the XCG 1.79 payment. You still confirm with the mocked wallet or
-  **I’ve sent this payment**. Settlement note shows **1.00 USDC**.
+- Open the XCG 1.79 payment. Confirm only with **I’ve sent this payment**.
+  Settlement note shows **1.00 USDC**. There is no Connect wallet button.
+- The expanded **Pay with stablecoin** card shows an informational demo QR plus
+  the same copyable offer address and amount. Its text must say it cannot open a
+  real wallet. **Continue with Sentoo** stays collapsed underneath. Opening it
+  expands fictional bank fields, Coming soon, and a disabled action; the
+  stablecoin card collapses. It must not record a payment.
 - Copy the address, then click **I’ve sent this payment**. You should see
   a pending state, then **Rent paid**.
-- Portfolio for that position now shows the rent as ready to claim. Click
-  **Claim rent**. A **Rent claimed** dialog shows the amount. Close it. The
-  position should then show the amount as claimed.
-- Reset, then walk Connect wallet → Pay with demo wallet → pending →
-  Rent paid. Rent and lease stay unchanged. The button still says
-  **Pay with demo wallet** because this walkthrough is mocked.
+- Portfolio for that position now shows the offer rent address and rent ready to
+  claim. Click **Connect wallet**, then **Claim rent**. A **Rent claimed**
+  dialog shows the amount. Close it. The position should then show the amount as
+  claimed.
+- Reset, then walk **I’ve sent this payment** → pending → Rent paid. Rent and
+  lease stay unchanged.
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.

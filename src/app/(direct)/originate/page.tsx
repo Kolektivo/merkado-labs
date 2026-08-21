@@ -27,6 +27,7 @@ import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
 import {
   attentionItems,
   bookTotals,
+  effectiveOfferStatus,
   offerDisplayName,
   sortOffersForLandlordList,
   statusLabel,
@@ -45,8 +46,10 @@ const FILTERS: { value: "all" | OfferStatus; label: string }[] = [
   { value: "all", label: "All" },
   { value: "draft", label: "Draft" },
   { value: "under_review", label: "Under review" },
-  { value: "funding", label: "Funding" },
-  { value: "collecting", label: "Collecting" },
+  { value: "funding", label: "Listed" },
+  { value: "live", label: "Sold" },
+  { value: "denied", label: "Denied" },
+  { value: "expired", label: "Expired" },
   { value: "closed", label: "Closed" },
   { value: "default", label: "Default" },
 ];
@@ -66,11 +69,15 @@ function nextOfferStep(
   offer: Offer,
   proceeds: ReturnType<typeof landlordProceedsPresentation>,
 ) {
-  if (offer.status === "draft") return "Submit this request";
-  if (offer.status === "under_review") return "Wait for approval";
-  if (proceeds.status === "available") return "Claim your sale amount";
-  if (proceeds.status === "paid") return "Sale amount paid";
-  return "Wait for the full purchase";
+  const status = effectiveOfferStatus(offer);
+  if (status === "draft") return "Submit this request";
+  if (status === "under_review") return "Wait for approval";
+  if (status === "denied") return "Review the decision";
+  if (status === "expired") return "Listing window ended";
+  if (proceeds.status === "paid") return "Sale amount paid automatically";
+  if (proceeds.status === "processing") return "Automatic payout processing";
+  if (status === "funding") return "Listed for 60 days";
+  return "Offer sold";
 }
 
 function parseStatus(
@@ -95,18 +102,20 @@ export default async function OriginatePage({
   const filtered =
     status === "all"
       ? book.offers
-      : status === "collecting"
+      : status === "live"
         ? book.offers.filter(
-            (offer) => offer.status === "collecting" || offer.status === "live",
+            (offer) =>
+              effectiveOfferStatus(offer) === "collecting" ||
+              effectiveOfferStatus(offer) === "live",
           )
-        : book.offers.filter((offer) => offer.status === status);
+        : book.offers.filter((offer) => effectiveOfferStatus(offer) === status);
   const offers = sortOffersForLandlordList(filtered);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Offers"
-        description="Track your offers and claim sale amounts when they are ready."
+        description="Track review, listing, sale, and automatic payout."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -164,13 +173,14 @@ export default async function OriginatePage({
             {offers.map((offer) => {
               const proceeds = landlordProceedsPresentation(offer);
               const nextStep = nextOfferStep(offer, proceeds);
+              const effectiveStatus = effectiveOfferStatus(offer);
               return (
                 <Link
                   key={offer.reference}
                   href={`/originate/${offer.reference}`}
                   className={cn(
                     "rounded-xl border bg-card px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    proceeds.status === "available" && "bg-primary/5",
+                    proceeds.status === "processing" && "bg-primary/5",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -180,8 +190,8 @@ export default async function OriginatePage({
                         {offer.reference} · {offer.property.district}
                       </p>
                     </div>
-                    <StatusBadge tone={statusTone(offer.status)}>
-                      {statusLabel(offer.status)}
+                    <StatusBadge tone={statusTone(effectiveStatus)}>
+                      {statusLabel(effectiveStatus)}
                     </StatusBadge>
                   </div>
                   <p className="mt-2 text-sm">
@@ -191,7 +201,7 @@ export default async function OriginatePage({
                   <p
                     className={cn(
                       "mt-1 text-sm",
-                      proceeds.status === "available"
+                      proceeds.status === "processing"
                         ? "font-medium text-primary"
                         : "text-muted-foreground",
                     )}
@@ -218,11 +228,12 @@ export default async function OriginatePage({
                 {offers.map((offer) => {
                   const proceeds = landlordProceedsPresentation(offer);
                   const nextStep = nextOfferStep(offer, proceeds);
+                  const effectiveStatus = effectiveOfferStatus(offer);
                   return (
                     <TableRow
                       key={offer.reference}
                       className={cn(
-                        proceeds.status === "available" && "bg-primary/5",
+                        proceeds.status === "processing" && "bg-primary/5",
                       )}
                     >
                       <TableCell className="font-medium">
@@ -246,14 +257,14 @@ export default async function OriginatePage({
                       </TableCell>
                       <TableCell>{offer.months} months</TableCell>
                       <TableCell>
-                        <StatusBadge tone={statusTone(offer.status)}>
-                          {statusLabel(offer.status)}
+                        <StatusBadge tone={statusTone(effectiveStatus)}>
+                          {statusLabel(effectiveStatus)}
                         </StatusBadge>
                       </TableCell>
                       <TableCell
                         className={cn(
                           "text-sm",
-                          proceeds.status === "available" &&
+                          proceeds.status === "processing" &&
                             "font-medium text-primary",
                         )}
                       >

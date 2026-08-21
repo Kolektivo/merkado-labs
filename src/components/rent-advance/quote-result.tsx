@@ -86,7 +86,7 @@ export function QuoteResult({ quote }: { quote: Quote }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Cash the landlord can claim
+            Paid automatically to the landlord
             <HelpTip label="Paid to the landlord">{PLAIN.cashNow}</HelpTip>
           </CardTitle>
         </CardHeader>
@@ -95,8 +95,8 @@ export function QuoteResult({ quote }: { quote: Quote }) {
             {formatXcg(quote.purchasePriceCents)}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            After a holder buys the offer, the landlord claims this amount.
-            No wallet is needed to request the offer.
+            After a holder buys the whole offer, this amount is paid
+            automatically to the payout destination selected before submission.
           </p>
         </CardContent>
       </Card>

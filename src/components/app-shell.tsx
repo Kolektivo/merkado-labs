@@ -107,14 +107,14 @@ function NavLinks({
             <SidebarMenuButton
               asChild
               isActive={isActivePath(pathname, href)}
-              tooltip={count ? `${label}, ${count} ready to claim` : label}
+              tooltip={count ? `${label}, ${count} updates` : label}
               className={cn("min-h-9", count > 0 && "pr-8")}
             >
               <Link
                 href={href}
                 aria-current={isActivePath(pathname, href) ? "page" : undefined}
                 aria-label={
-                  count ? `${label}, ${count} ready to claim` : undefined
+                  count ? `${label}, ${count} updates` : undefined
                 }
               >
                 <Icon />

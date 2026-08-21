@@ -111,6 +111,24 @@ export default async function PortfolioDetailPage({
           },
         ]}
       />
+      {position.offerAddress ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Offer rent address</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <CopyValue
+              value={position.offerAddress}
+              label="offer rent address"
+              truncate
+            />
+            <p className="text-xs text-muted-foreground">
+              Merkado Pay sends this offer&apos;s rent here. A mocked demo
+              wallet claims rent from Portfolio.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
       {pendingCents > 0 ? (
         <Card className="ring-primary/30 shadow-md">
           <CardHeader>

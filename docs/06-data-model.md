@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 21, 2026 (landlord proceeds rules)
+**Last updated:** August 21, 2026 (automatic payout and listing expiry)
 
 ## 1. Money
 
@@ -71,37 +71,43 @@ and checklist.
 Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
 `paymentRequestId`, `positionId`, `collectionId`, `distributionId`,
 `transactionId`, optional `txHash`, and `safeAccountId`. Offers carry a
-mocked per-listing `custody` object (listing offer id, owner,
-sale-proceeds status, landlord claim). That object tracks the listing
+mocked per-listing `custody` object (listing offer id, offer address, owner,
+sale-proceeds status, automatic landlord payout). `Offer.payout` stores the
+selected method and fictional crypto destination; `publishedAt` plus `expiresAt`
+enforce the 60-day purchase window. That object tracks the listing
 offer; it is not a custody-product ledger. `externalTokenId` is set after
 Merkado creates the offer. After sale, rent lands on that listing until
 the holder claims it. Do not present this as a public token market.
 
 Product rules for landlord sale proceeds, whichever book shape is live:
 
-- One claim flow per offer. `normalizeBook()` removes legacy
+- One automatic payout per sold offer. `normalizeBook()` removes legacy
   `advance_settlement` rows and clears their offer / position references;
-  the mock does not merely hide them.
-- Claim amount equals the purchase price. The fee is informational and
+  migrates legacy claimable proceeds to Paid when a valid fictional destination
+  exists; the mock does not merely hide them.
+- Payout amount equals the purchase price. The fee is informational and
   is never deducted twice.
-- Paid is terminal. A locked payout address cannot be changed after
-  processing starts.
-- `txHash` for this mock claim is `null`. Legacy demo hashes are discarded.
+- The destination is chosen before submission. Demo submission requires
+  `method = crypto` and an obviously fictional `0xDEMO…` address. Girasol bank
+  payout remains `coming_soon`.
+- Paid is terminal. There is no landlord claim action.
+- `txHash` for this mock payout is `null`. Legacy demo hashes are discarded.
   No explorer link.
 - The payout address is server-side and must not enter Marketplace,
   Pay, or Portfolio payloads.
 
-Luis PR #22 (draft, not on `main`) stores the same rules as
-`OfferFundingRecord` + `LandlordProceedsClaim` with statuses
-`available → processing → paid` (also `failed`). Reconcile those records
-with `offer.custody` when Wave 3 is reviewed. Do not treat PR #22 as live.
+Luis PR #22 (draft, not on `main`) still models a manual landlord claim and is
+now superseded by this Product Lead decision. Reconcile or replace its
+`OfferFundingRecord` / `LandlordProceedsClaim` flow with payout-first automatic
+execution before review. Do not treat PR #22 as live.
 
 `property` series type exists on `ra_series` so the platform is not
 hardcoded to receivables. It is not implemented.
 
 ## 5. Lifecycle
 
-`draft → under_review → funding → live/collecting → closed`  
+`draft → under_review → funding (Listed) → live/collecting (Sold) → closed`  
+`denied` is a review outcome. `expired` ends an unsold listing after 60 days.
 `default` is an arrears outcome, not a shortcut.
 
 Payment request: `due → initiated → pending → confirmed` (also failed,
@@ -130,5 +136,5 @@ crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
 explorer, company Safe, sales proceeds Safe, offer factory). Older
 `optimism` and OP Sepolia books rematch to **Base Sepolia**. Reset
 restores the complete current seed and keeps the selected payment
-network. `DemoAccount.payoutAddress` is optional. No new migration for
-this pivot.
+network. Legacy `DemoAccount.payoutAddress` remains optional for compatibility;
+new payout ownership is per offer. No new migration for this pivot.

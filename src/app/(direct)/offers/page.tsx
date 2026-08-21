@@ -50,7 +50,7 @@ export default async function OffersPage({
     <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Marketplace"
-        description="Open offers in Curaçao. Amounts in XCG."
+        description="Available, sold, and expired offers in Curaçao. Amounts in XCG."
       />
 
       <form className="flex flex-wrap items-end gap-3" method="get">

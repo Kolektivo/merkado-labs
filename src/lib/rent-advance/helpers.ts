@@ -159,9 +159,48 @@ export function remainingOfferingCents(offer: { offeringCents: number; fundedCen
   return Math.max(0, offer.offeringCents - offer.fundedCents);
 }
 
-export function canSubscribe(status: OfferStatus, offeringCents: number, fundedCents: number): boolean {
+export function listingExpiresAt(publishedAt: string | null): string | null {
+  if (!publishedAt) return null;
+  const expires = new Date(publishedAt);
+  if (Number.isNaN(expires.getTime())) return null;
+  expires.setUTCDate(expires.getUTCDate() + 60);
+  return expires.toISOString();
+}
+
+export function isListingExpired(
+  expiresAt: string | null | undefined,
+  at = new Date().toISOString(),
+): boolean {
+  if (!expiresAt) return false;
+  const expires = Date.parse(expiresAt);
+  const now = Date.parse(at);
+  return !Number.isFinite(expires) || !Number.isFinite(now) || expires <= now;
+}
+
+export function effectiveOfferStatus(
+  offer: { status: OfferStatus; expiresAt?: string | null },
+  at = new Date().toISOString(),
+): OfferStatus {
+  if (
+    offer.status === "funding" &&
+    (!offer.expiresAt || isListingExpired(offer.expiresAt, at))
+  ) {
+    return "expired";
+  }
+  return offer.status;
+}
+
+export function canSubscribe(
+  status: OfferStatus,
+  offeringCents: number,
+  fundedCents: number,
+  expiresAt?: string | null,
+  at?: string,
+): boolean {
   return (
     (status === "funding" || status === "live" || status === "collecting") &&
+    (status !== "funding" || Boolean(expiresAt)) &&
+    !isListingExpired(expiresAt, at) &&
     remainingOfferingCents({ offeringCents, fundedCents }) > 0
   );
 }
@@ -181,6 +220,8 @@ export function statusTone(status: OfferStatus) {
       return "info" as const;
     case "under_review":
       return "warning" as const;
+    case "denied":
+    case "expired":
     case "default":
       return "error" as const;
     case "closed":
@@ -195,11 +236,15 @@ export function statusLabel(status: OfferStatus): string {
     case "under_review":
       return "Under review";
     case "live":
-      return "Active";
+      return "Sold";
     case "funding":
-      return "Funding";
+      return "Listed";
     case "collecting":
-      return "Collecting";
+      return "Sold";
+    case "denied":
+      return "Denied";
+    case "expired":
+      return "Expired";
     case "closed":
       return "Closed";
     case "default":
@@ -231,11 +276,18 @@ export function canRecordCollection(status: OfferStatus): boolean {
 }
 
 export function isMarketplaceStatus(status: OfferStatus): boolean {
-  return status !== "draft" && status !== "under_review";
+  return status !== "draft" && status !== "under_review" && status !== "denied";
 }
 
-export function canShowContribute(status: OfferStatus): boolean {
-  return status === "live" || status === "funding" || status === "collecting";
+export function canShowContribute(
+  status: OfferStatus,
+  expiresAt?: string | null,
+): boolean {
+  return (
+    (status === "live" || status === "funding" || status === "collecting") &&
+    (status !== "funding" || Boolean(expiresAt)) &&
+    !isListingExpired(expiresAt)
+  );
 }
 
 export function payerPayee(offer: Offer): string {
@@ -266,6 +318,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     fundedCents: offer.fundedCents,
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
     status: offer.status,
+    expiresAt: offer.expiresAt,
     coverImageSrc: offer.property.coverImageSrc ?? null,
   };
 }
@@ -329,6 +382,7 @@ export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPos
   return {
     ...anonymizeOffer(offer),
     positionId: positionIdFor(offer.reference),
+    offerAddress: mergeCustody(offer.custody).nftPaymentAddress,
     receivedCents: money.collectedCents,
     remainingCents: outstandingCents(offer),
     collectedCents: money.collectedCents,
@@ -370,6 +424,8 @@ const OFFER_LIST_ORDER: Record<OfferStatus, number> = {
   under_review: 4,
   draft: 5,
   closed: 6,
+  denied: 7,
+  expired: 8,
 };
 
 export function sortOffersForLandlordList(offers: Offer[]): Offer[] {
@@ -389,10 +445,6 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
   const missed = book.offers.flatMap((offer) =>
     offer.receivables.filter((row) => row.status === "missed"),
   );
-  const claimable = book.offers.filter(
-    (offer) => mergeCustody(offer.custody).saleProceedsStatus === "claimable",
-  );
-
   return [
     {
       tone: "error",
@@ -420,15 +472,6 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
         ? `A month did not arrive · ${missedOffer?.reference ?? "book"}`
         : "none",
       href: missedOffer ? `/originate/${missedOffer.reference}` : "/originate",
-    },
-    {
-      tone: "info",
-      label: "Ready to claim",
-      count: claimable.length,
-      detail: claimable[0]
-        ? `Sale proceeds are waiting · ${claimable[0].reference}`
-        : "none waiting",
-      href: claimable[0] ? `/originate/${claimable[0].reference}` : "/originate",
     },
   ];
 }

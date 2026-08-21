@@ -57,8 +57,8 @@ export default async function PortfolioPage() {
       />
       {positions.length === 0 ? (
         <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-          No positions yet. Buy part of an open offer in Marketplace and it
-          will appear here.
+          No positions yet. Buy a whole open offer in Marketplace and it will
+          appear here.
         </div>
       ) : null}
       <div className="grid gap-3 md:hidden">
@@ -151,7 +151,8 @@ export default async function PortfolioPage() {
         </div>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        When rent arrives, open the position and click Claim rent.
+        When rent arrives, open the position, connect a demo wallet, and
+        claim rent from the offer.
       </p>
     </ThemeMerkado>
   );

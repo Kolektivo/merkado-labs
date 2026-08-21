@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## 1. Surfaces
 
@@ -33,7 +33,8 @@ Customer-facing surfaces:
 - Server components load one demo book from Labs Supabase (`ra_demo_state`)
   with a seed fallback and `normalizeBook()` for older JSON.
 - Mutations are server actions (record collection, dual-control release,
-  submit for review, confirm mocked payment, reset).
+  submit for review, whole-offer purchase, holder claim, confirm mocked
+  payment, reset).
 - There is no Merkado login. After deploy, the hosted demo asks for a
   shared host password at `/enter`. Reset the book sits in Admin.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
@@ -67,6 +68,11 @@ Receivables, collections, payment requests, and distributions are separate
 on purpose. A confirmed Pay event updates them once through an idempotent
 helper.
 
+Each offer stores its payout selection, publication time, and 60-day
+`expiresAt` inside the existing JSON payload. `normalizeBook()` fills these
+fields for older books. No schema migration is required. Bank/Sentoo form
+values are client-only previews and are not persisted.
+
 ## 5. Mock crypto boundary
 
 UI does not call mock wallet functions directly. It uses
@@ -85,8 +91,14 @@ offer factory address. They stay fictional on `main` until Luis replaces
 them. Merkado creates **one listing offer per listing** so the product
 can track and later resell it, without Merkado holding monthly rent.
 After a sale, Pay uses that listing’s collection address, not the
-company Safe. The holder **claims** rent from Portfolio. Landlord sale proceeds use one
-claim card and never show a mock hash or explorer link. Explorer links
+company Safe. The holder connects the mocked demo wallet and **claims** rent
+from Portfolio. The whole-offer purchase marks landlord proceeds paid
+automatically to the address saved before submission. The landlord never
+connects a wallet and never sees a claim button, mock hash, or explorer link.
+Marketplace and Portfolio show a reusable **Connect wallet** mock; they do
+not import WalletConnect or Privy. Pay renders the mock stablecoin payload as a
+QR, confirms with **I’ve sent this payment** only, and keeps Sentoo as a
+collapsed client-only preview. Explorer links
 render only for a real 64-hex transaction hash on an official catalog
 explorer. Draft PRs 19, 20, and 22 stay unmerged on Luis’s stack. See
 ADR-0006.

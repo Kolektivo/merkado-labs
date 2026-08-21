@@ -1,62 +1,34 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { HelpTip } from "@/components/help-tip";
+import { MockWalletConnection } from "@/components/mock-wallet-connection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { subscribeOfferAction } from "@/lib/rent-advance/actions";
-import {
-  formatXcg,
-  usdCentsToXcgInput,
-  xcgMajorToUsdCents,
-} from "@/lib/rent-advance/money";
-import { cn } from "@/lib/utils";
+import { formatXcg } from "@/lib/rent-advance/money";
 
 export function SubscribeForm({
   reference,
   remainingCents,
   fundedCents,
   offeringCents,
+  expiresLabel,
 }: {
   reference: string;
   remainingCents: number;
   fundedCents: number;
   offeringCents: number;
+  expiresLabel: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [amountXcg, setAmountXcg] = useState(usdCentsToXcgInput(remainingCents));
-
-  const amountCents = useMemo(() => {
-    const parsed = xcgMajorToUsdCents(Number(amountXcg));
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [amountXcg]);
+  const [connected, setConnected] = useState(false);
 
   const closed = remainingCents <= 0;
-  const canBuy = amountCents > 0 && amountCents <= remainingCents;
-  const filledPct =
-    offeringCents > 0 ? Math.min(100, (fundedCents / offeringCents) * 100) : 0;
-
-  const share25 = Math.max(1, Math.round(remainingCents * 0.25));
-  const share50 = Math.max(1, Math.round(remainingCents * 0.5));
-  const selectedChip =
-    amountCents === remainingCents
-      ? "all"
-      : amountCents === share50
-        ? "50"
-        : amountCents === share25
-          ? "25"
-          : null;
-
-  function setShare(cents: number) {
-    setAmountXcg(usdCentsToXcgInput(cents));
-  }
 
   if (closed) {
     return fundedCents > 0 ? (
@@ -89,112 +61,55 @@ export function SubscribeForm({
         </Alert>
       ) : null}
 
-      <p className="text-sm font-medium text-grey-800">
-        Still open
-      </p>
+      <p className="text-sm font-medium text-grey-800">Whole offer</p>
       <p className="mt-1.5 text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
         {formatXcg(remainingCents)}
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        of {formatXcg(offeringCents)}
+        100% ownership · no fractional purchase
       </p>
-
-      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-grey-200">
-        <div
-          className="h-full rounded-full bg-violet-500"
-          style={{ width: `${filledPct}%` }}
-        />
-      </div>
-      <p className="mt-2 text-xs text-grey-800">
-        {formatXcg(fundedCents)} filled
-      </p>
-
-      <div className="mt-6 space-y-1.5">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="purchase-amount" className="text-sm text-grey-800">
-            Your amount
-          </Label>
-          <HelpTip label="Purchase amount">
-            Choose how much of the amount still open you want to buy.
-          </HelpTip>
-        </div>
-        <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-grey-800">
-            XCG
-          </span>
-          <Input
-            id="purchase-amount"
-            type="text"
-            inputMode="decimal"
-            value={amountXcg}
-            aria-invalid={amountXcg.length > 0 && !canBuy}
-            aria-describedby="purchase-amount-hint"
-            onChange={(event) =>
-              setAmountXcg(event.target.value.replace(",", "."))
-            }
-            className="h-11 pl-12"
-          />
-        </div>
-        <p id="purchase-amount-hint" className="text-xs text-grey-800">
-          {amountXcg.length > 0 && amountCents > remainingCents
-            ? `Up to ${formatXcg(remainingCents)} is still open.`
-            : amountXcg.length > 0 && amountCents <= 0
-              ? "Enter an amount above zero."
-              : "25% and 50% are shares of what’s still open."}
+      {expiresLabel ? (
+        <p className="mt-2 text-xs text-grey-800">
+          Available until {expiresLabel} · 60-day listing window
         </p>
-      </div>
+      ) : null}
 
-      <div className="mt-3 flex gap-1.5">
-        {(
-          [
-            { key: "25", label: "25%", cents: share25 },
-            { key: "50", label: "50%", cents: share50 },
-            { key: "all", label: "All", cents: remainingCents },
-          ] as const
-        ).map((chip) => (
+      <div className="mt-6 space-y-3">
+        <MockWalletConnection
+          connected={connected}
+          onConnect={() => setConnected(true)}
+        />
+        {connected ? (
           <Button
-            key={chip.key}
             type="button"
-            variant="outline"
-            aria-pressed={selectedChip === chip.key}
-            className={cn(
-              "h-11 flex-1",
-              selectedChip === chip.key &&
-                "border-primary bg-primary/5 text-primary",
-            )}
-            onClick={() => setShare(chip.cents)}
+            className="h-11 w-full"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              startTransition(async () => {
+                try {
+                  await subscribeOfferAction(reference, remainingCents);
+                  try {
+                    window.sessionStorage.setItem(
+                      `merkado:success:purchase:${reference}`,
+                      formatXcg(remainingCents),
+                    );
+                  } catch {
+                    // The purchase succeeded; the amount is optional dialog detail.
+                  }
+                  router.push(`/portfolio/${reference}?success=purchase`);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Purchase failed.");
+                }
+              });
+            }}
           >
-            {chip.label}
+            {pending
+              ? "Purchasing…"
+              : `Purchase whole offer · ${formatXcg(remainingCents)}`}
           </Button>
-        ))}
+        ) : null}
       </div>
-
-      <Button
-        type="button"
-        className="mt-6 h-11 w-full"
-        disabled={pending || !canBuy}
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            try {
-              await subscribeOfferAction(reference, amountCents);
-              try {
-                window.sessionStorage.setItem(
-                  `merkado:success:purchase:${reference}`,
-                  formatXcg(amountCents),
-                );
-              } catch {
-                // The purchase succeeded; the amount is optional dialog detail.
-              }
-              router.push(`/portfolio/${reference}?success=purchase`);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Purchase failed.");
-            }
-          });
-        }}
-      >
-        {pending ? "Purchasing…" : `Purchase · ${formatXcg(amountCents)}`}
-      </Button>
 
       {fundedCents > 0 ? (
         <Link
@@ -205,7 +120,8 @@ export function SubscribeForm({
         </Link>
       ) : (
         <p className="mt-4 text-center text-xs leading-5 text-grey-800">
-          Later rent goes to your portfolio when the renter pays.
+          After purchase, the offer moves to Portfolio. Rent paid to the
+          offer address can be claimed by its owner.
         </p>
       )}
 

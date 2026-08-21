@@ -63,57 +63,13 @@ function NotificationRows({
               <span className="text-sm font-medium text-primary">{item.detail}</span>
             </span>
             <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium text-primary">
-              Open and claim
+              {item.actionLabel}
               <ArrowRight />
             </span>
           </Link>
         </li>
       ))}
     </ul>
-  );
-}
-
-export function HomeAttentionCards({
-  items,
-}: {
-  items: DashboardNotification[];
-}) {
-  const clearedIds = useClearedNotificationIds();
-  const visible = visibleNotifications(items, clearedIds);
-
-  if (visible.length === 0) return null;
-
-  return (
-    <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">
-          Needs your attention
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          These amounts are ready. Open the offer or Portfolio to claim.
-        </p>
-      </div>
-      <ul className="grid gap-3 md:grid-cols-2">
-        {visible.map((item) => (
-          <li key={item.id}>
-            <Link
-              href={item.href}
-              className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <div className="flex h-full flex-col gap-3 rounded-xl border bg-primary/5 p-5 ring-1 ring-primary/20 transition-colors hover:bg-primary/10">
-                <p className="text-base font-semibold">{item.subject}</p>
-                <p className="text-sm text-muted-foreground">{item.title}</p>
-                <p className="text-lg font-semibold text-primary">{item.detail}</p>
-                <p className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Open and claim
-                  <ArrowRight />
-                </p>
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -136,7 +92,7 @@ export function DashboardNotifications({
           className="relative size-10 shrink-0"
           aria-label={
             count
-              ? `Notifications, ${count} ready to claim`
+              ? `Notifications, ${count} updates`
               : "Notifications"
           }
         >
@@ -167,10 +123,10 @@ export function DashboardNotifications({
           <PopoverTitle>Notifications</PopoverTitle>
           <PopoverDescription>
             {count
-              ? `${count} ready to claim`
+              ? `${count} updates`
               : items.length > 0
                 ? "Reminders cleared"
-                : "Nothing ready to claim"}
+                : "No new updates"}
           </PopoverDescription>
         </PopoverHeader>
         {count > 0 ? (
@@ -179,7 +135,7 @@ export function DashboardNotifications({
           <p className="px-1 text-sm text-muted-foreground">
             {items.length > 0
               ? "Reminders are hidden. Amounts that are still ready stay on My Offers or Portfolio."
-              : "When a sale amount or rent is ready, it will show up here and on My Offers or Portfolio."}
+              : "Offer decisions, automatic payouts, and rent actions will show up here."}
           </p>
         )}
         {count > 0 ? (

@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## 1. MVP goal
 
@@ -18,10 +18,10 @@ repo**. They live on merkado-cw.
 | Priority | Deliverable | Completion test |
 |---|---|---|
 | P0 | Pricing engine | Reproduces MRA-001 cents and IRR; blocks >24% with no override |
-| P0 | Direct IA | Nav is Home, My Offers, Create Offer, Simulator, Marketplace, Portfolio, Pay, Account; Admin at the bottom. A header bell lists ready-to-claim items. |
+| P0 | Direct IA | Nav is Home, My Offers, Create Offer, Simulator, Marketplace, Portfolio, Pay, Account; Admin at the bottom. A header bell lists offer updates and holder actions. |
 | P0 | Simulator | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote. Amounts in XCG |
 | P0 | My Offers | Draft/unfunded totals excluded; settlement + collection/distribution status |
-| P0 | Merkado Pay | Working mocked USDC payment-link on **Base Sepolia** facts (Base Mainnet later); copy-address and wallet paths; English-only; no real wallet |
+| P0 | Merkado Pay | Working mocked USDC payment-link on **Base Sepolia** facts (Base Mainnet later); stablecoin QR and copy-address path; collapsed Sentoo preview; English-only; no Connect wallet on Pay; no real wallet or bank payment |
 | P0 | Shared state | One confirmed payment updates request, receivable, collection, distribution once |
 | P0 | Portfolio | Pre-seeded positions; Position ID; holder claim after rent arrives |
 | P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled, including Account Settings. There is no Payouts item in account chrome. |
@@ -35,11 +35,11 @@ repo**. They live on merkado-cw.
 - Public third-party holder onboarding (demo Marketplace purchase is in-scope)
 - Public token market or secondary trading
 - Landlord-signed on-chain offer creation
-- Girasol bank payout (post-pilot)
+- Live Girasol bank payout (the coming-soon fee/details preview is in scope)
 - 3-month term origination
 - Real wallet connection, signing, RPC, Safe SDK/API, or live USDC transfer
 - Creating the production Safe (Luis/Luuk; demo address stays fictional)
-- Sentoo or bank transfer
+- Live Sentoo or bank transfer (the coming-soon renter form is visual only)
 - Production authentication or shared merkado.cw account
 - Real email or reminder scheduling
 - Property series (enum reserved, not built)
@@ -57,7 +57,8 @@ repo**. They live on merkado-cw.
 | Renter product | Merkado Pay (USDC-only pilot in this demo) |
 | Instrument | Digital Participation Right. Merkado creates one listing offer after approval (ADR-0006). Not a public token market. Not a custody product. |
 | Commercial form | True sale of receivables (*koop en cessie*) |
-| Landlord money | One **Landlord proceeds** claim on every offer after a full purchase. No automatic landlord settlement, hash, or explorer link. Claim amount equals the purchase price. The fee is already included and must not look like a second deduction. |
+| Landlord money | Payout is chosen before submission. The mock crypto route accepts only a fictional `0xDEMO…` address. After a whole-offer purchase, the purchase price is marked paid automatically to that saved destination. No landlord claim button, mock hash, or explorer link. The fee is already included and must not look like a second deduction. |
+| Fiat payout preview | Girasol bank payout is visible as Coming soon with a 1.5% illustrative fee and fictional, browser-only fields. Final pricing and integration terms remain open. |
 | Holder claims | Product intent: rent sits on the sold listing until the holder claims it in Portfolio. Luis PR #22 still auto-pays holder rent as an interim Wave 3 state until his NFT wave. |
 | Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |
@@ -75,11 +76,12 @@ repo**. They live on merkado-cw.
 | Test Safes | **Base Sepolia**. Company Safe plus a separate sales proceeds Safe. Draft PR 20 has a 2-of-3 company Safe (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) that is **not** on `main`. Draft PR #22 adds the mocked landlord proceeds claim on that stack. Address not in the mocked app until confirmed. |
 | Safe address | Fictional in the mock until that verified Base Sepolia Safe is written in |
 | Other networks | Optimism keys stay in the catalog if Luis later opts in. They are hidden in Admin. |
-| Marketplace subscribe | A holder can buy any amount up to what is still open. The offer goes live and Pay requests mint when the offering is filled. Not a public offering. |
+| Marketplace purchase | One buyer purchases 100% of the open offer. Fractional purchases are rejected in the UI and server helper. Purchase requires the mocked **Connect wallet** step. WalletConnect versus Privy is a later Luis choice and is not shown in Labs. Not a public offering. |
+| Listing window | Approval lists the offer for 60 days. After `expiresAt`, purchase is blocked. Sold offers remain viewable and shareable. |
 | Demo book | Two seeded offers for the walkthrough: **MRA-001** (seeded funded reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |
 | Production marketplace | merkado-cw only |
 | Supabase | Labs `csaefdkpwukshtouyixg` only |
-| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, **Account Settings**, and other chrome stay visibly disabled. There is no Payouts item here. Landlord sale claims stay on My Offers / the offer page. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
+| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, **Account Settings**, and other chrome stay visibly disabled. There is no Payouts item here. Automatic payout status stays on My Offers / the offer page. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
 | Demo account identity | Labs account and seeded renter are **Luuk Weber**, with the Product Lead–supplied avatar. |
 | Hosted demo access | Shared host password in the app (`LABS_DEMO_PASSWORD`). Not a Merkado account and not the paid Vercel password add-on. Local stays open unless that env is set. Hosted production stays locked if the password is missing. |
 
@@ -93,7 +95,9 @@ repo**. They live on merkado-cw.
 | M.2.1 | Assignment of future rent claims | Document template sign-off |
 | M.3.1 | Related-party arm’s-length file | Nothing if +25 bp is kept |
 | Allocation | How a pooled USDC transfer maps to a payment request | Production Pay matching |
-| Safe execution | How Merkado creates offers, sweeps fees, pays landlord claims, and lets holders collect | Production payouts |
+| Safe execution | How Merkado creates offers, sweeps fees, executes the automatic landlord payout, and lets holders collect | Production payouts |
+| Wallet onboarding | WalletConnect, Privy, or both for production purchase/claim ownership | Holder authentication |
+| Payment partners | Final Girasol and Sentoo fees, API contracts, KYC/consent, failure handling, and data ownership | Live fiat rails |
 
 ## 6. Vocabulary
 

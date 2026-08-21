@@ -2,6 +2,7 @@ import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
 import { ACTORS } from "@/lib/rent-advance/actors";
 import {
   companyFeeLedger,
+  defaultLandlordPayout,
   defaultCustodyAddresses,
   ensureOfferCustody,
   landlordClaimLedger,
@@ -32,6 +33,10 @@ import {
   resolvePayNetworkKey,
 } from "@/lib/pay/networks";
 import { formatXcg, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import {
+  isListingExpired,
+  listingExpiresAt,
+} from "@/lib/rent-advance/helpers";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -98,9 +103,12 @@ export function defaultAccounts(): DemoAccount[] {
 
 function ensureOfferIds(offer: Offer): Offer {
   const offerId = offer.offerId ?? offerIdFromReference(offer.reference);
+  const publishedAt = offer.publishedAt ?? null;
   return {
     ...offer,
     offerId,
+    payout: defaultLandlordPayout(offer.payout),
+    expiresAt: offer.expiresAt ?? listingExpiresAt(publishedAt),
     settlementTransactionId: null,
     receivables: offer.receivables.map((row) => ({
       ...row,
@@ -121,9 +129,14 @@ function shouldMintPaymentRequests(offer: Offer): boolean {
   return offer.status === "live" || offer.status === "collecting" || offer.status === "default";
 }
 
-export function canSubscribeOffer(offer: Offer): boolean {
+export function canSubscribeOffer(
+  offer: Offer,
+  at = new Date().toISOString(),
+): boolean {
   return (
     (offer.status === "funding" || offer.status === "live" || offer.status === "collecting") &&
+    (offer.status !== "funding" || Boolean(offer.expiresAt)) &&
+    !isListingExpired(offer.expiresAt, at) &&
     offer.offeringCents > offer.fundedCents
   );
 }
@@ -137,18 +150,17 @@ export function applySubscribe(
   const next = structuredClone(book);
   const offer = next.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
-  if (!canSubscribeOffer(offer)) {
+  if (isListingExpired(offer.expiresAt, at)) {
+    throw new Error("This offer’s 60-day purchase window has ended.");
+  }
+  if (!canSubscribeOffer(offer, at)) {
     throw new Error("This offer is not open to purchase.");
   }
 
   const remaining = offer.offeringCents - offer.fundedCents;
-  const purchaseCents =
-    amountCents == null ? remaining : Math.round(amountCents);
-  if (!Number.isFinite(purchaseCents) || purchaseCents <= 0) {
-    throw new Error("Enter an amount above zero.");
-  }
-  if (purchaseCents > remaining) {
-    throw new Error("That amount is more than is still open.");
+  const purchaseCents = amountCents == null ? remaining : amountCents;
+  if (!Number.isSafeInteger(purchaseCents) || purchaseCents !== remaining) {
+    throw new Error("This offer must be purchased in full.");
   }
 
   offer.fundedCents += purchaseCents;
@@ -157,10 +169,8 @@ export function applySubscribe(
   if (filled) {
     offer.publishedAt = offer.publishedAt ?? at;
     offer.settlementTransactionId = null;
-    offer.nextAction = "Landlord can claim sale proceeds";
+    offer.nextAction = "Sale amount paid automatically";
     Object.assign(offer, settleSoldOffer(offer, at));
-  } else {
-    offer.nextAction = "Wait for remaining funding";
   }
 
   const existingHolder = offer.holders[0];
@@ -183,10 +193,8 @@ export function applySubscribe(
   const purchaseEvent = {
     id: `ev-${reference}-subscribe-${at}`,
     at,
-    title: filled ? "Offer filled" : "Participation purchased",
-    detail: filled
-      ? `${formatXcg(purchaseCents)} filled the offering. Sale proceeds are ready for the landlord to claim.`
-      : `${formatXcg(purchaseCents)} purchased. ${formatXcg(offer.offeringCents - offer.fundedCents)} still open.`,
+    title: "Whole offer purchased",
+    detail: `${formatXcg(purchaseCents)} purchased the whole offer. The landlord payout started automatically.`,
     actor: "System",
   };
   const settlementEvent = filled
@@ -565,9 +573,9 @@ export function applyPaymentOutcome(
 
   if (offer.status === "live") offer.status = "collecting";
   offer.nextAction =
-    mergeCustody(offer.custody).saleProceedsStatus === "claimable"
-      ? "Landlord can claim sale proceeds"
-      : "Waiting for the next rent payment";
+    mergeCustody(offer.custody).saleProceedsStatus === "held"
+      ? "Automatic payout needs attention"
+      : "Sale amount paid automatically";
   offer.events = [
     {
       id: `ev-${offer.reference}-pay-${request.receivableN}`,
@@ -628,9 +636,9 @@ export function applyOpsCollection(
   }
   if (offer.status === "live") offer.status = "collecting";
   offer.nextAction =
-    mergeCustody(offer.custody).saleProceedsStatus === "claimable"
-      ? "Landlord can claim sale proceeds"
-      : "Waiting for the next rent payment";
+    mergeCustody(offer.custody).saleProceedsStatus === "held"
+      ? "Automatic payout needs attention"
+      : "Sale amount paid automatically";
   offer.events = [
     {
       id: `ev-${offer.reference}-ops-${receivableN}`,

@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 21, 2026 (Luis PR #22 preview)
+**Last updated:** August 21, 2026 (Luuk flow and Luis handoff)
 
 ## Local dashboard
 
@@ -70,11 +70,13 @@ credentials, write to Supabase, or expose secrets. The app requires
 Node 22 or newer. Two optional packages (`@emnapi/core` and
 `@emnapi/runtime`) are listed so Linux `npm ci` stays in sync with a
 Windows-generated lockfile. They are not a wallet or chain dependency.
+`qrcode.react` renders the mock stablecoin payment QR locally; it does not
+connect to a payment provider.
 
 The first passing remote Verify run on `main` was 2026-08-19
 (run 32228015203).
 
-Luis draft preview for Wave 3 (PR #22):
+Luis draft preview for Wave 3 (PR #22, product-stale manual claim flow):
 https://merkado-labs-git-task-pr21-mocked-proceeds-claim-kolektivolabs.vercel.app
 Vercel SSO is on. After SSO, the app still requires
 `LABS_DEMO_PASSWORD`; do not put that password in Git or chat. Local
@@ -98,6 +100,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
 | Safe{Wallet} | Testnet operator on the existing 2-of-3 company Safe | Keep that Safe for offer creation and fees. Ask him to create a **second** Base Sepolia **sales proceeds** Safe. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
+| Privy, only if selected after Luis recommends an adapter | Developer on a Kolektivo-owned Labs app | Do not create a personal production dependency or add billing without approval. |
 
 ### Do not give
 
@@ -115,8 +118,9 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 
 1. Send the link to `docs/07-integrations.md` in this repo.
 2. Tell him the company Safe can stay the existing Base Sepolia 2-of-3
-   Safe, and that he should create a second **sales proceeds** Safe. Send
-   `docs/07-integrations.md`.
+   Safe, and that he should create a second **sales proceeds** Safe. The new
+   design is whole-offer purchase plus automatic landlord payout; PR #22's
+   manual claim must not be merged. Send `docs/07-integrations.md`.
 3. Tell him not to install a wallet SDK until you reply that the
    integration task is approved.
 4. When his Base Sepolia pay walkthrough works, you still approve before

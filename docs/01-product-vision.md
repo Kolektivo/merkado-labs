@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 21, 2026 (landlord proceeds claim)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## 1. One-sentence vision
 
@@ -55,16 +55,18 @@ The test company Safe is created on **Base Sepolia**. **Base Mainnet**
 stays later. Luis and Luuk own the real wallet adapter, Safes, offer
 contract, and allocation design. See ADR-0006.
 
-The landlord requests an offer from their Merkado account. After approval,
-Merkado creates one offer per listing. After a holder buys it, the
-landlord claims sale proceeds from one Landlord proceeds card. Later rent
-is not paid to the landlord a second time. It sits on that listing until
-the holder claims it.
+The landlord selects a payout destination before requesting an offer. After
+approval, Merkado creates one offer per listing and lists it for 60 days. A
+holder buys the complete offer. The sale amount then goes automatically to the
+saved landlord destination; there is no landlord claim step. Later rent is not
+paid to the landlord a second time. It sits on that listing until its connected
+owner claims it.
 
 ## 5. Success for this phase
 
-- A visitor can walk Simulator → request an offer → Admin approval →
-  Marketplace purchase → landlord claim → mocked Pay → holder claim,
+- A visitor can walk Simulator → choose payout and request an offer → Admin
+  approval → whole-offer Marketplace purchase → automatic landlord payout →
+  mocked Pay → holder claim,
   with one shared demo state.
 - Pricing reproduces the locked pack ($10,206 purchase price, 5.50% fee,
   ~21.6% effective annualised) and **blocks** anything over 24%.

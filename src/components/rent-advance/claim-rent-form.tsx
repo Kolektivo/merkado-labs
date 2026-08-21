@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
+import { MockWalletConnection } from "@/components/mock-wallet-connection";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export function ClaimRentForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -38,37 +40,43 @@ export function ClaimRentForm({
             <Money cents={amountCents} />
           </p>
         </div>
-        <HelpTip label="What am I claiming?">
+        <HelpTip label="claiming rent">
           This is monthly rent that the renter paid. It belongs to the holder,
           not the landlord.
         </HelpTip>
       </div>
-      <Button
-        type="button"
-        className="min-h-11 w-full sm:w-auto"
-        disabled={pending}
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            try {
-              await collectRentFromNftAction(reference, distributionId);
+      <MockWalletConnection
+        connected={connected}
+        onConnect={() => setConnected(true)}
+      />
+      {connected ? (
+        <Button
+          type="button"
+          className="min-h-11 w-full"
+          disabled={pending}
+          onClick={() => {
+            setError(null);
+            startTransition(async () => {
               try {
-                window.sessionStorage.setItem(
-                  `merkado:success:rent:${reference}`,
-                  formatXcg(amountCents),
-                );
-              } catch {
-                // The claim succeeded; the amount is optional dialog detail.
+                await collectRentFromNftAction(reference, distributionId);
+                try {
+                  window.sessionStorage.setItem(
+                    `merkado:success:rent:${reference}`,
+                    formatXcg(amountCents),
+                  );
+                } catch {
+                  // The claim succeeded; the amount is optional dialog detail.
+                }
+                router.push(`/portfolio/${reference}?success=rent`);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "The claim failed.");
               }
-              router.push(`/portfolio/${reference}?success=rent`);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "The claim failed.");
-            }
-          });
-        }}
-      >
-        Claim rent
-      </Button>
+            });
+          }}
+        >
+          Claim rent
+        </Button>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         Demo only — no money is transferred.
       </p>

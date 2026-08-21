@@ -5,11 +5,13 @@ export type DemoRole = "admin" | "approver" | "foundation" | "buyer" | "payer";
 export type OfferStatus =
   | "draft"
   | "under_review"
+  | "denied"
   | "funding"
   | "live"
   | "collecting"
   | "closed"
-  | "default";
+  | "default"
+  | "expired";
 
 export type ReceivableStatus = "scheduled" | "received" | "missed" | "partial";
 export type CollectionStatus = "received" | "reconciled" | "released" | "frozen";
@@ -140,6 +142,16 @@ export type LedgerTransactionKind =
 
 export type OfferNftOwner = "company_safe" | "holder";
 export type LandlordProceedsStatus = "none" | "held" | "claimable" | "claimed";
+export type LandlordPayoutMethod = "crypto" | "bank";
+
+export type LandlordPayout = {
+  method: LandlordPayoutMethod;
+  cryptoAddress: string | null;
+  fiatCurrency: "XCG";
+  partner: "Girasol";
+  bankFeeRate: number;
+  bankAvailability: "coming_soon";
+};
 
 /** Per-listing offer record. Not a custody-product ledger. */
 export type OfferCustody = {
@@ -333,7 +345,9 @@ export type Offer = {
   seriesDisplayName: string;
   createdAt: string;
   publishedAt: string | null;
+  expiresAt: string | null;
   nextAction: string;
+  payout: LandlordPayout;
   relatedParty: boolean;
   relatedPartyNote: string | null;
   paymentOption: PaymentOption;
@@ -422,6 +436,7 @@ export type BuyerOfferCard = {
   fundedCents: number;
   scheduledAnnualised: number;
   status: OfferStatus;
+  expiresAt: string | null;
   coverImageSrc?: string | null;
 };
 
@@ -455,6 +470,7 @@ export type PurchaserOfferDetail = BuyerOfferCard & {
 
 export type PortfolioPosition = BuyerOfferCard & {
   positionId: string;
+  offerAddress: string | null;
   receivedCents: number;
   remainingCents: number;
   collectedCents: number;

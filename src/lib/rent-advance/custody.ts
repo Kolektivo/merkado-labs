@@ -15,11 +15,29 @@ import type {
   DemoBook,
   LandlordProceedsStatus,
   LedgerTransaction,
+  LandlordPayout,
   Offer,
   OfferCustody,
 } from "@/lib/rent-advance/types";
 
 const DEMO_ADDRESS = /^0xDEMO[a-zA-Z0-9]{1,36}$/;
+export const DEMO_LANDLORD_PAYOUT_ADDRESS = "0xDEMOLANDLORDPAYOUT0001";
+
+export function defaultLandlordPayout(
+  incoming?: Partial<LandlordPayout> | null,
+): LandlordPayout {
+  const cryptoAddress = isClaimableAddress(incoming?.cryptoAddress)
+    ? normalizePayoutAddress(incoming?.cryptoAddress ?? "")
+    : DEMO_LANDLORD_PAYOUT_ADDRESS;
+  return {
+    method: incoming?.method === "bank" ? "bank" : "crypto",
+    cryptoAddress,
+    fiatCurrency: "XCG",
+    partner: "Girasol",
+    bankFeeRate: 0.015,
+    bankAvailability: "coming_soon",
+  };
+}
 
 export function emptyCustody(): OfferCustody {
   return {
@@ -140,39 +158,41 @@ export function mintOfferNft(
 
 export function settleSoldOffer(offer: Offer, at = new Date().toISOString()): Offer {
   const custody = mergeCustody(offer.custody);
+  const payout = defaultLandlordPayout(offer.payout);
   if (!isOfferFilled(offer) || custody.saleProceedsStatus === "claimed") {
     return {
       ...offer,
+      payout,
       custody: {
         ...custody,
         nftOwner: custody.nftTokenId ? "holder" : custody.nftOwner,
       },
     };
   }
-  if (custody.saleProceedsStatus === "claimable" || custody.saleProceedsStatus === "held") {
-    return {
-      ...offer,
-      custody: {
-        ...custody,
-        nftOwner: "holder",
-        transferredAt: custody.transferredAt ?? at,
-      },
-    };
-  }
-
   const feeCents = companyFeeFromSaleCents(offer);
   const netCents = landlordNetCents(offer);
+  const payoutAddress =
+    payout.method === "crypto" && isClaimableAddress(payout.cryptoAddress)
+      ? payout.cryptoAddress
+      : null;
   return {
     ...offer,
+    payout,
+    nextAction: payoutAddress
+      ? "Sale amount paid automatically"
+      : "Automatic payout needs attention",
     custody: {
       ...custody,
       nftOwner: "holder",
-      transferredAt: at,
-      saleProceedsStatus: "claimable",
+      transferredAt: custody.transferredAt ?? at,
+      saleProceedsStatus: payoutAddress ? "claimed" : "held",
       saleGrossCents: saleGrossCents(offer),
       companyFeeCents: feeCents,
-      landlordClaimableCents: netCents,
-      landlordClaimedCents: 0,
+      landlordClaimableCents: payoutAddress ? 0 : netCents,
+      landlordClaimedCents: payoutAddress ? netCents : 0,
+      landlordClaimToAddress: payoutAddress,
+      landlordClaimedAt: payoutAddress ? at : null,
+      landlordClaimTxHash: null,
       feeTransferredAt: feeCents > 0 ? at : null,
       feeTransferTxHash: null,
       saleProceedsTxHash: null,
@@ -181,11 +201,13 @@ export function settleSoldOffer(offer: Offer, at = new Date().toISOString()): Of
       {
         id: `ev-${offer.reference}-sale-split`,
         at,
-        title: "Sale proceeds held",
+        title: payoutAddress
+          ? "Sale amount paid automatically"
+          : "Automatic payout needs attention",
         detail:
-          feeCents > 0
-            ? "The purchase is in. Merkado’s fee is set aside. The landlord can claim the rest."
-            : "The purchase is in. The landlord can claim the net amount.",
+          payoutAddress
+            ? "The whole offer was bought and the sale amount was marked paid to the payout address saved before submission."
+            : "The whole offer was bought, but the saved payout method is not enabled.",
         actor: "System",
       },
       ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-sale-split`),
@@ -223,50 +245,6 @@ export function fundedSeedCustody(offer: Offer, at: string): OfferCustody {
   } as CryptoConfig, at);
   const sold = settleSoldOffer(minted, at);
   return mergeCustody(sold.custody);
-}
-
-export function applyLandlordClaim(
-  book: DemoBook,
-  reference: string,
-  toAddress: string,
-  at = new Date().toISOString(),
-): DemoBook {
-  const next = structuredClone(book);
-  const offer = next.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const custody = mergeCustody(offer.custody);
-  if (custody.saleProceedsStatus !== "claimable" || custody.landlordClaimableCents <= 0) {
-    throw new Error("There is nothing to claim on this offer.");
-  }
-  const address = normalizePayoutAddress(toAddress);
-  if (!isClaimableAddress(address)) {
-    throw new Error(
-      "Enter a fictional demo address beginning with 0xDEMO.",
-    );
-  }
-
-  offer.custody = {
-    ...custody,
-    saleProceedsStatus: "claimed",
-    landlordClaimableCents: 0,
-    landlordClaimedCents: custody.landlordClaimableCents,
-    landlordClaimToAddress: address,
-    landlordClaimedAt: at,
-    landlordClaimTxHash: null,
-  };
-  offer.events = [
-    {
-      id: `ev-${reference}-claim`,
-      at,
-      title: "Landlord proceeds claimed",
-      detail:
-        "The demo claim was marked paid. No wallet ownership was verified and no transfer was sent.",
-      actor: "System",
-    },
-    ...offer.events.filter((row) => row.id !== `ev-${reference}-claim`),
-  ];
-  offer.nextAction = "Waiting for the next rent payment";
-  return next;
 }
 
 export function applyHolderCollect(
@@ -309,9 +287,9 @@ export function applyHolderCollect(
       .reduce((sum, row) => sum + row.amountCents, 0);
   }
   offer.nextAction =
-    mergeCustody(offer.custody).saleProceedsStatus === "claimable"
-      ? "Landlord can claim sale proceeds"
-      : "Waiting for the next rent payment";
+    mergeCustody(offer.custody).saleProceedsStatus === "held"
+      ? "Automatic payout needs attention"
+      : "Sale amount paid automatically";
   offer.events = [
     {
       id: `ev-${reference}-collect-${pending[0]?.distributionId ?? "rent"}`,
@@ -375,7 +353,7 @@ export function landlordProceedsPresentation(offer: Offer) {
   const filled = isOfferFilled(offer);
   let status: LandlordProceedsUiStatus = "waiting";
   if (custody.saleProceedsStatus === "claimed") status = "paid";
-  else if (custody.saleProceedsStatus === "claimable") status = "available";
+  else if (custody.saleProceedsStatus === "claimable") status = "processing";
   else if (custody.saleProceedsStatus === "held") status = "processing";
   else if (!filled) status = "waiting";
 
@@ -387,7 +365,9 @@ export function landlordProceedsPresentation(offer: Offer) {
       status === "paid"
         ? custody.landlordClaimedCents || offer.purchasePriceCents
         : custody.landlordClaimableCents || offer.purchasePriceCents,
-    lockedAddress: custody.landlordClaimToAddress,
+    lockedAddress:
+      custody.landlordClaimToAddress ??
+      (offer.payout?.method === "crypto" ? offer.payout.cryptoAddress : null),
     fundingRecorded: filled,
   };
 }

@@ -30,6 +30,7 @@ export default async function PayRequestPage({
     .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
     .map((row) => ({
       paymentRequestId: row.paymentRequestId,
+      offerReference: row.offerReference,
       periodLabel: row.periodLabel,
       status: row.status,
       amountUsdcAtomic: row.amountUsdcAtomic,

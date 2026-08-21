@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { HelpTip } from "@/components/help-tip";
 import { PropertyCover } from "@/components/property-cover";
+import { ShareOfferButton } from "@/components/share-offer-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeMerkado } from "@/components/theme-merkado";
@@ -14,6 +15,7 @@ import {
   canShowContribute,
   coverSrcFor,
   formatDayMonthYear,
+  isListingExpired,
   remainingOfferingCents,
   statusLabel,
   statusTone,
@@ -48,7 +50,11 @@ export default async function BuyerOfferPage({
   const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
-  const openToBuy = canShowContribute(offer.status);
+  const expired = isListingExpired(offer.expiresAt);
+  const openToBuy = canShowContribute(offer.status, offer.expiresAt);
+  const expiresLabel = offer.expiresAt
+    ? formatDayMonthYear(offer.expiresAt)
+    : null;
 
   return (
     <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
@@ -79,6 +85,7 @@ export default async function BuyerOfferPage({
               <span className="text-xs tracking-wide text-grey-800">
                 {offer.reference}
               </span>
+              <ShareOfferButton reference={offer.reference} />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-surface-dark">
               {title}
@@ -104,10 +111,11 @@ export default async function BuyerOfferPage({
               remainingCents={remaining}
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
+              expiresLabel={expiresLabel}
             />
           ) : (
             <ClosedOfferCard
-              status={statusLabel(offer.status)}
+              status={expired ? "Expired" : statusLabel(offer.status)}
               offeringCents={offer.offeringCents}
             />
           )}

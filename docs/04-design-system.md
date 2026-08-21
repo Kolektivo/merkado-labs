@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## 1. Scope
 
@@ -55,7 +55,7 @@ visible but inactive. Logo and Home return to the Labs Home.
 Marketplace offer cards use merkado-cw listing-card chrome: 12px radius,
 grey-200 border, 3:2 photo, 18px title, icon spec row, and a top-border
 price block. Labs fields stay on the card (status, term, Property Score,
-payer band, amount taken). The whole card opens the offer. No tenant
+payer band, whole-offer price, and availability deadline). The whole card opens the offer. No tenant
 name, street, employer, or income.
 
 Do not invent a second component library or a generic “fintech” theme
@@ -94,7 +94,7 @@ outside this scoped layer.
 - Keep operational tables, filters, totals, payment history, and score detail
   behind a clearly labelled collapsed section when they are not required for
   the next action.
-- Completed purchases, landlord sale claims, and holder rent claims use one
+- Completed purchases and holder rent claims use one
   accessible success dialog with a check mark, plain-language result, and the
   amount when it is useful. Mock claims must still say that no money was sent.
 
@@ -104,8 +104,8 @@ Skip link to `#main-content`, `aria-current` on nav, focus-visible rings,
 `prefers-reduced-motion` in `globals.css`. The password door uses the
 default shadcn field, a show/hide control, and a full-width continue
 action. Pay is mobile-first (~390px).
-The amount, due badge, copy details, both pay actions, and payment
-history stay visible. Extra explainers stay in tooltips. Pay is
+The amount, due badge, copy details, **I’ve sent this payment**, and
+payment history stay visible. Extra explainers stay in tooltips. Pay is
 English-only.
 Payment status uses `aria-live`. Sliders expose live value and band.
 Touch targets stay comfortable. Explorer links (when configured) and
@@ -115,9 +115,11 @@ external app URLs include accessible new-tab text.
 
 No gradients-as-brand, no “yield” badges, no loan calculators labeled as
 loans, no explorer link for demo hashes. The **Landlord proceeds** card
-uses distinct badges: Waiting (amber), Available (green), and Paid (quiet
-grey) on local `main`; Luis’s draft adds Processing (blue) and Failed
-(red). Available to claim is the strongest amount. Holder **Claim rent**
-stays a separate mocked action, not a public token market. Wallet
-chrome stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base Sepolia**
-is the default demo network. **Base Mainnet** is later.
+uses Waiting (amber), Processing (blue), Failed (red), and Paid (quiet
+grey). Paid is automatic after the whole offer is purchased; there is no
+landlord claim button. Holder **Claim rent** stays a separate mocked,
+wallet-gated action, not a public token market. Marketplace and Portfolio
+use a standard **Connect wallet** button. WalletConnect versus Privy is a
+later Luis choice and is not shown. Pay has no Connect wallet control.
+Wallet chrome stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base
+Sepolia** is the default demo network. **Base Mainnet** is later.

@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto developer handoff.
-**Last updated:** August 21, 2026 (Luis Waves 1–3 draft)
+**Last updated:** August 21, 2026 (Luis handoff after Luuk flow review)
 
 ## Live
 
@@ -45,6 +45,10 @@ Open a new tab only when the app URL value is an absolute external URL.
 - Written counsel opinions to lift Stage 0 gates
 - Real wallet connection and native USDC transfer on **Base Sepolia** first,
   then **Base Mainnet** when approved
+- Girasol landlord bank payout after fees, KYC, API, and failure handling are
+  approved
+- Sentoo renter bank payment after consent, bank-data, callback, and
+  reconciliation design are approved
 - Optional move of this demo toward `direct.merkado.cw` and `pay.merkado.cw`
 
 ---
@@ -61,10 +65,10 @@ Luis status on 2026-08-21 (nothing merged):
 - [PR #20](https://github.com/Kolektivo/merkado-labs/pull/20) Wave 2:
   verified Base Sepolia deposit Safe + payment verification. Inactive
   while the rail is mock. Do not change this renter-verification work.
-- [PR #22](https://github.com/Kolektivo/merkado-labs/pull/22) Wave 3:
-  mocked landlord proceeds claim for every offer. Automatic landlord
-  settlement removed. Holder rent distributions still automatic on that
-  branch until the NFT wave.
+- [PR #22](https://github.com/Kolektivo/merkado-labs/pull/22) Wave 3 is now
+  product-stale: it adds a manual landlord claim and still auto-pays holder rent.
+  Do not merge that behavior. Rework it to payout-first automatic landlord
+  execution plus holder-initiated claim from the per-offer contract.
 - Deposit flow is implemented on his stack but not fully tested.
 - NFT / listing-offer flow is still mocked. Luis plans to test and
   implement it next. Do not document it as live.
@@ -97,8 +101,8 @@ no merge, and no live-rail switch.
 
 One confirmed rent payment still updates My Payments and the offer
 **once**. That listing then holds the rent. Portfolio shows it as ready
-to claim. The holder clicks **Claim rent**. The landlord claims sale
-proceeds from the offer page on **My Offers**.
+to claim. The connected holder clicks **Claim rent**. The landlord sale
+amount is sent automatically to the destination saved before submission.
 
 The missing live piece is still a real Web3 adapter, plus **two Safes**
 and an **offer contract**, not one shared deposit address.
@@ -171,8 +175,11 @@ only when mainnet is enabled.
 | Sales proceeds Safe | **New.** Dedicated Safe for NFT / offer sale USDC. Same testnet. Same owners unless Luuk says otherwise. |
 | Listing offer | **One NFT / listing offer per listing.** Tracking, later resale, and so Merkado is not holding monthly rent. |
 | Offer collection address | After sale, monthly rent goes **to that listing**, not the company Safe. The listing collects rent. |
-| Landlord claim | Mock now: record a claim for the full purchase price, with no transaction or fake hash. Live design later: Merkado sends from the sales proceeds Safe to the pasted / saved address. The landlord does **not** connect a wallet or pay gas. |
-| Holder claim | Holder calls the listing’s claim from Portfolio. Not automatic. Luis is confirming whether that `claim()` can be sponsored. Holders already have a wallet from the purchase, so they can still sign if sponsorship is not ready. |
+| Landlord payout | The destination is selected before submission. Mock now: a whole-offer purchase immediately marks the purchase price paid to the saved fictional `0xDEMO…` address, with no transaction or fake hash. Live: Merkado automatically sends from the sales proceeds Safe. The landlord does **not** connect a wallet, click claim, or pay gas. |
+| Holder purchase | 100% of one offer only. No fractions. Connect and ownership UI is a mocked **Connect wallet** button on `main`; Luis chooses WalletConnect, Privy, or another adapter and replaces the mock. |
+| Holder claim | Holder calls the listing’s claim from Portfolio. Labs is mocked and does not verify ownership. Live must verify the current owner. Not automatic. Luis is confirming whether that `claim()` can be sponsored. |
+| Listing expiry | `publishedAt + 60 days`. The purchase path must reject an expired offer server-side. |
+| Fiat previews | Girasol landlord payout and Sentoo renter payment are Coming soon UI only. Do not send or persist entered demo bank data. |
 | Wallet in this repo | Mocked on `main`. No SDK installed here. Your draft PRs stay unmerged. |
 
 MRA-001 locked Pay request:
@@ -245,21 +252,22 @@ the book.
 
 #### Flow A — Renter pays rent (Merkado Pay)
 
-This is the only flow that needs a live wallet and USDC transfer.
+This is the only flow that later needs inbound USDC to the offer address.
+Labs Pay does not show Connect wallet.
 
 | Step | What the user sees | What happens now | What you add |
 |---|---|---|---|
 | 1. Open Pay | Hub → Merkado Pay, or `/pay` | Loads the next unpaid request for the demo renter | Nothing |
 | 2. Deep link | `/pay/payreq-mra-001-202609` | Shows 1,800.00 USDC, $1,800.00 rent, selected network, offer collection address | After sale, this is the offer address, not the company Safe |
-| 3a. Copy and send | Copy address + **I’ve sent this payment** | `reportExternalTransfer`, then pending → confirmed | Watch the Safe for an inbound native USDC transfer of `expectedAtomicAmount` and match it to this request |
-| 3b. Connect wallet | **Connect wallet** | Mock address, selected `chainId` | Real wallet on the selected network. Reject or prompt switch if `chainId` does not match `cryptoConfig.chainId` |
-| 4. Confirm | **Pay with demo wallet** | Mock submit, then pending → confirmed | `transfer` native USDC for `expectedAtomicAmount` to `recipient` |
+| 3a. Scan or copy | The Labs QR uses an inert `merkado-demo:` payload with offer address, amount, and human reference; copy address + **I’ve sent this payment** is the only Pay confirmation | QR is informational only; `reportExternalTransfer`, then pending → confirmed | Replace the demo payload with a chain-aware ERC-20 request, parse it safely, and watch the per-offer address for inbound native USDC of `expectedAtomicAmount` |
+| 3b. Connect wallet | Not shown on Pay | Removed from the renter UI | Do not add a Pay wallet connect unless Product Lead re-approves it. Holder connect stays on Marketplace and Portfolio. |
 | 5. Submitted | “Payment submitted” | Book status `pending` | Keep pending until the tx is indexed |
 | 6. Confirmed | “Rent paid” | Book writes collection + holder distribution once | Call `confirmPaymentAction(id, "confirmed", { txHash })` only after you consider it confirmed |
 | 7. Revisit | Same page stays paid | Idempotent. Second confirm does nothing | Do not send a second transfer |
 | 8. Later month | November while September is open | Page says pay the earlier month first | Do not allow a transfer for a blocked month |
 | 9. Failed / wrong amount | Demo outcome menu, or your error | Book `failed` or `partial` | Map wallet reject, revert, and amount mismatch to those outcomes |
 | 10. Unknown link | Friendly not-found | No other payment data leaked | Keep that privacy wall |
+| 11. Sentoo | Collapsed **Continue with Sentoo** row with logo; expands fictional bank fields and a disabled action | Client-only preview; nothing persisted | Add only after API contract, consent, callback verification, reconciliation, and bank-data ownership are approved |
 
 Do **not** treat the first click as a confirmed chain receipt. Keep
 submitted / pending / confirmed distinct.
@@ -279,10 +287,11 @@ No landlord wallet. Merkado does the on-chain work.
 
 | Step | Screen | Your work |
 |---|---|---|
-| Request offer | Create Offer | None for the landlord. After Admin approval, **your system** creates the offer from the company Safe |
-| Save payout method | Offer claim form | Local mock accepts a fictional `0xDEMO…` address on the claim form. No wallet connect. A real address belongs only in the later reviewed live send. Bank / Girasol is later |
-| Claim sale proceeds | My Offers / the offer page | After sale, send net USDC from the **sales proceeds Safe** to that address. Merkado pays gas |
-| See settlement | Offer detail | Explorer link only if a **real** tx hash exists |
+| Choose payout | Create Offer → Payout | Use the saved payout record. Crypto is active in the demo; Girasol bank payout is Coming soon. Never send bank fields to chain or holder payloads |
+| Request offer | Create Offer | No wallet for the landlord. Reject submission without an enabled payout destination. After Admin approval, **your system** creates the offer from the company Safe |
+| List | Admin approval | Set the publication time and 60-day expiry. Reject purchase after expiry |
+| Automatic sale payout | Whole-offer purchase | Split the fee without reducing the displayed purchase price, then automatically send net USDC from the **sales proceeds Safe** to the saved destination. Merkado pays gas |
+| See payout | My Offers / offer detail | Show processing / paid / failed. No landlord claim button. Explorer link only if a **real** tx hash exists |
 | Record collection | Admin offer → Record collection | Off-chain fallback. Does not pay the landlord again |
 
 #### Flow D — Holder (Marketplace + Portfolio)
@@ -291,9 +300,10 @@ The holder already has a wallet because they buy the offer.
 
 | Step | Screen | Your work |
 |---|---|---|
-| Buy | Marketplace | Sale USDC goes to the **sales proceeds Safe**. When filled, move the offer to the holder |
+| Connect | Marketplace and Portfolio | Replace the **Connect wallet** mock with the approved adapter and verify network + ownership |
+| Buy | Marketplace | Buyer purchases 100% of the offer. Sale USDC goes to the **sales proceeds Safe**. Atomically move the offer/NFT to that holder and trigger landlord payout |
 | Rent arrives | Merkado Pay | After sale, `receivingAddress` is the **offer collection address** |
-| Claim rent | Portfolio | Holder takes USDC out of **that listing**. Not automatic. Confirm if `claim()` can be sponsored |
+| Claim rent | Portfolio | Reverify current owner wallet, then let that owner take USDC out of **that listing**. Not automatic. Confirm if `claim()` can be sponsored |
 
 You still owe the production design for the offer contract (how each
 listing receives USDC and how the current holder claims).
@@ -332,14 +342,21 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
    Safe) and get it approved. Do not describe Merkado as a custody
    product — the listing holds the rent. Do not describe this as escrow
    without counsel.
-4. **Landlord claim execution.** Preferred: Merkado / the sales proceeds
-   Safe sends USDC to the pasted address. The landlord never connects a
-   wallet. That is already a sponsored send.
+4. **Automatic landlord payout execution.** Merkado / the sales proceeds Safe
+   sends USDC to the destination saved before submission as part of the
+   whole-offer sale workflow. The landlord never connects a wallet or clicks
+   claim. Define atomicity, retry, idempotency, and failed-payout operations.
 5. **Holder `claim()` sponsorship.** Luuk asked Luis to confirm whether
    the listing claim can be sponsored. If yes, holders can claim without
    paying gas. If not, they sign with the wallet they already used to
    buy. Do not block the pilot on sponsorship.
 6. **How many confirmations** before the Pay UI may say Rent paid.
+7. **Wallet onboarding.** Recommend WalletConnect, Privy, or both, including
+   ownership revalidation on Portfolio claims, session expiry, chain switching,
+   and account changes.
+8. **Fiat partners.** Confirm Girasol and Sentoo contracts, fees, KYC/consent,
+   redirect/callback security, reconciliation, refunds, failure handling, and
+   which system may store bank data. The current UI stores none.
 
 ### What you must not do
 
@@ -372,8 +389,8 @@ That single switch updates:
 | Overview Pay card | Demo only — nothing real is sent | Pays in USDC on the selected network |
 | Payment network help | Stay on Base Sepolia. Base Mainnet stays off until we turn it on | Stay on Base Sepolia until the Product Lead turns on Base Mainnet |
 | Payment network body | The demo wallet still does not send real money | A connected wallet sends USDC on this network |
-| Pay button | Pay with demo wallet | Pay with wallet |
-| Connected line | Demo wallet connected | Wallet connected |
+| Pay button (reserved; Labs Pay shows **I’ve sent this payment**) | Pay with demo wallet | Pay with wallet |
+| Connected line (reserved; not shown on Pay) | Demo wallet connected | Wallet connected |
 | USDC tip | Nothing real is sent | Amount matches rent one-to-one |
 | Network tip | Nothing real is sent in this walkthrough | Settles on the selected network (testnet named) |
 | Footer note | Demo only. This walkthrough does not send a real transfer | Testnet: this sends test USDC, not mainnet money. Mainnet: this sends real USDC |
@@ -422,7 +439,9 @@ When the rail is live:
 3. Implement `PaymentProvider` against `provider.ts`.
 4. Switch `createPaymentProvider` to that adapter.
 5. Flip `PAYMENT_RAIL_MODE` to `"live"` in the same change.
-6. Connect wallet → switch to `cryptoConfig.chainId` → USDC `transfer`.
+6. Watch the offer address for inbound USDC. Do not add Connect wallet on
+   Pay unless Product Lead re-approves it. Holder Connect wallet stays on
+   Marketplace and Portfolio.
 7. Confirm on the **server** from chain data, then write the book.
 8. Only then show explorer links for real hashes.
 9. Separately design allocation and holder-distribution execution.
@@ -445,8 +464,9 @@ for merkado.cw production, production Supabase, or production Vercel.
 | Supabase **merkado-labs** `csaefdkpwukshtouyixg` | **Developer** | Read schema and the demo book if you must debug persistence. |
 | Labs env values | Secure copy of `.env.local` Labs keys | Run the demo locally against the Labs book. Never commit them. |
 | Hosted walkthrough password | The `LABS_DEMO_PASSWORD` value, shared privately | Open https://merkado-labs.vercel.app after deploy. |
-| Safe{Wallet} | Company Safe already exists on the PR 20 stack (2 of 3). Create a **second** Base Sepolia **sales proceeds** Safe. | Company Safe creates offers and takes fees. Sales proceeds Safe holds landlord net until claim. |
+| Safe{Wallet} | Company Safe already exists on the PR 20 stack (2 of 3). Create a **second** Base Sepolia **sales proceeds** Safe. | Company Safe creates offers and takes fees. Sales proceeds Safe receives the whole-offer sale and executes the automatic landlord payout. |
 | Reown / WalletConnect Cloud | A project you create or are invited to | Wallet connect project ID for the adapter. |
+| Privy (only if selected) | Developer on a Kolektivo-owned Labs app | Embedded/external wallet onboarding without using a personal project. Do not add until the Product Lead approves the adapter choice. |
 | RPC (optional) | Alchemy, Infura, or similar Labs-only key | More reliable than public RPCs. Not required to start. |
 | Circle faucet | None. Public. | Test USDC: https://faucet.circle.com |
 
@@ -470,9 +490,9 @@ commit values):
 
 - Merkado can create an approved offer from the company Safe without a
   landlord signature.
-- A holder purchase lands in the sales proceeds Safe, the fee goes to
-  the company Safe, and the landlord can claim the net to a saved address
-  without connecting a wallet.
+- A connected holder purchases exactly 100% of the offer. The sale lands in the
+  sales proceeds Safe, the fee goes to the company Safe, and the landlord net
+  is sent automatically to the destination saved before submission.
 - After sale, the renter sends **1,800.00** native USDC to the **offer
   collection address** on **Base Sepolia** and sees **Rent paid** only
   after the chain confirms it.
@@ -482,8 +502,9 @@ commit values):
   is `"live"`).
 - Explorer links open only for real 64-hex hashes.
 - Mainnet stays off unless the Product Lead turns on **Base Mainnet**.
-- Offer-contract design (one NFT per listing), landlord claim execution,
-  holder `claim()` (and whether it is sponsored), and Girasol (later)
+- Offer-contract design (one NFT per listing), automatic landlord payout,
+  holder `claim()` (and whether it is sponsored), wallet onboarding, Girasol,
+  and Sentoo
   are written up, even if not all built yet.
 
 ### Data ownership and privacy

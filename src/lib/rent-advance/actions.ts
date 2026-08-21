@@ -10,15 +10,19 @@ import {
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { independentApproverById } from "@/lib/rent-advance/actors";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
-import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
+import {
+  buildScheduledReceivables,
+  canRecordCollection,
+  listingExpiresAt,
+} from "@/lib/rent-advance/helpers";
 import {
   applyHolderCollect,
-  applyLandlordClaim,
   applyPayoutAddress,
+  isClaimableAddress,
   mintOfferNft,
-  savedPayoutAddress,
 } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
+import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
 import {
   applyOpsCollection,
   applyPaymentOutcome,
@@ -35,6 +39,17 @@ import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 
 function refresh() {
   revalidatePath("/", "layout");
+}
+
+function assertPayoutReady(offer: Offer) {
+  if (
+    offer.payout.method !== "crypto" ||
+    !isClaimableAddress(offer.payout.cryptoAddress)
+  ) {
+    throw new Error(
+      "Add a fictional crypto payout address before submitting. Girasol bank payout is coming soon.",
+    );
+  }
 }
 
 export async function resetDemoAction() {
@@ -54,6 +69,9 @@ export async function setPayNetworkAction(networkKey: string) {
 }
 
 export async function setOfferStatusAction(reference: string, status: OfferStatus) {
+  if (status === "funding") {
+    throw new Error("Use independent approval to list an offer for 60 days.");
+  }
   await updateOffer(reference, (offer) => ({
     ...offer,
     status,
@@ -79,16 +97,23 @@ export async function approveOfferAction(reference: string, actorId: string) {
   const at = new Date().toISOString();
   const book = await loadBook();
   await updateOffer(reference, (offer) => {
+    if (offer.status !== "under_review") {
+      throw new Error("Only an offer under review can be approved.");
+    }
+    assertPayoutReady(offer);
+    const publishedAt = at;
     const approved = {
       ...offer,
-      status: offer.status === "under_review" ? "funding" : offer.status,
+      status: "funding" as const,
+      publishedAt,
+      expiresAt: listingExpiresAt(publishedAt),
       nextAction: "Open on Marketplace",
       events: [
         {
           id: `ev-${reference}-approve-${Date.now()}`,
           at,
           title: "Approved",
-          detail: `${approver.name} · independent approver. Merkado will create the offer.`,
+          detail: `${approver.name} · independent approver. Merkado created the offer and listed it for 60 days.`,
           actor: approver.name,
         },
         ...offer.events,
@@ -102,16 +127,6 @@ export async function approveOfferAction(reference: string, actorId: string) {
 export async function savePayoutAddressAction(address: string) {
   const book = await loadBook();
   await saveBook(applyPayoutAddress(book, address));
-  refresh();
-}
-
-export async function claimLandlordProceedsAction(reference: string, toAddress?: string) {
-  const book = await loadBook();
-  const address = toAddress?.trim() || savedPayoutAddress(book);
-  if (!address) {
-    throw new Error("Paste a fictional demo address beginning with 0xDEMO to claim.");
-  }
-  await saveBook(applyLandlordClaim(book, reference, address));
   refresh();
 }
 
@@ -211,6 +226,7 @@ export async function submitOfferForReviewAction(reference: string) {
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
+  assertPayoutReady(offer);
   priceOrBlock({
     monthlyRentCents: offer.monthlyRentCents,
     months: offer.months,
@@ -242,12 +258,14 @@ export async function subscribeOfferAction(reference: string, amountCents: numbe
 }
 
 export async function submitNewOfferAction(offer: Offer) {
+  offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
   }
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
+  assertPayoutReady(offer);
   const priced = priceOrBlock({
     monthlyRentCents: offer.monthlyRentCents,
     months: offer.months,
@@ -282,6 +300,7 @@ export async function submitNewOfferAction(offer: Offer) {
     originationSpreadCents: 0,
     holders: [],
     publishedAt: null,
+    expiresAt: null,
     events: [
       {
         id: `ev-${offer.reference}-submit-${Date.now()}`,
@@ -305,6 +324,7 @@ export async function submitNewOfferAction(offer: Offer) {
 }
 
 export async function saveDraftOfferAction(offer: Offer) {
+  offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
   }

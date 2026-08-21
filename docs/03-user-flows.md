@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
+**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
 
 ## 1. Hosted access
 
@@ -16,9 +16,9 @@ password is missing.
 
 Visitor lands on Home (`/`), sees Merkado Direct totals, featured
 Marketplace offers, and doors to Simulator, Create offer, Portfolio, and
-Pay. If a sale amount or rent is ready to claim, Home, the header
-bell, and a count on **My Offers** or **Portfolio** show it and open
-the existing offer or Portfolio page. Amounts are
+Pay. Offer decisions, listing status, automatic sale payouts, and holder rent
+actions appear in the header bell and as a count on **My Offers** or
+**Portfolio**. Each update opens the existing offer or Portfolio page. Amounts are
 in XCG. Payment network and Reset live in **Admin**. Stage 0 legal
 questions stay open in documentation; they are not shown on customer
 Home.
@@ -37,30 +37,36 @@ Home.
    loads the XCG 1.79 monthly rent / about XCG 10 purchase quote.
 3. **Use this quote** — eligible six-month quotes under the 24% cap carry
    non-sensitive values into Create Offer.
-4. **Create Offer** — six steps including a cover photo, then **Submit
-   request**. No wallet is needed. 9/12 and cap-breached quotes cannot be
-   submitted.
+4. **Create Offer** — seven steps including a cover photo and **Payout**, then
+   **Submit request**. The landlord chooses the fictional crypto recipient before
+   submission. Girasol bank payout is a Coming soon preview with an illustrative
+   fee and browser-only fictional fields. No landlord wallet is needed. 9/12,
+   bank payout, and cap-breached quotes cannot be submitted.
 5. Offer detail — after approval Merkado creates **one offer for this
    listing**. Every non-draft offer shows one **Landlord proceeds** card
-   (Waiting, Available, or Paid on `main`; Processing and Failed also
-   exist on Luis PR #22). After a holder buys it, the landlord **claims**
-   sale proceeds to a pasted, unverified demo address. That address
-   locks. A success dialog confirms the claimed amount. Later rent is not paid
-   to the landlord again. Independent
+   (Waiting, Processing, or Paid). After a holder buys the whole offer, the sale
+   amount is marked paid automatically to the destination saved before
+   submission. There is no landlord claim action. Later rent is not paid to the
+   landlord again. Independent
    approval, Record collection, and dual-control live in **Admin**.
 6. **Landlord proceeds** — use the property name (Sun Set Heights, Punda
    studio) as the main label. MRA numbers stay secondary. Fully purchased
-   offers show **Ready to claim**; technical mock-funding detail is in a
-   tooltip. The available amount is the hero. The fee is informational and
-   already included. Paid is final:
+   offers show **Paid automatically**; technical mock-funding detail is in a
+   tooltip. The amount is the hero. The fee is informational and already
+   included. Paid is final:
    no retry, edit, transaction hash, or explorer link. Disclosure:
    “No wallet ownership was verified and no on-chain transfer was sent.”
+7. Landlord-facing lifecycle is **Under review → Listed → Sold → Paid**, with
+   **Denied** and **Expired** as explicit outcomes. Listed offers remain open for
+   60 days. Monthly collections and holder detail stay out of the landlord view.
 
 ## 4. Holder (Merkado Direct)
 
 1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
-   term, and amount filled. A holder can buy any portion still open. The
+   term, whole-offer price, and 60-day availability. A holder clicks the mocked
+   **Connect wallet** button and buys 100% of the offer. WalletConnect versus
+   Privy is a later Luis choice and is not shown. The
    cheap Punda studio (MRA-010) is the small walkthrough purchase.
    A successful purchase opens a confirmation dialog on the new Portfolio
    position so the buyer knows the action was recorded.
@@ -68,8 +74,9 @@ Home.
    contact, or street address. A funded offer links to its Portfolio
    position.
 3. Portfolio shows pre-seeded positions with a stable Position ID,
-   collected / ready-to-claim / claimed amounts, and mocked
-   transaction references. When rent arrives, the holder **Claims** it
+   per-offer rent address, collected / ready-to-claim / claimed amounts, and
+   mocked transaction references. When rent arrives, the holder connects the
+   mocked **Connect wallet** button and **Claims** it
    from that listing. A success dialog confirms the rent amount claimed.
    There is no secondary sale UI yet; one listing
    offer exists so a later resale can be added.
@@ -83,15 +90,21 @@ Home.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
    unique reference, fictional receiving address, selected payment
    network (**Base Sepolia**).
-   A status badge and both payment paths sit with the amount so they stay
-   visible on a phone.
-3. Two payment paths (mocked until `PAYMENT_RAIL_MODE` is `"live"`):
-   - copy the address and amount, then **I’ve sent this payment**;
-   - connect a demo wallet and pay here.
-   Both paths show pending → confirmed / success, plus failure and
-   incorrect-amount outcomes. Already paid and overdue remain.
-4. Notice that rent and lease are unchanged. Pay is English-only.
-5. No fee, purchase price, holder identity, or distribution economics.
+   A status badge and the default stablecoin card sit with the amount so they
+   stay visible on a phone.
+3. Stablecoin is the default expanded payment card (mocked until
+   `PAYMENT_RAIL_MODE` is `"live"`):
+   - scan the informational demo QR, which contains the fictional offer
+     address, amount, and reference but cannot open a real wallet;
+   - copy the address and amount, then **I’ve sent this payment**.
+   There is no Connect wallet action on Pay. The copy path shows pending →
+   confirmed / success, plus failure and incorrect-amount outcomes. Already
+   paid and overdue remain.
+4. **Continue with Sentoo** stays collapsed under the stablecoin card. Opening
+   it expands the fictional bank fields and Coming soon action, and collapses
+   the stablecoin details. It cannot submit or persist a payment.
+5. Notice that rent and lease are unchanged. Pay is English-only.
+6. No fee, purchase price, holder identity, or distribution economics.
 
 ## 6. Merkado account (Labs mock)
 
@@ -103,9 +116,9 @@ Home.
 2. Apps lists Merkado Pay and Merkado Direct. Internal Labs routes are
    used unless an external URL is configured. Merkado Pay opens the
    payment link. Payment history sits on that same Pay page.
-3. Landlord sale claims stay on My Offers / the offer page. The Direct
-   header bell and Home list ready-to-claim items and open those same
-   pages. Old `/account/payouts` and `/payouts` redirect to My Offers.
+3. Landlord automatic payout status stays on My Offers / the offer page. The
+   Direct header bell lists offer updates and opens those same pages.
+   Old `/account/payouts` and `/payouts` redirect to My Offers.
    Old `/account/settings` and `/account/payments` redirect into Account
    Apps or Pay.
 

@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { HomeAttentionCards } from "@/components/dashboard-notifications";
 import { MarketplaceOfferCard } from "@/components/marketplace/marketplace-offer-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { dashboardNotifications } from "@/lib/rent-advance/notifications";
 import { formatXcg } from "@/lib/rent-advance/money";
-import { bookTotals } from "@/lib/rent-advance/helpers";
+import { bookTotals, effectiveOfferStatus } from "@/lib/rent-advance/helpers";
 import { listMarketplaceCards, loadBook } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +16,12 @@ export default async function DirectPage() {
     listMarketplaceCards(),
   ]);
   const totals = bookTotals(book);
-  const notifications = dashboardNotifications(book);
-  const openFunding = book.offers.filter((offer) => offer.status === "funding").length;
+  const openFunding = book.offers.filter(
+    (offer) => effectiveOfferStatus(offer) === "funding",
+  ).length;
   const featured = [...marketplace]
+    .filter((card) => effectiveOfferStatus(card) === "funding")
     .sort((a, b) => {
-      const openA = a.status === "funding" && a.fundedCents < a.offeringCents ? 0 : 1;
-      const openB = b.status === "funding" && b.fundedCents < b.offeringCents ? 0 : 1;
-      if (openA !== openB) return openA - openB;
       return a.offeringCents - b.offeringCents;
     })
     .slice(0, 2);
@@ -54,8 +51,6 @@ export default async function DirectPage() {
           </Button>
         </div>
       </div>
-
-      <HomeAttentionCards items={notifications} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard

@@ -6,7 +6,7 @@ import { LandlordProceedsCard } from "@/components/rent-advance/landlord-proceed
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
-import { RouteSuccessDialog } from "@/components/route-success-dialog";
+import { ShareOfferButton } from "@/components/share-offer-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate, formatDateTime, titleCase } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import {
-  collectedCount,
+  effectiveOfferStatus,
   rentToMarket,
   offerDisplayName,
   statusLabel,
@@ -30,7 +30,7 @@ import {
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
 import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
-import { getOffer, loadBook } from "@/lib/rent-advance/store";
+import { getOffer } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
 
@@ -47,39 +47,39 @@ export async function generateMetadata({
 
 export default async function OfferOpsPage({
   params,
-  searchParams,
 }: {
   params: Params;
-  searchParams: Promise<{ success?: string }>;
 }) {
-  const [{ ref }, query] = await Promise.all([params, searchParams]);
-  const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
+  const { ref } = await params;
+  const offer = await getOffer(ref);
   if (!offer) notFound();
 
-  const collected = collectedCount(offer);
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
   const proceeds = landlordProceedsPresentation(offer);
-  const savedAddress = book.accounts?.[0]?.payoutAddress ?? null;
+  const effectiveStatus = effectiveOfferStatus(offer);
   const showProceedsCard = offer.status !== "draft";
+  const lifecycleEvents = offer.events.filter((event) =>
+    /offer request|approved|denied|offer created|listed|offer sold|whole offer|sale amount|status set/i.test(
+      event.title,
+    ),
+  );
 
   return (
     <div className="space-y-6">
-      {query.success === "proceeds" ? (
-        <RouteSuccessDialog
-          title="Proceeds claimed"
-          description={`${offerDisplayName(offer)} is marked as paid to the demo address. No money was sent.`}
-          amount={<Money cents={proceeds.amountCents} />}
-          closeHref={`/originate/${offer.reference}`}
-        />
-      ) : null}
-
       <PageHeader
         title={offerDisplayName(offer)}
         description={`${offer.reference} · ${offer.property.district}`}
         actions={
-          <StatusBadge tone={statusTone(offer.status)}>
-            {statusLabel(offer.status)}
-          </StatusBadge>
+          <div className="flex items-center gap-2">
+            <StatusBadge tone={statusTone(effectiveStatus)}>
+              {statusLabel(effectiveStatus)}
+            </StatusBadge>
+            {effectiveStatus === "funding" ||
+            effectiveStatus === "live" ||
+            effectiveStatus === "collecting" ? (
+              <ShareOfferButton reference={offer.reference} />
+            ) : null}
+          </div>
         }
       />
 
@@ -89,8 +89,8 @@ export default async function OfferOpsPage({
             <CardTitle className="flex items-center gap-1 text-sm text-muted-foreground">
               Sale amount
               <HelpTip label="Sale amount">
-                The one-time amount the landlord can claim after the offer is
-                fully bought.
+              The one-time amount paid automatically after the whole offer is
+              bought.
               </HelpTip>
             </CardTitle>
           </CardHeader>
@@ -104,35 +104,39 @@ export default async function OfferOpsPage({
         <Card>
           <CardHeader className="pb-0">
             <CardTitle className="text-sm text-muted-foreground">
-              Term
+              Offer status
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {offer.months} months
+            {statusLabel(effectiveStatus)}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-0">
             <CardTitle className="text-sm text-muted-foreground">
-              Collected
+              Marketplace window
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {collected} of {offer.months} months
+            {effectiveStatus === "expired"
+              ? "Listing expired"
+              : offer.expiresAt && effectiveStatus === "funding"
+              ? `Until ${formatDate(offer.expiresAt)}`
+              : effectiveStatus === "live" || effectiveStatus === "collecting"
+                ? "Offer sold"
+                : "60 days after approval"}
           </CardContent>
         </Card>
       </div>
 
       {showProceedsCard ? (
         <LandlordProceedsCard
-          reference={offer.reference}
           propertyName={offerDisplayName(offer)}
           status={proceeds.status}
           purchasePriceCents={proceeds.purchasePriceCents}
           feeCents={proceeds.feeCents}
           amountCents={proceeds.amountCents}
           lockedAddress={proceeds.lockedAddress}
-          savedAddress={savedAddress}
         />
       ) : null}
 
@@ -146,8 +150,6 @@ export default async function OfferOpsPage({
           <TabsList variant="line" className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="passport">Quality scores</TabsTrigger>
-          <TabsTrigger value="servicing">Collections</TabsTrigger>
-          <TabsTrigger value="holders">Holders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 pt-4">
@@ -166,7 +168,7 @@ export default async function OfferOpsPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {offer.events.map((event) => (
+                  {lifecycleEvents.map((event) => (
                     <TableRow key={event.id}>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {formatDateTime(event.at)}
@@ -303,107 +305,6 @@ export default async function OfferOpsPage({
                       <TableCell>{row.bedrooms}</TableCell>
                       <TableCell>{row.interiorM2}</TableCell>
                       <TableCell>{row.daysListed}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="servicing" className="space-y-4 pt-4">
-          <div className="grid gap-4 xl:grid-cols-2">
-            <Card className="gap-0 py-0">
-              <CardHeader className="border-b py-4">
-                <CardTitle>Receivables</CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-auto px-0">
-                <Table className="[&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Month</TableHead>
-                      <TableHead>Due</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {offer.receivables.map((row) => (
-                      <TableRow key={row.n}>
-                        <TableCell>{row.n}</TableCell>
-                        <TableCell>{formatDate(row.dueDate)}</TableCell>
-                        <TableCell className="text-right">
-                          <Money cents={row.amountCents} />
-                        </TableCell>
-                        <TableCell>{titleCase(row.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-            <Card className="gap-0 py-0">
-              <CardHeader className="border-b py-4">
-                <CardTitle>Collections</CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-auto px-0">
-                <Table className="[&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Month</TableHead>
-                      <TableHead>Received</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {offer.collections.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.receivableN}</TableCell>
-                        <TableCell>{formatDate(row.receivedOn)}</TableCell>
-                        <TableCell className="text-right">
-                          <Money cents={row.amountCents} />
-                        </TableCell>
-                        <TableCell>{titleCase(row.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="holders" className="pt-4">
-          <Card className="gap-0 py-0">
-            <CardContent className="overflow-x-auto px-0">
-              <Table className="min-w-[640px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Holder</TableHead>
-                    <TableHead>Units</TableHead>
-                    <TableHead className="text-right">Contributed</TableHead>
-                    <TableHead className="text-right">Received</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {offer.holders.map((holder) => (
-                    <TableRow key={holder.holderId}>
-                      <TableCell className="whitespace-normal">
-                        {holder.holderName}
-                        {holder.anonymised ? (
-                          <p className="text-xs text-muted-foreground">
-                            Anonymised purchaser entity
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>{holder.units}</TableCell>
-                      <TableCell className="text-right">
-                        <Money cents={holder.contributedCents} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Money cents={holder.receivedCents} />
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

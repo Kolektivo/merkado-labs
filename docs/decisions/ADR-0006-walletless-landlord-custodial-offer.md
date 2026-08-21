@@ -1,6 +1,7 @@
 # ADR-0006 — Walletless landlord and Merkado-created listing offer
 
-**Status:** Accepted  
+**Status:** Accepted; landlord-claim and fractional-purchase decisions
+superseded by ADR-0007  
 **Date:** 2026-08-20
 
 ## Context
@@ -129,3 +130,11 @@ Luis confirmed the landlord sale-proceeds implementation on draft PR #22:
 - Product Lead: implement Luuk’s walletless landlord flow, 2026-08-20
 - Architecture source: Luuk / Jose Luis chat, 2026-08-20
 - Engineering status: Jose Luis Wave 3 chat, 2026-08-21
+
+## Supersession — 2026-08-21
+
+ADR-0007 supersedes this ADR only where it chose a landlord claim after sale and
+allowed purchases of any remaining amount. The approved flow now selects payout
+before submission, sells 100% of the offer to one buyer, and executes landlord
+payout automatically. Walletless origination, Merkado-created per-listing
+offers, renter-to-offer rent, and holder-initiated rent claim remain accepted.

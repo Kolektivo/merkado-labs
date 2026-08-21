@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 21, 2026 (landlord proceeds privacy)
+**Last updated:** August 21, 2026 (payout-first and bank-preview privacy)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -54,7 +54,8 @@ Never:
    `.env.example` placeholder names may be documented in the repository —
    never real credential values.
 9. Personal data in the demo must be placeholders. Do not commit real landlord,
-   tenant, or bank details.
+   tenant, or bank details. The Create Offer renter step warns that the demo is
+   shared and requires fictional information.
 10. Purchaser screens must not expose tenant identity, employer, or address.
 
 ## 3. Demo access
@@ -78,6 +79,9 @@ Never:
   tables directly.
 - Server components and server actions use the Labs service role. Browser
   code never receives that key.
+- Offer server actions strip undeclared root and nested fields before writing
+  the shared JSON book. This also blocks crafted Girasol / Sentoo-style bank
+  fields from being retained; the visible previews stay client-only.
 - Dual-control release is rejected if instructor and signatory are the same person
   (application check on every save, and a database trigger on `ra_demo_state`).
 
@@ -119,15 +123,16 @@ Operational detail: `12-deployment-runbook.md`.
 - Purchaser screens: no tenant name, employer, address, contact, or exact
   income. Address-like free text is replaced with a neutral Curaçao label
   before entering the purchaser payload.
-- Landlord screens: no holder wallet or Safe address. The local mock
-  accepts a fictional `0xDEMO…` payout address only; users do not connect
-  a wallet. That value stays server-side and must not appear on
+- Landlord screens: no holder wallet or Safe address. The local mock accepts a
+  fictional `0xDEMO…` payout address before offer submission; users do not
+  connect a wallet. The whole-offer purchase marks payout automatic. That value
+  stays server-side and must not appear on
   Marketplace, Pay, or Portfolio.
-- Landlord proceeds claims never show a mock transaction hash or explorer
-  link. Paid is final.
+- Automatic landlord payouts never show a mock transaction hash or explorer
+  link. Paid is final. There is no landlord claim action.
 - Merkado is not a custody product. After sale, monthly rent sits on the
   listing offer until the holder claims it. Sale proceeds stay in the
-  sales proceeds Safe only until the landlord claims.
+  sales proceeds Safe only until the automatic landlord payout executes.
 - No public offering copy. Sole-holder mode until written opinions exist.
 - The related-party flag and note are internal review facts. Neither enters
   the purchaser payload. They are not an excuse for softer arrears.
@@ -135,6 +140,12 @@ Operational detail: `12-deployment-runbook.md`.
 ## 8. Mock wallet and payment-link safety
 
 - Mock addresses must be obviously fictional and unusable for real funds.
+- Girasol and Sentoo fields are visual previews only. They must not persist,
+  transmit, log, or autofill real bank details. The UI explicitly asks for
+  fictional values and keeps the action disabled.
+- The mocked **Connect wallet** button must not imply ownership verification.
+  Real purchase and holder claim require server-enforced wallet ownership,
+  network checks, and authorization before this shared book can touch funds.
 - Never put secrets or sensitive identity in a URL.
 - Payment deep-link IDs in this demo are fictional. Production links need
   opaque, scoped, expiring authorization.

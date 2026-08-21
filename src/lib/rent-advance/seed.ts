@@ -1,11 +1,15 @@
 import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
-import { fundedSeedCustody } from "@/lib/rent-advance/custody";
+import {
+  defaultLandlordPayout,
+  fundedSeedCustody,
+} from "@/lib/rent-advance/custody";
 import { ACTORS } from "@/lib/rent-advance/actors";
 import {
   offerIdFromReference,
   receivableIdFor,
 } from "@/lib/rent-advance/ids";
 import { normalizeBook } from "@/lib/rent-advance/payment-apply";
+import { listingExpiresAt } from "@/lib/rent-advance/helpers";
 import { holderSchedule, priceQuote } from "@/lib/rent-advance/pricing";
 import type {
   ChecklistItem,
@@ -239,6 +243,10 @@ function makeOffer(input: {
     units,
   });
   const rows = receivables(input.reference, input.rent, input.months);
+  const publishedAt =
+    input.status === "draft" || input.status === "under_review"
+      ? null
+      : "2026-08-28T10:05:00-04:00";
   const receivedCount = input.receivedCount ?? 0;
   const missedCount = input.missedCount ?? 0;
   rows.forEach((row, index) => {
@@ -253,8 +261,10 @@ function makeOffer(input: {
     status: input.status,
     seriesDisplayName: "Merkado Direct · Rent Advance",
     createdAt: input.createdAt ?? "2026-08-13T09:44:00-04:00",
-    publishedAt: input.status === "draft" ? null : "2026-08-28T10:05:00-04:00",
+    publishedAt,
+    expiresAt: listingExpiresAt(publishedAt),
     nextAction: input.nextAction,
+    payout: defaultLandlordPayout(),
     relatedParty: related,
     relatedPartyNote: input.relatedPartyNote ?? null,
     paymentOption: "A",
@@ -545,7 +555,7 @@ function buildOffers(): Offer[] {
       at: "2026-09-04T14:40:00-04:00",
       title: "Mock funding recorded",
       detail:
-        "The offer is fully bought. The purchase price is available for the landlord to claim.",
+        "The offer is fully bought. The sale amount was paid automatically to the saved payout address.",
       actor: "System",
     },
     {
@@ -554,6 +564,14 @@ function buildOffers(): Offer[] {
       title: "Offer sold",
       detail:
         "The holder received the offer. Later rent goes to the offer collection address.",
+      actor: "System",
+    },
+    {
+      id: "ev-001-paid",
+      at: "2026-09-04T14:40:00-04:00",
+      title: "Sale amount paid automatically",
+      detail:
+        "The sale amount was marked paid to the payout address saved before submission.",
       actor: "System",
     },
     {
@@ -574,7 +592,7 @@ function buildOffers(): Offer[] {
       id: "ev-001-1",
       at: "2026-08-27T16:31:00-04:00",
       title: "Approved",
-      detail: "Enrique · independent approver",
+      detail: "Enrique · independent approver. Listed on Marketplace for 60 days.",
       actor: "Enrique",
     },
     {
