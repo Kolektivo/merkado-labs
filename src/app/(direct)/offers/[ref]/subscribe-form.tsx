@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { HelpTip } from "@/components/help-tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +61,7 @@ export function SubscribeForm({
   if (closed) {
     return fundedCents > 0 ? (
       <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
-        <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+        <p className="text-sm font-medium text-grey-800">
           Offering
         </p>
         <p className="mt-2 text-3xl font-semibold tracking-tight text-surface-dark">
@@ -72,7 +73,7 @@ export function SubscribeForm({
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-grey-200">
           <div className="h-full w-full rounded-full bg-violet-500" />
         </div>
-        <Button asChild className="mt-6 h-10 w-full">
+        <Button asChild className="mt-6 h-11 w-full">
           <Link href={`/portfolio/${reference}`}>View in Portfolio</Link>
         </Button>
       </div>
@@ -80,7 +81,7 @@ export function SubscribeForm({
   }
 
   return (
-    <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
+    <div className="rounded-2xl border border-primary/25 bg-white p-6 shadow-sm">
       {error ? (
         <Alert variant="destructive" className="mb-5">
           <AlertTitle>Could not complete purchase</AlertTitle>
@@ -88,13 +89,13 @@ export function SubscribeForm({
         </Alert>
       ) : null}
 
-      <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+      <p className="text-sm font-medium text-grey-800">
         Still open
       </p>
       <p className="mt-1.5 text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
         {formatXcg(remainingCents)}
       </p>
-      <p className="mt-1 text-sm text-grey-700">
+      <p className="mt-1 text-sm text-grey-800">
         of {formatXcg(offeringCents)}
       </p>
 
@@ -104,16 +105,21 @@ export function SubscribeForm({
           style={{ width: `${filledPct}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-grey-700">
+      <p className="mt-2 text-xs text-grey-800">
         {formatXcg(fundedCents)} filled
       </p>
 
       <div className="mt-6 space-y-1.5">
-        <Label htmlFor="purchase-amount" className="text-xs text-grey-800">
-          Your amount
-        </Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="purchase-amount" className="text-sm text-grey-800">
+            Your amount
+          </Label>
+          <HelpTip label="Purchase amount">
+            Choose how much of the amount still open you want to buy.
+          </HelpTip>
+        </div>
         <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-grey-700">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-grey-800">
             XCG
           </span>
           <Input
@@ -126,7 +132,7 @@ export function SubscribeForm({
             onChange={(event) =>
               setAmountXcg(event.target.value.replace(",", "."))
             }
-            className="h-10 pl-12"
+            className="h-11 pl-12"
           />
         </div>
         <p id="purchase-amount-hint" className="text-xs text-grey-800">
@@ -149,13 +155,12 @@ export function SubscribeForm({
           <Button
             key={chip.key}
             type="button"
-            size="sm"
             variant="outline"
             aria-pressed={selectedChip === chip.key}
             className={cn(
-              "h-9 flex-1",
+              "h-11 flex-1",
               selectedChip === chip.key &&
-                "border-violet-500 bg-violet-50 text-surface-dark",
+                "border-primary bg-primary/5 text-primary",
             )}
             onClick={() => setShare(chip.cents)}
           >
@@ -166,15 +171,22 @@ export function SubscribeForm({
 
       <Button
         type="button"
-        className="mt-6 h-10 w-full"
+        className="mt-6 h-11 w-full"
         disabled={pending || !canBuy}
         onClick={() => {
           setError(null);
           startTransition(async () => {
             try {
               await subscribeOfferAction(reference, amountCents);
-              router.push(`/portfolio/${reference}`);
-              router.refresh();
+              try {
+                window.sessionStorage.setItem(
+                  `merkado:success:purchase:${reference}`,
+                  formatXcg(amountCents),
+                );
+              } catch {
+                // The purchase succeeded; the amount is optional dialog detail.
+              }
+              router.push(`/portfolio/${reference}?success=purchase`);
             } catch (err) {
               setError(err instanceof Error ? err.message : "Purchase failed.");
             }
@@ -187,15 +199,16 @@ export function SubscribeForm({
       {fundedCents > 0 ? (
         <Link
           href={`/portfolio/${reference}`}
-          className="mt-4 block text-center text-xs text-grey-700 hover:text-surface-dark"
+          className="mt-4 flex min-h-11 items-center justify-center text-center text-sm text-grey-800 hover:text-surface-dark"
         >
           View current position
         </Link>
       ) : (
-        <p className="mt-4 text-center text-xs leading-5 text-grey-700">
+        <p className="mt-4 text-center text-xs leading-5 text-grey-800">
           Later rent goes to your portfolio when the renter pays.
         </p>
       )}
+
     </div>
   );
 }

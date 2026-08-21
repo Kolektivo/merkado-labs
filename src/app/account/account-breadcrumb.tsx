@@ -38,9 +38,12 @@ export function AccountBreadcrumb() {
         </li>
         <li className="relative flex h-6 shrink-0 items-center gap-1.5">
           <BreadcrumbChevron />
-          <span className="block h-6 min-w-0 max-w-[7rem] truncate leading-6 text-grey-700 sm:max-w-[10rem]">
+          <Link
+            href="/account/apps"
+            className="block h-6 min-w-0 max-w-[7rem] truncate leading-6 text-grey-700 hover:text-grey-900 sm:max-w-[10rem]"
+          >
             My Account
-          </span>
+          </Link>
         </li>
         <li className="flex h-6 min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           <BreadcrumbChevron />

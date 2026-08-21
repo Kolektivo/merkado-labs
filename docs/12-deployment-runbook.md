@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (Luis PR #22 preview)
 
 ## Local dashboard
 
@@ -28,9 +28,9 @@ Optional: `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty).
 ## Vercel (Labs demo host)
 
 An existing Vercel project does **not** mean public deployment is approved.
-After this change is deployed, the hosted URL stays live and asks for a
-shared host password. Do not buy the Vercel password add-on. The current
-live URL is still open until that deploy.
+Vercel Production currently points to `main` commit `8b0be45`; this
+working tree is not deployed. Hosted production fails closed at `/enter`
+and needs the shared app password. Do not buy the Vercel password add-on.
 
 Add this server-only env on the **Production** environment before the
 password page can unlock:
@@ -74,6 +74,13 @@ Windows-generated lockfile. They are not a wallet or chain dependency.
 The first passing remote Verify run on `main` was 2026-08-19
 (run 32228015203).
 
+Luis draft preview for Wave 3 (PR #22):
+https://merkado-labs-git-task-pr21-mocked-proceeds-claim-kolektivolabs.vercel.app
+Vercel SSO is on. After SSO, the app still requires
+`LABS_DEMO_PASSWORD`; do not put that password in Git or chat. Local
+review of that same branch: run it on
+http://localhost:3001 from a separate worktree. Do not merge.
+
 ## Access to give Luis (Web3)
 
 Luis only needs the **Labs** demo. He does not need merkado.cw
@@ -89,7 +96,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Not required as a lasting owner | Luis creates a **Base Sepolia** Safe with Enrique and Luuk as the only owners (**2 of 2**). Luis is not a signer. Do not start with a mainnet Safe that holds real USDC. |
+| Safe{Wallet} | Testnet operator on the existing 2-of-3 company Safe | Keep that Safe for offer creation and fees. Ask him to create a **second** Base Sepolia **sales proceeds** Safe. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 
 ### Do not give
@@ -107,7 +114,9 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him to create the test Safe on **Base Sepolia**, not Base Mainnet.
+2. Tell him the company Safe can stay the existing Base Sepolia 2-of-3
+   Safe, and that he should create a second **sales proceeds** Safe. Send
+   `docs/07-integrations.md`.
 3. Tell him not to install a wallet SDK until you reply that the
    integration task is approved.
 4. When his Base Sepolia pay walkthrough works, you still approve before

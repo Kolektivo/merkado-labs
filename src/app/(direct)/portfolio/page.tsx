@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -56,15 +55,63 @@ export default async function PortfolioPage() {
           },
         ]}
       />
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      {positions.length === 0 ? (
+        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+          No positions yet. Buy part of an open offer in Marketplace and it
+          will appear here.
+        </div>
+      ) : null}
+      <div className="grid gap-3 md:hidden">
+        {positions.map((position) => (
+          <Link
+            key={position.positionId}
+            href={`/portfolio/${position.reference}`}
+            className="rounded-xl border bg-card p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">{position.summary}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {position.positionId} · {position.type}
+                </p>
+              </div>
+              <StatusBadge tone={statusTone(position.status)}>
+                {statusLabel(position.status)}
+              </StatusBadge>
+            </div>
+            <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">Collected</dt>
+                <dd className="mt-1 font-medium">
+                  <Money cents={position.collectedCents} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Ready</dt>
+                <dd className="mt-1 font-medium">
+                  <Money cents={position.pendingDistributionCents} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Claimed</dt>
+                <dd className="mt-1 font-medium">
+                  <Money cents={position.distributedCents} />
+                </dd>
+              </div>
+            </dl>
+          </Link>
+        ))}
+      </div>
+      {positions.length > 0 ? (
+        <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Position ID</TableHead>
-              <TableHead>District</TableHead>
+              <TableHead>Property</TableHead>
+              <TableHead>Position</TableHead>
               <TableHead>Collected</TableHead>
-              <TableHead>Awaiting distribution</TableHead>
-              <TableHead>Distributed</TableHead>
+              <TableHead>Ready to claim</TableHead>
+              <TableHead>Claimed</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -76,13 +123,13 @@ export default async function PortfolioPage() {
                     href={`/portfolio/${position.reference}`}
                     className="hover:underline"
                   >
-                    {position.positionId}
+                    {position.summary}
                   </Link>
                   <p className="text-xs font-normal text-muted-foreground">
-                    {position.reference} · {position.type}
+                    {position.district} · {position.type}
                   </p>
                 </TableCell>
-                <TableCell>{position.district}</TableCell>
+                <TableCell>{position.positionId}</TableCell>
                 <TableCell>
                   <Money cents={position.collectedCents} />
                 </TableCell>
@@ -96,23 +143,15 @@ export default async function PortfolioPage() {
                   <StatusBadge tone={statusTone(position.status)}>
                     {statusLabel(position.status)}
                   </StatusBadge>
-                  {position.settlementTxHash ? (
-                    <div className="mt-1">
-                      <CopyValue
-                        value={position.settlementTxHash}
-                        label="settlement reference"
-                        truncate
-                      />
-                    </div>
-                  ) : null}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </div>
+        </div>
+      ) : null}
       <p className="text-sm text-muted-foreground">
-        Collected rent is booked to the matching position when the renter pays.
+        When rent arrives, open the position and click Claim rent.
       </p>
     </ThemeMerkado>
   );

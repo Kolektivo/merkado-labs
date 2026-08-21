@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { resetDemoAction } from "@/lib/rent-advance/actions";
+import { clearStoredNotifications } from "@/lib/rent-advance/notification-read-state";
 
 export function ResetDemoButton() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export function ResetDemoButton() {
               try {
                 setError(null);
                 await resetDemoAction();
+                clearStoredNotifications();
                 setDone(true);
                 setConfirming(false);
                 router.refresh();

@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (landlord proceeds privacy)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -113,11 +113,24 @@ Operational detail: `12-deployment-runbook.md`.
 ## 7. Privacy walls
 
 - Payer screens: no fee, purchase price, holders, or scheduled holder figures.
-- Purchaser screens: no tenant name, employer, address, contact, or exact income.
-- Landlord screens: no holder wallet or Safe address.
+  The browser receives only public network facts (network, chain, token,
+  decimals, explorer), never company / proceeds Safe fields or the offer
+  factory from the full crypto config.
+- Purchaser screens: no tenant name, employer, address, contact, or exact
+  income. Address-like free text is replaced with a neutral Curaçao label
+  before entering the purchaser payload.
+- Landlord screens: no holder wallet or Safe address. The local mock
+  accepts a fictional `0xDEMO…` payout address only; users do not connect
+  a wallet. That value stays server-side and must not appear on
+  Marketplace, Pay, or Portfolio.
+- Landlord proceeds claims never show a mock transaction hash or explorer
+  link. Paid is final.
+- Merkado is not a custody product. After sale, monthly rent sits on the
+  listing offer until the holder claims it. Sale proceeds stay in the
+  sales proceeds Safe only until the landlord claims.
 - No public offering copy. Sole-holder mode until written opinions exist.
-- Related-party family facts are disclosed to holders; they are not an excuse
-  for softer arrears.
+- The related-party flag and note are internal review facts. Neither enters
+  the purchaser payload. They are not an excuse for softer arrears.
 
 ## 8. Mock wallet and payment-link safety
 

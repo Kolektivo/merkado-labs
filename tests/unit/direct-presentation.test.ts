@@ -8,6 +8,7 @@ import {
   formatDayMonthYear,
   onTimePercent,
   payerPayee,
+  paymentStatusLabel,
   rentToIncomeBand,
   toPurchaserOffer,
 } from "@/lib/rent-advance/helpers";
@@ -32,6 +33,12 @@ test("Option A payee is the property manager", () => {
   assert.ok(offer);
   assert.equal(offer.paymentOption, "A");
   assert.equal(payerPayee(offer), "Property Management B.V.");
+});
+
+test("Pay uses customer labels for due, upcoming, and paid requests", () => {
+  assert.equal(paymentStatusLabel("due"), "Due");
+  assert.equal(paymentStatusLabel("due", true), "Upcoming");
+  assert.equal(paymentStatusLabel("confirmed"), "Paid");
 });
 
 test("collections are only recorded on live, collecting, or defaulted offers", () => {
@@ -106,7 +113,18 @@ test("holder marketplace payloads omit agency, employment, and income band", () 
   assert.equal("agency" in detail, false);
   assert.equal("employmentStatus" in detail.payer, false);
   assert.equal("rentToIncomeBand" in detail.payer, false);
+  assert.equal("relatedParty" in card, false);
+  assert.equal("relatedPartyNote" in detail, false);
+  assert.equal("rentToMarket" in card, false);
+  assert.equal("marketDataAvailable" in detail, false);
   assert.ok(detail.payer.bandLabel);
+
+  const addressLikeOffer = structuredClone(offer);
+  addressLikeOffer.property.district = "Kaya Example 123";
+  addressLikeOffer.property.summary = "House at Kaya Example 123";
+  const safeCard = anonymizeOffer(addressLikeOffer);
+  assert.equal(safeCard.district, "Curaçao");
+  assert.equal(safeCard.summary, "Curaçao");
 });
 
 test("account payments opens Pay, not a second payments page", () => {

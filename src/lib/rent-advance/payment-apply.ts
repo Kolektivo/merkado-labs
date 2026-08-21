@@ -1,9 +1,20 @@
 import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
+import { ACTORS } from "@/lib/rent-advance/actors";
+import {
+  companyFeeLedger,
+  defaultCustodyAddresses,
+  ensureOfferCustody,
+  landlordClaimLedger,
+  mergeCustody,
+  rentReceivingAddressFor,
+  settleSoldOffer,
+  withPayoutDefaults,
+} from "@/lib/rent-advance/custody";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
-  DEMO_RECEIVING_ADDRESS,
+  COMPANY_SAFE_ACCOUNT_ID,
+  DEMO_COMPANY_SAFE,
   RENTER_ACCOUNT_ID,
-  SAFE_ACCOUNT_ID,
   acceptedPaymentTxHash,
   collectionIdFor,
   demoTxHash,
@@ -14,9 +25,8 @@ import {
   periodLabelFromDueDate,
   positionIdFor,
   receivableIdFor,
-  settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
-import { receivingLedgerLabel, renterWalletLedgerLabel } from "@/lib/pay/mode";
+import { renterWalletLedgerLabel } from "@/lib/pay/mode";
 import {
   getPayNetwork,
   resolvePayNetworkKey,
@@ -56,9 +66,12 @@ export function cryptoConfigFor(
     networkLabel: network.networkLabel,
     usdcContract: network.usdcContract,
     usdcDecimals: network.usdcDecimals,
-    safeAccountId: incoming?.safeAccountId ?? SAFE_ACCOUNT_ID,
-    safeAddress: incoming?.safeAddress?.trim() || DEMO_RECEIVING_ADDRESS,
+    safeAccountId: incoming?.safeAccountId ?? COMPANY_SAFE_ACCOUNT_ID,
     explorerBaseUrl: network.explorerBaseUrl,
+    ...defaultCustodyAddresses({
+      ...incoming,
+      safeAddress: incoming?.safeAddress?.trim() || DEMO_COMPANY_SAFE,
+    }),
   };
 }
 
@@ -77,6 +90,8 @@ export function defaultAccounts(): DemoAccount[] {
       displayName: DEMO_RENTER_PROFILE.fullName,
       roleLabel: "Renter",
       payerFileId: "tn-001",
+      payoutAddress: null,
+      payoutAddressUpdatedAt: null,
     },
   ];
 }
@@ -86,9 +101,7 @@ function ensureOfferIds(offer: Offer): Offer {
   return {
     ...offer,
     offerId,
-    settlementTransactionId:
-      offer.settlementTransactionId ??
-      (offer.fundedCents > 0 ? settlementTxIdFor(offer.reference) : null),
+    settlementTransactionId: null,
     receivables: offer.receivables.map((row) => ({
       ...row,
       receivableId: row.receivableId ?? receivableIdFor(offer.reference, row.n),
@@ -143,8 +156,9 @@ export function applySubscribe(
   if (filled && offer.status === "funding") offer.status = "live";
   if (filled) {
     offer.publishedAt = offer.publishedAt ?? at;
-    offer.settlementTransactionId = settlementTxIdFor(offer.reference);
-    offer.nextAction = "Collect first rent";
+    offer.settlementTransactionId = null;
+    offer.nextAction = "Landlord can claim sale proceeds";
+    Object.assign(offer, settleSoldOffer(offer, at));
   } else {
     offer.nextAction = "Wait for remaining funding";
   }
@@ -171,7 +185,7 @@ export function applySubscribe(
     at,
     title: filled ? "Offer filled" : "Participation purchased",
     detail: filled
-      ? `${formatXcg(purchaseCents)} filled the offering. The landlord settlement is recorded.`
+      ? `${formatXcg(purchaseCents)} filled the offering. Sale proceeds are ready for the landlord to claim.`
       : `${formatXcg(purchaseCents)} purchased. ${formatXcg(offer.offeringCents - offer.fundedCents)} still open.`,
     actor: "System",
   };
@@ -179,8 +193,9 @@ export function applySubscribe(
     ? {
         id: `ev-${reference}-settled`,
         at,
-        title: "Settled to the landlord",
-        detail: "Purchase price released in one payment",
+        title: "Offer sold",
+        detail:
+          "The holder received the offer. Rent now goes to the offer collection address.",
         actor: "System",
       }
     : null;
@@ -192,28 +207,6 @@ export function applySubscribe(
   ];
 
   return normalizeBook(next);
-}
-
-function settlementTransaction(offer: Offer): LedgerTransaction | null {
-  if (offer.fundedCents <= 0 || offer.fundedCents < offer.offeringCents) return null;
-  const transactionId = settlementTxIdFor(offer.reference);
-  return {
-    transactionId,
-    kind: "advance_settlement",
-    offerId: offer.offerId ?? offerIdFromReference(offer.reference),
-    offerReference: offer.reference,
-    paymentRequestId: null,
-    collectionId: null,
-    distributionId: null,
-    amountXcgCents: offer.purchasePriceCents,
-    amountUsdcAtomic: null,
-    status: "confirmed",
-    createdAt: offer.publishedAt ?? offer.createdAt,
-    confirmedAt: offer.publishedAt ?? offer.createdAt,
-    txHash: demoTxHash(`settle${offer.reference}`),
-    fromLabel: "Merkado Direct",
-    toLabel: "Landlord",
-  };
 }
 
 function paymentRequestForReceivable(
@@ -260,11 +253,11 @@ function distributionsForOffer(offer: Offer): DistributionRecord[] {
       offerId: offer.offerId ?? offerIdFromReference(offer.reference),
       offerReference: offer.reference,
       amountCents: row.amountCents,
-      status: "distributed" as const,
+      status: "pending" as const,
       createdAt: row.receivedOn,
-      distributedAt: row.receivedOn,
+      distributedAt: null,
       transactionId: distributionTxIdFor(offer.reference, row.receivableN),
-      txHash: demoTxHash(`dist${offer.reference}${row.receivableN}`),
+      txHash: null,
     }));
 }
 
@@ -275,17 +268,20 @@ function positionForOffer(offer: Offer): PositionRecord | null {
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     holderId: offer.holders[0]?.holderId ?? "act-purchaser",
-    settlementTransactionId: settlementTxIdFor(offer.reference),
-    externalTokenId: null,
+    settlementTransactionId: null,
+    externalTokenId: mergeCustody(offer.custody).nftTokenId,
   };
 }
 
 export function normalizeBook(raw: unknown): DemoBook {
   const book = (raw ?? {}) as DemoBook;
   const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
-  const receivingAddress = cryptoConfig.safeAddress ?? DEMO_RECEIVING_ADDRESS;
-  const offers = (book.offers ?? []).map(ensureOfferIds);
-  const seedAccounts = book.accounts?.length ? book.accounts : defaultAccounts();
+  const offers = (book.offers ?? [])
+    .map(ensureOfferIds)
+    .map((offer) => ensureOfferCustody(offer, cryptoConfig));
+  const seedAccounts = (book.accounts?.length ? book.accounts : defaultAccounts()).map(
+    withPayoutDefaults,
+  );
   const existingRequests = new Map(
     (book.paymentRequests ?? []).map((row) => [row.paymentRequestId, row]),
   );
@@ -293,7 +289,11 @@ export function normalizeBook(raw: unknown): DemoBook {
   for (const offer of offers) {
     if (!shouldMintPaymentRequests(offer)) continue;
     for (const receivable of offer.receivables) {
-      const next = paymentRequestForReceivable(offer, receivable.n, receivingAddress);
+      const next = paymentRequestForReceivable(
+        offer,
+        receivable.n,
+        rentReceivingAddressFor(offer, cryptoConfig),
+      );
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
       paymentRequests.push(
@@ -323,8 +323,10 @@ export function normalizeBook(raw: unknown): DemoBook {
   const existingTx = new Map((book.ledgerTransactions ?? []).map((row) => [row.transactionId, row]));
   const ledgerTransactions: LedgerTransaction[] = [];
   for (const offer of offers) {
-    const settlement = settlementTransaction(offer);
-    if (settlement) ledgerTransactions.push(existingTx.get(settlement.transactionId) ?? settlement);
+    const fee = companyFeeLedger(offer);
+    if (fee) ledgerTransactions.push(existingTx.get(fee.transactionId) ?? fee);
+    const claim = landlordClaimLedger(offer);
+    if (claim) ledgerTransactions.push(existingTx.get(claim.transactionId) ?? claim);
   }
   for (const request of paymentRequests) {
     if (!request.transactionId) continue;
@@ -343,7 +345,7 @@ export function normalizeBook(raw: unknown): DemoBook {
       confirmedAt: request.confirmedAt,
       txHash: request.txHash,
       fromLabel: renterWalletLedgerLabel(),
-      toLabel: receivingLedgerLabel(),
+      toLabel: "Offer collection address",
     };
     ledgerTransactions.push(existingTx.get(request.transactionId) ?? fallback);
   }
@@ -362,8 +364,8 @@ export function normalizeBook(raw: unknown): DemoBook {
       createdAt: distribution.createdAt,
       confirmedAt: distribution.distributedAt,
       txHash: distribution.txHash,
-      fromLabel: "Collection account",
-      toLabel: "Holder position",
+      fromLabel: "Offer collection address",
+      toLabel: "Holder wallet",
     };
     if (!ledgerTransactions.some((row) => row.transactionId === fallback.transactionId)) {
       ledgerTransactions.push(existingTx.get(fallback.transactionId) ?? fallback);
@@ -374,12 +376,30 @@ export function normalizeBook(raw: unknown): DemoBook {
   const positions = offers
     .map(positionForOffer)
     .filter((row): row is PositionRecord => Boolean(row))
-    .map((row) => existingPositions.get(row.positionId) ?? row);
+    .map((row) => {
+      const existing = existingPositions.get(row.positionId);
+      return existing
+        ? {
+            ...row,
+            ...existing,
+            settlementTransactionId: null,
+            externalTokenId: row.externalTokenId ?? existing.externalTokenId,
+          }
+        : row;
+    });
+
+  for (const offer of offers) {
+    const holder = offer.holders[0];
+    if (!holder) continue;
+    holder.receivedCents = distributions
+      .filter((row) => row.offerReference === offer.reference && row.status === "distributed")
+      .reduce((sum, row) => sum + row.amountCents, 0);
+  }
 
   return {
     ...book,
     offers,
-    actors: book.actors ?? [],
+    actors: ACTORS,
     checklist: book.checklist ?? [],
     openQuestions: book.openQuestions ?? [],
     assignedTenancies: book.assignedTenancies ?? [],
@@ -471,7 +491,7 @@ export function applyPaymentOutcome(
       confirmedAt: null,
       txHash: request.txHash,
       fromLabel: renterWalletLedgerLabel(),
-      toLabel: receivingLedgerLabel(),
+      toLabel: "Offer collection address",
     });
     return next;
   }
@@ -495,17 +515,17 @@ export function applyPaymentOutcome(
     offerId: request.offerId,
     offerReference: offer.reference,
     amountCents: collection.amountCents,
-    status: "distributed",
+    status: "pending",
     createdAt: at,
-    distributedAt: at,
+    distributedAt: null,
     transactionId: distributionTxIdFor(offer.reference, request.receivableN),
-    txHash: demoTxHash(`dist${offer.reference}${request.receivableN}`),
+    txHash: null,
   };
   if (!existingDistribution) {
     next.distributions = [distribution, ...(next.distributions ?? [])];
-  } else {
-    existingDistribution.status = "distributed";
-    existingDistribution.distributedAt = existingDistribution.distributedAt ?? at;
+  } else if (existingDistribution.status !== "distributed") {
+    existingDistribution.status = "pending";
+    existingDistribution.amountCents = collection.amountCents;
   }
 
   upsertLedger(next, {
@@ -522,9 +542,9 @@ export function applyPaymentOutcome(
     createdAt: request.initiatedAt,
     confirmedAt: at,
     txHash: request.txHash,
-    fromLabel: renterWalletLedgerLabel(),
-    toLabel: receivingLedgerLabel(),
-  });
+      fromLabel: renterWalletLedgerLabel(),
+      toLabel: "Offer collection address",
+    });
   upsertLedger(next, {
     transactionId: distribution.transactionId,
     kind: "holder_distribution",
@@ -535,28 +555,26 @@ export function applyPaymentOutcome(
     distributionId,
     amountXcgCents: collection.amountCents,
     amountUsdcAtomic: null,
-    status: "confirmed",
+    status: distribution.status === "distributed" ? "confirmed" : "pending",
     createdAt: at,
-    confirmedAt: at,
+    confirmedAt: distribution.distributedAt,
     txHash: distribution.txHash,
-    fromLabel: "Collection account",
-    toLabel: "Holder position",
+    fromLabel: "Offer collection address",
+    toLabel: "Holder wallet",
   });
 
-  const holder = offer.holders[0];
-  if (holder) {
-    holder.receivedCents = offer.collections
-      .filter((row) => row.status === "received" || row.status === "reconciled" || row.status === "released")
-      .reduce((sum, row) => sum + row.amountCents, 0);
-  }
   if (offer.status === "live") offer.status = "collecting";
-  offer.nextAction = "Record the next scheduled month";
+  offer.nextAction =
+    mergeCustody(offer.custody).saleProceedsStatus === "claimable"
+      ? "Landlord can claim sale proceeds"
+      : "Waiting for the next rent payment";
   offer.events = [
     {
       id: `ev-${offer.reference}-pay-${request.receivableN}`,
       at,
       title: `Collection received · month ${request.receivableN}`,
-      detail: "Rent collected. Later collections go to holders, not back to the landlord.",
+      detail:
+        "Rent arrived on this listing. The holder claims it from Portfolio. It is not paid back to the landlord.",
       actor: "System",
     },
     ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-pay-${request.receivableN}`),
@@ -599,35 +617,27 @@ export function applyOpsCollection(
         offerId: offer.offerId ?? offerIdFromReference(offer.reference),
         offerReference: offer.reference,
         amountCents: collection.amountCents,
-        status: "distributed",
+        status: "pending",
         createdAt: at,
-        distributedAt: at,
+        distributedAt: null,
         transactionId: distributionTxIdFor(offer.reference, receivableN),
-        txHash: demoTxHash(`dist${offer.reference}${receivableN}`),
+        txHash: null,
       },
       ...(next.distributions ?? []),
     ];
   }
-  const holder = offer.holders[0];
-  if (holder) {
-    holder.receivedCents = offer.collections
-      .filter(
-        (row) =>
-          row.status === "received" ||
-          row.status === "reconciled" ||
-          row.status === "released",
-      )
-      .reduce((sum, row) => sum + row.amountCents, 0);
-  }
   if (offer.status === "live") offer.status = "collecting";
-  offer.nextAction = "Record the next scheduled month";
+  offer.nextAction =
+    mergeCustody(offer.custody).saleProceedsStatus === "claimable"
+      ? "Landlord can claim sale proceeds"
+      : "Waiting for the next rent payment";
   offer.events = [
     {
       id: `ev-${offer.reference}-ops-${receivableN}`,
       at,
       title: `Collection received · month ${receivableN}`,
       detail:
-        "Rent collected. Later collections go to holders, not back to the landlord.",
+        "Rent arrived on this listing. The holder claims it from Portfolio. It is not paid back to the landlord.",
       actor: "D. Martina",
     },
     ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-ops-${receivableN}`),

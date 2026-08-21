@@ -1,4 +1,5 @@
 import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
+import { fundedSeedCustody } from "@/lib/rent-advance/custody";
 import { ACTORS } from "@/lib/rent-advance/actors";
 import {
   offerIdFromReference,
@@ -247,9 +248,7 @@ function makeOffer(input: {
 
   return {
     offerId: offerIdFromReference(input.reference),
-    settlementTransactionId: (input.fundedCents ?? (input.status === "draft" ? 0 : 1)) > 0
-      ? `tx-settle-${input.reference.toLowerCase()}`
-      : null,
+    settlementTransactionId: null,
     reference: input.reference,
     status: input.status,
     seriesDisplayName: "Merkado Direct · Rent Advance",
@@ -510,7 +509,8 @@ function buildOffers(): Offer[] {
     passportTotal: 89,
     payerScore: 95,
     agency: "Moret Real Estate",
-    fundedCents: 1050000,
+    fundedCents: 1020600,
+    offeringCents: 1020600,
     marketRentCents: 300000,
     property: makeProperty({
       id: "prop-001",
@@ -530,28 +530,30 @@ function buildOffers(): Offer[] {
   mra001.feeCents = 59400;
   mra001.purchasePriceCents = 1020600;
   mra001.advanceRate = 0.945;
-  mra001.offeringCents = 1050000;
-  mra001.originationSpreadCents = 29400;
+  mra001.originationSpreadCents = 0;
+  mra001.custody = fundedSeedCustody(mra001, "2026-09-04T14:40:00-04:00");
   mra001.events = [
     {
       id: "ev-001-6",
       at: "2026-09-30",
       title: "Collection month 1 scheduled",
-      detail: "End of month · XCG 3,222.00",
+      detail: "End of month · XCG 3,222.00. Rent will go to the offer collection address.",
       actor: "System",
     },
     {
       id: "ev-001-5",
       at: "2026-09-04T14:40:00-04:00",
-      title: "Settled to the landlord",
-      detail: "D. Martina · purchase price released in one payment",
-      actor: "D. Martina",
+      title: "Mock funding recorded",
+      detail:
+        "The offer is fully bought. The purchase price is available for the landlord to claim.",
+      actor: "System",
     },
     {
       id: "ev-001-4",
       at: "2026-09-03T11:22:00-04:00",
-      title: "Offer fully funded",
-      detail: "Sole holder · 1,000 participation units",
+      title: "Offer sold",
+      detail:
+        "The holder received the offer. Later rent goes to the offer collection address.",
       actor: "System",
     },
     {
@@ -564,22 +566,22 @@ function buildOffers(): Offer[] {
     {
       id: "ev-001-2",
       at: "2026-08-28T10:05:00-04:00",
-      title: "Offer published",
-      detail: "D. Martina",
-      actor: "D. Martina",
+      title: "Offer created by Merkado",
+      detail: "Created after approval. The landlord did not connect a wallet.",
+      actor: "System",
     },
     {
       id: "ev-001-1",
       at: "2026-08-27T16:31:00-04:00",
       title: "Approved",
-      detail: "R. Girigoria · independent approver",
-      actor: "R. Girigoria",
+      detail: "Enrique · independent approver",
+      actor: "Enrique",
     },
     {
       id: "ev-001-0",
       at: "2026-08-26T09:44:00-04:00",
-      title: "Offer created",
-      detail: "D. Martina · composite 92.3 · Grade A",
+      title: "Offer request submitted",
+      detail: "Requested from the Merkado account. No wallet was needed.",
       actor: "D. Martina",
     },
   ];

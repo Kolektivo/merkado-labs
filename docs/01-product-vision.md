@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (landlord proceeds claim)
 
 ## 1. One-sentence vision
 
@@ -20,8 +20,8 @@ sale of six months of rent receivables — not a mortgage, not a loan, and not
 a public investment product.
 
 The Buildathon also needs one coherent walkthrough: landlord quote and offer
-book, renter USDC payment, shared account history, and automatic holder
-distribution — while legal, Safe execution, allocation, and production
+book, renter USDC payment, shared account history, and holder claim of
+listing rent — while legal, Safe execution, allocation, and production
 architecture decisions remain open. Pay uses **Base Sepolia** now
 (the Base testnet) and **Base Mainnet** later.
 
@@ -51,18 +51,21 @@ for the Direct / Pay demo.
 Wallet, Safe, transaction, account, and payment behaviour in this demo is
 **mocked**. No real signature, RPC, token transfer, or blockchain write.
 The selected demo network is **Base Sepolia**, with Circle native USDC.
-The test receiving Safe is created on **Base Sepolia** (2 of 2, Enrique
-and Luuk). **Base Mainnet** stays later. Luis and Luuk own the real
-wallet adapter, Safe address, and allocation design.
+The test company Safe is created on **Base Sepolia**. **Base Mainnet**
+stays later. Luis and Luuk own the real wallet adapter, Safes, offer
+contract, and allocation design. See ADR-0006.
 
-The landlord receives one upfront purchase amount. Later rent collections
-are not paid to the landlord a second time. They move into the holder
-distribution flow, presented as automatic in this demo.
+The landlord requests an offer from their Merkado account. After approval,
+Merkado creates one offer per listing. After a holder buys it, the
+landlord claims sale proceeds from one Landlord proceeds card. Later rent
+is not paid to the landlord a second time. It sits on that listing until
+the holder claims it.
 
 ## 5. Success for this phase
 
-- A visitor can walk Simulator → Create Offer → Admin approval →
-  Marketplace purchase → Portfolio → mocked Pay, with one shared demo state.
+- A visitor can walk Simulator → request an offer → Admin approval →
+  Marketplace purchase → landlord claim → mocked Pay → holder claim,
+  with one shared demo state.
 - Pricing reproduces the locked pack ($10,206 purchase price, 5.50% fee,
   ~21.6% effective annualised) and **blocks** anything over 24%.
 - Property Score never changes quote pricing.
@@ -70,8 +73,10 @@ distribution flow, presented as automatic in this demo.
   identity.
 - Stage 0 legal questions stay unresolved. They are not shown on
   customer Home.
-- Luis can replace the mock crypto layer from a typed provider boundary
-  and flip `PAYMENT_RAIL_MODE` so mocked Pay labels switch off.
+- Luis has a typed provider boundary for later integration. The rail may
+  switch only after the no-go audit items in `docs/07-integrations.md`
+  are fixed, the Base Sepolia flow passes end to end, and the Product
+  Lead approves.
 
 ## 6. What we refuse to claim
 

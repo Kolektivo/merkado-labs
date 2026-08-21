@@ -133,12 +133,38 @@ export type DistributionStatus = "pending" | "distributed";
 
 export type LedgerTransactionKind =
   | "advance_settlement"
+  | "company_fee"
+  | "landlord_claim"
   | "rent_payment"
   | "holder_distribution";
 
+export type OfferNftOwner = "company_safe" | "holder";
+export type LandlordProceedsStatus = "none" | "held" | "claimable" | "claimed";
+
+/** Per-listing offer record. Not a custody-product ledger. */
+export type OfferCustody = {
+  nftTokenId: string | null;
+  nftContractAddress: string | null;
+  nftPaymentAddress: string | null;
+  nftOwner: OfferNftOwner | null;
+  mintedAt: string | null;
+  transferredAt: string | null;
+  saleProceedsStatus: LandlordProceedsStatus;
+  saleGrossCents: number;
+  companyFeeCents: number;
+  landlordClaimableCents: number;
+  landlordClaimedCents: number;
+  landlordClaimToAddress: string | null;
+  landlordClaimedAt: string | null;
+  landlordClaimTxHash: string | null;
+  feeTransferredAt: string | null;
+  feeTransferTxHash: string | null;
+  saleProceedsTxHash: string | null;
+};
+
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
 
-/** Demo chain facts. Safe address stays fictional until Luis replaces it. */
+/** Demo chain facts. Safe addresses stay fictional until Luis replaces them. */
 export type CryptoConfig = {
   networkKey: string | null;
   chainId: number | null;
@@ -146,15 +172,31 @@ export type CryptoConfig = {
   usdcContract: string | null;
   usdcDecimals: number;
   safeAccountId: string | null;
+  /** Legacy alias for the company Safe. */
   safeAddress: string | null;
+  companySafeAddress: string | null;
+  salesProceedsSafeAddress: string | null;
+  offerNftContract: string | null;
   explorerBaseUrl: string | null;
 };
+
+export type PublicCryptoConfig = Pick<
+  CryptoConfig,
+  | "networkKey"
+  | "chainId"
+  | "networkLabel"
+  | "usdcContract"
+  | "usdcDecimals"
+  | "explorerBaseUrl"
+>;
 
 export type DemoAccount = {
   accountId: string;
   displayName: string;
   roleLabel: string;
   payerFileId: string;
+  payoutAddress: string | null;
+  payoutAddressUpdatedAt: string | null;
 };
 
 export type PaymentRequest = {
@@ -217,7 +259,7 @@ export type PositionRecord = {
   offerReference: string;
   holderId: string;
   settlementTransactionId: string | null;
-  externalTokenId: null;
+  externalTokenId: string | null;
 };
 
 export type Receivable = {
@@ -330,6 +372,7 @@ export type Offer = {
   holders: HolderPosition[];
   releases: ReleaseInstruction[];
   agency: string;
+  custody?: OfferCustody;
 };
 
 export type OpenQuestion = {
@@ -374,19 +417,15 @@ export type BuyerOfferCard = {
   passportBand: ScoreBand;
   passportLabel: string;
   payerBand: ScoreBand;
-  rentToMarket: number | null;
-  marketDataAvailable: boolean;
   months: number;
   offeringCents: number;
   fundedCents: number;
   scheduledAnnualised: number;
   status: OfferStatus;
-  relatedParty: boolean;
   coverImageSrc?: string | null;
 };
 
 export type PurchaserOfferDetail = BuyerOfferCard & {
-  relatedPartyNote: string | null;
   interiorM2: number;
   passport: {
     total: number;

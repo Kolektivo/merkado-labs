@@ -113,8 +113,8 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
 
       {canRecordCollection(offer.status) ? (
         <p className="text-sm text-muted-foreground">
-          Live renter payments already move to holders. Record collection is
-          the fallback.
+          Live renter payments land on this listing’s offer. The holder then
+          claims them from Portfolio. Record collection is the fallback.
         </p>
       ) : null}
 

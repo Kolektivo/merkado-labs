@@ -1,3 +1,4 @@
+import { mergeCustody } from "@/lib/rent-advance/custody";
 import { positionIdFor, receivableIdFor } from "@/lib/rent-advance/ids";
 import { formatXcg } from "@/lib/rent-advance/money";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
@@ -8,6 +9,7 @@ import type {
   DemoBook,
   Offer,
   OfferStatus,
+  PaymentRequestStatus,
   PortfolioPosition,
   PortfolioPositionDetail,
   PurchaserOfferDetail,
@@ -60,7 +62,12 @@ export function rentToMarket(offer: Offer): number {
 }
 
 export function countsAsAdvanced(offer: Offer): boolean {
-  return offer.status !== "draft" && offer.status !== "under_review" && offer.fundedCents > 0;
+  return (
+    offer.status !== "draft" &&
+    offer.status !== "under_review" &&
+    offer.offeringCents > 0 &&
+    offer.fundedCents >= offer.offeringCents
+  );
 }
 
 export function rentToIncomeBand(monthlyRentCents: number, monthlyIncomeCents: number): string {
@@ -188,7 +195,7 @@ export function statusLabel(status: OfferStatus): string {
     case "under_review":
       return "Under review";
     case "live":
-      return "Live";
+      return "Active";
     case "funding":
       return "Funding";
     case "collecting":
@@ -199,6 +206,23 @@ export function statusLabel(status: OfferStatus): string {
       return "Default";
     case "draft":
       return "Draft";
+  }
+}
+
+export function paymentStatusLabel(
+  status: PaymentRequestStatus,
+  upcoming = false,
+): string {
+  if (status === "due" && upcoming) return "Upcoming";
+  switch (status) {
+    case "confirmed":
+      return "Paid";
+    case "initiated":
+      return "Started";
+    case "partial":
+      return "Partially paid";
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
 
@@ -222,11 +246,12 @@ export function payerPayee(offer: Offer): string {
 
 export function anonymizeOffer(offer: Offer): BuyerOfferCard {
   const derived = propertyScoreFor(offer);
+  const district = publicDistrictName(offer.property.district);
   return {
     reference: offer.reference,
-    district: offer.property.district,
+    district,
     type: offer.property.type,
-    summary: offer.property.summary,
+    summary: offerDisplayName(offer),
     bedrooms: offer.property.bedrooms,
     listingScore: derived.listingScore,
     propertyScore: derived.propertyScore,
@@ -236,14 +261,11 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     passportBand: scoreBand(derived.propertyScore),
     passportLabel: bandLabel(derived.propertyScore),
     payerBand: scoreBand(offer.tenant.scores.total),
-    rentToMarket: derived.rentToMarketRatio,
-    marketDataAvailable: derived.marketDataAvailable,
     months: offer.months,
     offeringCents: offer.offeringCents,
     fundedCents: offer.fundedCents,
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
     status: offer.status,
-    relatedParty: offer.relatedParty,
     coverImageSrc: offer.property.coverImageSrc ?? null,
   };
 }
@@ -251,7 +273,6 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
 export function toPurchaserOffer(offer: Offer): PurchaserOfferDetail {
   return {
     ...anonymizeOffer(offer),
-    relatedPartyNote: offer.relatedPartyNote,
     interiorM2: offer.property.interiorM2,
     passport: {
       total: offer.passport.total,
@@ -292,11 +313,7 @@ export function distributionTotals(book: DemoBook, offer: Offer) {
     distributedCents: rows
       .filter((row) => row.status === "distributed")
       .reduce((sum, row) => sum + row.amountCents, 0),
-    settlementTxHash:
-      book.ledgerTransactions?.find(
-        (row) =>
-          row.offerReference === offer.reference && row.kind === "advance_settlement",
-      )?.txHash ?? null,
+    settlementTxHash: null,
   };
 }
 
@@ -372,12 +389,8 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
   const missed = book.offers.flatMap((offer) =>
     offer.receivables.filter((row) => row.status === "missed"),
   );
-  const pendingDistributions = (book.distributions ?? []).filter(
-    (row) => row.status === "pending",
-  );
-  const pendingOffer = book.offers.find(
-    (offer) =>
-      pendingDistributions.some((row) => row.offerReference === offer.reference),
+  const claimable = book.offers.filter(
+    (offer) => mergeCustody(offer.custody).saleProceedsStatus === "claimable",
   );
 
   return [
@@ -392,7 +405,7 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
     },
     {
       tone: "warning",
-      label: "Not yet settled",
+      label: "Still open",
       count: unsettled.length,
       detail: unsettled[0]
         ? `Still open on Marketplace · ${unsettled[0].reference}`
@@ -410,14 +423,12 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
     },
     {
       tone: "info",
-      label: "Holder distribution pending",
-      count: pendingDistributions.length,
-      detail: pendingDistributions.length
-        ? `Collected rent is moving to holders · ${pendingOffer?.reference ?? "book"}`
+      label: "Ready to claim",
+      count: claimable.length,
+      detail: claimable[0]
+        ? `Sale proceeds are waiting · ${claimable[0].reference}`
         : "none waiting",
-      href: pendingOffer
-        ? `/originate/${pendingOffer.reference}`
-        : "/originate",
+      href: claimable[0] ? `/originate/${claimable[0].reference}` : "/originate",
     },
   ];
 }
@@ -425,7 +436,7 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
 export function bookTotals(book: DemoBook) {
   const counted = book.offers.filter(countsAsAdvanced);
   const totalAdvanced = counted.reduce(
-    (sum, offer) => sum + offer.purchasePriceCents,
+    (sum, offer) => sum + mergeCustody(offer.custody).landlordClaimedCents,
     0,
   );
   const outstanding = counted.reduce(
@@ -455,6 +466,27 @@ export function bookTotals(book: DemoBook) {
     review: book.offers.filter((offer) => offer.status === "under_review").length,
     funding: book.offers.filter((offer) => offer.status === "funding").length,
   };
+}
+
+export function offerDisplayName(offer: Offer) {
+  const district = publicDistrictName(offer.property.district);
+  const type = offer.property.type?.toLowerCase() ?? "";
+  if (type.includes("studio") && !district.toLowerCase().includes("studio")) {
+    return `${district} studio`;
+  }
+  return district;
+}
+
+export function publicDistrictName(value: string): string {
+  const district = value.trim();
+  const looksLikeAddress =
+    /\d/.test(district) ||
+    /\b(kaya|straat|street|road|avenue|boulevard|drive|lane|weg)\b/i.test(
+      district,
+    );
+  return district && district.length <= 48 && !looksLikeAddress
+    ? district
+    : "Curaçao";
 }
 
 export function landlordDisclosure(offer: Offer) {

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { OfferCustomerActions } from "./offer-ops-forms";
-import { CopyValue, ExplorerLink } from "@/components/copy-value";
+import { LandlordProceedsCard } from "@/components/rent-advance/landlord-proceeds-card";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
+import { RouteSuccessDialog } from "@/components/route-success-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,13 +22,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime, titleCase } from "@/lib/format";
 import {
   collectedCount,
-  distributionTotals,
   rentToMarket,
+  offerDisplayName,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
+import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -43,23 +45,37 @@ export async function generateMetadata({
   return { title: ref };
 }
 
-export default async function OfferOpsPage({ params }: { params: Params }) {
-  const { ref } = await params;
+export default async function OfferOpsPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: Promise<{ success?: string }>;
+}) {
+  const [{ ref }, query] = await Promise.all([params, searchParams]);
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();
 
   const collected = collectedCount(offer);
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
-  const money = distributionTotals(book, offer);
-  const settlement = book.ledgerTransactions?.find(
-    (row) => row.offerReference === offer.reference && row.kind === "advance_settlement",
-  );
+  const proceeds = landlordProceedsPresentation(offer);
+  const savedAddress = book.accounts?.[0]?.payoutAddress ?? null;
+  const showProceedsCard = offer.status !== "draft";
 
   return (
     <div className="space-y-6">
+      {query.success === "proceeds" ? (
+        <RouteSuccessDialog
+          title="Proceeds claimed"
+          description={`${offerDisplayName(offer)} is marked as paid to the demo address. No money was sent.`}
+          amount={<Money cents={proceeds.amountCents} />}
+          closeHref={`/originate/${offer.reference}`}
+        />
+      ) : null}
+
       <PageHeader
-        title={offer.reference}
-        description={`${offer.property.summary} · ${offer.property.district}`}
+        title={offerDisplayName(offer)}
+        description={`${offer.reference} · ${offer.property.district}`}
         actions={
           <StatusBadge tone={statusTone(offer.status)}>
             {statusLabel(offer.status)}
@@ -67,36 +83,32 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card className="bg-primary/5 ring-primary/20">
           <CardHeader className="pb-0">
-            <CardTitle className="text-sm text-muted-foreground">
-              Property
+            <CardTitle className="flex items-center gap-1 text-sm text-muted-foreground">
+              Sale amount
+              <HelpTip label="Sale amount">
+                The one-time amount the landlord can claim after the offer is
+                fully bought.
+              </HelpTip>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-medium">{offer.property.summary}</p>
-            <p className="text-xs text-muted-foreground">
-              {offer.property.district}
-            </p>
+            <Money
+              cents={offer.purchasePriceCents}
+              className="text-xl font-semibold text-primary"
+            />
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-0">
             <CardTitle className="text-sm text-muted-foreground">
-              Payer
+              Term
             </CardTitle>
           </CardHeader>
-          <CardContent className="font-medium">{offer.tenant.initials}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm text-muted-foreground">
-              Advance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Money cents={offer.purchasePriceCents} className="font-medium" />
+          <CardContent className="text-xl font-semibold">
+            {offer.months} months
           </CardContent>
         </Card>
         <Card>
@@ -105,57 +117,33 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
               Collected
             </CardTitle>
           </CardHeader>
-          <CardContent className="font-medium">
+          <CardContent className="text-xl font-semibold">
             {collected} of {offer.months} months
           </CardContent>
         </Card>
       </div>
 
-      {settlement ? (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm text-muted-foreground">
-              Landlord settlement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">
-              <Money cents={offer.purchasePriceCents} /> paid
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <CopyValue
-                value={settlement.txHash ?? settlement.transactionId}
-                label="settlement reference"
-                truncate
-              />
-              <ExplorerLink
-                baseUrl={book.cryptoConfig?.explorerBaseUrl}
-                hash={settlement.txHash}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Collected <Money cents={money.collectedCents} /> · awaiting
-              distribution <Money cents={money.pendingDistributionCents} /> ·
-              distributed <Money cents={money.distributedCents} />
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {offer.status === "draft" ? (
-        <Alert>
-          <AlertTitle>Draft</AlertTitle>
-          <AlertDescription>
-            Nothing has been sold yet. Submit this draft for independent
-            approval before funding.
-          </AlertDescription>
-        </Alert>
+      {showProceedsCard ? (
+        <LandlordProceedsCard
+          reference={offer.reference}
+          propertyName={offerDisplayName(offer)}
+          status={proceeds.status}
+          purchasePriceCents={proceeds.purchasePriceCents}
+          feeCents={proceeds.feeCents}
+          amountCents={proceeds.amountCents}
+          lockedAddress={proceeds.lockedAddress}
+          savedAddress={savedAddress}
+        />
       ) : null}
 
       <OfferCustomerActions reference={offer.reference} status={offer.status} />
 
-      <Tabs defaultValue="overview">
-        <TabsList variant="line" className="flex-wrap">
+      <details className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
+        <summary className="cursor-pointer px-4 py-4 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          More offer details
+        </summary>
+        <Tabs defaultValue="overview" className="px-4 pb-4">
+          <TabsList variant="line" className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="passport">Quality scores</TabsTrigger>
           <TabsTrigger value="servicing">Collections</TabsTrigger>
@@ -424,7 +412,8 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
           </Card>
         </TabsContent>
 
-      </Tabs>
+        </Tabs>
+      </details>
     </div>
   );
 }

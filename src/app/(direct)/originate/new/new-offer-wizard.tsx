@@ -771,7 +771,9 @@ export function NewOfferWizard({
             <CardHeader>
               <CardTitle>Review</CardTitle>
               <CardDescription>
-                {offer.reference} · {offer.property.summary}
+                {offer.reference} · {offer.property.summary}. You request this
+                from your Merkado account. Merkado creates the offer after
+                approval. You do not connect a wallet.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -825,8 +827,12 @@ export function NewOfferWizard({
             Continue
           </Button>
         ) : (
-          <Button type="button" disabled={pending} onClick={submitForReview}>
-            Submit for review
+          <Button
+            type="button"
+            disabled={pending || !confirmed}
+            onClick={submitForReview}
+          >
+            Submit request
           </Button>
         )}
       </div>

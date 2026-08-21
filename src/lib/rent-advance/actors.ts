@@ -10,9 +10,16 @@ export const ACTORS: Actor[] = [
     title: "Operations · Merkado",
   },
   {
-    id: "act-girigoria",
-    name: "R. Girigoria",
-    initials: "RG",
+    id: "act-enrique",
+    name: "Enrique",
+    initials: "EN",
+    role: "independent_approver",
+    title: "Independent approver",
+  },
+  {
+    id: "act-luuk",
+    name: "Luuk",
+    initials: "LW",
     role: "independent_approver",
     title: "Independent approver",
   },
@@ -48,4 +55,10 @@ export const ACTORS: Actor[] = [
 
 export function actorById(id: string) {
   return ACTORS.find((actor) => actor.id === id) ?? ACTORS[0];
+}
+
+export function independentApproverById(id: string) {
+  return ACTORS.find(
+    (actor) => actor.id === id && actor.role === "independent_approver",
+  );
 }

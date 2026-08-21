@@ -2,6 +2,7 @@ import { formatDayMonthYear } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
 import { loadBook } from "@/lib/rent-advance/store";
+import { toPublicCryptoConfig } from "@/lib/pay/networks";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -35,6 +36,7 @@ export default async function PayRequestPage({
       amountXcgCents: row.amountXcgCents,
       dueDateLabel: formatDayMonthYear(row.dueDate),
     }));
+  const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
 
   return (
     <PayApp
@@ -45,14 +47,14 @@ export default async function PayRequestPage({
       amountXcgCents={request.amountXcgCents}
       paymentReference={request.paymentReference}
       receivingAddress={request.receivingAddress}
-      networkLabel={book.cryptoConfig?.networkLabel?.trim() ?? ""}
+      networkLabel={publicCryptoConfig?.networkLabel?.trim() ?? ""}
       status={request.status}
       txHash={request.txHash}
       propertyLabel={offer?.property.summary ?? "Rental"}
       district={offer?.property.district ?? ""}
       earlierPeriodLabel={earlier?.periodLabel ?? null}
       history={history}
-      cryptoConfig={book.cryptoConfig}
+      cryptoConfig={publicCryptoConfig}
       offerReference={request.offerReference}
       receivableId={request.receivableId}
     />

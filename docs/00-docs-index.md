@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -25,11 +25,15 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
 - **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
-  with Apps and **My Payments**. Only Merkado Pay and Merkado Direct are
-  live. Not production auth.
+  with Apps. Merkado Pay and Merkado Direct are the enabled apps. Landlord
+  sale claims stay on My Offers. Account Settings stays visible in
+  marketplace account chrome but is inactive. Not production auth.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
-- **Digital Participation Right (DPR)** = instrument name (book-entry in this
-  demo). There is no token, NFT, or transferable position.
+- **Digital Participation Right (DPR)** = instrument name. In this demo the
+  offer is created by Merkado after approval — one listing offer per
+  listing, for tracking and a later resale. Customer copy still does not
+  sell this as a token or public offering. Merkado is not a custody
+  product: after sale, that listing collects rent.
 - **Listing Score** (on screen: **Property quality**) = raw 0–100 listing
   quality used to set the cash offer.
 - **Payer Score** (on screen: **Payment history**) = raw 0–100 renter
@@ -71,7 +75,7 @@ framing where they conflict.
 | Execution roadmap | `10-execution-roadmap.md` |
 | Testing and Product Lead UAT | `11-testing-and-uat.md` |
 | Deployment and local ops | `12-deployment-runbook.md` |
-| Decision records | `decisions/` |
+| Decision records | `decisions/` (walletless landlord: ADR-0006) |
 | AI prompts | `ai/` |
 | Private local material | `private/` (gitignored) |
 
@@ -89,7 +93,8 @@ framing where they conflict.
 | Admin | [LABS] Bottom of left nav — approval, collections, reset |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Real wallet / Safe transfer | Still mocked on `main`. Draft PR 19 is **not merged**. Test Safe is being created on **Base Sepolia**. Address **not in the app yet**. Base Mainnet later. Handoff in `07` / `12` |
+| Walletless landlord | [LABS] Offer request + one Landlord proceeds card + saved payout address. Crypto still mocked |
+| Real wallet / Safe transfer | Still mocked on `main`. Draft PRs 19, 20, and 22 are **not merged**. Luis has a 2-of-3 Base Sepolia Safe on that stack. NFT flow still mocked. Handoff in `07` / `12`. Architecture: `ADR-0006` |
 
 ## Reading order
 

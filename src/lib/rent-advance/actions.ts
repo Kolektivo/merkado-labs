@@ -8,14 +8,23 @@ import {
   parseExactPayNetworkKey,
 } from "@/lib/pay/networks";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
+import { independentApproverById } from "@/lib/rent-advance/actors";
 import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
+import {
+  applyHolderCollect,
+  applyLandlordClaim,
+  applyPayoutAddress,
+  mintOfferNft,
+  savedPayoutAddress,
+} from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import {
   applyOpsCollection,
   applyPaymentOutcome,
   applySubscribe,
   cryptoConfigFor,
+  mergeCryptoConfig,
   type PaymentMockOutcome,
   type PaymentOutcomeMeta,
 } from "@/lib/rent-advance/payment-apply";
@@ -63,23 +72,52 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
 }
 
 export async function approveOfferAction(reference: string, actorId: string) {
-  if (actorId !== "act-girigoria") {
-    throw new Error("Only R. Girigoria can approve this offer.");
+  const approver = independentApproverById(actorId);
+  if (!approver) {
+    throw new Error("Select Enrique or Luuk as the independent approver.");
   }
-  await updateOffer(reference, (offer) => ({
-    ...offer,
-    status: offer.status === "under_review" ? "funding" : offer.status,
-    events: [
-      {
-        id: `ev-${reference}-approve-${Date.now()}`,
-        at: new Date().toISOString(),
-        title: "Approved",
-        detail: "R. Girigoria · independent approver",
-        actor: "R. Girigoria",
-      },
-      ...offer.events,
-    ],
-  }));
+  const at = new Date().toISOString();
+  const book = await loadBook();
+  await updateOffer(reference, (offer) => {
+    const approved = {
+      ...offer,
+      status: offer.status === "under_review" ? "funding" : offer.status,
+      nextAction: "Open on Marketplace",
+      events: [
+        {
+          id: `ev-${reference}-approve-${Date.now()}`,
+          at,
+          title: "Approved",
+          detail: `${approver.name} · independent approver. Merkado will create the offer.`,
+          actor: approver.name,
+        },
+        ...offer.events,
+      ],
+    };
+    return mintOfferNft(approved, mergeCryptoConfig(book.cryptoConfig), at);
+  });
+  refresh();
+}
+
+export async function savePayoutAddressAction(address: string) {
+  const book = await loadBook();
+  await saveBook(applyPayoutAddress(book, address));
+  refresh();
+}
+
+export async function claimLandlordProceedsAction(reference: string, toAddress?: string) {
+  const book = await loadBook();
+  const address = toAddress?.trim() || savedPayoutAddress(book);
+  if (!address) {
+    throw new Error("Paste a fictional demo address beginning with 0xDEMO to claim.");
+  }
+  await saveBook(applyLandlordClaim(book, reference, address));
+  refresh();
+}
+
+export async function collectRentFromNftAction(reference: string, distributionId?: string) {
+  const book = await loadBook();
+  await saveBook(applyHolderCollect(book, reference, distributionId));
   refresh();
 }
 
@@ -187,8 +225,8 @@ export async function submitOfferForReviewAction(reference: string) {
       {
         id: `ev-${reference}-submit-${Date.now()}`,
         at: new Date().toISOString(),
-        title: "Submitted for review",
-        detail: "Draft sent for independent approval before funding.",
+        title: "Offer request submitted",
+        detail: "Requested from the Merkado account. No wallet was needed.",
         actor: "D. Martina",
       },
       ...current.events,
@@ -234,6 +272,7 @@ export async function submitNewOfferAction(offer: Offer) {
     effectiveAnnualised: priced.effectiveAnnualised,
     status: "under_review",
     nextAction: "Independent approval",
+    custody: undefined,
     relatedParty: false,
     relatedPartyNote: null,
     fundedCents: 0,
@@ -247,8 +286,9 @@ export async function submitNewOfferAction(offer: Offer) {
       {
         id: `ev-${offer.reference}-submit-${Date.now()}`,
         at: new Date().toISOString(),
-        title: "Submitted for review",
-        detail: "Sent for independent approval before it can open on Marketplace.",
+        title: "Offer request submitted",
+        detail:
+          "Requested from the Merkado account. No wallet was needed. Merkado creates the offer after approval.",
         actor: "D. Martina",
       },
       ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-submit`),
@@ -279,7 +319,7 @@ export async function saveDraftOfferAction(offer: Offer) {
   });
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
-  const toSave = { ...offer, status: "draft" as const };
+  const toSave = { ...offer, status: "draft" as const, custody: undefined };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
@@ -310,6 +350,7 @@ export async function seedOfferTemplate(): Promise<Offer> {
     ...structuredClone(canonical),
     offerId: `offer-${reference.toLowerCase()}`,
     settlementTransactionId: null,
+    custody: undefined,
     reference,
     status: "draft",
     fundedCents: 0,

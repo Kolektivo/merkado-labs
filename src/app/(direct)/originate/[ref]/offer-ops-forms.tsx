@@ -78,21 +78,20 @@ export function OfferCustomerActions({
     return (
       <div className="space-y-3">
         <FormError message={error} />
-        <Card>
+        <Card className="bg-primary/5 ring-primary/20">
           <CardHeader>
-            <CardTitle>Submit for review</CardTitle>
+            <CardTitle>Submit request</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Nothing has been sold yet. Submit this draft for approval before
-              it can open on Marketplace.
+              Send this offer to Admin for approval. No wallet is needed.
             </p>
             <Button
               type="button"
               disabled={pending}
               onClick={() => run(() => submitOfferForReviewAction(reference))}
             >
-              Submit for review
+              Submit request
             </Button>
           </CardContent>
         </Card>
@@ -102,8 +101,8 @@ export function OfferCustomerActions({
 
   if (status === "under_review") {
     return (
-      <p className="text-sm text-muted-foreground">
-        Waiting for approval. After approval this offer can open on Marketplace.
+      <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+        Waiting for Admin approval.
       </p>
     );
   }
@@ -170,7 +169,8 @@ export function OfferAdminForms({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Approval moves this offer to funding so it can open on Marketplace.
+              Approval lets Merkado create the offer. The landlord does not
+              connect a wallet. It can then open on Marketplace.
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="approver">Approver</Label>
@@ -181,7 +181,7 @@ export function OfferAdminForms({
                 <SelectContent>
                   {approvers.map((actor) => (
                     <SelectItem key={actor.id} value={actor.id}>
-                      {actor.name} · {actor.title}
+                      {actor.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -205,7 +205,8 @@ export function OfferAdminForms({
               Record collection
               <HelpTip label="Collections">
                 Ops fallback if a month arrived outside Merkado Pay. Live
-                renter payments already move to holders automatically.
+                renter payments land on the listing. The holder then claims
+                them from Portfolio.
               </HelpTip>
             </CardTitle>
           </CardHeader>

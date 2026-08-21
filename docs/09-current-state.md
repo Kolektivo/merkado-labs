@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -31,27 +31,26 @@ a public product.
 
 ## 2. Labs demo today `[LABS]`
 
-Local automated checks were re-run from the repository root on 2026-08-19
-after the password-door polish: lint, typecheck, unit tests, and a
-production build passed. The hosted URL is not gated until
-`LABS_DEMO_PASSWORD` is set on Vercel Production and this change is
-deployed.
+Local automated checks were re-run from the repository root on 2026-08-21
+after notification polish: lint, typecheck, and unit tests (76) passed. Vercel Production still points to `main` commit
+`8b0be45`; the current working tree is not deployed. Hosted production
+fails closed at `/enter`. Unlocking it requires `LABS_DEMO_PASSWORD`.
 
 Local stays open. No Merkado login. Operations live on **Admin**.
 
 | Surface | What a visitor sees |
 |---|---|
 | Enter `/enter` | Compact shadcn card: Merkado Labs, Shared password, show/hide, Continue. Not a Merkado account. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
-| Home `/` | Product home with XCG totals, two featured Marketplace cards (the funded reference and the open Punda studio), Portfolio and Pay doors. No prototype banner, reset, or legal gates. |
-| My Offers `/originate` | The two-offer demo book: live **MRA-001** first, open **MRA-010** next. Simulator and Create Offer as the next steps. Advance totals exclude drafts, under-review, and unfunded rows. |
-| Create offer `/originate/new` | Six-step wizard with cover photo. A Simulator quote can prefill via `?quote=1&rentCents=&marketCents=&listing=&payer=&months=` and opens on Quote. Submit for review. Only six months can be submitted. |
+| Home `/` | Product home headed **Rent paid forward**, with no small brand eyebrow. XCG totals use **Active offers**; two featured Marketplace cards show the funded reference and open Punda studio. Ready-to-claim items appear under **Needs your attention**, in the header bell, and as a count on **My Offers** or **Portfolio**. Portfolio and Pay doors remain. No prototype banner, reset, or legal gates. |
+| My Offers `/originate` | A table lists each offer with sale amount, status, and one **Next** step: claim, wait, submit, or paid. Phones use compact rows. Filters and book totals are collapsed. Funded **MRA-001** appears first and open **MRA-010** next. Ready-to-claim sale amounts stay on the offer page. |
+| Create offer `/originate/new` | Six-step wizard with cover photo. A Simulator quote can prefill via `?quote=1&rentCents=&marketCents=&listing=&payer=&months=` and opens on Quote. Submit request. No wallet. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
-| Offer detail `/originate/MRA-*` | Settlement card with collected / awaiting / distributed. Drafts keep **Submit for review**. Independent approval, Record collection, arrears, fee buildup, and dual-control live in Admin. |
-| Marketplace `/offers` | Two anonymised cards: funded **MRA-001** and open **MRA-010** (cheap Punda studio). A holder can buy any portion still open. Funded offers link to the matching Portfolio position. No tenant name, employer, street, agency, or income. |
-| Portfolio `/portfolio` | Stable Position IDs. Collected / awaiting distribution / distributed. Automatic distributions. Purchases from Marketplace appear here. No Claim and no transfer UI. |
-| Pay `/pay` → `/pay/[paymentRequestId]` | Payment inbox lists the renter’s requests. Amounts show **XCG**; settlement is USDC. Canonical seeded request `payreq-mra-001-202609` is **XCG 3,222.00** / **1,800.00 USDC**. After MRA-010 is purchased, six **XCG 1.79** / **1.00 USDC** requests appear. A later month cannot be paid while an earlier month on the same offer is still open. |
-| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Fee buildup lives here. |
-| Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. Only **Merkado Pay** and **Merkado Direct** are live. |
+| Offer detail `/originate/MRA-*` | Property name first. Three short facts lead into one highlighted sale-amount card: Waiting, Available, or Paid. Fees and technical terms sit in tooltips; tables and score detail are collapsed under **More offer details**. A successful claim opens a confirmation dialog. |
+| Marketplace `/offers` | Two anonymised cards: funded **MRA-001** and open **MRA-010** (cheap Punda studio). A holder can buy any portion still open. A successful purchase lands on Portfolio with a confirmation dialog. No tenant name, employer, street, agency, or income. |
+| Portfolio `/portfolio` | Property name leads instead of the technical Position ID. Collected / ready to claim / claimed remain visible. The highlighted **Rent ready to claim** card explains the action in a tooltip; payment history is collapsed. A successful holder claim opens a confirmation dialog. |
+| Pay `/pay` → `/pay/[paymentRequestId]` | Payment inbox lists the renter’s requests with customer labels such as **Due** and **Paid**. Amounts show **XCG**; settlement is USDC. Canonical seeded request `payreq-mra-001-202609` is **XCG 3,222.00** / **1,800.00 USDC**. After MRA-010 is purchased, six **XCG 1.79** / **1.00 USDC** requests appear. A later month cannot be paid while an earlier month on the same offer is still open. |
+| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. Fee buildup lives here. |
+| Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. **Merkado Pay** and **Merkado Direct** are enabled. **Account Settings** stays visible but inactive. Payouts is not in this chrome. Old `/account/payouts` and `/payouts` open My Offers. |
 
 Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
 other retired payer subpages) still redirect. `/pay/history` is not reused.
@@ -74,18 +73,23 @@ other retired payer subpages) still redirect. `/pay/history` is not reused.
 A weak-score + related-party quote is blocked by the 24% cap. Use this quote
 stays disabled. There is no override.
 
+MRA-001 starts fully purchased with its sale proceeds **Available** to
+claim. MRA-010 starts created by Merkado and still unsold. After Reset,
+that seed is restored.
+
 ### Shared demo book (verified)
 
 One JSON book in `ra_demo_state.payload`. Confirming Pay once writes the
-payment request as paid, the receivable as received, one collection, an
-automatic holder distribution, and ledger rows. Refreshing or retrying the
-same request does not duplicate collection or distribution.
+payment request as paid, the receivable as received, one collection, and a
+**pending** holder claim. The holder then claims it. Refreshing or
+retrying the same request does not duplicate collection.
 
 After the September Pay confirmation in the walkthrough:
 
 - My Payments next card moved to **October 2026**
-- My Offers MRA-001 showed **Collected XCG 3,222.00 · distributed XCG 3,222.00**
-- Portfolio `pos-mra-001` showed the same collection as **Distributed**
+- My Offers MRA-001 showed the September rent as collected
+- Portfolio `pos-mra-001` showed that rent as ready to claim until
+  **Claim rent** is clicked
 - Revisiting `/pay/payreq-mra-001-202609` stayed on **Rent paid**
 
 Reset restores the two seeded offers (**MRA-001** and **MRA-010**), payments,
@@ -98,14 +102,15 @@ new drafts.
 - Marketplace shows a property photo, district, Property Score, payer band,
   and term. No tenant name, employer, street address, agency, or income
   figure. Holder payloads also omit agency, employment status, and
-  rent-to-income band. Rent-to-market is inside the Property Score, not
-  published as a standalone marketplace figure.
+  rent-to-income band, plus the internal related-party flag and note.
+  Rent-to-market is inside the Property Score, not published as a
+  standalone marketplace figure.
 - Marketplace purchase can take any amount up to what is still open. A
   Portfolio position appears immediately. Pay requests mint when the
   offering is filled. It stays a Labs walkthrough, not a public offering.
 - Drafts are not shown as marketplace offers.
 - Pay and account show rent to the property, USDC + matching USD rent, due date, and a
-  fictional receiving address. No fee, purchase price, holder, or
+  fictional **offer collection address** after sale. No fee, purchase price, holder, or
   distribution economics.
 - Holder pages stay district-only. Street address is off those screens.
 - Invalid Pay links do not reveal other payment requests.
@@ -118,11 +123,12 @@ new drafts.
 - Record collection is offered only on live, collecting, or defaulted offers,
   lives in Admin, and uses the same stable collection IDs as Pay.
 - Dual-control release stays in Admin. Pay-confirmed collections
-  are auto-distributed and do not re-queue release.
+  land on the listing. The holder claims them from Portfolio. They do
+  not re-queue dual-control release.
 - Dual-control still rejects the same person twice (app check plus the trigger
   on `ra_demo_state`).
-- Independent approval still moves a newly submitted Create Offer draft to
-  funding from Admin.
+- Independent approval still moves a newly submitted Create Offer request to
+  funding from Admin and records that Merkado created the offer.
 - Create offer can save a new six-month draft (MRA-007 in the walkthrough;
   Reset removes it). 9/12 still cannot be saved.
 - Pay is English-only. Copy address, amount, and payment history stay visible.
@@ -130,7 +136,13 @@ new drafts.
 - My Payments **Open** is the month due now (plus failed or overdue). **Upcoming** is later months only.
 - Copy-address path: **I’ve sent this payment** → pending → Rent paid.
 - Mock wallet: disconnected → connected → confirm → pending → Rent paid.
-- A draft can be submitted for independent approval.
+- A draft can be submitted for independent approval. No wallet is required.
+- After MRA-010 is fully purchased, the **Landlord proceeds** card becomes
+  Available. My Offers / the offer page can claim the same sale proceeds
+  to a pasted address. No settlement hash or explorer link is shown.
+- After Pay is confirmed, Portfolio **Claim rent** moves that month to
+  the holder. Marketplace purchase, landlord sale claim, and holder rent claim
+  each show a clear success dialog.
 - Failed and incorrect-amount outcomes can be selected in the demo panel.
 - Admin Payment network shows **Base Sepolia**. Base Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Pay labels
@@ -143,11 +155,16 @@ UI talks to `createPaymentProvider()` (`src/lib/pay/create-provider.ts`)
 and `src/lib/pay/provider.ts`. The only implementation is still
 `src/lib/pay/mock-provider.ts`. There is no wallet, Safe, RPC, or USDC
 SDK. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts` is still `"mock"`, so
-Overview and Pay keep demo-wallet wording. **Base Sepolia** is the default
+Home and Pay keep demo-wallet wording. **Base Sepolia** is the default
 in `cryptoConfig`. **Base Mainnet** is later. Optimism networks stay in
 the catalog if Luis later opts in; they are not shown in Admin.
-Luis/Luuk replace the factory and flip that switch after approval. See
-`docs/07-integrations.md` and ADR-0005.
+Luis/Luuk reconcile the provider seam and flip that switch only after the
+audit blockers are fixed and approved. Draft PRs 19, 20, and 22 stay
+unmerged. See `docs/07-integrations.md` and ADR-0005 / ADR-0006.
+
+The local mock also normalizes away legacy `advance_settlement` ledger
+rows and clears their offer / position references. Landlord and
+sale-proceeds demo hashes are discarded instead of merely hidden.
 
 ## 3. Database `[LABS]`
 
@@ -183,4 +200,5 @@ overwrites the live book with seed.
 - Not a real wallet, Safe, or USDC product
 - Not authorised for third-party subscribe until M.1.2 and M.1.4 are closed
   in writing
-- Not a token, NFT, or secondary market
+- Not a public token market or secondary market. The offer is created by
+  Merkado and later held by the buyer (ADR-0006). Crypto stays mocked.

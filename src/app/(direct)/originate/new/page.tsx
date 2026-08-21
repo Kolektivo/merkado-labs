@@ -24,8 +24,8 @@ export default async function NewOfferPage({
         title="Create offer"
         description={
           carry
-            ? `${initial.reference} is prefilled from your Simulator quote. Submit a six-month quote under the 24% cap.`
-            : `${initial.reference} is ready to complete. Add a photo, check the figures, then submit for review.`
+            ? `${initial.reference} has pricing prefilled from the Simulator. Check the property and renter before you submit the six-month request. No wallet is needed.`
+            : `${initial.reference} is ready to complete. Add a photo, check the figures, then request review. No wallet is needed.`
         }
       />
       <NewOfferWizard initial={initial} startStep={carry ? 5 : 1} />

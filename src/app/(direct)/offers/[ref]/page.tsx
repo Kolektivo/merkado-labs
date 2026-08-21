@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, House, MapPin } from "lucide-react";
 import type { ReactNode } from "react";
@@ -18,12 +19,20 @@ import {
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
-import { rentVsTypicalLabel } from "@/lib/rent-advance/scoring";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 
 import { SubscribeForm } from "./subscribe-form";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ ref: string }>;
+}): Promise<Metadata> {
+  const { ref } = await params;
+  return { title: ref.toUpperCase() };
+}
 
 export default async function BuyerOfferPage({
   params,
@@ -67,7 +76,7 @@ export default async function BuyerOfferPage({
               <StatusBadge tone={statusTone(offer.status)}>
                 {statusLabel(offer.status)}
               </StatusBadge>
-              <span className="text-xs tracking-wide text-grey-700">
+              <span className="text-xs tracking-wide text-grey-800">
                 {offer.reference}
               </span>
             </div>
@@ -144,11 +153,6 @@ export default async function BuyerOfferPage({
                     {PLAIN.propertyScore}
                   </HelpTip>
                 </h2>
-                {offer.rentToMarket != null ? (
-                  <p className="mt-1 text-sm text-grey-800">
-                    {rentVsTypicalLabel(offer.rentToMarket)}
-                  </p>
-                ) : null}
               </div>
               <div className="text-right">
                 <p className="text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
@@ -195,7 +199,7 @@ export default async function BuyerOfferPage({
                   >
                     <p className="text-sm font-semibold tabular-nums text-surface-dark">
                       {formatXcg(row.rentCents)}
-                      <span className="ml-1.5 font-normal text-grey-700">
+                      <span className="ml-1.5 font-normal text-grey-800">
                         / month
                       </span>
                     </p>
@@ -264,14 +268,14 @@ export default async function BuyerOfferPage({
                     <span className="font-medium tabular-nums text-surface-dark">
                       {formatXcg(row.amountCents)}
                     </span>
-                    <span className="ml-2 capitalize text-grey-700">
+                    <span className="ml-2 capitalize text-grey-800">
                       {row.status}
                     </span>
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="text-xs leading-5 text-grey-700">{HOLDER_NO_PROMISE}</p>
+            <p className="text-xs leading-5 text-grey-800">{HOLDER_NO_PROMISE}</p>
           </TabsContent>
         </Tabs>
       </div>
@@ -288,7 +292,7 @@ function ClosedOfferCard({
 }) {
   return (
     <div className="rounded-2xl border border-grey-200 bg-white p-6 shadow-[0_1px_2px_rgba(20,20,20,0.04)]">
-      <p className="text-[11px] font-medium tracking-wide text-grey-700 uppercase">
+      <p className="text-[11px] font-medium tracking-wide text-grey-800 uppercase">
         {status}
       </p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-surface-dark">

@@ -35,7 +35,13 @@ function SpecItem({ icon, label }: { icon: ReactNode; label: string }) {
   );
 }
 
-export function MarketplaceOfferCard({ card }: { card: BuyerOfferCard }) {
+export function MarketplaceOfferCard({
+  card,
+  priority = false,
+}: {
+  card: BuyerOfferCard;
+  priority?: boolean;
+}) {
   const href = `/offers/${card.reference}`;
   const title = card.summary.trim() || `${card.type} in ${card.district}`;
   const bedsLabel = `${card.bedrooms} ${card.bedrooms === 1 ? "bed" : "beds"}`;
@@ -71,11 +77,12 @@ export function MarketplaceOfferCard({ card }: { card: BuyerOfferCard }) {
           <PropertyCover
             src={coverSrcFor(card.type, card.coverImageSrc)}
             sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+            priority={priority}
           />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 p-5 min-[769px]:p-6">
-          <span className="min-w-0 whitespace-nowrap text-[11px] font-medium leading-[11px] text-grey-700">
+          <span className="min-w-0 whitespace-nowrap text-[11px] font-medium leading-[11px] text-grey-800">
             {metaLabel}
           </span>
 
@@ -112,7 +119,7 @@ export function MarketplaceOfferCard({ card }: { card: BuyerOfferCard }) {
             <p className="text-xs leading-5 font-normal text-grey-900">
               Combined property view {card.propertyScore} · {card.propertyLabel}
             </p>
-            <p className="flex items-center gap-1.5 text-xs leading-5 font-normal text-grey-700">
+            <p className="flex items-center gap-1.5 text-xs leading-5 font-normal text-grey-800">
               Payment history · {bandPlainName(card.payerBand)}
               <span className="pointer-events-auto relative z-20">
                 <HelpTip label="Payment history">{PLAIN.paymentHistory}</HelpTip>

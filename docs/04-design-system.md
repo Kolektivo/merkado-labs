@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
 
 ## 1. Scope
 
@@ -9,9 +9,10 @@ This document covers the Labs Next.js demo at the repository root.
 Production merkado.cw visual language stays in merkado-cw. The Labs
 **account mock** now mirrors merkado-cw navbar, footer, and account
 sidebar chrome visually. Do not copy AccountLayout data loading, auth,
-profiles, or Listing Score implementation. Marketplace, listing, billing,
-and settings controls are visibly disabled. Admin is not shown.
-Only Merkado Pay and Merkado Direct are live. Payment history lives on
+profiles, or Listing Score implementation. Marketplace, listing, and billing
+controls are visibly disabled, including **Account Settings**. There is
+no Payouts item in account chrome. Admin is not shown.
+Only Merkado Pay and Merkado Direct are live apps. Payment history lives on
 the Pay page.
 
 ## 2. Stack (verified)
@@ -22,7 +23,7 @@ the Pay page.
 | Styling | Tailwind CSS v4 + CSS variables in `src/app/globals.css` |
 | Components | shadcn/ui (`radix-nova`, `neutral`, Lucide) — one library only |
 | Fonts | Geist Sans + Geist Mono on Direct ops; Inter on `.theme-merkado` surfaces |
-| Chrome | Compact shadcn card at `/enter`; `AppShell` sidebar for Direct; payment-link shell for Pay; account shell for the Labs account mock |
+| Chrome | Compact shadcn card at `/enter`; `AppShell` sidebar for Direct, with a header notifications bell and nav counts on My Offers / Portfolio; payment-link shell for Pay; account shell for the Labs account mock |
 
 ## 3. Tokens
 
@@ -48,8 +49,8 @@ and the dark footer pinned to the bottom of the screen on short pages,
 matching merkado-cw. Sidebar groups are Marketplace, **Apps**, then Account.
 Admin is hidden. Disabled chrome uses a muted not-available treatment.
 **Merkado Pay** and **Merkado Direct** are clickable in the Apps group,
-the My account menu, and on the Apps page. Logo and Home return to the
-Labs Overview.
+the My account menu, and on the Apps page. **Account Settings** stays
+visible but inactive. Logo and Home return to the Labs Home.
 
 Marketplace offer cards use merkado-cw listing-card chrome: 12px radius,
 grey-200 border, 3:2 photo, 18px title, icon spec row, and a top-border
@@ -72,6 +73,10 @@ outside this scoped layer.
   payment history.
 - Customer screens stay quiet. Reset, payment network, and fee buildup live
   on **Admin**. Buttons use Merkado violet, not near-black.
+- Do not add a small page-level eyebrow or brand kicker above a clear page
+  title. **Rent paid forward**, **My Offers**, and similar titles stand on
+  their own. Field labels, status badges, nav groups, and the logo are not
+  eyebrows.
 - The hosted password door (`/enter`) is a compact shadcn card: title,
   one line of copy, **Shared password**, and **Continue**. No logo, pill,
   or prototype alert.
@@ -80,8 +85,18 @@ outside this scoped layer.
   and Property Score stay inside tooltips only.
 - Prefer **Rent vs typical rent**, **Connected landlord**, **Yearly
   comparison**, and **Share paid now** over rent-to-market, related-party,
-  effective annualised, and advance rate.
+  effective annualised, and advance rate. **Connected landlord** is for
+  landlord / Admin review only; it is not shown or sent to holders.
 - Dense terms use tooltips and disclosure, not paragraph walls
+- One primary task should visually lead each customer page. Use a restrained
+  violet tint, primary-colour amount, or primary action to guide the eye;
+  supporting cards stay neutral.
+- Keep operational tables, filters, totals, payment history, and score detail
+  behind a clearly labelled collapsed section when they are not required for
+  the next action.
+- Completed purchases, landlord sale claims, and holder rent claims use one
+  accessible success dialog with a check mark, plain-language result, and the
+  amount when it is useful. Mock claims must still say that no money was sent.
 
 ## 5. Accessibility
 
@@ -99,6 +114,10 @@ external app URLs include accessible new-tab text.
 ## 6. What not to invent
 
 No gradients-as-brand, no “yield” badges, no loan calculators labeled as
-loans, no Claim button, no explorer link for demo hashes. Wallet chrome
-stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base Sepolia** is
-the default demo network. **Base Mainnet** is later.
+loans, no explorer link for demo hashes. The **Landlord proceeds** card
+uses distinct badges: Waiting (amber), Available (green), and Paid (quiet
+grey) on local `main`; Luis’s draft adds Processing (blue) and Failed
+(red). Available to claim is the strongest amount. Holder **Claim rent**
+stays a separate mocked action, not a public token market. Wallet
+chrome stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base Sepolia**
+is the default demo network. **Base Mainnet** is later.

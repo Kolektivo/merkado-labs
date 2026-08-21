@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (Direct notifications, no Payouts page)
 
 ## 1. Surfaces
 
@@ -24,7 +24,9 @@ Customer-facing surfaces:
 - `/portfolio*` Portfolio
 - `/pay` and `/pay/[paymentRequestId]` Merkado Pay. `/pay/payments` redirects to `/pay`.
 - `/account` → `/account/apps` fictional account mock (Apps launcher) inside
-  merkado-cw navbar / sidebar / footer chrome. Other account links are disabled.
+  merkado-cw navbar / sidebar / footer chrome. **Account Settings** stays
+  visible but inactive. There is no Payouts item. Other account links are
+  disabled. `/account/payouts` and `/payouts` redirect to My Offers.
 
 ## 2. Dashboard
 
@@ -54,7 +56,7 @@ Direct presentation and filtering only. Never feed it back into the engine.
 Labs project `csaefdkpwukshtouyixg` only. RLS on. `anon` / `authenticated`
 have no grants. Service-role is server-only.
 
-The live demo book is one JSON row in `ra_demo_state`. A trigger on that
+The persisted Labs book is one JSON row in `ra_demo_state`. A trigger on that
 payload rejects same-person releases. Purchaser pages load an anonymised
 card, not the full payer file.
 
@@ -78,8 +80,16 @@ to **Base Sepolia** with Circle native USDC. Admin shows that Base
 testnet now. **Base Mainnet** is later and stays hidden unless
 `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Optimism networks stay in
 the catalog if Luis later opts in; they are not shown in Admin.
-The Safe address stays fictional until Luis replaces it. Explorer links render only for a real
-64-hex transaction hash on an official catalog explorer.
+`cryptoConfig` now holds a company Safe, a sales proceeds Safe, and an
+offer factory address. They stay fictional on `main` until Luis replaces
+them. Merkado creates **one listing offer per listing** so the product
+can track and later resell it, without Merkado holding monthly rent.
+After a sale, Pay uses that listing’s collection address, not the
+company Safe. The holder **claims** rent from Portfolio. Landlord sale proceeds use one
+claim card and never show a mock hash or explorer link. Explorer links
+render only for a real 64-hex transaction hash on an official catalog
+explorer. Draft PRs 19, 20, and 22 stay unmerged on Luis’s stack. See
+ADR-0006.
 
 ## 6. Future home
 

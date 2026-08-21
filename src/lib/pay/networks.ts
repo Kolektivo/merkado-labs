@@ -1,5 +1,10 @@
 /** Demo network facts. Do not treat this as a live wallet or RPC setup. */
 
+import type {
+  CryptoConfig,
+  PublicCryptoConfig,
+} from "@/lib/rent-advance/types";
+
 export const OP_SEPOLIA_NETWORK_KEY = "op-sepolia";
 export const BASE_SEPOLIA_NETWORK_KEY = "base-sepolia";
 export const OP_MAINNET_NETWORK_KEY = "op-mainnet";
@@ -239,4 +244,18 @@ export function isOfficialExplorerBaseUrl(value: string | null | undefined): boo
 
 export function isTestnetConfig(input?: { networkKey?: string | null; chainId?: number | null } | null): boolean {
   return getPayNetwork(resolvePayNetworkKey(input)).isTestnet;
+}
+
+export function toPublicCryptoConfig(
+  config?: CryptoConfig | null,
+): PublicCryptoConfig | null {
+  if (!config) return null;
+  return {
+    networkKey: config.networkKey,
+    chainId: config.chainId,
+    networkLabel: config.networkLabel,
+    usdcContract: config.usdcContract,
+    usdcDecimals: config.usdcDecimals,
+    explorerBaseUrl: config.explorerBaseUrl,
+  };
 }

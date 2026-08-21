@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 21, 2026 (landlord proceeds rules)
 
 ## 1. Money
 
@@ -32,7 +32,8 @@ MRA-001 locked result: rent 180000 cents, 6 months, 5.50% → fee 59400,
 purchase 1020600, effective ≈ 21.57%.
 
 Pricing inputs: monthly rent, term, **Listing Score**, **Payer Score**,
-related-party flag. Property Score is not an input.
+related-party flag. Property Score is not an input. The related-party
+flag and note stay internal and are removed from purchaser payloads.
 
 ## 3. Property Score
 
@@ -69,8 +70,31 @@ and checklist.
 
 Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
 `paymentRequestId`, `positionId`, `collectionId`, `distributionId`,
-`transactionId`, optional `txHash`, and `safeAccountId`. Do not call any
-field a token ID in the UI. `externalTokenId` may exist as null.
+`transactionId`, optional `txHash`, and `safeAccountId`. Offers carry a
+mocked per-listing `custody` object (listing offer id, owner,
+sale-proceeds status, landlord claim). That object tracks the listing
+offer; it is not a custody-product ledger. `externalTokenId` is set after
+Merkado creates the offer. After sale, rent lands on that listing until
+the holder claims it. Do not present this as a public token market.
+
+Product rules for landlord sale proceeds, whichever book shape is live:
+
+- One claim flow per offer. `normalizeBook()` removes legacy
+  `advance_settlement` rows and clears their offer / position references;
+  the mock does not merely hide them.
+- Claim amount equals the purchase price. The fee is informational and
+  is never deducted twice.
+- Paid is terminal. A locked payout address cannot be changed after
+  processing starts.
+- `txHash` for this mock claim is `null`. Legacy demo hashes are discarded.
+  No explorer link.
+- The payout address is server-side and must not enter Marketplace,
+  Pay, or Portfolio payloads.
+
+Luis PR #22 (draft, not on `main`) stores the same rules as
+`OfferFundingRecord` + `LandlordProceedsClaim` with statuses
+`available → processing → paid` (also `failed`). Reconcile those records
+with `offer.custody` when Wave 3 is reviewed. Do not treat PR #22 as live.
 
 `property` series type exists on `ra_series` so the platform is not
 hardcoded to receivables. It is not implemented.
@@ -103,6 +127,8 @@ distribution economics.
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
 crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
-explorer). Older `optimism` and OP Sepolia books rematch to **Base
-Sepolia**. Reset restores the complete current seed and keeps the
-selected payment network. No new migration for this pivot.
+explorer, company Safe, sales proceeds Safe, offer factory). Older
+`optimism` and OP Sepolia books rematch to **Base Sepolia**. Reset
+restores the complete current seed and keeps the selected payment
+network. `DemoAccount.payoutAddress` is optional. No new migration for
+this pivot.

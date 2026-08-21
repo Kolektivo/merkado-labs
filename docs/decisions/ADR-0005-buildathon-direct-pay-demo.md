@@ -24,9 +24,9 @@ Safe, and production architecture decisions stay open.
   reuse production auth, cookies, or profiles.
 - Keep one JSON `DemoBook` in `ra_demo_state` with `normalizeBook()` for
   older payloads. No new migration.
-- Use deterministic stable IDs. Do not create a token, NFT, transferable
-  position, or secondary market. `externalTokenId` may be null only.
-- Present holder distributions as automatic in this demo. No Claim button.
+- Use deterministic stable IDs. ADR-0006 later added a mocked custodial
+  offer and claim/collect steps. This demo is still not a public token
+  market.
 - Keep the pricing engine on raw Listing Score and Payer Score. Derived
   Property Score is presentation-only.
 - Expose a typed `PaymentProvider` so Luis can replace the mock adapter
@@ -122,6 +122,14 @@ Sepolia, and the earlier OP Mainnet later-live assumption. This
 amendment does not allow installing a wallet or Safe SDK, merging PR 19,
 or flipping `PAYMENT_RAIL_MODE`.
 
+## Amendment — 2026-08-20 (walletless landlord)
+
+ADR-0006 supersedes the no-NFT / no-Claim / automatic-distribution parts
+of this decision. The Labs demo now shows a walletless offer request,
+Merkado-created listing offer, landlord claim, and holder claim. Crypto
+stays mocked. Draft PRs 19, 20, and 22 stay unmerged. Automatic landlord
+settlement is removed. Every offer uses the landlord proceeds claim.
+
 ## Approval
 
 - Product Lead: approved Buildathon handoff, 2026-08-18
@@ -138,3 +146,12 @@ Product Lead asked to prepare the Luis handoff on **OP Sepolia** and
 **Base Sepolia**, with OP Mainnet and Base Mainnet available later. The mock
 wallet remains. One confirmed Pay write still updates the shared book
 once. Do not treat this amendment as permission to install a wallet SDK.
+
+## Amendment — 2026-08-21 (current draft-stack facts)
+
+Luis’s draft PR 20 uses a **Base Sepolia 2-of-3 company Safe** with
+Enrique, Luuk, and Luis as signers. It is not on `main`. Base Sepolia is
+the only current testnet target; Base Mainnet remains later. This
+supersedes the earlier 2-of-2 / OP testnet notes for current engineering
+work, but does not approve merging PRs 19 / 20 / 22, sending test USDC,
+or flipping the live rail.

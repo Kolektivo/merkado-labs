@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
       { source: "/pay/method", destination: "/pay", permanent: false },
       { source: "/pay/now", destination: "/pay", permanent: false },
       { source: "/pay/notice", destination: "/pay", permanent: false },
+      { source: "/payouts", destination: "/originate", permanent: false },
+      { source: "/account/payouts", destination: "/originate", permanent: false },
+      { source: "/account/settings", destination: "/account/apps", permanent: false },
     ];
   },
 };

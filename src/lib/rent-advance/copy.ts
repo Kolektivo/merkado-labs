@@ -33,7 +33,31 @@ export const PLAIN = {
   yearlyComparison:
     "A comparison figure so the landlord can compare this flat fee with other ways of getting cash today. It is not an interest rate, and it is not a promised return. Anything above 24% is blocked.",
   cashNow:
-    "The one-time amount the landlord receives if this offer is funded. Later rent goes to holders, not back to the landlord.",
+    "The one-time amount the landlord can claim after this offer is bought. Later rent goes to this listing, then to holders — not back to the landlord. No wallet is needed to request an offer.",
+  walletlessRequest:
+    "You request this from your Merkado account. After review, Merkado creates one offer for this listing. You do not connect a wallet.",
+  claimProceeds:
+    "After the offer is bought, enter a fictional demo payout address beginning with 0xDEMO. You do not connect a wallet. Nothing real is sent.",
+  landlordProceeds:
+    "These are sale proceeds from the purchase. They are not monthly rent and not a loan.",
+  mockFundingRecorded: "Mock funding recorded",
+  mockClaimDisclosure:
+    "No wallet ownership was verified and no on-chain transfer was sent.",
+  payoutAddressUnverified:
+    "Use a fictional address beginning with 0xDEMO. It is unverified and demo-only. You do not connect a wallet. This address locks after you claim.",
+  payoutAddressLocked:
+    "This payout address is locked. A retry can only go to this same address. It was never verified as yours.",
+  payoutAddressFinal:
+    "This payout address is locked and cannot be changed. It was never verified as yours.",
+  feeAlreadyIncluded: "It will not be taken again.",
+  claimRent:
+    "When rent arrives, this listing’s offer holds it. Claim it here. It is not paid back to the landlord.",
+  payoutAddress:
+    "Enter a fictional payout address beginning with 0xDEMO. You do not connect a wallet. Bank payout through Girasol is planned later and is not part of this walkthrough.",
+  payoutMethod:
+    "For this walkthrough, sale proceeds go to a fictional 0xDEMO address. You never connect a wallet. Bank payout is later.",
+  bankPayoutLater:
+    "Bank payout through Girasol is planned after the pilot. It is not available in this walkthrough.",
   longestTerm:
     "The longest number of months this file can sell, based on listing quality and payment history together.",
   paymentHistory:
@@ -48,7 +72,7 @@ export const PLAIN = {
 } as const;
 
 export const HOLDER_NO_PROMISE =
-  "Distributions depend entirely on collections received. If a month is missed, that month’s distribution is zero.";
+  "Collections depend entirely on rent received. If a month is missed, that month’s collection is zero. Rent stays on this listing’s offer until the holder claims it.";
 
 export const SOLE_HOLDER_GATE =
   "Merkado Direct is unlaunched. The participation right stays in sole-holder mode while the characterisation opinion (M.1.2) and the public-holder licensing question (M.1.4) are outstanding. This surface is not public, is not indexed, and nothing here is an offer or an invitation to subscribe.";

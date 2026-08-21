@@ -10,8 +10,6 @@ export function PageHeader({
   description?: string;
   icon?: LucideIcon;
   actions?: React.ReactNode;
-  /** @deprecated Prefer breadcrumbs in the shell header */
-  eyebrow?: string;
 }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

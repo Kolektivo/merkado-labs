@@ -1,8 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { CopyValue, ExplorerLink } from "@/components/copy-value";
+import { ClaimRentForm } from "@/components/rent-advance/claim-rent-form";
+import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
+import { RouteSuccessDialog } from "@/components/route-success-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { SummaryStrip } from "@/components/summary-strip";
 import { ThemeMerkado } from "@/components/theme-merkado";
@@ -26,12 +29,23 @@ import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function PortfolioDetailPage({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ ref: string }>;
-}) {
+}): Promise<Metadata> {
   const { ref } = await params;
+  return { title: ref.toUpperCase() };
+}
+
+export default async function PortfolioDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ ref: string }>;
+  searchParams: Promise<{ success?: string }>;
+}) {
+  const [{ ref }, query] = await Promise.all([params, searchParams]);
   const [position, book] = await Promise.all([
     getPortfolioPosition(ref),
     loadBook(),
@@ -40,9 +54,27 @@ export default async function PortfolioDetailPage({
   const distributions = (book.distributions ?? []).filter(
     (row) => row.offerReference === position.reference,
   );
+  const pendingCollect = distributions.filter((row) => row.status === "pending");
+  const pendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
 
   return (
     <ThemeMerkado className="space-y-6">
+      {query.success === "purchase" ? (
+        <RouteSuccessDialog
+          title="Purchase recorded"
+          description={`${position.summary} was added to your Portfolio. Future rent appears here after the renter pays.`}
+          storageKey={`merkado:success:purchase:${position.reference}`}
+          closeHref={`/portfolio/${position.reference}`}
+        />
+      ) : query.success === "rent" ? (
+        <RouteSuccessDialog
+          title="Rent claimed"
+          description={`${position.summary} rent was added to your claimed total. No money was sent.`}
+          storageKey={`merkado:success:rent:${position.reference}`}
+          closeHref={`/portfolio/${position.reference}`}
+        />
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/portfolio">← Portfolio</Link>
@@ -56,12 +88,10 @@ export default async function PortfolioDetailPage({
           {statusLabel(position.status)}
         </StatusBadge>
         <h1 className="text-3xl font-semibold tracking-tight">
-          {position.positionId}
+          {position.summary}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {position.reference} · {position.district} · {position.type} ·{" "}
-          {position.months} months · Property Score {position.propertyScore}.
-          District only. Distributions are automatic.
+          Position {position.positionId} · {position.type} · {position.months} months
         </p>
       </div>
       <SummaryStrip
@@ -72,38 +102,43 @@ export default async function PortfolioDetailPage({
             value: <Money cents={position.collectedCents} compact />,
           },
           {
-            label: "Awaiting distribution",
+            label: "Ready to claim",
             value: <Money cents={position.pendingDistributionCents} compact />,
           },
           {
-            label: "Distributed",
+            label: "Claimed",
             value: <Money cents={position.distributedCents} compact />,
           },
         ]}
       />
-      {position.settlementTxHash ? (
-        <Card>
+      {pendingCents > 0 ? (
+        <Card className="ring-primary/30 shadow-md">
           <CardHeader>
-            <CardTitle>Advance settlement</CardTitle>
+            <CardTitle>Rent ready to claim</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-3">
-            <CopyValue
-              value={position.settlementTxHash}
-              label="settlement reference"
-              truncate
-            />
-            <ExplorerLink
-              baseUrl={book.cryptoConfig?.explorerBaseUrl}
-              hash={position.settlementTxHash}
+          <CardContent>
+            <ClaimRentForm
+              reference={position.reference}
+              amountCents={pendingCents}
             />
           </CardContent>
         </Card>
+      ) : position.distributedCents > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rent claimed</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <Money cents={position.distributedCents} /> claimed so far.
+          </CardContent>
+        </Card>
       ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle>Collections and automatic distributions</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <details className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
+        <summary className="cursor-pointer px-4 py-4 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Payment history
+        </summary>
+        <Card className="rounded-none py-0 shadow-none ring-0">
+          <CardContent className="border-t pt-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -138,7 +173,13 @@ export default async function PortfolioDetailPage({
                     <TableCell>
                       {distribution ? (
                         <div className="space-y-1">
-                          <p className="capitalize">{distribution.status}</p>
+                          <p>
+                            {distribution.status === "pending"
+                              ? "Ready to claim"
+                              : distribution.status === "distributed"
+                                ? "Claimed"
+                                : distribution.status}
+                          </p>
                           {distribution.txHash ? (
                             <CopyValue
                               value={distribution.txHash}
@@ -157,8 +198,9 @@ export default async function PortfolioDetailPage({
             </TableBody>
           </Table>
           <p className="mt-4 text-sm text-muted-foreground">{HOLDER_NO_PROMISE}</p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </details>
     </ThemeMerkado>
   );
 }

@@ -3,7 +3,10 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDayMonthYear } from "@/lib/rent-advance/helpers";
+import {
+  formatDayMonthYear,
+  paymentStatusLabel,
+} from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
 import { loadBook } from "@/lib/rent-advance/store";
@@ -50,7 +53,9 @@ export default async function PayIndexPage() {
       {next ? (
         <Card>
           <CardContent className="space-y-3 pt-6">
-            <StatusBadge tone={tone(next.status)}>{next.status}</StatusBadge>
+            <StatusBadge tone={tone(next.status)}>
+              {paymentStatusLabel(next.status)}
+            </StatusBadge>
             <p className="text-sm text-muted-foreground">{next.periodLabel}</p>
             <p className="text-3xl font-semibold tabular-nums">
               {formatXcg(next.amountXcgCents)}
@@ -70,6 +75,10 @@ export default async function PayIndexPage() {
       <ul className="divide-y rounded-xl border bg-card">
         {requests.map((row) => {
           const offer = book.offers.find((item) => item.reference === row.offerReference);
+          const label =
+            row.status === "due" && next && row.dueDate > next.dueDate
+              ? paymentStatusLabel(row.status, true)
+              : paymentStatusLabel(row.status);
           return (
             <li key={row.paymentRequestId}>
               <Link
@@ -85,7 +94,9 @@ export default async function PayIndexPage() {
                 </span>
                 <span className="text-right">
                   <span className="block tabular-nums">{formatXcg(row.amountXcgCents)}</span>
-                  <span className="text-xs capitalize text-muted-foreground">{row.status}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {label}
+                  </span>
                 </span>
               </Link>
             </li>

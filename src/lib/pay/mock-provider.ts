@@ -6,18 +6,18 @@ import type {
   SubmittedPayment,
   WalletSession,
 } from "@/lib/pay/provider";
-import type { CryptoConfig } from "@/lib/rent-advance/types";
+import type { PublicCryptoConfig } from "@/lib/rent-advance/types";
 
 type MockOptions = {
   failNext?: boolean;
   partialNext?: boolean;
-  config?: CryptoConfig | null;
+  config?: PublicCryptoConfig | null;
 };
 
 let session: WalletSession | null = null;
 let failNext = false;
 let partialNext = false;
-let activeConfig: CryptoConfig | null = null;
+let activeConfig: PublicCryptoConfig | null = null;
 
 function demoHash(paymentRequestId: string) {
   return `0xDEMO${paymentRequestId.replace(/[^a-zA-Z0-9]/g, "").padEnd(34, "0").slice(0, 34)}`;

@@ -23,15 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
 import {
   attentionItems,
   bookTotals,
+  offerDisplayName,
   sortOffersForLandlordList,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { loadBook } from "@/lib/rent-advance/store";
-import type { OfferStatus } from "@/lib/rent-advance/types";
+import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +61,17 @@ const ATTENTION_TONE: Record<
     "border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/30",
   info: "border-sky-200 bg-sky-50/60 dark:border-sky-900 dark:bg-sky-950/30",
 };
+
+function nextOfferStep(
+  offer: Offer,
+  proceeds: ReturnType<typeof landlordProceedsPresentation>,
+) {
+  if (offer.status === "draft") return "Submit this request";
+  if (offer.status === "under_review") return "Wait for approval";
+  if (proceeds.status === "available") return "Claim your sale amount";
+  if (proceeds.status === "paid") return "Sale amount paid";
+  return "Wait for the full purchase";
+}
 
 function parseStatus(
   raw: string | string[] | undefined,
@@ -93,7 +106,7 @@ export default async function OriginatePage({
     <div className="space-y-6">
       <PageHeader
         title="My Offers"
-        description="See every landlord offer. Use Simulator for a cash quote, then Create Offer to submit one for review."
+        description="Track your offers and claim sale amounts when they are ready."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -109,109 +122,152 @@ export default async function OriginatePage({
         }
       />
 
-      <div
-        role="tablist"
-        aria-label="Offer status"
-        className="flex flex-wrap gap-1 rounded-lg border p-0.5"
+      <details
+        open={status !== "all"}
+        className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10"
       >
-        {FILTERS.map((filter) => {
-          const href =
-            filter.value === "all"
-              ? "/originate"
-              : `/originate?status=${filter.value}`;
-          const active = status === filter.value;
-          return (
-            <Button
-              key={filter.value}
-              variant={active ? "secondary" : "ghost"}
-              size="sm"
-              asChild
-            >
-              <Link href={href} role="tab" aria-selected={active}>
-                {filter.label}
-              </Link>
-            </Button>
-          );
-        })}
-      </div>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Filter offers
+        </summary>
+        <nav
+          aria-label="Filter offers by status"
+          className="flex flex-wrap gap-1 border-t p-3"
+        >
+          {FILTERS.map((filter) => {
+            const href =
+              filter.value === "all"
+                ? "/originate"
+                : `/originate?status=${filter.value}`;
+            const active = status === filter.value;
+            return (
+              <Button
+                key={filter.value}
+                variant={active ? "secondary" : "ghost"}
+                size="sm"
+                asChild
+              >
+                <Link
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {filter.label}
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+      </details>
 
-      <Card className="gap-0 py-0">
-        {offers.length ? (
-          <CardContent className="overflow-x-auto px-0">
-            <div className="space-y-3 px-4 py-3 md:hidden">
-              {offers.map((offer) => (
+      {offers.length ? (
+        <>
+          <div className="grid gap-3 md:hidden">
+            {offers.map((offer) => {
+              const proceeds = landlordProceedsPresentation(offer);
+              const nextStep = nextOfferStep(offer, proceeds);
+              return (
                 <Link
                   key={offer.reference}
                   href={`/originate/${offer.reference}`}
-                  className="block rounded-xl border px-4 py-3"
+                  className={cn(
+                    "rounded-xl border bg-card px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    proceeds.status === "available" && "bg-primary/5",
+                  )}
                 >
-                  <p className="font-medium">{offer.reference}</p>
-                  <p className="text-sm">{offer.property.summary}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {offer.property.district} · {offer.tenant.initials}
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{offerDisplayName(offer)}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {offer.reference} · {offer.property.district}
+                      </p>
+                    </div>
+                    <StatusBadge tone={statusTone(offer.status)}>
+                      {statusLabel(offer.status)}
+                    </StatusBadge>
+                  </div>
                   <p className="mt-2 text-sm">
-                    <Money cents={offer.purchasePriceCents} /> · {offer.months} months
+                    <Money cents={offer.purchasePriceCents} /> · {offer.months}{" "}
+                    months
                   </p>
-                  <p className="mt-1 text-sm">{statusLabel(offer.status)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {offer.nextAction
-                      .replace(/^Pull month/, "Record month")
-                      .replace(/^Chase subscriptions$/, "Wait for remaining funding")}
+                  <p
+                    className={cn(
+                      "mt-1 text-sm",
+                      proceeds.status === "available"
+                        ? "font-medium text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {nextStep}
                   </p>
                 </Link>
-              ))}
-            </div>
-            <Table className="hidden min-w-[760px] md:table [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
+            <Table className="min-w-[760px] [&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Ref</TableHead>
                   <TableHead>Property</TableHead>
-                  <TableHead>Payer</TableHead>
-                  <TableHead className="text-right">Advance</TableHead>
+                  <TableHead className="text-right">Sale amount</TableHead>
                   <TableHead>Term</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Next action</TableHead>
+                  <TableHead>Next</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {offers.map((offer) => (
-                  <TableRow key={offer.reference}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/originate/${offer.reference}`}
-                        className="hover:underline"
+                {offers.map((offer) => {
+                  const proceeds = landlordProceedsPresentation(offer);
+                  const nextStep = nextOfferStep(offer, proceeds);
+                  return (
+                    <TableRow
+                      key={offer.reference}
+                      className={cn(
+                        proceeds.status === "available" && "bg-primary/5",
+                      )}
+                    >
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/originate/${offer.reference}`}
+                          className="hover:underline"
+                        >
+                          {offer.reference}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
+                        <p className="font-medium">{offerDisplayName(offer)}</p>
+                        {offer.property.district !== offerDisplayName(offer) ? (
+                          <p className="text-xs text-muted-foreground">
+                            {offer.property.district}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Money cents={offer.purchasePriceCents} />
+                      </TableCell>
+                      <TableCell>{offer.months} months</TableCell>
+                      <TableCell>
+                        <StatusBadge tone={statusTone(offer.status)}>
+                          {statusLabel(offer.status)}
+                        </StatusBadge>
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-sm",
+                          proceeds.status === "available" &&
+                            "font-medium text-primary",
+                        )}
                       >
-                        {offer.reference}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="whitespace-normal">
-                      <p className="font-medium">{offer.property.summary}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {offer.property.district}
-                      </p>
-                    </TableCell>
-                    <TableCell>{offer.tenant.initials}</TableCell>
-                    <TableCell className="text-right">
-                      <Money cents={offer.purchasePriceCents} />
-                    </TableCell>
-                    <TableCell>{offer.months} months</TableCell>
-                    <TableCell>
-                      <StatusBadge tone={statusTone(offer.status)}>
-                        {statusLabel(offer.status)}
-                      </StatusBadge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {offer.nextAction
-                        .replace(/^Pull month/, "Record month")
-                        .replace(/^Chase subscriptions$/, "Wait for remaining funding")}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        {nextStep}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
-          </CardContent>
-        ) : (
+          </div>
+        </>
+      ) : (
+        <Card>
           <CardContent className="py-6">
             <Empty>
               <EmptyHeader>
@@ -225,13 +281,18 @@ export default async function OriginatePage({
               </EmptyHeader>
             </Empty>
           </CardContent>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      <SummaryStrip
-        items={[
+      <details className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Book overview
+        </summary>
+        <div className="flex flex-col gap-4 border-t p-4">
+          <SummaryStrip
+            items={[
           {
-            label: "Total advanced",
+            label: "Total paid",
             value: <Money cents={totals.totalAdvanced} />,
             tip: "Cash already paid to landlords for sold rent months.",
           },
@@ -246,15 +307,15 @@ export default async function OriginatePage({
             tip: "All rent received so far across the book.",
           },
           {
-            label: "Live offers",
+            label: "Active offers",
             value: totals.live,
             tip: "Offers that are live or already collecting.",
           },
-        ]}
-      />
+            ]}
+          />
 
-      {attention.filter((item) => item.count > 0).length > 0 ? (
-        <section className="space-y-3">
+          {attention.filter((item) => item.count > 0).length > 0 ? (
+            <section className="space-y-3">
           <h2 className="text-sm font-medium">
             Needs attention ·{" "}
             {attention.reduce((sum, item) => sum + item.count, 0)}
@@ -278,8 +339,10 @@ export default async function OriginatePage({
                 </Link>
               ))}
           </div>
-        </section>
-      ) : null}
+            </section>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }

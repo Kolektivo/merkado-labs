@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CopyValue } from "@/components/copy-value";
+import { HelpTip } from "@/components/help-tip";
 import { PayNetworkControl } from "@/components/pay-network-control";
 import { ResetDemoButton } from "@/components/reset-demo-button";
 import { PageHeader } from "@/components/page-header";
@@ -124,6 +126,40 @@ export default async function AdminPage() {
         </Table>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Safes and listing offers (mocked)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            Landlords never sign. Merkado creates one offer per listing from
+            the company Safe. Sale funds go to a separate sales proceeds Safe.
+            After a sale, that listing collects rent. Holders claim it from
+            Portfolio. Merkado is not holding monthly rent.
+          </p>
+          <div className="space-y-3">
+            <AddressRow
+              title="Company Safe"
+              copyLabel="company Safe"
+              value={book.cryptoConfig?.companySafeAddress ?? ""}
+              tip="Merkado creates each listing offer from this address after approval. Landlords never connect a wallet or sign from here."
+            />
+            <AddressRow
+              title="Sales proceeds Safe"
+              copyLabel="sales proceeds Safe"
+              value={book.cryptoConfig?.salesProceedsSafeAddress ?? ""}
+              tip="Sale money from a purchased offer lands here. The landlord later claims the purchase price from this pot. Monthly rent does not go here."
+            />
+            <AddressRow
+              title="Offer factory"
+              copyLabel="offer factory"
+              value={book.cryptoConfig?.offerNftContract ?? ""}
+              tip="The contract Merkado uses to create one listing offer per listing, so the product can track it and later collect rent on that listing. This is not a wallet and not where money sits."
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <PayNetworkControl
         networkKey={book.cryptoConfig?.networkKey ?? ""}
         networkLabel={book.cryptoConfig?.networkLabel?.trim() || "Network to be confirmed"}
@@ -141,6 +177,28 @@ export default async function AdminPage() {
         </div>
         <ResetDemoButton />
       </div>
+    </div>
+  );
+}
+
+function AddressRow({
+  title,
+  copyLabel,
+  value,
+  tip,
+}: {
+  title: string;
+  copyLabel: string;
+  value: string;
+  tip: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="flex items-center gap-1 font-medium">
+        {title}
+        <HelpTip label={title}>{tip}</HelpTip>
+      </p>
+      <CopyValue value={value} label={copyLabel} truncate />
     </div>
   );
 }

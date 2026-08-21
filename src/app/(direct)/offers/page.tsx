@@ -50,7 +50,7 @@ export default async function OffersPage({
     <ThemeMerkado className="space-y-6">
       <PageHeader
         title="Marketplace"
-        description="Open rent-advance offers in Curaçao. Amounts in XCG."
+        description="Open offers in Curaçao. Amounts in XCG."
       />
 
       <form className="flex flex-wrap items-end gap-3" method="get">
@@ -66,7 +66,7 @@ export default async function OffersPage({
           <select
             name="band"
             defaultValue={band}
-            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+            className="h-11 rounded-lg border border-input bg-background px-3 text-sm"
           >
             <option value="">All grades</option>
             {BANDS.map((value) => (
@@ -87,7 +87,7 @@ export default async function OffersPage({
           <select
             name="district"
             defaultValue={district}
-            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm"
+            className="h-11 rounded-lg border border-input bg-background px-3 text-sm"
           >
             <option value="">All districts</option>
             {districts.map((value) => (
@@ -97,11 +97,11 @@ export default async function OffersPage({
             ))}
           </select>
         </label>
-        <Button type="submit" size="sm">
+        <Button type="submit" className="h-11">
           Apply
         </Button>
         {band || district ? (
-          <Button type="button" size="sm" variant="ghost" asChild>
+          <Button type="button" variant="ghost" className="h-11" asChild>
             <Link href="/offers">Clear</Link>
           </Button>
         ) : null}
@@ -121,9 +121,9 @@ export default async function OffersPage({
         </Empty>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {cards.map((card) => (
+          {cards.map((card, index) => (
             <li key={card.reference} className="flex">
-              <MarketplaceOfferCard card={card} />
+              <MarketplaceOfferCard card={card} priority={index === 0} />
             </li>
           ))}
         </ul>

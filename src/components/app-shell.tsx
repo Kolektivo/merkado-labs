@@ -17,6 +17,12 @@ import {
 } from "lucide-react";
 
 import {
+  DashboardNotifications,
+  useNavNotificationCounts,
+} from "@/components/dashboard-notifications";
+import type { DashboardNotification } from "@/lib/rent-advance/notifications";
+
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -34,6 +40,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -41,6 +48,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { resolveCrumbs, type BreadcrumbCrumb } from "@/lib/breadcrumbs";
+import { cn } from "@/lib/utils";
 
 type NavItem = {
   href: string;
@@ -76,33 +84,62 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavLinks({ items, pathname }: { items: NavItem[]; pathname: string }) {
+function NavLinks({
+  items,
+  pathname,
+  counts,
+}: {
+  items: NavItem[];
+  pathname: string;
+  counts: { originate: number; portfolio: number };
+}) {
   return (
     <SidebarMenu>
-      {items.map(({ href, label, icon: Icon }) => (
-        <SidebarMenuItem key={href}>
-          <SidebarMenuButton
-            asChild
-            isActive={isActivePath(pathname, href)}
-            tooltip={label}
-            className="min-h-9"
-          >
-            <Link
-              href={href}
-              aria-current={isActivePath(pathname, href) ? "page" : undefined}
+      {items.map(({ href, label, icon: Icon }) => {
+        const count =
+          href === "/originate"
+            ? counts.originate
+            : href === "/portfolio"
+              ? counts.portfolio
+              : 0;
+        return (
+          <SidebarMenuItem key={href}>
+            <SidebarMenuButton
+              asChild
+              isActive={isActivePath(pathname, href)}
+              tooltip={count ? `${label}, ${count} ready to claim` : label}
+              className={cn("min-h-9", count > 0 && "pr-8")}
             >
-              <Icon />
-              <span>{label}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
+              <Link
+                href={href}
+                aria-current={isActivePath(pathname, href) ? "page" : undefined}
+                aria-label={
+                  count ? `${label}, ${count} ready to claim` : undefined
+                }
+              >
+                <Icon />
+                <span>{label}</span>
+              </Link>
+            </SidebarMenuButton>
+            {count > 0 ? (
+              <SidebarMenuBadge className="bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-active/menu-button:text-primary-foreground">
+                {count}
+              </SidebarMenuBadge>
+            ) : null}
+          </SidebarMenuItem>
+        );
+      })}
     </SidebarMenu>
   );
 }
 
-function AppSidebar() {
+function AppSidebar({
+  notifications,
+}: {
+  notifications: DashboardNotification[];
+}) {
   const pathname = usePathname() ?? "";
+  const counts = useNavNotificationCounts(notifications);
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -136,13 +173,13 @@ function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>Merkado Direct</SidebarGroupLabel>
             <SidebarGroupContent>
-              <NavLinks items={productNav} pathname={pathname} />
+              <NavLinks items={productNav} pathname={pathname} counts={counts} />
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
             <SidebarGroupLabel>More</SidebarGroupLabel>
             <SidebarGroupContent>
-              <NavLinks items={utilityNav} pathname={pathname} />
+              <NavLinks items={utilityNav} pathname={pathname} counts={counts} />
             </SidebarGroupContent>
           </SidebarGroup>
         </nav>
@@ -201,22 +238,35 @@ function BreadcrumbTrail({ crumbs }: { crumbs: BreadcrumbCrumb[] }) {
   );
 }
 
-function SiteHeader() {
+function SiteHeader({
+  notifications,
+}: {
+  notifications: DashboardNotification[];
+}) {
   const pathname = usePathname() ?? "";
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur supports-backdrop-filter:bg-background/75 md:px-6">
       <SidebarTrigger className="-ml-1 shrink-0" />
-      <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
+      </div>
+      <DashboardNotifications items={notifications} />
     </header>
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  notifications,
+}: {
+  children: React.ReactNode;
+  notifications: DashboardNotification[];
+}) {
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar notifications={notifications} />
       <SidebarInset className="min-w-0">
-        <SiteHeader />
+        <SiteHeader notifications={notifications} />
         <div className="flex min-w-0 flex-1 flex-col">
           <main
             id="main-content"

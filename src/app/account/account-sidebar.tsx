@@ -60,7 +60,11 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
   },
 ];
 
-function SidebarNavGroups({ onItemClick }: { onItemClick?: () => void }) {
+function SidebarNavGroups({
+  onItemClick,
+}: {
+  onItemClick?: () => void;
+}) {
   return (
     <div className="flex flex-col gap-3">
       {SIDEBAR_GROUPS.map((group, groupIndex) => {
@@ -103,6 +107,7 @@ export function AccountSidebar() {
   const isMobileNavOpen = openForPath === pathname;
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
   const mobileNavButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mobileNavItem = { label: "Apps", icon: <AppsIcon /> };
 
   useEffect(() => {
     if (!isMobileNavOpen) {
@@ -170,8 +175,8 @@ export function AccountSidebar() {
             className="flex h-10 w-full cursor-pointer items-center justify-between gap-[6px] rounded-[12px] bg-grey-100 px-[14px] text-left text-[14px] font-semibold leading-[16px] text-surface-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1"
           >
             <span className="flex items-center gap-[6px]">
-              <AppsIcon />
-              Apps
+              {mobileNavItem.icon}
+              {mobileNavItem.label}
             </span>
             <ChevronIcon isOpen={isMobileNavOpen} />
           </button>

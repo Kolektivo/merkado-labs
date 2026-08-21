@@ -19,17 +19,18 @@ import {
   parseExactPayNetworkKey,
   parsePayNetworkKey,
   resolvePayNetworkKey,
+  toPublicCryptoConfig,
   visiblePayNetworks,
 } from "@/lib/pay/networks";
 import { formatUsd, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
+import { independentApproverById } from "@/lib/rent-advance/actors";
 import { attentionItems, bookTotals } from "@/lib/rent-advance/helpers";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
   collectionIdFor,
   isExplorableTxHash,
   paymentTxIdFor,
-  settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
 import {
   applyPaymentOutcome,
@@ -67,6 +68,13 @@ test("demo crypto config defaults to Base Sepolia native USDC", () => {
   );
   assert.ok(request);
   assert.equal(request.amountUsdcAtomic, 1_800_000_000);
+
+  const publicConfig = toPublicCryptoConfig(getSeedBook().cryptoConfig);
+  assert.ok(publicConfig);
+  assert.equal("safeAddress" in publicConfig, false);
+  assert.equal("companySafeAddress" in publicConfig, false);
+  assert.equal("salesProceedsSafeAddress" in publicConfig, false);
+  assert.equal("offerNftContract" in publicConfig, false);
 });
 
 test("Admin only offers Base networks until Luis opts into Optimism", () => {
@@ -140,6 +148,19 @@ test("normalizeBook refreshes a stale USDC amount to the 1:1 USD figure", () => 
   assert.equal(request?.amountUsdcAtomic, 1_800_000_000);
 });
 
+test("Admin approval offers Enrique and Luuk", () => {
+  const book = getSeedBook();
+  book.actors = [];
+  const approvers = normalizeBook(book).actors
+    .filter((actor) => actor.role === "independent_approver")
+    .map((actor) => actor.name);
+
+  assert.deepEqual(approvers, ["Enrique", "Luuk"]);
+  assert.equal(independentApproverById("act-enrique")?.name, "Enrique");
+  assert.equal(independentApproverById("act-luuk")?.name, "Luuk");
+  assert.equal(independentApproverById("act-girigoria"), undefined);
+});
+
 test("demo hashes are not explorer links", () => {
   assert.equal(isExplorableTxHash("0xDEMO0000SAFE00MERKADOPAY000000000000000"), false);
   assert.equal(
@@ -179,7 +200,7 @@ test("retired filler offers are dropped without removing new drafts", () => {
   assert.equal(next.assignedTenancies.includes("tn-002"), false);
 });
 
-test("draft and unfunded offers are excluded from advanced totals", () => {
+test("only paid landlord claims count toward the paid total", () => {
   const book = getSeedBook();
   const mra001 = book.offers.find((offer) => offer.reference === CANONICAL_REFERENCE);
   const cheap = book.offers.find((offer) => offer.reference === CHEAP_OFFER_REFERENCE);
@@ -201,14 +222,19 @@ test("draft and unfunded offers are excluded from advanced totals", () => {
   draft.status = "draft";
   draft.fundedCents = 0;
 
+  mra001.custody = {
+    ...mra001.custody!,
+    saleProceedsStatus: "claimed",
+    landlordClaimableCents: 0,
+    landlordClaimedCents: mra001.purchasePriceCents,
+  };
+
   const totals = bookTotals({
     ...book,
     offers: [mra001, funding, review, draft],
   });
 
-  assert.equal(totals.totalAdvanced, mra001.purchasePriceCents + funding.purchasePriceCents);
-  assert.ok(totals.totalAdvanced < totals.totalAdvanced + draft.purchasePriceCents);
-  assert.ok(totals.totalAdvanced < totals.totalAdvanced + review.purchasePriceCents);
+  assert.equal(totals.totalAdvanced, mra001.purchasePriceCents);
 });
 
 test("confirming the same payment cannot duplicate collection or distribution", () => {
@@ -299,21 +325,31 @@ test("provider transaction hash is stored on confirm", () => {
   assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
 });
 
-test("client transaction ids cannot overwrite the settlement ledger", () => {
+test("client transaction ids cannot inject legacy settlement rows", () => {
   const book = getSeedBook();
-  const settlementId = settlementTxIdFor("MRA-001");
+  const attackerControlledId = "tx-settle-mra-001";
   const next = applyPaymentOutcome(
     book,
     CANONICAL_PAYMENT_REQUEST_ID,
     "confirmed",
     "2026-09-28T12:00:00.000Z",
-    { transactionId: settlementId, txHash: "not-a-hash", fromLabel: "<script>" },
+    {
+      transactionId: attackerControlledId,
+      txHash: "not-a-hash",
+      fromLabel: "<script>",
+    },
   );
-  const settlement = next.ledgerTransactions?.find((row) => row.transactionId === settlementId);
   const request = next.paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
-  assert.equal(settlement?.kind, "advance_settlement");
+  assert.equal(
+    next.ledgerTransactions?.some(
+      (row) =>
+        row.transactionId === attackerControlledId ||
+        row.kind === "advance_settlement",
+    ),
+    false,
+  );
   assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
   assert.notEqual(request?.txHash, "not-a-hash");
   assert.equal(
@@ -351,12 +387,16 @@ test("wallet path fails until the demo wallet is connected", async () => {
   assert.equal(submitted.errorCode, "wallet_disconnected");
 });
 
-test("seeded collections are already in automatic holder distribution", () => {
+test("landlord attention does not include holder rent claims", () => {
   const book = normalizeBook(getSeedBook());
-  const pending = attentionItems(book).find(
-    (item) => item.label === "Holder distribution pending",
+  assert.equal(
+    attentionItems(book).some((item) => item.label === "Rent ready to claim"),
+    false,
   );
-  assert.equal(pending?.count, 0);
+  assert.equal(
+    (book.distributions ?? []).filter((row) => row.status === "pending").length,
+    0,
+  );
 });
 
 test("confirming pay still updates the shared book on a Base testnet config", () => {

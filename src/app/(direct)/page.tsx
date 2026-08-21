@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { HomeAttentionCards } from "@/components/dashboard-notifications";
 import { MarketplaceOfferCard } from "@/components/marketplace/marketplace-offer-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { dashboardNotifications } from "@/lib/rent-advance/notifications";
 import { formatXcg } from "@/lib/rent-advance/money";
 import { bookTotals } from "@/lib/rent-advance/helpers";
 import { listMarketplaceCards, loadBook } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Merkado Direct" };
 
 export default async function DirectPage() {
   const [book, marketplace] = await Promise.all([
@@ -17,6 +18,7 @@ export default async function DirectPage() {
     listMarketplaceCards(),
   ]);
   const totals = bookTotals(book);
+  const notifications = dashboardNotifications(book);
   const openFunding = book.offers.filter((offer) => offer.status === "funding").length;
   const featured = [...marketplace]
     .sort((a, b) => {
@@ -31,7 +33,6 @@ export default async function DirectPage() {
     <div className="space-y-10">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl space-y-3">
-          <p className="text-sm font-medium text-primary">Merkado Direct</p>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             Rent paid forward
           </h1>
@@ -54,13 +55,15 @@ export default async function DirectPage() {
         </div>
       </div>
 
+      <HomeAttentionCards items={notifications} />
+
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Advanced to landlords"
+          label="Paid to landlords"
           value={formatXcg(totals.totalAdvanced, true)}
         />
         <StatCard label="Open on Marketplace" value={String(openFunding)} />
-        <StatCard label="Live offers" value={String(totals.live)} />
+        <StatCard label="Active offers" value={String(totals.live)} />
       </div>
 
       <section className="space-y-4">
@@ -80,9 +83,9 @@ export default async function DirectPage() {
         </div>
         {featured.length ? (
           <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {featured.map((card) => (
+            {featured.map((card, index) => (
               <li key={card.reference} className="flex">
-                <MarketplaceOfferCard card={card} />
+                <MarketplaceOfferCard card={card} priority={index === 0} />
               </li>
             ))}
           </ul>

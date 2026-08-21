@@ -23,7 +23,10 @@ import {
 import { confirmPaymentAction } from "@/lib/rent-advance/actions";
 import { formatUsdcAtomic, formatUsdcAtomicAmount, formatXcg } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
-import type { CryptoConfig, PaymentRequestStatus } from "@/lib/rent-advance/types";
+import type {
+  PaymentRequestStatus,
+  PublicCryptoConfig,
+} from "@/lib/rent-advance/types";
 
 import { usePayerLocale } from "./payer-locale";
 
@@ -109,7 +112,7 @@ export function PayApp({
   district: string;
   earlierPeriodLabel: string | null;
   history: HistoryRow[];
-  cryptoConfig?: CryptoConfig | null;
+  cryptoConfig?: PublicCryptoConfig | null;
   offerReference: string;
   receivableId: string;
 }) {
