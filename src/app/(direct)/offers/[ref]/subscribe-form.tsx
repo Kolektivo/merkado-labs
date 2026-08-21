@@ -82,7 +82,7 @@ export function SubscribeForm({
         {connected ? (
           <Button
             type="button"
-            className="h-11 w-full"
+            className="h-11 px-4"
             disabled={pending}
             onClick={() => {
               setError(null);

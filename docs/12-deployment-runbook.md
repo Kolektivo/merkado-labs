@@ -28,9 +28,10 @@ Optional: `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty).
 ## Vercel (Labs demo host)
 
 An existing Vercel project does **not** mean public deployment is approved.
-Vercel Production currently points to `main` commit `8b0be45`; this
-working tree is not deployed. Hosted production fails closed at `/enter`
+Vercel Production follows `main`. Hosted production fails closed at `/enter`
 and needs the shared app password. Do not buy the Vercel password add-on.
+GitHub Verify (`npm ci`) can fail even when Vercel is Ready if the lockfile
+is missing `@emnapi/core` and `@emnapi/runtime` after a Windows `npm install`.
 
 Add this server-only env on the **Production** environment before the
 password page can unlock:
@@ -69,7 +70,11 @@ CI-only configuration values, and the approved Labs URL
 credentials, write to Supabase, or expose secrets. The app requires
 Node 22 or newer. Two optional packages (`@emnapi/core` and
 `@emnapi/runtime`) are listed so Linux `npm ci` stays in sync with a
-Windows-generated lockfile. They are not a wallet or chain dependency.
+Windows-generated lockfile. After adding packages on Windows, confirm
+`package-lock.json` still has `node_modules/@emnapi/core` and
+`node_modules/@emnapi/runtime` at `1.11.3`. If `npm install` drops those
+entries, restore them before pushing. They are not a wallet or chain
+dependency.
 `qrcode.react` renders the mock stablecoin payment QR locally; it does not
 connect to a payment provider.
 

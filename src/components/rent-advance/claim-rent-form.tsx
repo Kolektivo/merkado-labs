@@ -52,7 +52,7 @@ export function ClaimRentForm({
       {connected ? (
         <Button
           type="button"
-          className="min-h-11 w-full"
+          className="min-h-11 px-4"
           disabled={pending}
           onClick={() => {
             setError(null);

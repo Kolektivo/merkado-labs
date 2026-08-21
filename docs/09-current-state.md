@@ -32,10 +32,11 @@ a public product.
 ## 2. Labs demo today `[LABS]`
 
 Local automated checks were re-run from the repository root on 2026-08-21
-after the Luuk flow update and review fixes: lint, typecheck, unit tests (80),
-and build passed. Vercel Production still points to `main` commit
-`8b0be45`; the current working tree is not deployed. Hosted production
+after the compact-action follow-up: lint, typecheck, unit tests (80),
+and build passed. Vercel Production follows `main`. Hosted production
 fails closed at `/enter`. Unlocking it requires `LABS_DEMO_PASSWORD`.
+**Connect wallet**, **Claim rent**, and **Purchase whole offer** size to
+their labels instead of stretching across wide columns.
 
 Local stays open. No Merkado login. Operations live on **Admin**.
 

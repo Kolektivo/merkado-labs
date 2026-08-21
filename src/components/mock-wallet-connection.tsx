@@ -16,25 +16,23 @@ export function MockWalletConnection({
 }) {
   if (connected) {
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-sky-400 text-[11px] font-semibold text-white"
-              aria-hidden
-            >
-              0x
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Connected</p>
-              <p className="truncate font-mono text-xs text-muted-foreground">
-                {truncateHash(DEMO_HOLDER_WALLET)}
-              </p>
-            </div>
+      <div className="flex flex-col items-start gap-2">
+        <div className="inline-flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
+          <span
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-sky-400 text-[11px] font-semibold text-white"
+            aria-hidden
+          >
+            0x
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Connected</p>
+            <p className="font-mono text-xs text-muted-foreground">
+              {truncateHash(DEMO_HOLDER_WALLET)}
+            </p>
           </div>
           <span className="size-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
         </div>
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           Demo only — ownership is not verified.
         </p>
       </div>
@@ -42,17 +40,17 @@ export function MockWalletConnection({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-start gap-2">
       <Button
         type="button"
-        className="min-h-11 w-full"
+        className="min-h-11 px-4"
         aria-label="Connect wallet"
         onClick={onConnect}
       >
         <Wallet data-icon="inline-start" />
         Connect wallet
       </Button>
-      <p className="text-center text-[11px] text-muted-foreground">
+      <p className="text-[11px] text-muted-foreground">
         Demo only — no real wallet opens.
       </p>
     </div>

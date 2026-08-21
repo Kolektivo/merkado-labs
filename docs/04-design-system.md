@@ -91,6 +91,8 @@ outside this scoped layer.
 - One primary task should visually lead each customer page. Use a restrained
   violet tint, primary-colour amount, or primary action to guide the eye;
   supporting cards stay neutral.
+- Action buttons size to their label. Do not stretch **Connect wallet**,
+  **Claim rent**, or **Purchase** across a wide content column.
 - Keep operational tables, filters, totals, payment history, and score detail
   behind a clearly labelled collapsed section when they are not required for
   the next action.
