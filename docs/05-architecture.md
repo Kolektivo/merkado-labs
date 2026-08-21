@@ -78,6 +78,15 @@ records an **OfferFundingRecord** (**mock funding recorded**) and creates a
 `paid`. No claim-mode offer records an automatic `advance_settlement`
 during normalization.
 
+```mermaid
+flowchart TD
+    F[Offer fully funded] --> M{settlementMode}
+    M -->|automatic| A[advance_settlement ledger row]
+    M -->|landlord_claim| R[OfferFundingRecord<br/>Mock funding recorded]
+    R --> C[LandlordProceedsClaim available]
+    C -->|claim paid| P[mocked landlord_proceeds_claim<br/>ledger row - txHash null]
+```
+
 ## 5. Mock crypto boundary
 
 UI does not call mock wallet functions directly. It uses

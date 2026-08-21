@@ -107,6 +107,16 @@ evidence). A claim-mode offer never records an automatic
 `advance_settlement` during normalization. Retries go only to the locked
 `destinationEoa`; a different address is rejected once processing begins.
 
+```mermaid
+stateDiagram-v2
+    [*] --> available : offer fully funded (claim-mode)
+    available --> processing : Claim proceeds (locks destination EOA)
+    processing --> paid : Mark as paid (terminal)
+    processing --> failed : Mark as failed
+    failed --> processing : Retry claim (same locked destination only)
+    paid --> [*]
+```
+
 ## 5. Lifecycle
 
 `draft → under_review → funding → live/collecting → closed`  

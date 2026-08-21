@@ -54,6 +54,18 @@ on customer Home.
    claim. This is a mock, and the shared host password is **not** landlord
    authentication.
 
+```mermaid
+flowchart TD
+    A[Offer fully funded<br/>claim-mode] --> B[OfferFundingRecord<br/>Mock funding recorded]
+    B --> C[LandlordProceedsClaim<br/>available]
+    C -->|Claim proceeds<br/>enter unverified demo EOA| D[processing<br/>destination locked]
+    D -->|Mark as paid| E[paid - terminal<br/>mocked payout ledger row]
+    D -->|Mark as failed| F[failed]
+    F -->|Retry claim<br/>same locked destination| D
+    D -.->|different address rejected| D
+    E -.->|no explorer link, txHash null| E
+```
+
 ## 4. Holder (Merkado Direct)
 
 1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
