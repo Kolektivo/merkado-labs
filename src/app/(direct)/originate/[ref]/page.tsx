@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { LandlordProceedsCard } from "./landlord-proceeds-card";
 import { OfferCustomerActions } from "./offer-ops-forms";
 import { CopyValue, ExplorerLink } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
@@ -27,6 +28,7 @@ import {
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
+import { findLandlordProceedsClaim } from "@/lib/rent-advance/payment-apply";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
 
@@ -54,6 +56,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
   const settlement = book.ledgerTransactions?.find(
     (row) => row.offerReference === offer.reference && row.kind === "advance_settlement",
   );
+  const claim = findLandlordProceedsClaim(book, offer.reference);
 
   return (
     <div className="space-y-6">
@@ -140,6 +143,15 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
             </p>
           </CardContent>
         </Card>
+      ) : null}
+
+      {offer.settlementMode === "landlord_claim" ? (
+        <LandlordProceedsCard
+          reference={offer.reference}
+          claim={claim ?? null}
+          purchasePriceCents={offer.purchasePriceCents}
+          feeCents={offer.feeCents}
+        />
       ) : null}
 
       {offer.status === "draft" ? (

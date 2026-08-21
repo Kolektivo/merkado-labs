@@ -16,6 +16,12 @@ export type CollectionStatus = "received" | "reconciled" | "released" | "frozen"
 export type ChecklistState = "open" | "closed";
 export type DocumentState = "generated" | "pending" | "signed" | "not_required";
 export type PaymentOption = "A" | "B";
+export type SettlementMode = "automatic" | "landlord_claim";
+export type LandlordProceedsClaimStatus =
+  | "available"
+  | "processing"
+  | "paid"
+  | "failed";
 export type ActorRole =
   | "operations"
   | "independent_approver"
@@ -38,6 +44,8 @@ export type Party = {
   kind: "natural_person" | "company" | "foundation";
   relatedParty?: boolean;
   relatedPartyNote?: string;
+  /** Unverified demo payout EOA. Mock-only; never implies wallet ownership. */
+  eoaAddress?: string | null;
 };
 
 export type Comparable = {
@@ -134,7 +142,8 @@ export type DistributionStatus = "pending" | "distributed";
 export type LedgerTransactionKind =
   | "advance_settlement"
   | "rent_payment"
-  | "holder_distribution";
+  | "holder_distribution"
+  | "landlord_proceeds_claim";
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
 
@@ -220,6 +229,43 @@ export type PositionRecord = {
   externalTokenId: null;
 };
 
+/**
+ * Mock business allocation of Marketplace funding to the principal Safe.
+ * This is NOT an on-chain transfer receipt. It aggregates the in-book
+ * purchase and is fully separate from renter `ra_payment_verifications`.
+ */
+export type OfferFundingRecord = {
+  fundingRecordId: string;
+  offerId: string;
+  offerReference: string;
+  category: "offer_purchase";
+  railMode: "mock";
+  safeAddress: string;
+  purchasePriceCents: number;
+  amountUsdcAtomic: number;
+  status: "recorded";
+  createdAt: string;
+};
+
+/**
+ * Mock landlord claim on sale proceeds. The destination EOA is an unverified
+ * demo address, not proof of wallet ownership.
+ */
+export type LandlordProceedsClaim = {
+  claimId: string;
+  offerId: string;
+  offerReference: string;
+  landlordId: string;
+  feeCents: number;
+  claimableCents: number;
+  destinationEoa: string | null;
+  status: LandlordProceedsClaimStatus;
+  transactionId: string | null;
+  txHash: null;
+  createdAt: string;
+  paidAt: string | null;
+};
+
 export type Receivable = {
   n: number;
   dueDate: string;
@@ -272,6 +318,8 @@ export type HolderPosition = {
   contributedCents: number;
   receivedCents: number;
   anonymised: boolean;
+  /** Server-only, never serialised to purchaser/payer/landlord screens. */
+  eoaAddress?: string | null;
 };
 
 export type ReleaseInstruction = {
@@ -288,6 +336,7 @@ export type Offer = {
   settlementTransactionId?: string | null;
   reference: string;
   status: OfferStatus;
+  settlementMode: SettlementMode;
   seriesDisplayName: string;
   createdAt: string;
   publishedAt: string | null;
@@ -358,6 +407,8 @@ export type DemoBook = {
   ledgerTransactions?: LedgerTransaction[];
   distributions?: DistributionRecord[];
   positions?: PositionRecord[];
+  offerFundingRecords?: OfferFundingRecord[];
+  landlordProceedsClaims?: LandlordProceedsClaim[];
 };
 
 export type BuyerOfferCard = {

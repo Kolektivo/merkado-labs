@@ -217,6 +217,7 @@ function makeOffer(input: {
   missedCount?: number;
   createdAt?: string;
   marketRentCents?: number;
+  settlementMode?: "automatic" | "landlord_claim";
 }): Offer {
   const related = Boolean(input.relatedParty);
   const quote = quoteFor(
@@ -252,6 +253,7 @@ function makeOffer(input: {
       : null,
     reference: input.reference,
     status: input.status,
+    settlementMode: input.settlementMode ?? "automatic",
     seriesDisplayName: "Merkado Direct · Rent Advance",
     createdAt: input.createdAt ?? "2026-08-13T09:44:00-04:00",
     publishedAt: input.status === "draft" ? null : "2026-08-28T10:05:00-04:00",
@@ -599,6 +601,7 @@ function buildOffers(): Offer[] {
       fundedCents: 0,
       offeringCents: quoteFor(100, 6, false, 89, 95).purchasePriceCents,
       marketRentCents: 200,
+      settlementMode: "landlord_claim",
       property: makeProperty({
         id: "prop-010",
         address: "Demo address · Punda",

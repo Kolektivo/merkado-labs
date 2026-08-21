@@ -75,6 +75,38 @@ field a token ID in the UI. `externalTokenId` may exist as null.
 `property` series type exists on `ra_series` so the platform is not
 hardcoded to receivables. It is not implemented.
 
+### Settlement mode and landlord proceeds claim
+
+- **`SettlementMode`** = `"automatic" | "landlord_claim"` on each Offer.
+  Missing historical mode normalizes to `automatic`.
+- **`OfferFundingRecord`** = the mocked business allocation created once
+  when a claim-mode offer is fully funded (UI wording **“Mock funding
+  recorded”**). Fields: `fundingRecordId`, `offerId`, `offerReference`,
+  `category: "offer_purchase"`, `railMode: "mock"`, `safeAddress`,
+  `purchasePriceCents`, `amountUsdcAtomic`, `status: "recorded"`,
+  `createdAt`. It is **not** an on-chain transfer receipt and never implies
+  one.
+- **`LandlordProceedsClaim`** = the mocked claim on sale proceeds. Fields:
+  `claimId`, `offerId`, `offerReference`, `landlordId`, `feeCents`,
+  `claimableCents`, `destinationEoa` (unverified demo EOA), `status`,
+  `transactionId`, `txHash` (always `null`), `createdAt`, `paidAt`.
+- **Optional party payout addresses** — `Party.eoaAddress` and
+  `HolderPosition.eoaAddress` are server-only, unverified demo addresses.
+  They are never serialised to purchaser, payer, or landlord screens.
+- **Money invariant for the claim** —
+  `claimableCents = purchasePriceCents = offeringCents = fundedCents =
+  grossReceivables − fee`. The existing `feeCents` is informational and is
+  **never deducted twice**.
+
+### Landlord claim lifecycle
+
+`available → processing → paid` (also `failed`). `paid` is terminal and
+never duplicates ledger/events. Only a paid claim writes the mocked
+`landlord_proceeds_claim` ledger row; `txHash` stays `null` (no fake chain
+evidence). A claim-mode offer never records an automatic
+`advance_settlement` during normalization. Retries go only to the locked
+`destinationEoa`; a different address is rejected once processing begins.
+
 ## 5. Lifecycle
 
 `draft → under_review → funding → live/collecting → closed`  
@@ -102,7 +134,9 @@ distribution economics.
 
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
-crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
+crash. `offerFundingRecords` and `landlordProceedsClaims` are optional book
+arrays that default to empty on older payloads. `cryptoConfig` is
+catalog-owned (network, chain ID, native USDC,
 explorer). Older `optimism` and OP Sepolia books rematch to **Base
 Sepolia**. Reset restores the complete current seed and keeps the
 selected payment network. No new migration for this pivot.

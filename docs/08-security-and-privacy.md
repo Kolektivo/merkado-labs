@@ -115,6 +115,9 @@ Operational detail: `12-deployment-runbook.md`.
 - Payer screens: no fee, purchase price, holders, or scheduled holder figures.
 - Purchaser screens: no tenant name, employer, address, contact, or exact income.
 - Landlord screens: no holder wallet or Safe address.
+- The landlord claim destination EOA is **server-only**. It never crosses
+  into the payer, purchaser, or portfolio surfaces, and it never implies
+  wallet ownership. `txHash` stays `null` for landlord payouts.
 - No public offering copy. Sole-holder mode until written opinions exist.
 - Related-party family facts are disclosed to holders; they are not an excuse
   for softer arrears.
@@ -136,6 +139,14 @@ Operational detail: `12-deployment-runbook.md`.
 - The shared walkthrough persists **Base Sepolia**. Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
   Short names such as `base` or `op` must not select mainnet.
+- The landlord proceeds claim (PR #21) is a **mock business allocation**,
+  not an on-chain transfer receipt. It never verifies against the chain and
+  is never written to `ra_payment_verifications`. The claim destination is
+  an **unverified demo EOA** (fictional only), never a real personal wallet;
+  `txHash` stays `null` and no explorer link is shown.
+- The shared host password is **not landlord authentication**. A claim is a
+  mock demo action, not proof of wallet ownership or genuine landlord
+  authorisation.
 
 ## 9. Service-role credential rules
 

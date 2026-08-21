@@ -9,6 +9,9 @@ import {
   demoTxHash,
   distributionIdFor,
   distributionTxIdFor,
+  fundingRecordIdFor,
+  landlordClaimIdFor,
+  landlordPayoutTxIdFor,
   offerIdFromReference,
   paymentTxIdFor,
   periodLabelFromDueDate,
@@ -27,8 +30,10 @@ import type {
   DemoAccount,
   DemoBook,
   DistributionRecord,
+  LandlordProceedsClaim,
   LedgerTransaction,
   Offer,
+  OfferFundingRecord,
   PaymentRequest,
   PositionRecord,
 } from "@/lib/rent-advance/types";
@@ -83,12 +88,16 @@ export function defaultAccounts(): DemoAccount[] {
 
 function ensureOfferIds(offer: Offer): Offer {
   const offerId = offer.offerId ?? offerIdFromReference(offer.reference);
+  const settlementMode = offer.settlementMode ?? "automatic";
+  const automaticSettlement =
+    settlementMode !== "landlord_claim" && offer.fundedCents > 0;
   return {
     ...offer,
     offerId,
+    settlementMode,
     settlementTransactionId:
       offer.settlementTransactionId ??
-      (offer.fundedCents > 0 ? settlementTxIdFor(offer.reference) : null),
+      (automaticSettlement ? settlementTxIdFor(offer.reference) : null),
     receivables: offer.receivables.map((row) => ({
       ...row,
       receivableId: row.receivableId ?? receivableIdFor(offer.reference, row.n),
@@ -143,8 +152,15 @@ export function applySubscribe(
   if (filled && offer.status === "funding") offer.status = "live";
   if (filled) {
     offer.publishedAt = offer.publishedAt ?? at;
-    offer.settlementTransactionId = settlementTxIdFor(offer.reference);
-    offer.nextAction = "Collect first rent";
+    if (offer.settlementMode === "landlord_claim") {
+      addOfferFundingRecord(next, offer);
+      addAvailableClaim(next, offer, at);
+      offer.settlementTransactionId = offer.settlementTransactionId ?? null;
+      offer.nextAction = "Collect first rent";
+    } else {
+      offer.settlementTransactionId = settlementTxIdFor(offer.reference);
+      offer.nextAction = "Collect first rent";
+    }
   } else {
     offer.nextAction = "Wait for remaining funding";
   }
@@ -171,19 +187,22 @@ export function applySubscribe(
     at,
     title: filled ? "Offer filled" : "Participation purchased",
     detail: filled
-      ? `${formatXcg(purchaseCents)} filled the offering. The landlord settlement is recorded.`
+      ? offer.settlementMode === "landlord_claim"
+        ? `${formatXcg(purchaseCents)} filled the offering. Proceeds are now available for the landlord to claim.`
+        : `${formatXcg(purchaseCents)} filled the offering. The landlord settlement is recorded.`
       : `${formatXcg(purchaseCents)} purchased. ${formatXcg(offer.offeringCents - offer.fundedCents)} still open.`,
     actor: "System",
   };
-  const settlementEvent = filled
-    ? {
-        id: `ev-${reference}-settled`,
-        at,
-        title: "Settled to the landlord",
-        detail: "Purchase price released in one payment",
-        actor: "System",
-      }
-    : null;
+  const settlementEvent =
+    filled && offer.settlementMode !== "landlord_claim"
+      ? {
+          id: `ev-${reference}-settled`,
+          at,
+          title: "Settled to the landlord",
+          detail: "Purchase price released in one payment",
+          actor: "System",
+        }
+      : null;
 
   offer.events = [
     purchaseEvent,
@@ -194,7 +213,145 @@ export function applySubscribe(
   return normalizeBook(next);
 }
 
+function addOfferFundingRecord(book: DemoBook, offer: Offer): void {
+  const id = fundingRecordIdFor(offer.reference);
+  const existing = (book.offerFundingRecords ?? []).find((row) => row.fundingRecordId === id);
+  if (existing) return;
+  const record: OfferFundingRecord = {
+    fundingRecordId: id,
+    offerId: offer.offerId ?? offerIdFromReference(offer.reference),
+    offerReference: offer.reference,
+    category: "offer_purchase",
+    railMode: "mock",
+    safeAddress: DEMO_RECEIVING_ADDRESS,
+    purchasePriceCents: offer.fundedCents,
+    amountUsdcAtomic: usdcAtomicFromUsdCents(offer.fundedCents),
+    status: "recorded",
+    createdAt: new Date().toISOString(),
+  };
+  book.offerFundingRecords = [record, ...(book.offerFundingRecords ?? [])];
+}
+
+function addAvailableClaim(book: DemoBook, offer: Offer, at: string): void {
+  const claimId = landlordClaimIdFor(offer.reference);
+  const existing = (book.landlordProceedsClaims ?? []).find((row) => row.claimId === claimId);
+  if (existing) return;
+  const claim: LandlordProceedsClaim = {
+    claimId,
+    offerId: offer.offerId ?? offerIdFromReference(offer.reference),
+    offerReference: offer.reference,
+    landlordId: offer.landlord.id,
+    feeCents: offer.feeCents,
+    claimableCents: offer.fundedCents,
+    destinationEoa: offer.landlord.eoaAddress ?? null,
+    status: "available",
+    transactionId: null,
+    txHash: null,
+    createdAt: at,
+    paidAt: null,
+  };
+  book.landlordProceedsClaims = [claim, ...(book.landlordProceedsClaims ?? [])];
+}
+
+export function findLandlordProceedsClaim(
+  book: DemoBook,
+  reference: string,
+): LandlordProceedsClaim | undefined {
+  return (book.landlordProceedsClaims ?? []).find(
+    (row) => row.offerReference === reference,
+  );
+}
+
+/**
+ * Start a mock landlord claim. Locks the destination EOA (unverified demo
+ * address) and moves the claim to processing. Idempotent for the same
+ * destination; a different destination once processing has begun is rejected.
+ */
+export function applyLandlordClaimStart(
+  book: DemoBook,
+  reference: string,
+  destinationEoa: string,
+): DemoBook {
+  const next = normalizeBook(structuredClone(book));
+  const claim = findLandlordProceedsClaim(next, reference);
+  if (!claim) throw new Error("No landlord claim is available for this offer.");
+  const destination = destinationEoa.trim().toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(destination)) {
+    throw new Error("Enter a valid 20-byte demo wallet address.");
+  }
+  if (claim.status === "paid") {
+    throw new Error("This claim has already been paid.");
+  }
+  if (claim.status === "processing" && claim.destinationEoa?.toLowerCase() !== destination) {
+    throw new Error("This claim is already processing to a different address.");
+  }
+  claim.destinationEoa = destination;
+  claim.status = "processing";
+  claim.transactionId = landlordPayoutTxIdFor(reference);
+  return next;
+}
+
+/**
+ * Mark a mock landlord claim paid and record the mocked payout ledger row.
+ * Terminal; retries return the existing paid claim without duplicating rows.
+ */
+export function applyLandlordClaimComplete(
+  book: DemoBook,
+  reference: string,
+  at = new Date().toISOString(),
+): DemoBook {
+  const next = normalizeBook(structuredClone(book));
+  const claim = findLandlordProceedsClaim(next, reference);
+  if (!claim) throw new Error("No landlord claim is available for this offer.");
+  if (claim.status === "paid") return next;
+  if (claim.status !== "processing") {
+    throw new Error("Start the claim before completing it.");
+  }
+  claim.status = "paid";
+  claim.paidAt = at;
+  const offer = next.offers.find((row) => row.reference === reference);
+  if (offer) {
+    offer.settlementTransactionId = landlordPayoutTxIdFor(reference);
+    offer.nextAction = "Collect first rent";
+  }
+  upsertLedger(next, {
+    transactionId: landlordPayoutTxIdFor(reference),
+    kind: "landlord_proceeds_claim",
+    offerId: claim.offerId,
+    offerReference: claim.offerReference,
+    paymentRequestId: null,
+    collectionId: null,
+    distributionId: null,
+    amountXcgCents: claim.claimableCents,
+    amountUsdcAtomic: usdcAtomicFromUsdCents(claim.claimableCents),
+    status: "confirmed",
+    createdAt: at,
+    confirmedAt: at,
+    txHash: null,
+    fromLabel: "Sale proceeds",
+    toLabel: "Landlord",
+  });
+  return next;
+}
+
+/**
+ * Mark a mock landlord claim as failed so the landlord can retry to the same
+ * locked destination.
+ */
+export function applyLandlordClaimFail(
+  book: DemoBook,
+  reference: string,
+): DemoBook {
+  const next = normalizeBook(structuredClone(book));
+  const claim = findLandlordProceedsClaim(next, reference);
+  if (!claim) throw new Error("No landlord claim is available for this offer.");
+  if (claim.status === "paid") return next;
+  claim.status = "failed";
+  return next;
+}
+
 function settlementTransaction(offer: Offer): LedgerTransaction | null {
+  if (offer.settlementMode === "landlord_claim") return null;
   if (offer.fundedCents <= 0 || offer.fundedCents < offer.offeringCents) return null;
   const transactionId = settlementTxIdFor(offer.reference);
   return {
@@ -275,7 +432,10 @@ function positionForOffer(offer: Offer): PositionRecord | null {
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     holderId: offer.holders[0]?.holderId ?? "act-purchaser",
-    settlementTransactionId: settlementTxIdFor(offer.reference),
+    settlementTransactionId:
+      offer.settlementMode === "landlord_claim"
+        ? (offer.settlementTransactionId ?? null)
+        : settlementTxIdFor(offer.reference),
     externalTokenId: null,
   };
 }
@@ -325,6 +485,16 @@ export function normalizeBook(raw: unknown): DemoBook {
   for (const offer of offers) {
     const settlement = settlementTransaction(offer);
     if (settlement) ledgerTransactions.push(existingTx.get(settlement.transactionId) ?? settlement);
+  }
+  // Persisted mock landlord-payout ledger rows survive normalization. They are
+  // created only when a claim is paid, so they are not re-derived here.
+  for (const row of book.ledgerTransactions ?? []) {
+    if (
+      row.kind === "landlord_proceeds_claim" &&
+      !ledgerTransactions.some((item) => item.transactionId === row.transactionId)
+    ) {
+      ledgerTransactions.push(row);
+    }
   }
   for (const request of paymentRequests) {
     if (!request.transactionId) continue;
@@ -389,6 +559,8 @@ export function normalizeBook(raw: unknown): DemoBook {
     ledgerTransactions,
     distributions,
     positions,
+    offerFundingRecords: book.offerFundingRecords ?? [],
+    landlordProceedsClaims: book.landlordProceedsClaims ?? [],
   };
 }
 

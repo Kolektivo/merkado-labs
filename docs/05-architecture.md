@@ -31,7 +31,11 @@ Customer-facing surfaces:
 - Server components load one demo book from Labs Supabase (`ra_demo_state`)
   with a seed fallback and `normalizeBook()` for older JSON.
 - Mutations are server actions (record collection, dual-control release,
-  submit for review, confirm mocked payment, reset).
+  submit for review, confirm mocked payment, reset). PR #21 adds the
+  landlord claim server actions (`startLandlordProceedsClaimAction`,
+  `completeLandlordProceedsClaimAction`, `failLandlordProceedsClaimAction`)
+  in `src/lib/rent-advance/actions.ts`, built on the mock apply helpers in
+  `src/lib/rent-advance/payment-apply.ts`.
 - There is no Merkado login. After deploy, the hosted demo asks for a
   shared host password at `/enter`. Reset the book sits in Admin.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
@@ -65,6 +69,15 @@ Receivables, collections, payment requests, and distributions are separate
 on purpose. A confirmed Pay event updates them once through an idempotent
 helper.
 
+Settlement is `settlementMode`-aware. An `"automatic"` offer (MRA-001) gets
+a derived `advance_settlement` ledger row on full funding. A
+`"landlord_claim"` offer (MRA-010 and every newly created offer) instead
+records an **OfferFundingRecord** (**mock funding recorded**) and creates a
+`LandlordProceedsClaim` in `available` when fully funded; the mocked
+`landlord_proceeds_claim` ledger row is written only when the claim is
+`paid`. No claim-mode offer records an automatic `advance_settlement`
+during normalization.
+
 ## 5. Mock crypto boundary
 
 UI does not call mock wallet functions directly. It uses
@@ -82,6 +95,12 @@ The verified Base Sepolia deposit Safe
 (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) is in
 `cryptoConfig.safeAddress`. Explorer links render only for a real
 64-hex transaction hash on an official catalog explorer.
+
+The renter payment rail is untouched by PR #21: the mock
+`PaymentProvider`, `PAYMENT_RAIL_MODE`, and PR #20's
+`ra_payment_verifications` idempotency all stay as they are. The
+landlord proceeds claim is a separate in-book mock allocation and is
+never verified against the chain or written to `ra_payment_verifications`.
 
 ## 6. Future home
 

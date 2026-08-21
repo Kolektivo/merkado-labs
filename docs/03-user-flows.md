@@ -39,6 +39,20 @@ on customer Home.
    collection / automatic distribution status. Later rent is not paid to
    the landlord again. Drafts keep **Submit for review**. Independent
    approval, Record collection, and dual-control live in **Admin**.
+6. **Landlord proceeds claim** (PR #21) — on a fully-funded claim-mode
+   offer (`landlord_claim`), the offer detail shows a **Landlord proceeds**
+   card. The claim starts in `available`: the landlord enters an
+   **unverified demo payout address** and clicks **Claim proceeds**. The
+   claim moves to `processing` and locks that destination. From there the
+   landlord can **Mark as paid** (terminal — records a mocked
+   `landlord_proceeds_claim` ledger row, never a duplicate) or **Mark as
+   failed**. A failed claim can only **Retry claim** to the same locked
+   destination; a different address is rejected once processing has begun.
+   The mock disclosure reads **“Mock demo — no wallet ownership was
+   verified and no on-chain transfer was sent.”** No explorer link, no
+   token, and `txHash` stays `null`. MRA-001 stays automatic and shows no
+   claim. This is a mock, and the shared host password is **not** landlord
+   authentication.
 
 ## 4. Holder (Merkado Direct)
 
@@ -46,6 +60,8 @@ on customer Home.
    photo, district, beds, type, combined property view, payment history,
    term, and amount filled. A holder can buy any portion still open. The
    cheap Punda studio (MRA-010) is the small walkthrough purchase.
+   Filling a claim-mode offering records the **mock funding recorded**
+   allocation and makes the landlord proceeds claim `available`.
 2. Offer detail stays privacy-walled. No tenant name, employer, income,
    contact, or street address. A funded offer links to its Portfolio
    position.
@@ -98,3 +114,5 @@ confirmed stay distinct in the data model.
 - Purchaser never contacts the payer.
 - Payer never sees the purchaser.
 - Landlord never sees holder wallet details.
+- The landlord claim destination EOA is server-only. It never crosses into
+  the payer, purchaser, or portfolio surfaces.

@@ -1,10 +1,19 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet; Luis PR 19 still draft)
+**Last updated:** August 20, 2026 (PR #21 — mocked landlord proceeds claim; Base Sepolia / Base Mainnet; Luis PR 19 still draft)
 
 ## Now
 
+- **PR #21 — mocked landlord proceeds claim: implemented on the branch
+  `task/pr21-mocked-proceeds-claim`** (stacked on PR #20). Claim-mode
+  offers record an `OfferFundingRecord` (**mock funding recorded**) and a
+  `LandlordProceedsClaim` (`available → processing → paid`/`failed`) when
+  fully funded. **MRA-001 stays automatic**; MRA-010 and all newly created
+  offers use `landlord_claim`. Fictional EOAs only; `txHash` stays `null`.
+  It is a mock business allocation, never an on-chain receipt, and does
+  not touch the renter pay rail or `ra_payment_verifications`. Pending
+  Product Lead verification and merge.
 - Set `LABS_DEMO_PASSWORD` on the Labs Vercel Production environment,
   then approve commit and push so the host password is live on
   `merkado-labs.vercel.app`.

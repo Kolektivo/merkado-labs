@@ -46,7 +46,7 @@ Local stays open. No Merkado login. Operations live on **Admin**.
 | My Offers `/originate` | The two-offer demo book: live **MRA-001** first, open **MRA-010** next. Simulator and Create Offer as the next steps. Advance totals exclude drafts, under-review, and unfunded rows. |
 | Create offer `/originate/new` | Six-step wizard with cover photo. A Simulator quote can prefill via `?quote=1&rentCents=&marketCents=&listing=&payer=&months=` and opens on Quote. Submit for review. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
-| Offer detail `/originate/MRA-*` | Settlement card with collected / awaiting / distributed. Drafts keep **Submit for review**. Independent approval, Record collection, arrears, fee buildup, and dual-control live in Admin. |
+| Offer detail `/originate/MRA-*` | **MRA-001** (automatic settlement) shows the settlement card with collected / awaiting / distributed. Claim-mode offers (**MRA-010** and all new) show a **Landlord proceeds** card instead: mock funding recorded, purchase price, existing fee (informational, not double-deducted), available-to-claim amount, then `available → processing → paid`/`failed` with an unverified demo payout address and **“Mock demo — no wallet ownership was verified and no on-chain transfer was sent.”** Drafts keep **Submit for review**. Independent approval, Record collection, arrears, fee buildup, and dual-control live in Admin. |
 | Marketplace `/offers` | Two anonymised cards: funded **MRA-001** and open **MRA-010** (cheap Punda studio). A holder can buy any portion still open. Funded offers link to the matching Portfolio position. No tenant name, employer, street, agency, or income. |
 | Portfolio `/portfolio` | Stable Position IDs. Collected / awaiting distribution / distributed. Automatic distributions. Purchases from Marketplace appear here. No Claim and no transfer UI. |
 | Pay `/pay` → `/pay/[paymentRequestId]` | Payment inbox lists the renter’s requests. Amounts show **XCG**; settlement is USDC. Canonical seeded request `payreq-mra-001-202609` is **XCG 3,222.00** / **1,800.00 USDC**. After MRA-010 is purchased, six **XCG 1.79** / **1.00 USDC** requests appear. A later month cannot be paid while an earlier month on the same offer is still open. |
@@ -136,6 +136,12 @@ new drafts.
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Pay labels
   update. Reset keeps the selected test network.
 - Admin Reset the book asks to confirm, then restores the seeded book.
+- Landlord proceeds claim (PR #21): filling a claim-mode offer records one
+  **mock funding recorded** allocation and one `available` landlord claim.
+  Claiming locks an unverified demo payout address; **Mark as paid** is
+  terminal (one mocked payout ledger row, `txHash` stays `null`, no
+  explorer link); **Mark as failed** allows retry only to the same locked
+  address. MRA-001 stays automatic and shows no claim.
 
 ### Mock crypto boundary (Labs only)
 

@@ -131,6 +131,24 @@ MRA-001 locked Pay request:
 - Amount to send: **1,800.00 USDC** (`1800000000`)
 - Human reference: `MRA-001-01` (not encoded in a plain ERC-20 transfer)
 
+### Landlord proceeds claim (PR #21) — mock allocation, not a chain receipt
+
+PR #21 is a **separate in-book mock**, unrelated to the renter USDC rail.
+
+- Claim-mode offers (`landlord_claim`) record an **OfferFundingRecord** —
+  UI wording **“Mock funding recorded”** — when fully funded. It is a
+  **mock business allocation**, never “Deposit confirmed on-chain”, and is
+  never verified against the chain or written to `ra_payment_verifications`.
+- The landlord proceeds claim payout destination is an **unverified demo
+  EOA** (fictional only), stored server-side and never shown across privacy
+  walls. It never implies wallet ownership. `txHash` stays `null` and no
+  explorer link is shown.
+- **No new wallet or Safe SDK.** PR #21 introduces no dependency and does
+  not change `createPaymentProvider`, `PAYMENT_RAIL_MODE`, or PR #20's
+  `ra_payment_verifications` idempotency. The renter pay rail is untouched.
+- Holder rent distributions remain **automatic**. The claim supersedes
+  “no Claim” **only** for new claim-mode offer sale proceeds.
+
 ### What you replace (one factory)
 
 | Piece | Path | Your action |

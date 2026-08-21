@@ -57,6 +57,11 @@ repo**. They live on merkado-cw.
 | Commercial form | True sale of receivables (*koop en cessie*) |
 | Landlord money | One upfront purchase amount; later collections go to holders |
 | Holder distributions | Automatic in this demo; no Claim button |
+| Settlement mode | Each Offer has `settlementMode` = `"automatic"` or `"landlord_claim"`. **MRA-001 stays automatic** (historically settled). **MRA-010 and all newly created offers use `landlord_claim`**. Missing historical mode normalizes to `automatic`. |
+| Landlord proceeds claim | A **mocked** claim (PR #21) for fully-funded claim-mode sale proceeds. Lifecycle `available → processing → paid` (also `failed`). `paid` is terminal and never duplicates ledger/events. `txHash` stays `null` (no fake chain evidence). No NFT, no token, no explorer link. |
+| Funding record terminology | Use **OfferFundingRecord**; UI wording **“Mock funding recorded”**, never “Deposit confirmed on-chain”. It is a mock business allocation, not a transfer receipt. |
+| Fictional EOAs | Landlord claim destination is an **unverified demo address**, stored server-side, never shown across privacy walls. Mock-only; never implies wallet ownership. |
+| Failed-claim retry | Retries go **only to the locked destination**; a different address is rejected once processing begins. Reset/edit returns the claim to `available`. |
 | Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |
 | Fee model | Single % of gross receivables; no flat fees |
@@ -105,3 +110,10 @@ blindly rewrite internal legal questions or private underwriting fields.
 
 Schema and code may keep legacy names (`passport`, `passportScore`) as
 internal aliases for Listing Score.
+
+Use for the landlord proceeds claim: **landlord proceeds claim**,
+**mock funding recorded**, **unverified demo payout address**, **mock demo —
+no wallet ownership was verified**. A claim is a **mock business
+allocation**, never an on-chain transfer receipt. Never call it a
+“Deposit confirmed on-chain”, a token, an NFT, or a transferable position.
+`externalTokenId` stays `null`.
