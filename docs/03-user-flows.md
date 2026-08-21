@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 ## 1. Hosted access
 
@@ -35,10 +35,37 @@ on customer Home.
    non-sensitive values into Create Offer.
 4. **Create Offer** — six steps including a cover photo, then **Submit for
    review**. 9/12 and cap-breached quotes cannot be submitted.
-5. Offer detail — cash figures, one-time mocked upfront settlement, and
-   collection / automatic distribution status. Later rent is not paid to
-   the landlord again. Drafts keep **Submit for review**. Independent
+5. Offer detail — cash figures, mocked landlord sale-proceeds claim, and
+   collection / automatic holder rent-distribution status. Later rent is not
+   paid to the landlord again. Drafts keep **Submit for review**. Independent
    approval, Record collection, and dual-control live in **Admin**.
+6. **Landlord proceeds claim** (PR #22 draft) — on every fully funded offer
+   (`landlord_claim`), including MRA-001 and MRA-010, the offer detail shows
+   a **Landlord proceeds** card. The claim starts in `available`: the landlord enters an
+   **unverified demo payout address** and clicks **Claim proceeds**. The
+   claim moves to `processing` and locks that destination. From there the
+   landlord can **Mark as paid** (terminal — records a mocked
+   `landlord_proceeds_claim` ledger row, never a duplicate) or **Mark as
+   failed**. A failed claim can only **Retry claim** to the same locked
+   destination; a different address is rejected once processing has begun.
+   The mock disclosure reads **“Mock demo — no wallet ownership was
+   verified and no on-chain transfer was sent.”** No explorer link, no
+   token, and `txHash` stays `null`. No offer uses or retains automatic
+   landlord sale-proceeds settlement or an `advance_settlement`. This is a
+   mock, and the shared host password is **not** landlord
+   authentication.
+
+```mermaid
+flowchart TD
+    A[Offer fully funded<br/>landlord_claim] --> B[OfferFundingRecord<br/>Mock funding recorded]
+    B --> C[LandlordProceedsClaim<br/>available]
+    C -->|Claim proceeds<br/>enter unverified demo EOA| D[processing<br/>destination locked]
+    D -->|Mark as paid| E[paid - terminal<br/>mocked payout ledger row]
+    D -->|Mark as failed| F[failed]
+    F -->|Retry claim<br/>same locked destination| D
+    D -.->|different address rejected| D
+    E -.->|no explorer link, txHash null| E
+```
 
 ## 4. Holder (Merkado Direct)
 
@@ -46,12 +73,15 @@ on customer Home.
    photo, district, beds, type, combined property view, payment history,
    term, and amount filled. A holder can buy any portion still open. The
    cheap Punda studio (MRA-010) is the small walkthrough purchase.
+   Filling an offering records the **mock funding recorded**
+   allocation and makes the landlord proceeds claim `available`.
 2. Offer detail stays privacy-walled. No tenant name, employer, income,
    contact, or street address. A funded offer links to its Portfolio
    position.
 3. Portfolio shows pre-seeded positions with a stable Position ID,
    collected / awaiting distribution / distributed amounts, and mocked
-   transaction references. Distributions are automatic. There is no Claim
+   transaction references. Holder rent distributions remain automatic and
+   are separate from landlord sale-proceeds claims. There is no holder Claim
    button and no transfer or sale UI.
 
 ## 5. Renter (Merkado Pay)
@@ -98,3 +128,5 @@ confirmed stay distinct in the data model.
 - Purchaser never contacts the payer.
 - Payer never sees the purchaser.
 - Landlord never sees holder wallet details.
+- The landlord claim destination EOA is server-only. It never crosses into
+  the payer, purchaser, or portfolio surfaces.

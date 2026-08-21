@@ -57,8 +57,9 @@ Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
 
 ## Database
 
-Migrations live in `supabase/migrations/`. Only the Rent Advance rebuild and
-dual-control trigger remain. Do not apply this to production.
+Migrations live in `supabase/migrations/`. They include the Rent Advance
+rebuild, dual-control trigger, and PR #20's Labs-only payment-verification
+table. Do not apply them to production.
 
 ## GitHub verification
 

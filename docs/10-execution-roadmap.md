@@ -1,10 +1,19 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet; Luis PR 19 still draft)
+**Last updated:** August 20, 2026 (PR #22 draft — claim for every offer; stacked on PR #20 / PR #19)
 
 ## Now
 
+- **PR #22 — landlord proceeds claim for every offer: approved and still
+  draft**, stacked on PR #20 / PR #19. Remove automatic landlord
+  sale-proceeds settlement entirely. MRA-001, MRA-010, and every new or
+  existing offer use `landlord_claim`; missing or `automatic` modes migrate
+  to it; and no offer derives or retains `advance_settlement`. Every fully
+  funded offer records an `OfferFundingRecord` (**mock funding recorded**)
+  and a `LandlordProceedsClaim` (`available → processing → paid`/`failed`).
+  Fictional EOAs only; `txHash` stays `null`. Automatic holder **rent
+  distributions** remain unchanged. This is not deployed or live.
 - Set `LABS_DEMO_PASSWORD` on the Labs Vercel Production environment,
   then approve commit and push so the host password is live on
   `merkado-labs.vercel.app`.

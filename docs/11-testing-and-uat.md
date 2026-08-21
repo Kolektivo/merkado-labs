@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 ## Automated
 
@@ -45,7 +45,7 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
    Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
    disabled when unapproved or above 24%.
 5. Use this quote prefills Create Offer. 9/12 cannot submit.
-6. Offer detail: settlement card; later rent collected / awaiting /
+6. Offer detail: landlord proceeds claim card; later rent collected / awaiting /
    distributed. Operations controls are only in Admin.
 7. Marketplace: no tenant name or address; a holder can buy any portion
    still open; Property Score is the derived figure.
@@ -59,6 +59,17 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
     behaviour only for absolute URLs.
 12. Customer screens do not show a sale-not-loan wall, fee buildup, or
     extra comparison figures. Those live in Admin if needed.
+13. Landlord proceeds claim (PR #22 draft): every fully funded offer,
+    including MRA-001 and MRA-010,
+    shows a **Landlord proceeds** card. `available` → enter unverified
+    demo payout address → **Claim proceeds** → `processing` (destination
+    locked) → **Mark as paid** (terminal, mocked `landlord_proceeds_claim`
+    ledger row, no duplicate) or **Mark as failed** → **Retry claim** only
+    to the same locked destination. `txHash` stays `null`; no explorer
+    link. Legacy missing or `automatic` modes normalize to
+    `landlord_claim`; no offer derives or retains `advance_settlement`.
+    Automatic holder rent distributions still occur exactly once and stay
+    distinct from the landlord sale-proceeds claim.
 
 ## Product Lead walkthrough
 
@@ -105,6 +116,31 @@ confirm **Yes, reset**.
 - Open the same studio again. Click **All remaining**, then **Purchase**,
   so Pay can mint the XCG 1.79 rent.
 - There is no Claim button.
+
+### 4b. Landlord proceeds claim (PR #22 draft)
+
+- On the **Punda** studio (**MRA-010**), after it is fully funded, the
+  offer detail shows a **Landlord proceeds** card reading **Mock funding
+  recorded** and the purchase price with an **available to claim** amount.
+- Enter an **unverified demo payout address** (a 20-byte `0x…`) and click
+  **Claim proceeds**. The claim moves to **processing** and the destination
+  is locked.
+- Click **Mark as paid**. The claim becomes **paid** (terminal) and shows
+  the disclosure **“Mock demo — no wallet ownership was verified and no
+  on-chain transfer was sent.”** There is no explorer link and no duplicate
+  payout row.
+- Reset, refill the studio, then instead of **Mark as paid** click
+  **Mark as failed**, then **Retry claim**. It retries **only to the same
+  locked destination**; a different address is rejected once processing has
+  begun.
+- Confirm fully funded **MRA-001** and **MRA-010** both show the claim card
+  and **Mock funding recorded**.
+- Confirm no offer shows or retains an automatic landlord settlement or
+  `advance_settlement`.
+- After rent is collected, confirm automatic holder rent distribution still
+  occurs once; this is separate from the landlord sale-proceeds claim.
+- The claim is a mock: the shared host password is **not** landlord
+  authentication.
 
 ### 5. Pay rent
 

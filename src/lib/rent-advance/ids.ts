@@ -30,16 +30,33 @@ export function distributionIdFor(reference: string, n: number): string {
   return `dist-${slugRef(reference)}-${n}`;
 }
 
-export function settlementTxIdFor(reference: string): string {
-  return `tx-settle-${slugRef(reference)}`;
-}
-
 export function paymentTxIdFor(paymentRequestId: string): string {
   return `tx-pay-${paymentRequestId}`;
 }
 
 export function distributionTxIdFor(reference: string, n: number): string {
   return `tx-dist-${slugRef(reference)}-${n}`;
+}
+
+export function fundingRecordIdFor(reference: string): string {
+  return `fund-${slugRef(reference)}`;
+}
+
+export function landlordClaimIdFor(reference: string): string {
+  return `claim-landlord-${slugRef(reference)}`;
+}
+
+export function landlordPayoutTxIdFor(reference: string): string {
+  return `tx-claim-${slugRef(reference)}`;
+}
+
+/** Fictional demo EOAs only. Never a real personal wallet in this shared demo. */
+export const DEMO_LANDLORD_EOA = "0x" + "A1B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4".toLowerCase();
+export const DEMO_HOLDER_EOA = "0x" + "B2C3D4E5F60718293A4B5C6D7E8F90A1B2C3D4E5".toLowerCase();
+
+/** Accepts only a 20-byte EVM address (no zero, no self/Safe address check here). */
+export function isValidEoaAddress(value: string | null | undefined): boolean {
+  return Boolean(value && /^0x[a-fA-F0-9]{40}$/.test(value));
 }
 
 export function demoTxHash(seed: string): string {

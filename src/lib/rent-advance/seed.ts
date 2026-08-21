@@ -247,11 +247,10 @@ function makeOffer(input: {
 
   return {
     offerId: offerIdFromReference(input.reference),
-    settlementTransactionId: (input.fundedCents ?? (input.status === "draft" ? 0 : 1)) > 0
-      ? `tx-settle-${input.reference.toLowerCase()}`
-      : null,
+    settlementTransactionId: null,
     reference: input.reference,
     status: input.status,
+    settlementMode: "landlord_claim",
     seriesDisplayName: "Merkado Direct · Rent Advance",
     createdAt: input.createdAt ?? "2026-08-13T09:44:00-04:00",
     publishedAt: input.status === "draft" ? null : "2026-08-28T10:05:00-04:00",
@@ -530,8 +529,15 @@ function buildOffers(): Offer[] {
   mra001.feeCents = 59400;
   mra001.purchasePriceCents = 1020600;
   mra001.advanceRate = 0.945;
-  mra001.offeringCents = 1050000;
-  mra001.originationSpreadCents = 29400;
+  mra001.unitsIssued = 1;
+  mra001.subscriptionPriceCents = mra001.purchasePriceCents;
+  mra001.offeringCents = mra001.purchasePriceCents;
+  mra001.fundedCents = mra001.purchasePriceCents;
+  mra001.originationSpreadCents = 0;
+  if (mra001.holders[0]) {
+    mra001.holders[0].units = 1;
+    mra001.holders[0].contributedCents = mra001.purchasePriceCents;
+  }
   mra001.events = [
     {
       id: "ev-001-6",
@@ -541,17 +547,10 @@ function buildOffers(): Offer[] {
       actor: "System",
     },
     {
-      id: "ev-001-5",
-      at: "2026-09-04T14:40:00-04:00",
-      title: "Settled to the landlord",
-      detail: "D. Martina · purchase price released in one payment",
-      actor: "D. Martina",
-    },
-    {
       id: "ev-001-4",
       at: "2026-09-03T11:22:00-04:00",
       title: "Offer fully funded",
-      detail: "Sole holder · 1,000 participation units",
+      detail: "Sole holder position",
       actor: "System",
     },
     {

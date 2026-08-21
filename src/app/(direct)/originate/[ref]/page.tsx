@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { LandlordProceedsCard } from "./landlord-proceeds-card";
 import { OfferCustomerActions } from "./offer-ops-forms";
-import { CopyValue, ExplorerLink } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
@@ -21,12 +21,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime, titleCase } from "@/lib/format";
 import {
   collectedCount,
-  distributionTotals,
   rentToMarket,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
+import { findLandlordProceedsClaim } from "@/lib/rent-advance/payment-apply";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
 
@@ -50,10 +50,7 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
 
   const collected = collectedCount(offer);
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
-  const money = distributionTotals(book, offer);
-  const settlement = book.ledgerTransactions?.find(
-    (row) => row.offerReference === offer.reference && row.kind === "advance_settlement",
-  );
+  const claim = findLandlordProceedsClaim(book, offer.reference);
 
   return (
     <div className="space-y-6">
@@ -111,36 +108,12 @@ export default async function OfferOpsPage({ params }: { params: Params }) {
         </Card>
       </div>
 
-      {settlement ? (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm text-muted-foreground">
-              Landlord settlement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">
-              <Money cents={offer.purchasePriceCents} /> paid
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <CopyValue
-                value={settlement.txHash ?? settlement.transactionId}
-                label="settlement reference"
-                truncate
-              />
-              <ExplorerLink
-                baseUrl={book.cryptoConfig?.explorerBaseUrl}
-                hash={settlement.txHash}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Collected <Money cents={money.collectedCents} /> · awaiting
-              distribution <Money cents={money.pendingDistributionCents} /> ·
-              distributed <Money cents={money.distributedCents} />
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
+      <LandlordProceedsCard
+        reference={offer.reference}
+        claim={claim ?? null}
+        purchasePriceCents={offer.purchasePriceCents}
+        feeCents={offer.feeCents}
+      />
 
       {offer.status === "draft" ? (
         <Alert>

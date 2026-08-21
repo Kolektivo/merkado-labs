@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -96,15 +95,6 @@ export default async function PortfolioPage() {
                   <StatusBadge tone={statusTone(position.status)}>
                     {statusLabel(position.status)}
                   </StatusBadge>
-                  {position.settlementTxHash ? (
-                    <div className="mt-1">
-                      <CopyValue
-                        value={position.settlementTxHash}
-                        label="settlement reference"
-                        truncate
-                      />
-                    </div>
-                  ) : null}
                 </TableCell>
               </TableRow>
             ))}

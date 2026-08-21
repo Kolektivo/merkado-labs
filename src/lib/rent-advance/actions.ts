@@ -11,6 +11,9 @@ import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advan
 import { buildScheduledReceivables, canRecordCollection } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import {
+  applyLandlordClaimComplete,
+  applyLandlordClaimFail,
+  applyLandlordClaimStart,
   applyOpsCollection,
   applyPaymentOutcome,
   applySubscribe,
@@ -270,6 +273,43 @@ export async function subscribeOfferAction(reference: string, amountCents: numbe
   refresh();
 }
 
+/**
+ * Start the mock landlord proceeds claim for a fully funded offer. The
+ * destination EOA is an unverified demo address, never a real personal wallet.
+ * Amounts, landlord identity, and the claim id are all derived server-side.
+ */
+export async function startLandlordProceedsClaimAction(
+  reference: string,
+  destinationEoa: string,
+) {
+  const book = await loadBook();
+  const next = applyLandlordClaimStart(book, reference, destinationEoa);
+  await saveBook(next);
+  refresh();
+}
+
+/**
+ * Mark the mock landlord proceeds claim paid and record the mocked payout
+ * ledger row. Terminal; retries do not duplicate payout records.
+ */
+export async function completeLandlordProceedsClaimAction(reference: string) {
+  const book = await loadBook();
+  const next = applyLandlordClaimComplete(book, reference, new Date().toISOString());
+  await saveBook(next);
+  refresh();
+}
+
+/**
+ * Mark the mock landlord claim failed so the landlord can retry to the same
+ * locked destination.
+ */
+export async function failLandlordProceedsClaimAction(reference: string) {
+  const book = await loadBook();
+  const next = applyLandlordClaimFail(book, reference);
+  await saveBook(next);
+  refresh();
+}
+
 export async function submitNewOfferAction(offer: Offer) {
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
@@ -301,6 +341,7 @@ export async function submitNewOfferAction(offer: Offer) {
     effectiveAnnualised: priced.effectiveAnnualised,
     status: "under_review",
     nextAction: "Independent approval",
+    settlementMode: "landlord_claim",
     relatedParty: false,
     relatedPartyNote: null,
     fundedCents: 0,
@@ -346,7 +387,7 @@ export async function saveDraftOfferAction(offer: Offer) {
   });
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
-  const toSave = { ...offer, status: "draft" as const };
+  const toSave = { ...offer, status: "draft" as const, settlementMode: "landlord_claim" as const };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
@@ -377,6 +418,7 @@ export async function seedOfferTemplate(): Promise<Offer> {
     ...structuredClone(canonical),
     offerId: `offer-${reference.toLowerCase()}`,
     settlementTransactionId: null,
+    settlementMode: "landlord_claim" as const,
     reference,
     status: "draft",
     fundedCents: 0,

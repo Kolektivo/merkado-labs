@@ -29,7 +29,6 @@ import {
   collectionIdFor,
   isExplorableTxHash,
   paymentTxIdFor,
-  settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
 import {
   applyPaymentOutcome,
@@ -299,21 +298,25 @@ test("provider transaction hash is stored on confirm", () => {
   assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
 });
 
-test("client transaction ids cannot overwrite the settlement ledger", () => {
+test("client transaction ids cannot create landlord settlement ledger rows", () => {
   const book = getSeedBook();
-  const settlementId = settlementTxIdFor("MRA-001");
+  const attackerControlledId = "attacker-controlled-ledger-id";
   const next = applyPaymentOutcome(
     book,
     CANONICAL_PAYMENT_REQUEST_ID,
     "confirmed",
     "2026-09-28T12:00:00.000Z",
-    { transactionId: settlementId, txHash: "not-a-hash", fromLabel: "<script>" },
+    { transactionId: attackerControlledId, txHash: "not-a-hash", fromLabel: "<script>" },
   );
-  const settlement = next.ledgerTransactions?.find((row) => row.transactionId === settlementId);
   const request = next.paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
-  assert.equal(settlement?.kind, "advance_settlement");
+  assert.equal(
+    next.ledgerTransactions?.some(
+      (row) => row.transactionId === attackerControlledId || row.kind === "advance_settlement",
+    ),
+    false,
+  );
   assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
   assert.notEqual(request?.txHash, "not-a-hash");
   assert.equal(
