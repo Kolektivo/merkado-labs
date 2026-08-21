@@ -4,20 +4,35 @@ import { Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { truncateHash } from "@/lib/rent-advance/ids";
+import { cn } from "@/lib/utils";
 
 export const DEMO_HOLDER_WALLET = "0xDEMOHOLDERWALLET0001";
 
 export function MockWalletConnection({
   connected,
   onConnect,
+  width = "page",
 }: {
   connected: boolean;
   onConnect: () => void;
+  width?: "fill" | "page";
 }) {
+  const fill = width === "fill";
+
   if (connected) {
     return (
-      <div className="flex flex-col items-start gap-2">
-        <div className="inline-flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5">
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          fill ? "items-stretch" : "items-stretch md:items-start",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5",
+            fill ? "w-full" : "w-full md:w-auto",
+          )}
+        >
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-sky-400 text-[11px] font-semibold text-white"
             aria-hidden
@@ -40,10 +55,15 @@ export function MockWalletConnection({
   }
 
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        fill ? "items-stretch" : "items-stretch md:items-start",
+      )}
+    >
       <Button
         type="button"
-        className="min-h-11 px-4"
+        className={cn("min-h-11 px-4", fill ? "w-full" : "w-full md:w-auto")}
         aria-label="Connect wallet"
         onClick={onConnect}
       >

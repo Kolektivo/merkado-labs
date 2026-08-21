@@ -35,8 +35,10 @@ Local automated checks were re-run from the repository root on 2026-08-21
 after the compact-action follow-up: lint, typecheck, unit tests (80),
 and build passed. Vercel Production follows `main`. Hosted production
 fails closed at `/enter`. Unlocking it requires `LABS_DEMO_PASSWORD`.
-**Connect wallet**, **Claim rent**, and **Purchase whole offer** size to
-their labels instead of stretching across wide columns.
+**Connect wallet** fills the offer ticket. On Portfolio it sizes to the
+label on desktop and stretches on smaller screens. **Claim rent** follows
+the same rule. Marketplace and Portfolio no longer paint a second page
+canvas over the Direct shell.
 
 Local stays open. No Merkado login. Operations live on **Admin**.
 

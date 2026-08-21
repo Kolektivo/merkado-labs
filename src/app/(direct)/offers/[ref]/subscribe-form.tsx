@@ -78,11 +78,12 @@ export function SubscribeForm({
         <MockWalletConnection
           connected={connected}
           onConnect={() => setConnected(true)}
+          width="fill"
         />
         {connected ? (
           <Button
             type="button"
-            className="h-11 px-4"
+            className="h-11 w-full"
             disabled={pending}
             onClick={() => {
               setError(null);

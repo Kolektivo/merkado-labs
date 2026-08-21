@@ -33,7 +33,9 @@ use Merkado violet as the primary action colour.
 **Marketplace, Portfolio, Pay, and Account** use a scoped `.theme-merkado`
 layer:
 
-- Page background `#FAF9F8`
+- Page background `#FAF9F8` on standalone Pay and Account shells.
+  Inside the Direct sidebar, `.theme-merkado` keeps tokens and type but
+  does not paint a second canvas over the shared page background.
 - White surfaces; foreground `#171717`; surface-dark `#141414`
 - Violet primary `#564EE4`
 - Production violet, grey, success, warning, and error scales from
@@ -91,8 +93,9 @@ outside this scoped layer.
 - One primary task should visually lead each customer page. Use a restrained
   violet tint, primary-colour amount, or primary action to guide the eye;
   supporting cards stay neutral.
-- Action buttons size to their label. Do not stretch **Connect wallet**,
-  **Claim rent**, or **Purchase** across a wide content column.
+- Action buttons fill a narrow card (offer ticket) or a small screen.
+  On a wide desktop page such as Portfolio, **Connect wallet** and
+  **Claim rent** size to their label.
 - Keep operational tables, filters, totals, payment history, and score detail
   behind a clearly labelled collapsed section when they are not required for
   the next action.
