@@ -76,7 +76,7 @@ export function MarketplaceOfferCard({
         <div className="relative aspect-[3/2] w-full shrink-0 overflow-hidden rounded-t-[12px] bg-grey-100">
           <PropertyCover
             src={coverSrcFor(card.type, card.coverImageSrc)}
-            sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
             priority={priority}
           />
         </div>
