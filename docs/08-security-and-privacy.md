@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -139,11 +139,17 @@ Operational detail: `12-deployment-runbook.md`.
 - The shared walkthrough persists **Base Sepolia**. Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
   Short names such as `base` or `op` must not select mainnet.
-- The landlord proceeds claim (PR #21) is a **mock business allocation**,
-  not an on-chain transfer receipt. It never verifies against the chain and
+- The landlord proceeds claim (PR #22 draft) is the only approved landlord
+  sale-proceeds settlement flow for every offer, including MRA-001 and
+  MRA-010. It is a **mock business allocation**, not an on-chain transfer
+  receipt. It never verifies against the chain and
   is never written to `ra_payment_verifications`. The claim destination is
   an **unverified demo EOA** (fictional only), never a real personal wallet;
   `txHash` stays `null` and no explorer link is shown.
+- Legacy missing or `automatic` landlord settlement modes migrate to
+  `landlord_claim`. No offer derives or retains an `advance_settlement`.
+  Automatic holder **rent distributions** remain unchanged and are a
+  separate flow from landlord **sale-proceeds settlement**.
 - The shared host password is **not landlord authentication**. A claim is a
   mock demo action, not proof of wallet ownership or genuine landlord
   authorisation.

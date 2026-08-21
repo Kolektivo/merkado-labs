@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 20, 2026 (PR #21 — mocked landlord proceeds claim; Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer; Base Sepolia / Base Mainnet)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -45,15 +45,19 @@ series/legal wording may remain. “Merkado Premium” is retired.
 - **Passport (legacy internal field)** = stored offer scorecard object
   (`passport.total` is the Listing Score). This is **not** the merkado.cw
   **Property Passport** (listing history on a property page).
-- **Landlord proceeds claim** = a mocked claim (PR #21) that lets a
-  landlord claim fully-funded sale proceeds for claim-mode offers
+- **Landlord proceeds claim** = the only approved mocked landlord
+  sale-proceeds settlement flow (PR #22 draft). It lets a landlord claim
+  fully-funded sale proceeds for every offer
   (`landlord_claim`). The claim lifecycle is `available → processing →
   paid` (also `failed`), and the payout destination is an **unverified demo
   EOA**, never proof of wallet ownership. It is a mock business allocation,
-  not an on-chain transfer receipt. **MRA-001 stays automatic**; MRA-010 and
-  all newly created offers use `landlord_claim`.
+  not an on-chain transfer receipt. MRA-001, MRA-010, and every new or
+  existing offer use `landlord_claim`. Legacy missing or `automatic` modes
+  migrate to `landlord_claim`; no offer derives or retains an
+  `advance_settlement`. Automatic holder **rent distributions** remain
+  unchanged and are separate from landlord **sale-proceeds settlement**.
 - **OfferFundingRecord** = the mocked business allocation created when a
-  claim-mode offer is fully funded (UI wording **“Mock funding recorded”**,
+  offer is fully funded (UI wording **“Mock funding recorded”**,
   never “Deposit confirmed on-chain”). It is not an on-chain transfer
   receipt.
 - **Marketplace / Listings / Cars / Property** on merkado.cw remain defined in
@@ -95,7 +99,7 @@ framing where they conflict.
 | Simulator + Listing / Property Score | [LABS] Buildathon scope |
 | Marketplace | [LABS] Built; demo purchase fills a position |
 | Portfolio | [LABS] Seeded positions plus purchases from Marketplace |
-| Landlord proceeds claim (PR #21) | [LABS] Mocked `landlord_claim` on MRA-010 + new offers; MRA-001 stays automatic; fictional EOA payouts |
+| Landlord proceeds claim (PR #22 draft) | [LABS] Approved target: mocked `landlord_claim` on every offer; fictional EOA payouts; not deployed |
 | Merkado Pay (mocked USDC) | [LABS] Buildathon scope; UI in XCG; no real wallet |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
 | Admin | [LABS] Bottom of left nav — approval, collections, reset |

@@ -13,6 +13,11 @@ import {
   mergeCryptoConfig,
   normalizeBook,
 } from "@/lib/rent-advance/payment-apply";
+import {
+  fundingRecordIdFor,
+  landlordClaimIdFor,
+  landlordPayoutTxIdFor,
+} from "@/lib/rent-advance/ids";
 import { resolvePayNetworkKey } from "@/lib/pay/networks";
 import { dropRetiredDemoOffers, getSeedBook } from "@/lib/rent-advance/seed";
 import type {
@@ -68,6 +73,68 @@ export async function loadBook(): Promise<DemoBook> {
 
 function storedMoneyOrNetworkStale(raw: unknown, book: DemoBook): boolean {
   const incoming = (raw ?? {}) as DemoBook;
+  if (
+    (incoming.offers ?? []).some(
+      (offer) =>
+        offer.settlementMode !== "landlord_claim" ||
+        (offer.settlementTransactionId != null &&
+          !offer.settlementTransactionId.startsWith("tx-claim-")),
+    ) ||
+    (incoming.ledgerTransactions ?? []).some(
+      (row) => row.kind === "advance_settlement",
+    ) ||
+    (incoming.positions ?? []).some(
+      (row) =>
+        row.externalTokenId != null ||
+        row.settlementTransactionId?.startsWith("tx-settle-") === true,
+    )
+  ) {
+    return true;
+  }
+  const offerReferences = new Set(book.offers.map((offer) => offer.reference));
+  if (
+    (incoming.offerFundingRecords ?? []).some(
+      (row) => !offerReferences.has(row.offerReference),
+    ) ||
+    (incoming.landlordProceedsClaims ?? []).some(
+      (row) => !offerReferences.has(row.offerReference),
+    )
+  ) {
+    return true;
+  }
+  for (const offer of book.offers) {
+    const fullyFunded = offer.offeringCents > 0 && offer.fundedCents >= offer.offeringCents;
+    const fundingRows = (incoming.offerFundingRecords ?? []).filter(
+      (row) => row.offerReference === offer.reference,
+    );
+    const claimRows = (incoming.landlordProceedsClaims ?? []).filter(
+      (row) => row.offerReference === offer.reference,
+    );
+    if (
+      fullyFunded &&
+      (fundingRows.length !== 1 ||
+        fundingRows[0]?.fundingRecordId !== fundingRecordIdFor(offer.reference) ||
+        claimRows.length !== 1 ||
+        claimRows[0]?.claimId !== landlordClaimIdFor(offer.reference))
+    ) {
+      return true;
+    }
+    if (!fullyFunded && (fundingRows.length > 0 || claimRows.length > 0)) {
+      return true;
+    }
+    const payoutRows = (incoming.ledgerTransactions ?? []).filter(
+      (row) =>
+        row.kind === "landlord_proceeds_claim" &&
+        row.offerReference === offer.reference,
+    );
+    if (
+      payoutRows.length > 1 ||
+      (payoutRows.length === 1 &&
+        payoutRows[0]?.transactionId !== landlordPayoutTxIdFor(offer.reference))
+    ) {
+      return true;
+    }
+  }
   const storedConfig = incoming.cryptoConfig;
   const nextConfig = book.cryptoConfig;
   if (

@@ -98,6 +98,7 @@ export function LandlordProceedsCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <FormError message={error} />
+        <p className="text-sm font-medium">Mock funding recorded</p>
         <div className="space-y-2">
           <p className="font-medium">
             <Money cents={purchasePriceCents} /> purchase price
@@ -198,13 +199,10 @@ export function LandlordProceedsCard({
               </code>{" "}
               on {claim.paidAt ? formatDate(claim.paidAt) : "—"}
             </p>
-            <p className="text-sm text-muted-foreground">{MOCK_DISCLOSURE}</p>
           </>
         ) : null}
 
-        {claim.status === "available" ? (
-          <p className="text-sm text-muted-foreground">{MOCK_DISCLOSURE}</p>
-        ) : null}
+        <p className="text-sm text-muted-foreground">{MOCK_DISCLOSURE}</p>
       </CardContent>
     </Card>
   );

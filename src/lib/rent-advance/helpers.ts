@@ -292,11 +292,6 @@ export function distributionTotals(book: DemoBook, offer: Offer) {
     distributedCents: rows
       .filter((row) => row.status === "distributed")
       .reduce((sum, row) => sum + row.amountCents, 0),
-    settlementTxHash:
-      book.ledgerTransactions?.find(
-        (row) =>
-          row.offerReference === offer.reference && row.kind === "advance_settlement",
-      )?.txHash ?? null,
   };
 }
 
@@ -307,7 +302,6 @@ export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPos
         collectedCents: distributionsReceivedCents(offer),
         pendingDistributionCents: 0,
         distributedCents: distributionsReceivedCents(offer),
-        settlementTxHash: null,
       };
   return {
     ...anonymizeOffer(offer),
@@ -318,7 +312,6 @@ export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPos
     pendingDistributionCents: money.pendingDistributionCents,
     distributedCents: money.distributedCents,
     collectedMonths: collectedCount(offer),
-    settlementTxHash: money.settlementTxHash,
   };
 }
 

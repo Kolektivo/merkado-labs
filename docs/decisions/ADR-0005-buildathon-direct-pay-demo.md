@@ -154,16 +154,19 @@ Product Lead asked to prepare the Luis handoff on **OP Sepolia** and
 wallet remains. One confirmed Pay write still updates the shared book
 once. Do not treat this amendment as permission to install a wallet SDK.
 
-## Amendment — 2026-08-20 (landlord proceeds claim / PR #21)
+## Amendment — 2026-08-20 (landlord proceeds claim / PR #22 draft)
 
-Product Lead approved a **mocked landlord proceeds claim** (PR #21) so a
-claim-mode offer’s fully-funded sale proceeds can be claimed in the demo.
-Each Offer carries `settlementMode` = `"automatic" | "landlord_claim"`.
-**MRA-001 stays `automatic`** (historically settled); **MRA-010 and every
-newly created offer use `landlord_claim`**. Missing historical mode
-normalizes to `automatic`.
+Product Lead superseded PR #21's split settlement-mode decision. PR #22
+remains draft, stacked on PR #20 / PR #19, and is not deployed or live.
+The only approved landlord sale-proceeds settlement flow is the **mocked
+landlord proceeds claim**.
 
-- On full funding, a claim-mode offer records one **OfferFundingRecord**
+MRA-001, MRA-010, and every new or existing Offer use
+`settlementMode: "landlord_claim"`. Legacy missing or `"automatic"` values
+migrate to `"landlord_claim"` and are not retained. No Offer derives or
+retains an `advance_settlement`.
+
+- On full funding, every offer records one **OfferFundingRecord**
   (UI wording **“Mock funding recorded”**, never “Deposit confirmed
   on-chain”) and one **LandlordProceedsClaim** in `available`.
 - The claim lifecycle is `available → processing → paid` (also `failed`).
@@ -175,10 +178,11 @@ normalizes to `automatic`.
 - The payout destination is an **unverified demo EOA** (fictional only),
   stored server-side and never shown across privacy walls. It never
   implies wallet ownership.
-- Holder rent distributions remain **automatic**. The claim supersedes
-  “no Claim” only for new claim-mode offer sale proceeds.
+- Holder **rent distributions** remain automatic. They are distinct from
+  the removed automatic landlord **sale-proceeds settlement**.
 - The renter payment rail and PR #20's `ra_payment_verifications`
-  idempotency are untouched. PR #21 adds no wallet/Safe dependency.
+  idempotency are untouched. PR #22 adds no wallet/Safe dependency.
 
-This amendment does not allow installing a wallet or Safe SDK, merging
-PR 19, or flipping `PAYMENT_RAIL_MODE`.
+This amendment does not allow installing a wallet or Safe SDK, merging PR
+#19, PR #20, or PR #22, deploying any stack, or flipping
+`PAYMENT_RAIL_MODE`.

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CopyValue, ExplorerLink } from "@/components/copy-value";
+import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
 import { StatusBadge } from "@/components/status-badge";
 import { SummaryStrip } from "@/components/summary-strip";
@@ -81,24 +81,6 @@ export default async function PortfolioDetailPage({
           },
         ]}
       />
-      {position.settlementTxHash ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Advance settlement</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-3">
-            <CopyValue
-              value={position.settlementTxHash}
-              label="settlement reference"
-              truncate
-            />
-            <ExplorerLink
-              baseUrl={book.cryptoConfig?.explorerBaseUrl}
-              hash={position.settlementTxHash}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>Collections and automatic distributions</CardTitle>

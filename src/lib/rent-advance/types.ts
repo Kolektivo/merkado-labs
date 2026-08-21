@@ -16,7 +16,7 @@ export type CollectionStatus = "received" | "reconciled" | "released" | "frozen"
 export type ChecklistState = "open" | "closed";
 export type DocumentState = "generated" | "pending" | "signed" | "not_required";
 export type PaymentOption = "A" | "B";
-export type SettlementMode = "automatic" | "landlord_claim";
+export type SettlementMode = "landlord_claim";
 export type LandlordProceedsClaimStatus =
   | "available"
   | "processing"
@@ -473,7 +473,6 @@ export type PortfolioPosition = BuyerOfferCard & {
   pendingDistributionCents: number;
   distributedCents: number;
   collectedMonths: number;
-  settlementTxHash: string | null;
 };
 
 export type PortfolioPositionDetail = PortfolioPosition & {

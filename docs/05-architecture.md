@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 ## 1. Surfaces
 
@@ -31,7 +31,7 @@ Customer-facing surfaces:
 - Server components load one demo book from Labs Supabase (`ra_demo_state`)
   with a seed fallback and `normalizeBook()` for older JSON.
 - Mutations are server actions (record collection, dual-control release,
-  submit for review, confirm mocked payment, reset). PR #21 adds the
+  submit for review, confirm mocked payment, reset). PR #21 added the
   landlord claim server actions (`startLandlordProceedsClaimAction`,
   `completeLandlordProceedsClaimAction`, `failLandlordProceedsClaimAction`)
   in `src/lib/rent-advance/actions.ts`, built on the mock apply helpers in
@@ -69,20 +69,22 @@ Receivables, collections, payment requests, and distributions are separate
 on purpose. A confirmed Pay event updates them once through an idempotent
 helper.
 
-Settlement is `settlementMode`-aware. An `"automatic"` offer (MRA-001) gets
-a derived `advance_settlement` ledger row on full funding. A
-`"landlord_claim"` offer (MRA-010 and every newly created offer) instead
+The approved PR #22 design has one landlord sale-proceeds settlement path.
+MRA-001, MRA-010, and every new or existing offer normalize to
+`settlementMode: "landlord_claim"`. Legacy missing or `"automatic"` values
+migrate to `"landlord_claim"` and are not retained. Every fully funded offer
 records an **OfferFundingRecord** (**mock funding recorded**) and creates a
-`LandlordProceedsClaim` in `available` when fully funded; the mocked
+`LandlordProceedsClaim` in `available`; the mocked
 `landlord_proceeds_claim` ledger row is written only when the claim is
-`paid`. No claim-mode offer records an automatic `advance_settlement`
-during normalization.
+`paid`. No offer derives or retains an `advance_settlement`.
+
+Automatic holder **rent distributions** remain unchanged. They are a
+different flow from the removed automatic landlord **sale-proceeds
+settlement**.
 
 ```mermaid
 flowchart TD
-    F[Offer fully funded] --> M{settlementMode}
-    M -->|automatic| A[advance_settlement ledger row]
-    M -->|landlord_claim| R[OfferFundingRecord<br/>Mock funding recorded]
+    F[Offer fully funded<br/>landlord_claim] --> R[OfferFundingRecord<br/>Mock funding recorded]
     R --> C[LandlordProceedsClaim available]
     C -->|claim paid| P[mocked landlord_proceeds_claim<br/>ledger row - txHash null]
 ```
@@ -105,7 +107,7 @@ The verified Base Sepolia deposit Safe
 `cryptoConfig.safeAddress`. Explorer links render only for a real
 64-hex transaction hash on an official catalog explorer.
 
-The renter payment rail is untouched by PR #21: the mock
+The renter payment rail is untouched by PR #22: the mock
 `PaymentProvider`, `PAYMENT_RAIL_MODE`, and PR #20's
 `ra_payment_verifications` idempotency all stay as they are. The
 landlord proceeds claim is a separate in-book mock allocation and is

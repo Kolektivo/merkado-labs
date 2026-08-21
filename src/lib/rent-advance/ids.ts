@@ -30,10 +30,6 @@ export function distributionIdFor(reference: string, n: number): string {
   return `dist-${slugRef(reference)}-${n}`;
 }
 
-export function settlementTxIdFor(reference: string): string {
-  return `tx-settle-${slugRef(reference)}`;
-}
-
 export function paymentTxIdFor(paymentRequestId: string): string {
   return `tx-pay-${paymentRequestId}`;
 }

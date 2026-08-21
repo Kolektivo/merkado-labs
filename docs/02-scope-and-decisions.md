@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 ## 1. MVP goal
 
@@ -23,7 +23,7 @@ repo**. They live on merkado-cw.
 | P0 | My Offers | Draft/unfunded totals excluded; settlement + collection/distribution status |
 | P0 | Merkado Pay | Working mocked USDC payment-link on **Base Sepolia** facts (Base Mainnet later); copy-address and wallet paths; English-only; no real wallet |
 | P0 | Shared state | One confirmed payment updates request, receivable, collection, distribution once |
-| P0 | Portfolio | Pre-seeded positions; Position ID; automatic distributions; no Claim |
+| P0 | Portfolio | Pre-seeded positions; Position ID; automatic holder rent distributions; no holder Claim |
 | P0 | Account mock | Apps launcher for Pay and Direct; fictional renter only |
 | P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
 | P1 | Luis boundary | Typed mock provider; no wallet/Safe SDK installed |
@@ -56,9 +56,9 @@ repo**. They live on merkado-cw.
 | Instrument | Digital Participation Right (book-entry; no token) |
 | Commercial form | True sale of receivables (*koop en cessie*) |
 | Landlord money | One upfront purchase amount; later collections go to holders |
-| Holder distributions | Automatic in this demo; no Claim button |
-| Settlement mode | Each Offer has `settlementMode` = `"automatic"` or `"landlord_claim"`. **MRA-001 stays automatic** (historically settled). **MRA-010 and all newly created offers use `landlord_claim`**. Missing historical mode normalizes to `automatic`. |
-| Landlord proceeds claim | A **mocked** claim (PR #21) for fully-funded claim-mode sale proceeds. Lifecycle `available → processing → paid` (also `failed`). `paid` is terminal and never duplicates ledger/events. `txHash` stays `null` (no fake chain evidence). No NFT, no token, no explorer link. |
+| Holder distributions | Automatic holder **rent distributions** remain unchanged; no holder Claim button. This is distinct from landlord sale-proceeds settlement. |
+| Settlement mode | The only canonical mode is `landlord_claim`. MRA-001, MRA-010, and every new or existing offer use it. Legacy missing or `automatic` values migrate to `landlord_claim` and are not retained. No offer derives or retains an `advance_settlement`. |
+| Landlord proceeds claim | The only approved mocked landlord **sale-proceeds settlement** flow (PR #22 draft). Every fully funded offer records an `OfferFundingRecord` and a claim. Lifecycle `available → processing → paid` (also `failed`). `paid` is terminal and never duplicates ledger/events. `txHash` stays `null` (no fake chain evidence). No NFT, no token, no explorer link. |
 | Funding record terminology | Use **OfferFundingRecord**; UI wording **“Mock funding recorded”**, never “Deposit confirmed on-chain”. It is a mock business allocation, not a transfer receipt. |
 | Fictional EOAs | Landlord claim destination is an **unverified demo address**, stored server-side, never shown across privacy walls. Mock-only; never implies wallet ownership. |
 | Failed-claim retry | Retries go **only to the locked destination**; a different address is rejected once processing begins. Reset/edit returns the claim to `available`. |

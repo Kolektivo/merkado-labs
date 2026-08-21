@@ -17,7 +17,6 @@ import {
   periodLabelFromDueDate,
   positionIdFor,
   receivableIdFor,
-  settlementTxIdFor,
 } from "@/lib/rent-advance/ids";
 import { receivingLedgerLabel, renterWalletLedgerLabel } from "@/lib/pay/mode";
 import {
@@ -88,16 +87,18 @@ export function defaultAccounts(): DemoAccount[] {
 
 function ensureOfferIds(offer: Offer): Offer {
   const offerId = offer.offerId ?? offerIdFromReference(offer.reference);
-  const settlementMode = offer.settlementMode ?? "automatic";
-  const automaticSettlement =
-    settlementMode !== "landlord_claim" && offer.fundedCents > 0;
+  const fullyFunded = offer.offeringCents > 0 && offer.fundedCents >= offer.offeringCents;
+  const offeringCents = fullyFunded ? offer.purchasePriceCents : offer.offeringCents;
+  const fundedCents = fullyFunded ? offer.purchasePriceCents : offer.fundedCents;
   return {
     ...offer,
     offerId,
-    settlementMode,
-    settlementTransactionId:
-      offer.settlementTransactionId ??
-      (automaticSettlement ? settlementTxIdFor(offer.reference) : null),
+    settlementMode: "landlord_claim",
+    offeringCents,
+    fundedCents,
+    settlementTransactionId: offer.settlementTransactionId?.startsWith("tx-claim-")
+      ? offer.settlementTransactionId
+      : null,
     receivables: offer.receivables.map((row) => ({
       ...row,
       receivableId: row.receivableId ?? receivableIdFor(offer.reference, row.n),
@@ -106,6 +107,12 @@ function ensureOfferIds(offer: Offer): Offer {
       ...row,
       id: row.id.startsWith("col-") ? row.id.replace(/-\d{10,}$/, "") : collectionIdFor(offer.reference, row.receivableN),
     })),
+    events: offer.events.filter((row) => row.title !== "Settled to the landlord"),
+    holders: offer.holders.map((holder, index) =>
+      fullyFunded && index === 0
+        ? { ...holder, contributedCents: offer.purchasePriceCents }
+        : holder,
+    ),
   };
 }
 
@@ -152,15 +159,10 @@ export function applySubscribe(
   if (filled && offer.status === "funding") offer.status = "live";
   if (filled) {
     offer.publishedAt = offer.publishedAt ?? at;
-    if (offer.settlementMode === "landlord_claim") {
-      addOfferFundingRecord(next, offer);
-      addAvailableClaim(next, offer, at);
-      offer.settlementTransactionId = offer.settlementTransactionId ?? null;
-      offer.nextAction = "Collect first rent";
-    } else {
-      offer.settlementTransactionId = settlementTxIdFor(offer.reference);
-      offer.nextAction = "Collect first rent";
-    }
+    addOfferFundingRecord(next, offer, at);
+    addAvailableClaim(next, offer, at);
+    offer.settlementTransactionId = null;
+    offer.nextAction = "Collect first rent";
   } else {
     offer.nextAction = "Wait for remaining funding";
   }
@@ -187,47 +189,41 @@ export function applySubscribe(
     at,
     title: filled ? "Offer filled" : "Participation purchased",
     detail: filled
-      ? offer.settlementMode === "landlord_claim"
-        ? `${formatXcg(purchaseCents)} filled the offering. Proceeds are now available for the landlord to claim.`
-        : `${formatXcg(purchaseCents)} filled the offering. The landlord settlement is recorded.`
+      ? `${formatXcg(purchaseCents)} filled the offering. Proceeds are now available for the landlord to claim.`
       : `${formatXcg(purchaseCents)} purchased. ${formatXcg(offer.offeringCents - offer.fundedCents)} still open.`,
     actor: "System",
   };
-  const settlementEvent =
-    filled && offer.settlementMode !== "landlord_claim"
-      ? {
-          id: `ev-${reference}-settled`,
-          at,
-          title: "Settled to the landlord",
-          detail: "Purchase price released in one payment",
-          actor: "System",
-        }
-      : null;
 
   offer.events = [
     purchaseEvent,
-    ...(settlementEvent ? [settlementEvent] : []),
     ...offer.events.filter((row) => row.id !== `ev-${reference}-settled`),
   ];
 
   return normalizeBook(next);
 }
 
-function addOfferFundingRecord(book: DemoBook, offer: Offer): void {
+function addOfferFundingRecord(book: DemoBook, offer: Offer, at: string): void {
   const id = fundingRecordIdFor(offer.reference);
   const existing = (book.offerFundingRecords ?? []).find((row) => row.fundingRecordId === id);
-  if (existing) return;
+  if (existing) {
+    existing.offerId = offer.offerId ?? offerIdFromReference(offer.reference);
+    existing.offerReference = offer.reference;
+    existing.safeAddress = book.cryptoConfig?.safeAddress ?? DEMO_RECEIVING_ADDRESS;
+    existing.purchasePriceCents = offer.purchasePriceCents;
+    existing.amountUsdcAtomic = usdcAtomicFromUsdCents(offer.purchasePriceCents);
+    return;
+  }
   const record: OfferFundingRecord = {
     fundingRecordId: id,
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     category: "offer_purchase",
     railMode: "mock",
-    safeAddress: DEMO_RECEIVING_ADDRESS,
-    purchasePriceCents: offer.fundedCents,
-    amountUsdcAtomic: usdcAtomicFromUsdCents(offer.fundedCents),
+    safeAddress: book.cryptoConfig?.safeAddress ?? DEMO_RECEIVING_ADDRESS,
+    purchasePriceCents: offer.purchasePriceCents,
+    amountUsdcAtomic: usdcAtomicFromUsdCents(offer.purchasePriceCents),
     status: "recorded",
-    createdAt: new Date().toISOString(),
+    createdAt: at,
   };
   book.offerFundingRecords = [record, ...(book.offerFundingRecords ?? [])];
 }
@@ -235,14 +231,22 @@ function addOfferFundingRecord(book: DemoBook, offer: Offer): void {
 function addAvailableClaim(book: DemoBook, offer: Offer, at: string): void {
   const claimId = landlordClaimIdFor(offer.reference);
   const existing = (book.landlordProceedsClaims ?? []).find((row) => row.claimId === claimId);
-  if (existing) return;
+  if (existing) {
+    existing.offerId = offer.offerId ?? offerIdFromReference(offer.reference);
+    existing.offerReference = offer.reference;
+    existing.landlordId = offer.landlord.id;
+    existing.feeCents = offer.feeCents;
+    existing.claimableCents = offer.purchasePriceCents;
+    existing.txHash = null;
+    return;
+  }
   const claim: LandlordProceedsClaim = {
     claimId,
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     landlordId: offer.landlord.id,
     feeCents: offer.feeCents,
-    claimableCents: offer.fundedCents,
+    claimableCents: offer.purchasePriceCents,
     destinationEoa: offer.landlord.eoaAddress ?? null,
     status: "available",
     transactionId: null,
@@ -282,7 +286,10 @@ export function applyLandlordClaimStart(
   if (claim.status === "paid") {
     throw new Error("This claim has already been paid.");
   }
-  if (claim.status === "processing" && claim.destinationEoa?.toLowerCase() !== destination) {
+  if (
+    (claim.status === "processing" || claim.status === "failed") &&
+    claim.destinationEoa?.toLowerCase() !== destination
+  ) {
     throw new Error("This claim is already processing to a different address.");
   }
   claim.destinationEoa = destination;
@@ -346,31 +353,12 @@ export function applyLandlordClaimFail(
   const claim = findLandlordProceedsClaim(next, reference);
   if (!claim) throw new Error("No landlord claim is available for this offer.");
   if (claim.status === "paid") return next;
+  if (claim.status === "failed") return next;
+  if (claim.status !== "processing") {
+    throw new Error("Start the claim before marking it as failed.");
+  }
   claim.status = "failed";
   return next;
-}
-
-function settlementTransaction(offer: Offer): LedgerTransaction | null {
-  if (offer.settlementMode === "landlord_claim") return null;
-  if (offer.fundedCents <= 0 || offer.fundedCents < offer.offeringCents) return null;
-  const transactionId = settlementTxIdFor(offer.reference);
-  return {
-    transactionId,
-    kind: "advance_settlement",
-    offerId: offer.offerId ?? offerIdFromReference(offer.reference),
-    offerReference: offer.reference,
-    paymentRequestId: null,
-    collectionId: null,
-    distributionId: null,
-    amountXcgCents: offer.purchasePriceCents,
-    amountUsdcAtomic: null,
-    status: "confirmed",
-    createdAt: offer.publishedAt ?? offer.createdAt,
-    confirmedAt: offer.publishedAt ?? offer.createdAt,
-    txHash: demoTxHash(`settle${offer.reference}`),
-    fromLabel: "Merkado Direct",
-    toLabel: "Landlord",
-  };
 }
 
 function paymentRequestForReceivable(
@@ -432,10 +420,7 @@ function positionForOffer(offer: Offer): PositionRecord | null {
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     holderId: offer.holders[0]?.holderId ?? "act-purchaser",
-    settlementTransactionId:
-      offer.settlementMode === "landlord_claim"
-        ? (offer.settlementTransactionId ?? null)
-        : settlementTxIdFor(offer.reference),
+    settlementTransactionId: offer.settlementTransactionId ?? null,
     externalTokenId: null,
   };
 }
@@ -445,6 +430,60 @@ export function normalizeBook(raw: unknown): DemoBook {
   const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
   const receivingAddress = cryptoConfig.safeAddress ?? DEMO_RECEIVING_ADDRESS;
   const offers = (book.offers ?? []).map(ensureOfferIds);
+  const normalizedRecords: DemoBook = {
+    ...book,
+    cryptoConfig,
+    offerFundingRecords: [],
+    landlordProceedsClaims: [],
+  };
+  for (const offer of offers) {
+    if (offer.offeringCents <= 0 || offer.fundedCents < offer.offeringCents) continue;
+    const fundedAt = offer.publishedAt ?? offer.createdAt;
+    const existingRecord = (book.offerFundingRecords ?? []).find(
+      (row) => row.offerReference === offer.reference,
+    );
+    if (existingRecord) {
+      normalizedRecords.offerFundingRecords?.push({
+        ...existingRecord,
+        fundingRecordId: fundingRecordIdFor(offer.reference),
+      });
+    }
+    const canonicalClaimId = landlordClaimIdFor(offer.reference);
+    const claimStatusRank: Record<LandlordProceedsClaim["status"], number> = {
+      paid: 4,
+      processing: 3,
+      failed: 2,
+      available: 1,
+    };
+    const existingClaim = (book.landlordProceedsClaims ?? [])
+      .filter((row) => row.offerReference === offer.reference)
+      .sort((a, b) => {
+        const statusDifference = claimStatusRank[b.status] - claimStatusRank[a.status];
+        if (statusDifference !== 0) return statusDifference;
+        if (a.claimId === canonicalClaimId) return -1;
+        if (b.claimId === canonicalClaimId) return 1;
+        return 0;
+      })[0];
+    if (existingClaim) {
+      normalizedRecords.landlordProceedsClaims?.push({
+        ...existingClaim,
+        claimId: canonicalClaimId,
+        transactionId:
+          existingClaim.status === "available"
+            ? null
+            : landlordPayoutTxIdFor(offer.reference),
+        txHash: null,
+      });
+    }
+    addOfferFundingRecord(normalizedRecords, offer, fundedAt);
+    addAvailableClaim(normalizedRecords, offer, fundedAt);
+  }
+  for (const offer of offers) {
+    const claim = (normalizedRecords.landlordProceedsClaims ?? []).find(
+      (row) => row.offerReference === offer.reference,
+    );
+    offer.settlementTransactionId = claim?.status === "paid" ? claim.transactionId : null;
+  }
   const seedAccounts = book.accounts?.length ? book.accounts : defaultAccounts();
   const existingRequests = new Map(
     (book.paymentRequests ?? []).map((row) => [row.paymentRequestId, row]),
@@ -482,19 +521,33 @@ export function normalizeBook(raw: unknown): DemoBook {
 
   const existingTx = new Map((book.ledgerTransactions ?? []).map((row) => [row.transactionId, row]));
   const ledgerTransactions: LedgerTransaction[] = [];
-  for (const offer of offers) {
-    const settlement = settlementTransaction(offer);
-    if (settlement) ledgerTransactions.push(existingTx.get(settlement.transactionId) ?? settlement);
-  }
-  // Persisted mock landlord-payout ledger rows survive normalization. They are
-  // created only when a claim is paid, so they are not re-derived here.
-  for (const row of book.ledgerTransactions ?? []) {
-    if (
-      row.kind === "landlord_proceeds_claim" &&
-      !ledgerTransactions.some((item) => item.transactionId === row.transactionId)
-    ) {
-      ledgerTransactions.push(row);
-    }
+  for (const claim of normalizedRecords.landlordProceedsClaims ?? []) {
+    if (claim.status !== "paid") continue;
+    const transactionId = landlordPayoutTxIdFor(claim.offerReference);
+    const existing = (book.ledgerTransactions ?? []).find(
+      (row) =>
+        row.kind === "landlord_proceeds_claim" &&
+        row.offerReference === claim.offerReference,
+    );
+    const paidAt = claim.paidAt ?? claim.createdAt;
+    ledgerTransactions.push({
+      ...(existing ?? {}),
+      transactionId,
+      kind: "landlord_proceeds_claim",
+      offerId: claim.offerId,
+      offerReference: claim.offerReference,
+      paymentRequestId: null,
+      collectionId: null,
+      distributionId: null,
+      amountXcgCents: claim.claimableCents,
+      amountUsdcAtomic: usdcAtomicFromUsdCents(claim.claimableCents),
+      status: "confirmed",
+      createdAt: existing?.createdAt ?? paidAt,
+      confirmedAt: paidAt,
+      txHash: null,
+      fromLabel: "Sale proceeds",
+      toLabel: "Landlord",
+    });
   }
   for (const request of paymentRequests) {
     if (!request.transactionId) continue;
@@ -544,7 +597,15 @@ export function normalizeBook(raw: unknown): DemoBook {
   const positions = offers
     .map(positionForOffer)
     .filter((row): row is PositionRecord => Boolean(row))
-    .map((row) => existingPositions.get(row.positionId) ?? row);
+    .map((row) => {
+      const existing = existingPositions.get(row.positionId);
+      return {
+        ...row,
+        holderId: existing?.holderId ?? row.holderId,
+        settlementTransactionId: row.settlementTransactionId,
+        externalTokenId: null,
+      };
+    });
 
   return {
     ...book,
@@ -559,8 +620,8 @@ export function normalizeBook(raw: unknown): DemoBook {
     ledgerTransactions,
     distributions,
     positions,
-    offerFundingRecords: book.offerFundingRecords ?? [],
-    landlordProceedsClaims: book.landlordProceedsClaims ?? [],
+    offerFundingRecords: normalizedRecords.offerFundingRecords,
+    landlordProceedsClaims: normalizedRecords.landlordProceedsClaims,
   };
 }
 

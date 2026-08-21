@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto developer handoff.
-**Last updated:** August 20, 2026 (Base Sepolia / Base Mainnet)
+**Last updated:** August 20, 2026 (PR #22 draft — landlord claim for every offer)
 
 ## Live
 
@@ -131,11 +131,13 @@ MRA-001 locked Pay request:
 - Amount to send: **1,800.00 USDC** (`1800000000`)
 - Human reference: `MRA-001-01` (not encoded in a plain ERC-20 transfer)
 
-### Landlord proceeds claim (PR #21) — mock allocation, not a chain receipt
+### Landlord proceeds claim (PR #22 draft) — mock allocation, not a chain receipt
 
-PR #21 is a **separate in-book mock**, unrelated to the renter USDC rail.
+PR #22 extends PR #21's **separate in-book mock** and remains unrelated to
+the renter USDC rail.
 
-- Claim-mode offers (`landlord_claim`) record an **OfferFundingRecord** —
+- Every offer, including MRA-001 and MRA-010, uses `landlord_claim` and
+  records an **OfferFundingRecord** —
   UI wording **“Mock funding recorded”** — when fully funded. It is a
   **mock business allocation**, never “Deposit confirmed on-chain”, and is
   never verified against the chain or written to `ra_payment_verifications`.
@@ -143,11 +145,13 @@ PR #21 is a **separate in-book mock**, unrelated to the renter USDC rail.
   EOA** (fictional only), stored server-side and never shown across privacy
   walls. It never implies wallet ownership. `txHash` stays `null` and no
   explorer link is shown.
-- **No new wallet or Safe SDK.** PR #21 introduces no dependency and does
+- **No new wallet or Safe SDK.** PR #22 introduces no dependency and does
   not change `createPaymentProvider`, `PAYMENT_RAIL_MODE`, or PR #20's
   `ra_payment_verifications` idempotency. The renter pay rail is untouched.
-- Holder rent distributions remain **automatic**. The claim supersedes
-  “no Claim” **only** for new claim-mode offer sale proceeds.
+- No offer derives or retains an `advance_settlement`; legacy missing or
+  `automatic` modes migrate to `landlord_claim`.
+- Holder **rent distributions** remain automatic. They are separate from
+  the removed automatic landlord **sale-proceeds settlement**.
 
 ### What you replace (one factory)
 
@@ -277,7 +281,7 @@ No wallet. No USDC.
 |---|---|---|
 | Quote | Simulator | None. Book stores USD; UI shows XCG at 1.79 |
 | Save draft | Create Offer | None |
-| See settlement | Offer detail MRA-001 | Optional explorer link only if a **real** tx hash exists |
+| Claim sale proceeds | Offer detail MRA-001 or MRA-010 after full funding | No Web3 work. Uses the same mocked landlord claim flow; `txHash` remains `null` and no explorer link appears. |
 | Record collection | Admin offer → Record collection | None. This is the off-chain fallback, same book helper |
 
 #### Flow D — Holder (Marketplace + Portfolio)
