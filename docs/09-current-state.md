@@ -80,8 +80,9 @@ other retired payer subpages) still redirect. `/pay/history` is not reused.
 A weak-score + related-party quote is blocked by the 24% cap. Use this quote
 stays disabled. There is no override.
 
-MRA-001 starts fully purchased with its sale marked **Paid**; MRA-010 starts
-minted and still open on Marketplace. After Reset, that seed is restored.
+Both seeded offers (**MRA-001** and **MRA-010**) start as approved listings
+awaiting the Safe mint: no NFT exists and no money has moved until the mint
+receipt is verified on Base Sepolia. After Reset, that seed is restored.
 
 ### Shared demo book (verified)
 
@@ -124,8 +125,9 @@ new drafts.
 - Dual-control still rejects the same person twice (app check plus the trigger
   on `ra_demo_state`).
 - Independent approval moves a newly submitted Create Offer request to funding
-  from Admin; with the contract env set, the server mints the offer NFT from
-  the company Safe.
+  from Admin. Operators then execute the prepared `mintOffer` calldata from the
+  company Safe; the admin pastes the mint tx hash into Mint Control, and the
+  server verifies the mint receipt on Base Sepolia.
 - Create offer can save a new six-month draft (MRA-007 in the walkthrough;
   Reset removes it). 9/12 still cannot be saved.
 - Pay is English-only. Copy address, amount, and payment history stay visible.

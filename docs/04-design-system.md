@@ -111,7 +111,7 @@ Skip link to `#main-content`, `aria-current` on nav, focus-visible rings,
 `prefers-reduced-motion` in `globals.css`. The password door uses the
 default shadcn field, a show/hide control, and a full-width continue
 action. Pay is mobile-first (~390px).
-The amount, due badge, copy details, **I’ve sent this payment**, and
+The amount, due badge, wallet actions, and
 payment history stay visible. Extra explainers stay in tooltips. Pay is
 English-only.
 Payment status uses `aria-live`. Sliders expose live value and band.

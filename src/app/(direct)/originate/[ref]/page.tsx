@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import {
   effectiveOfferStatus,
   rentToMarket,
@@ -118,13 +118,11 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {effectiveStatus === "expired"
-              ? "Listing expired"
-              : offer.expiresAt && effectiveStatus === "funding"
-              ? `Until ${formatDate(offer.expiresAt)}`
-              : effectiveStatus === "live" || effectiveStatus === "collecting"
-                ? "Offer sold"
-                : "60 days after approval"}
+            {effectiveStatus === "live" || effectiveStatus === "collecting"
+              ? "Offer sold"
+              : effectiveStatus === "funding"
+                ? "Open for purchase once minted"
+                : "Not on the marketplace"}
           </CardContent>
         </Card>
       </div>

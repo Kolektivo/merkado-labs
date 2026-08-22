@@ -159,34 +159,9 @@ export function remainingOfferingCents(offer: { offeringCents: number; fundedCen
   return Math.max(0, offer.offeringCents - offer.fundedCents);
 }
 
-export function listingExpiresAt(publishedAt: string | null): string | null {
-  if (!publishedAt) return null;
-  const expires = new Date(publishedAt);
-  if (Number.isNaN(expires.getTime())) return null;
-  expires.setUTCDate(expires.getUTCDate() + 60);
-  return expires.toISOString();
-}
-
-export function isListingExpired(
-  expiresAt: string | null | undefined,
-  at = new Date().toISOString(),
-): boolean {
-  if (!expiresAt) return false;
-  const expires = Date.parse(expiresAt);
-  const now = Date.parse(at);
-  return !Number.isFinite(expires) || !Number.isFinite(now) || expires <= now;
-}
-
 export function effectiveOfferStatus(
   offer: { status: OfferStatus; expiresAt?: string | null },
-  at = new Date().toISOString(),
 ): OfferStatus {
-  if (
-    offer.status === "funding" &&
-    (!offer.expiresAt || isListingExpired(offer.expiresAt, at))
-  ) {
-    return "expired";
-  }
   return offer.status;
 }
 
@@ -200,9 +175,7 @@ export function canSubscribe(
 ): boolean {
   return (
     (status === "funding" || status === "live" || status === "collecting") &&
-    (status !== "funding" || Boolean(expiresAt)) &&
     minted &&
-    !isListingExpired(expiresAt, at) &&
     remainingOfferingCents({ offeringCents, fundedCents }) > 0
   );
 }
@@ -299,9 +272,7 @@ export function canShowContribute(
 ): boolean {
   return (
     (status === "live" || status === "funding" || status === "collecting") &&
-    (status !== "funding" || Boolean(expiresAt)) &&
-    minted &&
-    !isListingExpired(expiresAt)
+    minted
   );
 }
 

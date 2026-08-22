@@ -19,6 +19,11 @@ import {
 /** Confirmation depth the walkthrough waits for on Base Sepolia. */
 export const MERKADO_CONFIRMATION_BLOCKS = 5;
 
+/** True only when the receipt has reached the approved confirmation depth. */
+export function confirmationsReady(confirmations: bigint | null | undefined): boolean {
+  return confirmations != null && confirmations >= BigInt(MERKADO_CONFIRMATION_BLOCKS);
+}
+
 export type OnchainVerifyStatus = "pending" | "confirmed" | "failed";
 
 export type LiveVerifyResult = {
@@ -29,6 +34,7 @@ export type LiveVerifyResult = {
   contractAddress: string;
   txHash: string;
   blockNumber?: bigint | null;
+  blockHash?: string | null;
   confirmations?: bigint | null;
   logIndex?: number | null;
   tokenId?: bigint | null;
@@ -46,6 +52,7 @@ export type ReceiptLike = {
   status?: string | null;
   transactionHash?: string | null;
   blockNumber?: bigint | null;
+  blockHash?: string | null;
   logs?: readonly LogLike[] | null;
 };
 
@@ -224,6 +231,7 @@ function confirmedResult(
     contractAddress,
     txHash,
     blockNumber: receipt.blockNumber ?? null,
+    blockHash: receipt.blockHash ?? null,
     logIndex: log.logIndex ?? null,
     tokenId,
   };

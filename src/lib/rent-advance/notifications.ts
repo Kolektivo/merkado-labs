@@ -1,8 +1,5 @@
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
-import {
-  formatDayMonthYear,
-  offerDisplayName,
-} from "@/lib/rent-advance/helpers";
+import { offerDisplayName } from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
 import type { DemoBook } from "@/lib/rent-advance/types";
 
@@ -60,9 +57,7 @@ export function dashboardNotifications(
         kind: "offer_update",
         title: "Offer minted and listed",
         subject: offerDisplayName(offer),
-        detail: offer.expiresAt
-          ? `Available until ${formatDayMonthYear(offer.expiresAt)}`
-          : "Available for 60 days",
+        detail: "Open for purchase on Marketplace",
         href: `/originate/${offer.reference}`,
         actionLabel: "View offer",
       });

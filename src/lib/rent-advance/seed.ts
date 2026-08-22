@@ -7,7 +7,6 @@ import {
   receivableIdFor,
 } from "@/lib/rent-advance/ids";
 import { normalizeBook } from "@/lib/rent-advance/payment-apply";
-import { listingExpiresAt } from "@/lib/rent-advance/helpers";
 import { holderSchedule, priceQuote } from "@/lib/rent-advance/pricing";
 import type {
   ChecklistItem,
@@ -260,7 +259,7 @@ function makeOffer(input: {
     seriesDisplayName: "Merkado Direct · Rent Advance",
     createdAt: input.createdAt ?? "2026-08-13T09:44:00-04:00",
     publishedAt,
-    expiresAt: listingExpiresAt(publishedAt),
+    expiresAt: null,
     nextAction: input.nextAction,
     payout: defaultLandlordPayout({
       method: "crypto",

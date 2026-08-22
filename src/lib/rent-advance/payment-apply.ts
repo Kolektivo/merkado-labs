@@ -28,10 +28,6 @@ import {
   resolvedCompanySafe,
 } from "@/lib/pay/networks";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
-import {
-  isListingExpired,
-  listingExpiresAt,
-} from "@/lib/rent-advance/helpers";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -113,12 +109,11 @@ export function defaultAccounts(): DemoAccount[] {
 
 function ensureOfferIds(offer: Offer): Offer {
   const offerId = offer.offerId ?? offerIdFromReference(offer.reference);
-  const publishedAt = offer.publishedAt ?? null;
   return {
     ...offer,
     offerId,
     payout: defaultLandlordPayout(offer.payout),
-    expiresAt: offer.expiresAt ?? listingExpiresAt(publishedAt),
+    expiresAt: null,
     settlementTransactionId: null,
     onchain: mergeOnchain(offer.onchain),
     receivables: offer.receivables.map((row) => ({
@@ -140,17 +135,12 @@ function shouldMintPaymentRequests(offer: Offer): boolean {
   return offer.status === "live" || offer.status === "collecting" || offer.status === "default";
 }
 
-export function canSubscribeOffer(
-  offer: Offer,
-  at = new Date().toISOString(),
-): boolean {
+export function canSubscribeOffer(offer: Offer): boolean {
   const onchain = mergeOnchain(offer.onchain);
   return (
     (offer.status === "funding" || offer.status === "live" || offer.status === "collecting") &&
-    (offer.status !== "funding" || Boolean(offer.expiresAt)) &&
     onchain.tokenId != null &&
     !onchain.purchased &&
-    !isListingExpired(offer.expiresAt, at) &&
     offer.offeringCents > offer.fundedCents
   );
 }
@@ -171,10 +161,7 @@ export function applyVerifiedPurchase(
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
   if (onchain.purchased) return next;
-  if (isListingExpired(offer.expiresAt, at)) {
-    throw new Error("This offer’s 60-day purchase window has ended.");
-  }
-  if (!canSubscribeOffer(offer, at)) {
+  if (!canSubscribeOffer(offer)) {
     throw new Error("This offer is not open to purchase.");
   }
 

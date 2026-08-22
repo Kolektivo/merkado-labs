@@ -83,8 +83,8 @@ it felt wrong.
    Base Sepolia contract and `MERKADO_RPC_URL` points at
    `https://sepolia.base.org`.
 2. Open **Admin** at the bottom of the left nav. Click **Reset the book** and
-   confirm **Yes, reset**. **MRA-001** starts purchased; **MRA-010** starts
-   minted and open on Marketplace.
+   confirm **Yes, reset**. Both seeded offers (**MRA-001** and **MRA-010**)
+   start as approved listings awaiting the Safe mint.
 3. Fund test wallets with Base Sepolia ETH (gas) and test USDC from
    [faucet.circle.com](https://faucet.circle.com).
 
@@ -110,8 +110,10 @@ it felt wrong.
   destination. On Review, the page should say you do not need a wallet.
   Click **Submit request**.
 - Open **Admin**. Open the new offer. Pick **Enrique** or **Luuk**, then
-  click **Approve offer**. The server mints **one offer NFT** for this
-  listing from the company Safe.
+  click **Approve offer**. Operators execute the prepared `mintOffer`
+  calldata from the company Safe; the admin pastes the mint tx hash into
+  Mint Control, and the server verifies the mint receipt. One offer NFT is
+  minted to the company Safe.
 - On the offer detail, confirm the offer is Listed, has no expiry, and the
   company Safe is the initial owner on the explorer (real 64-hex mint
   hash only).

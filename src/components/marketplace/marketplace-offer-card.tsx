@@ -10,7 +10,6 @@ import { bandPlainName } from "@/lib/rent-advance/scoring";
 import {
   coverSrcFor,
   effectiveOfferStatus,
-  formatDayMonthYear,
   remainingOfferingCents,
   statusLabel,
 } from "@/lib/rent-advance/helpers";
@@ -130,9 +129,7 @@ export function MarketplaceOfferCard({
                   {" "}
                   {purchasable
                     ? "for the whole offer"
-                    : effectiveStatus === "expired"
-                      ? "listing expired"
-                      : "purchased"}
+                    : "purchased"}
                 </span>
                 <span className="pointer-events-auto relative z-20 ml-1 inline-flex align-middle">
                   <HelpTip label="Amount filled">{PLAIN.amountTaken}</HelpTip>
@@ -142,11 +139,6 @@ export function MarketplaceOfferCard({
             <p className="text-xs leading-5 font-normal text-grey-900">
               Combined property view {card.propertyScore} · {card.propertyLabel}
             </p>
-            {purchasable && card.expiresAt ? (
-              <p className="text-xs leading-5 font-normal text-grey-800">
-                Available until {formatDayMonthYear(card.expiresAt)}
-              </p>
-            ) : null}
             <p className="flex items-center gap-1.5 text-xs leading-5 font-normal text-grey-800">
               Payment history · {bandPlainName(card.payerBand)}
               <span className="pointer-events-auto relative z-20">

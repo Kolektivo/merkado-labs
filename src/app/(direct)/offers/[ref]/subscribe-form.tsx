@@ -24,7 +24,6 @@ export function SubscribeForm({
   remainingCents,
   fundedCents,
   offeringCents,
-  expiresLabel,
   minted,
   configured,
   tokenId,
@@ -33,7 +32,6 @@ export function SubscribeForm({
   remainingCents: number;
   fundedCents: number;
   offeringCents: number;
-  expiresLabel: string | null;
   minted: boolean;
   configured: boolean;
   tokenId: number | null;
@@ -144,11 +142,6 @@ export function SubscribeForm({
       <p className="mt-1 text-sm text-grey-800">
         100% of the offer NFT · no fractional purchase
       </p>
-      {expiresLabel ? (
-        <p className="mt-2 text-xs text-grey-800">
-          Available until {expiresLabel} · 60-day listing window
-        </p>
-      ) : null}
 
       {!minted ? (
         <Alert className="mt-6">

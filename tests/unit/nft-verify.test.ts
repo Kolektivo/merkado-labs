@@ -335,3 +335,10 @@ test("log index 0 is never treated as absent in the matching path", () => {
   assert.equal(withZeroIndex.verified, true);
   assert.equal(withZeroIndex.logIndex, 0);
 });
+test("confirmation depth gate: 5 blocks required, fewer stays not-ready", () => {
+  assert.equal(verify.confirmationsReady(null), false);
+  assert.equal(verify.confirmationsReady(BigInt(0)), false);
+  assert.equal(verify.confirmationsReady(BigInt(4)), false);
+  assert.equal(verify.confirmationsReady(BigInt(5)), true);
+  assert.equal(verify.confirmationsReady(BigInt(6)), true);
+});

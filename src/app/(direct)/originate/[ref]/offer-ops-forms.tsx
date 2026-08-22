@@ -115,11 +115,13 @@ export function OfferAdminForms({
   status,
   nextReceivableN,
   actors,
+  onchainPurchased,
 }: {
   reference: string;
   status: OfferStatus;
   nextReceivableN: number | null;
   actors: Actor[];
+  onchainPurchased: boolean;
 }) {
   const { pending, error, run } = useOfferAction();
   const approvers = actors.filter((actor) => actor.role === "independent_approver");
@@ -196,7 +198,7 @@ export function OfferAdminForms({
         </Card>
       ) : null}
 
-      {collecting ? (
+      {collecting && !onchainPurchased ? (
         <Card>
           <CardHeader>
             <CardTitle>Record collection</CardTitle>

@@ -14,7 +14,6 @@ import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
   coverSrcFor,
   formatDayMonthYear,
-  isListingExpired,
   remainingOfferingCents,
   statusLabel,
   statusTone,
@@ -50,14 +49,9 @@ export default async function BuyerOfferPage({
   const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
-  const expired = isListingExpired(offer.expiresAt);
   const openToBuy =
-    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting") &&
-    !expired;
+    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting");
   const configured = isMerkadoConfigured();
-  const expiresLabel = offer.expiresAt
-    ? formatDayMonthYear(offer.expiresAt)
-    : null;
 
   return (
     <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
@@ -114,14 +108,13 @@ export default async function BuyerOfferPage({
               remainingCents={remaining}
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
-              expiresLabel={expiresLabel}
               minted={offer.minted}
               configured={configured}
               tokenId={offer.tokenId}
             />
           ) : (
             <ClosedOfferCard
-              status={expired ? "Expired" : statusLabel(offer.status)}
+              status={statusLabel(offer.status)}
               offeringCents={offer.offeringCents}
             />
           )}

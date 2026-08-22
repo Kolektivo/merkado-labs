@@ -123,9 +123,10 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
         status={offer.status}
         nextReceivableN={nextReceivable?.n ?? null}
         actors={book.actors}
+        onchainPurchased={onchain.purchased}
       />
 
-      {canRecordCollection(offer.status) ? (
+      {canRecordCollection(offer.status) && !onchain.purchased ? (
         <p className="text-sm text-muted-foreground">
           Live renter payments land on this listing’s offer. The holder then
           claims them from Portfolio. Record collection is the fallback.

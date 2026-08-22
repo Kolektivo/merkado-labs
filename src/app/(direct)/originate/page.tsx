@@ -73,9 +73,8 @@ function nextOfferStep(
   if (status === "draft") return "Submit this request";
   if (status === "under_review") return "Wait for approval";
   if (status === "denied") return "Review the decision";
-  if (status === "expired") return "Listing window ended";
   if (proceeds.purchased && proceeds.landlordPaid) return "Sale proceeds paid to the payout address";
-  if (proceeds.minted) return "Minted · listed for 60 days";
+  if (proceeds.minted) return "Minted · open on Marketplace";
   if (status === "funding") return "Awaiting Safe mint";
   return "Offer sold";
 }

@@ -183,28 +183,17 @@ test("a non-integer atomic amount is rejected", () => {
   assert.throws(() => buy(book, whole + BigInt(1), "2026-08-20T12:00:00.000Z"), /purchased in full/);
 });
 
-test("an offer cannot be purchased after its 60-day window", () => {
+test("an offer without a listing expiry stays purchasable until sold", () => {
   const book = mintedBook();
   const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(offer);
-  offer.expiresAt = "2026-10-01T00:00:00.000Z";
-  assert.throws(
-    () => buy(book, BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)), "2026-10-01T00:00:00.000Z"),
-    /60-day purchase window has ended/,
+  assert.equal(offer.expiresAt, null);
+  const next = buy(
+    book,
+    BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)),
+    "2026-12-01T00:00:00.000Z",
   );
-});
-
-test("a listed offer with a missing or invalid deadline cannot be purchased", () => {
-  for (const expiresAt of ["not-a-date", ""]) {
-    const book = mintedBook();
-    const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-    assert.ok(offer);
-    offer.expiresAt = expiresAt;
-    assert.throws(
-      () => buy(book, BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)), "2026-08-20T12:00:00.000Z"),
-      /not open|60-day purchase window/,
-    );
-  }
+  assert.equal(next.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE)?.status, "live");
 });
 
 test("already purchased offers cannot be purchased again", () => {

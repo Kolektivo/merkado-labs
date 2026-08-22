@@ -13,7 +13,6 @@ import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import {
   buildScheduledReceivables,
   canRecordCollection,
-  listingExpiresAt,
 } from "@/lib/rent-advance/helpers";
 import {
   applyPayoutAddress,
@@ -60,11 +59,21 @@ import {
   verifyOfferPurchased,
   verifyRentClaimed,
   verifyRentDeposit,
+  MERKADO_CONFIRMATION_BLOCKS,
+  confirmationsReady,
 } from "@/lib/onchain/verify";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 
 function refresh() {
   revalidatePath("/", "layout");
+}
+
+/** The book is only confirmed after the approved on-chain confirmation depth. */
+function confirmationDepthPending(result: {
+  confirmations?: bigint | null;
+}): string | null {
+  if (confirmationsReady(result.confirmations)) return null;
+  return `Waiting for confirmations (${result.confirmations ?? 0}/${MERKADO_CONFIRMATION_BLOCKS}).`;
 }
 
 function assertPayoutReady(offer: Offer) {
@@ -136,7 +145,7 @@ export async function approveOfferAction(reference: string, actorId: string) {
       ...offer,
       status: "funding" as const,
       publishedAt,
-      expiresAt: listingExpiresAt(publishedAt),
+      expiresAt: null,
       nextAction: "Awaiting Safe mint",
       events: [
         {
@@ -166,6 +175,12 @@ export async function recordCollectionAction(
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId != null && onchain.purchased) {
+    throw new Error(
+      "Sold listings collect rent on-chain through Merkado Pay (depositRent). Off-chain collection recording is disabled for on-chain offers.",
+    );
+  }
   if (!canRecordCollection(offer.status)) {
     throw new Error(
       "Collections can be recorded only on live, collecting, or defaulted offers.",
@@ -303,6 +318,10 @@ export async function verifyOfferMintedAction(
   if (!result.verified) {
     throw new Error(result.reason ?? "The mint receipt could not be verified.");
   }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending" as const, reason: depthPending };
+  }
   const epoch = await ensureActiveEpoch();
   await recordOffer({
     offerKey: onchain.offerKey,
@@ -325,7 +344,7 @@ export async function verifyOfferMintedAction(
       txHash,
       logIndex,
       blockNumber: Number(result.blockNumber),
-      blockHash: "",
+      blockHash: result.blockHash ?? "",
       eventName: "OfferMinted",
       eventArgs: { tokenId: String(result.tokenId ?? tokenId), offerKey: onchain.offerKey },
     });
@@ -452,6 +471,10 @@ export async function verifyRentPaymentAction(
   if (!result.verified) {
     throw new Error(result.reason ?? "The rent deposit could not be verified.");
   }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
   const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
@@ -476,7 +499,7 @@ export async function verifyRentPaymentAction(
     txHash,
     logIndex,
     blockNumber: Number(result.blockNumber),
-    blockHash: "",
+    blockHash: result.blockHash ?? "",
     eventName: "RentDeposited",
     eventArgs: {
       tokenId: String(onchain.tokenId),
@@ -542,6 +565,10 @@ export async function verifyPurchaseAction(
   if (!result.verified) {
     throw new Error(result.reason ?? "The purchase receipt could not be verified.");
   }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
   const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
@@ -562,7 +589,7 @@ export async function verifyPurchaseAction(
     txHash,
     logIndex,
     blockNumber: Number(result.blockNumber),
-    blockHash: "",
+    blockHash: result.blockHash ?? "",
     eventName: "OfferPurchased",
     eventArgs: {
       tokenId: String(onchain.tokenId),
@@ -622,6 +649,10 @@ export async function verifyRentClaimAction(
   if (!result.verified) {
     throw new Error(result.reason ?? "The rent claim could not be verified.");
   }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
   const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
@@ -645,7 +676,7 @@ export async function verifyRentClaimAction(
     txHash,
     logIndex,
     blockNumber: Number(result.blockNumber),
-    blockHash: "",
+    blockHash: result.blockHash ?? "",
     eventName: "RentClaimed",
     eventArgs: {
       tokenId: String(onchain.tokenId),
