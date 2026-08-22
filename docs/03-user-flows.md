@@ -118,9 +118,10 @@ Home.
 
 Submitted offers are approved in **Admin**. The approver selector contains the
 two walkthrough options **Enrique** and **Luuk**. Approval remains independent
-from the person who submitted the request. After approval, the server mints
-the offer NFT from the company Safe (requires the contract to be deployed and
-the env address set).
+from the person who submitted the request. After approval, operators execute
+the prepared `mintOffer` calldata from the company Safe, and the server
+verifies the mint receipt on Base Sepolia (requires the contract to be
+deployed and the env address set).
 
 ## 8. Shared payment
 
