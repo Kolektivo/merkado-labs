@@ -95,9 +95,8 @@ Home.
    the amount so they stay visible on a phone.
 3. The renter deposits rent by calling `depositRent(tokenId,
    opaquePaymentId, amount)` through the `MerkadoRentOfferV1` contract.
-   The amount must equal the exact monthly rent and an offer accepts at
-   most **6 installments**. The deposit is pending → confirmed on chain.
-   Already paid and overdue remain.
+   The amount must equal the exact monthly rent. The deposit is pending →
+   confirmed on chain. Already paid and overdue remain.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 

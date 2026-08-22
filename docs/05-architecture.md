@@ -88,7 +88,7 @@ are the on-chain evidence record; the JSON book is the product state.
   purchase price directly to the locked landlord payout address, and the
   NFT moves Safe → buyer atomically in the same transaction. No fractions.
 - **Rent.** The renter deposits via `depositRent(tokenId,
-  opaquePaymentId, amount)` — exact monthly amount, max 6 installments.
+  opaquePaymentId, amount)` — exact monthly amount (app schedules six months).
   The opaque payment id binds the deposit to a payment request, so matching
   does not rely on memo guessing.
 - **Wallet.** The UI uses an injected EIP-1193 wallet (WalletConnect /

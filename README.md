@@ -9,7 +9,8 @@ The Base Sepolia flow (ADR-0008) uses one non-upgradeable ERC-721
 (`MerkadoRentOfferV1`): the company Safe mints one offer NFT per approved
 listing, the NFT is transferable (current owner = holder), a buyer pays the
 exact purchase price directly to the locked landlord payout address, rent is
-deposited via `depositRent` (exact monthly amount, max 6 installments), and
+deposited via `depositRent` (exact monthly amount; the app schedules the
+six-month term), and
 the current owner claims with `claimRent`. The flow is **implemented locally
 behind configuration — NOT deployed, NOT activated, NOT merged**. The mock
 payment/wallet layer is removed.

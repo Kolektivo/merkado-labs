@@ -59,8 +59,8 @@ approved listing. The NFT is **transferable**: the current token owner is
 the holder, and only the holder can claim that token's accrued rent. A buyer
 pays the exact purchase price directly to the locked landlord payout address
 and receives the NFT atomically. The renter deposits rent through
-`depositRent(tokenId, opaquePaymentId, amount)` (exact monthly amount,
-max 6 installments). The current owner claims with `claimRent(tokenId)` in
+`depositRent(tokenId, opaquePaymentId, amount)` (exact monthly amount;
+the app schedules the six-month term). The current owner claims with `claimRent(tokenId)` in
 Portfolio. **Base Mainnet** stays later. All mock payment and wallet
 behaviour is removed — the flow is the live flow on Base Sepolia, enabled by
 configuration. See ADR-0008.

@@ -36,8 +36,9 @@ entirely.
   transaction. No fractional purchase.
 - **Renter deposit.** The renter (or any caller with the right data) calls
   `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly
-  amount, at most **6 installments** per offer. Rent is stored in the
-  pooled contract until the current owner claims it.
+  amount. The app schedules the six-month term; the contract imposes no
+  deposit cap. Rent is stored in the pooled contract until the current owner
+  claims it.
 - **Owner claim.** The current NFT owner calls `claimRent(tokenId)` in
   Portfolio to withdraw the accrued USDC.
 - **No mock layer.** `PAYMENT_RAIL_MODE`, the mock provider, the demo

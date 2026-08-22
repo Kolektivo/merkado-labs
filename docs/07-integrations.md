@@ -88,9 +88,9 @@ single flow.
   and the NFT moves company Safe → buyer **atomically** in the same
   transaction. No fractional purchase.
 - **Rent deposit.** The renter calls `depositRent(tokenId,
-  opaquePaymentId, amount)` with the **exact monthly amount**, at most
-  **6 installments** per offer. Rent stays in the pooled contract until the
-  owner claims.
+  opaquePaymentId, amount)` with the **exact monthly amount**. The app
+  schedules the six-month term; the contract imposes no deposit cap. Rent
+  stays in the pooled contract until the owner claims.
 - **Owner claim.** The current NFT owner calls `claimRent(tokenId)` in
   Portfolio. Claim moves that token's accrued USDC from the pool to the
   owner's wallet.
@@ -145,7 +145,7 @@ only when mainnet is enabled.
 | Landlord payout | The buyer pays the **exact purchase price directly to the locked landlord payout address**. No landlord claim, no funding record, no separate payout Safe. |
 | Holder purchase | Any wallet buys the whole offer; NFT moves Safe → buyer atomically. No fractions. |
 | Holder claim | Current NFT owner calls `claimRent(tokenId)` in Portfolio. Transferring the NFT moves the claim right with it. |
-| Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)`; exact monthly amount; max 6 installments. |
+| Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)`; exact monthly amount; app schedules the six-month term, contract has no deposit cap. |
 | Wallet | Injected EIP-1193. WalletConnect versus Privy is a later choice. No mock provider or demo wallet. |
 | Supabase | Labs `csaefdkpwukshtouyixg` only; service-role server-only; RLS on. |
 
@@ -178,7 +178,8 @@ MRA-001 locked Pay request:
 - Purchase: buyer paid the exact `purchasePrice` to the locked landlord
   address **and** the NFT owner changed Safe → buyer in the same tx.
 - Deposit: `depositRent(tokenId, opaquePaymentId, amount)` where `amount`
-  equals the exact monthly rent and the offer has fewer than 6 installments.
+  equals the exact monthly rent and the deposit belongs to the current
+  payment request.
 - Claim: `claimRent(tokenId)` caller is the current NFT owner.
 - Reject self-transfers, wrong amounts, wrong network (`cryptoConfig.chainId`
   must match), duplicate confirmations, and non-owner calls.

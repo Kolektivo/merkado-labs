@@ -43,7 +43,6 @@ contract ReentrantUSDC is ERC20 {
 contract MerkadoRentOfferV1Test is Test {
     uint256 internal constant PRICE = 10_206 * 10 ** 6; // 10,206.00 USDC
     uint256 internal constant INSTALLMENT = 1_800 * 10 ** 6; // 1,800.00 USDC
-    uint256 internal constant MAX_DEPOSITS = 6;
 
     MockUSDC internal mock;
     MerkadoRentOfferV1 internal nft;
@@ -97,10 +96,10 @@ contract MerkadoRentOfferV1Test is Test {
     /// @dev Read a full OfferTerms struct from the public mapping getter, which
     ///      returns the struct components as a tuple.
     function _offer(uint256 tokenId) internal view returns (MerkadoRentOfferV1.OfferTerms memory) {
-        (bytes32 offerKey, address payoutAddress, uint256 purchasePrice, uint256 rentInstallmentAmount, uint8 depositsRecorded, bool purchased) =
+        (bytes32 offerKey, address payoutAddress, uint256 purchasePrice, uint256 rentInstallmentAmount, bool purchased) =
             nft.offers(tokenId);
         return MerkadoRentOfferV1.OfferTerms(
-            offerKey, payoutAddress, purchasePrice, rentInstallmentAmount, depositsRecorded, purchased
+            offerKey, payoutAddress, purchasePrice, rentInstallmentAmount, purchased
         );
     }
 
@@ -154,7 +153,6 @@ contract MerkadoRentOfferV1Test is Test {
         assertEq(t.payoutAddress, payout1);
         assertEq(t.purchasePrice, PRICE);
         assertEq(t.rentInstallmentAmount, INSTALLMENT);
-        assertEq(t.depositsRecorded, 0);
         assertFalse(t.purchased);
 
         assertEq(nft.usedOfferKeys(key), true);
@@ -347,18 +345,15 @@ contract MerkadoRentOfferV1Test is Test {
         vm.expectRevert(MerkadoRentOfferV1.InvalidPaymentId.selector);
         nft.depositRent(tokenId, bytes32(0), INSTALLMENT);
 
-        // Duplicate paymentId.
+        // Repeated unique payment ids keep working (no deposit cap).
         _deposit(tokenId, keccak256("O3"));
         vm.expectRevert(MerkadoRentOfferV1.InvalidPaymentId.selector);
         nft.depositRent(tokenId, keccak256("O3"), INSTALLMENT);
 
-        // 7th deposit is rejected.
-        for (uint256 i = 1; i < MAX_DEPOSITS; i++) {
+        // A 7th+ unique installment is accepted (no max-deposit cap).
+        for (uint256 i = 1; i <= 8; i++) {
             _deposit(tokenId, keccak256(abi.encode("O", i)));
         }
-        assertEq(_offer(tokenId).depositsRecorded, 6);
-        vm.expectRevert(MerkadoRentOfferV1.TooManyDeposits.selector);
-        nft.depositRent(tokenId, keccak256("O7"), INSTALLMENT);
     }
 
     // 10. depositRent records exact per-token liability, consumed paymentId,
@@ -377,7 +372,6 @@ contract MerkadoRentOfferV1Test is Test {
             assertEq(nft.usedPaymentIds(pid), true, "paymentId consumed");
             assertEq(nft.claimableRent(tokenId), (i + 1) * INSTALLMENT, "per-token claimable");
             assertEq(nft.totalRentLiability(), before + INSTALLMENT, "total liability grows");
-            assertEq(_offer(tokenId).depositsRecorded, uint8(i + 1), "deposits recorded");
             assertEq(mock.balanceOf(address(nft)), (i + 1) * INSTALLMENT, "pooled balance");
             _assertSolvent();
         }
@@ -492,86 +486,21 @@ contract MerkadoRentOfferV1Test is Test {
         assertGe(evil.balanceOf(address(nft2)), nft2.totalRentLiability());
     }
 
-    // 15. Pause blocks mint/purchase/deposit but NOT claim; only Safe can pause.
-    function test_PauseBlocksOpsNotClaim() public {
-        // Pre-mint and pre-purchase while unpaused.
-        uint256 claimable = _mintOffer(keccak256("V"), payout1, PRICE, INSTALLMENT);
-        _purchase(claimable);
-        _deposit(claimable, keccak256("V1"));
-
-        uint256 unpurchased = _mintOffer(keccak256("V2"), payout2, PRICE, INSTALLMENT);
-        uint256 purchasedNoDep = _mintOffer(keccak256("V3"), payout3, PRICE, INSTALLMENT);
-        _purchase(purchasedNoDep);
-
-        // Only the Safe can pause.
-        vm.prank(buyer);
-        vm.expectRevert(MerkadoRentOfferV1.NotCompanySafe.selector);
-        nft.pause();
-
-        vm.expectEmit(true, false, false, false, address(nft));
-        emit MerkadoRentOfferV1.Paused(companySafe);
-        vm.prank(companySafe);
-        nft.pause();
-        assertTrue(nft.paused(), "paused");
-
-        // Re-pausing reverts.
-        vm.prank(companySafe);
-        vm.expectRevert(MerkadoRentOfferV1.AlreadyPaused.selector);
-        nft.pause();
-
-        // Mint, purchase, deposit are blocked while paused.
-        vm.prank(companySafe);
-        vm.expectRevert(MerkadoRentOfferV1.ContractPaused.selector);
-        nft.mintOffer(keccak256("V4"), payout4, PRICE, INSTALLMENT);
-
-        vm.prank(buyer);
-        vm.expectRevert(MerkadoRentOfferV1.ContractPaused.selector);
-        nft.purchase(unpurchased);
-
-        vm.prank(renter);
-        vm.expectRevert(MerkadoRentOfferV1.ContractPaused.selector);
-        nft.depositRent(purchasedNoDep, keccak256("V5"), INSTALLMENT);
-
-        // Claim is NOT blocked while paused.
-        uint256 buyerBefore = mock.balanceOf(buyer);
-        vm.prank(buyer);
-        nft.claimRent(claimable);
-        assertEq(mock.balanceOf(buyer), buyerBefore + INSTALLMENT, "claim works while paused");
-        _assertSolvent();
-
-        // Only the Safe can unpause.
-        vm.prank(other);
-        vm.expectRevert(MerkadoRentOfferV1.NotCompanySafe.selector);
-        nft.unpause();
-
-        vm.expectEmit(true, false, false, false, address(nft));
-        emit MerkadoRentOfferV1.Unpaused(companySafe);
-        vm.prank(companySafe);
-        nft.unpause();
-        assertFalse(nft.paused(), "unpaused");
-
-        // Un-pausing again reverts.
-        vm.prank(companySafe);
-        vm.expectRevert(MerkadoRentOfferV1.NotPaused.selector);
-        nft.unpause();
-    }
-
-    // 17. Six installments aggregate exactly and one claim pays the sum.
-    function test_SixInstallmentsAggregateAndOneClaim() public {
+    // 17. Multiple installments aggregate exactly and one claim pays the sum.
+    function test_ManyInstallmentsAggregateAndOneClaim() public {
         uint256 tokenId = _mintOffer(keccak256("W"), payout1, PRICE, INSTALLMENT);
         _purchase(tokenId);
 
-        for (uint256 i = 0; i < 6; i++) {
+        for (uint256 i = 0; i < 9; i++) {
             _deposit(tokenId, keccak256(abi.encode("W", i)));
         }
-        assertEq(nft.claimableRent(tokenId), 6 * INSTALLMENT);
-        assertEq(nft.totalRentLiability(), 6 * INSTALLMENT);
-        assertEq(_offer(tokenId).depositsRecorded, 6);
+        assertEq(nft.claimableRent(tokenId), 9 * INSTALLMENT);
+        assertEq(nft.totalRentLiability(), 9 * INSTALLMENT);
 
         uint256 buyerBefore = mock.balanceOf(buyer);
         vm.prank(buyer);
         nft.claimRent(tokenId);
-        assertEq(mock.balanceOf(buyer), buyerBefore + 6 * INSTALLMENT, "one claim pays the sum");
+        assertEq(mock.balanceOf(buyer), buyerBefore + 9 * INSTALLMENT, "one claim pays the sum");
         assertEq(nft.claimableRent(tokenId), 0);
         assertEq(nft.totalRentLiability(), 0);
         _assertSolvent();
@@ -620,7 +549,7 @@ contract MerkadoRentOfferV1Test is Test {
                     _assertSolvent();
                 }
             } else if (op == 1) {
-                // Random deposit (max 6 per token, unique paymentId).
+                // Random deposit (unique paymentId per deposit; no contract cap).
                 if (purchased[tokenId] && deposits[tokenId] < 6) {
                     bytes32 pid = keccak256(abi.encode("fuzz", paymentCounter++, tokenId));
                     vm.prank(renter);

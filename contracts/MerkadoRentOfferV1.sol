@@ -23,12 +23,8 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
         address payoutAddress;
         uint256 purchasePrice; // USDC atomic (6 decimals)
         uint256 rentInstallmentAmount; // USDC atomic
-        uint8 depositsRecorded;
         bool purchased;
     }
-
-    /// @dev The maximum number of rent installments an offer accepts.
-    uint8 internal constant MAX_DEPOSITS = 6;
 
     /// @notice offerKey => locked offer terms keyed by tokenId.
     mapping(uint256 => OfferTerms) public offers;
@@ -51,11 +47,8 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     /// @notice The pooled USDC token accepted by this contract.
     IERC20 public immutable usdc;
 
-    /// @notice The Company Safe. Only it may mint offers and pause the contract.
+    /// @notice The Company Safe. Only it may mint offers.
     address public immutable companySafe;
-
-    /// @dev Emergency pause flag. Claims are never blocked by pause.
-    bool private _paused;
 
     /// @notice Offer minted by the Company Safe.
     event OfferMinted(
@@ -85,24 +78,14 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     /// @notice The holder claimed the full claimable rent for a token.
     event RentClaimed(uint256 indexed tokenId, address indexed owner, uint256 amount);
 
-    /// @notice Pause triggered by the Company Safe.
-    event Paused(address account);
-
-    /// @notice Pause lifted by the Company Safe.
-    event Unpaused(address account);
-
     error NotCompanySafe();
     error OfferAlreadyPurchased();
     error TokenNotPurchased();
     error TokenNotExists();
     error InvalidPaymentId();
     error AmountMismatch();
-    error TooManyDeposits();
     error NotOwner();
     error ZeroClaim();
-    error ContractPaused();
-    error AlreadyPaused();
-    error NotPaused();
     error OfferKeyUsed();
     error ZeroAddress();
     error ZeroPayoutAddress();
@@ -110,7 +93,7 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     error ZeroInstallment();
 
     /// @param usdc_ The pooled Circle native USDC token address.
-    /// @param companySafe_ The Company Safe allowed to mint offers and pause.
+    /// @param companySafe_ The Company Safe allowed to mint offers.
     constructor(address usdc_, address companySafe_) ERC721("Merkado Rent Offer", "MRO") {
         if (usdc_ == address(0) || companySafe_ == address(0)) revert ZeroAddress();
         usdc = IERC20(usdc_);
@@ -130,7 +113,6 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
         uint256 rentInstallmentAmount
     ) external returns (uint256 tokenId) {
         if (msg.sender != companySafe) revert NotCompanySafe();
-        if (_paused) revert ContractPaused();
         if (payoutAddress == address(0)) revert ZeroPayoutAddress();
         if (purchasePrice == 0) revert ZeroPurchasePrice();
         if (rentInstallmentAmount == 0) revert ZeroInstallment();
@@ -145,7 +127,6 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
             payoutAddress: payoutAddress,
             purchasePrice: purchasePrice,
             rentInstallmentAmount: rentInstallmentAmount,
-            depositsRecorded: 0,
             purchased: false
         });
 
@@ -159,7 +140,6 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     ///         from the Company Safe to the buyer atomically. No fee is charged.
     /// @param tokenId The offer token to purchase.
     function purchase(uint256 tokenId) external nonReentrant {
-        if (_paused) revert ContractPaused();
         _purchase(tokenId);
     }
 
@@ -188,18 +168,14 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     /// @param paymentId Opaque renter payment id, unique per payment.
     /// @param amount The exact rent installment in USDC atomic units.
     function depositRent(uint256 tokenId, bytes32 paymentId, uint256 amount) external nonReentrant {
-        if (_paused) revert ContractPaused();
-
         OfferTerms storage offer = offers[tokenId];
         if (offer.offerKey == bytes32(0)) revert TokenNotExists();
         if (!offer.purchased) revert TokenNotPurchased();
         if (paymentId == bytes32(0) || usedPaymentIds[paymentId]) revert InvalidPaymentId();
         if (amount != offer.rentInstallmentAmount) revert AmountMismatch();
-        if (offer.depositsRecorded >= MAX_DEPOSITS) revert TooManyDeposits();
 
         // Effects before external transfer.
         usedPaymentIds[paymentId] = true;
-        offer.depositsRecorded += 1;
         claimableRent[tokenId] += amount;
         totalRentLiability += amount;
 
@@ -209,7 +185,6 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     }
 
     /// @notice The current token owner (holder) claims the token's full claimable rent.
-    ///         Pause does NOT block claims.
     /// @param tokenId The offer token whose claimable rent is claimed.
     function claimRent(uint256 tokenId) external nonReentrant {
         if (ownerOf(tokenId) != msg.sender) revert NotOwner();
@@ -224,26 +199,5 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
         usdc.safeTransfer(msg.sender, amount);
 
         emit RentClaimed(tokenId, msg.sender, amount);
-    }
-
-    /// @notice Company Safe pauses mint, purchase, and deposit. Claims stay open.
-    function pause() external {
-        if (msg.sender != companySafe) revert NotCompanySafe();
-        if (_paused) revert AlreadyPaused();
-        _paused = true;
-        emit Paused(msg.sender);
-    }
-
-    /// @notice Company Safe lifts the pause.
-    function unpause() external {
-        if (msg.sender != companySafe) revert NotCompanySafe();
-        if (!_paused) revert NotPaused();
-        _paused = false;
-        emit Unpaused(msg.sender);
-    }
-
-    /// @notice Whether the contract is paused.
-    function paused() public view returns (bool) {
-        return _paused;
     }
 }

@@ -93,7 +93,8 @@ and the only claimant.
 ### Opaque payment ids and money invariants
 
 - `depositRent(tokenId, opaquePaymentId, amount)` requires the **exact monthly
-  amount** and a maximum of **6 installments** per offer.
+  amount**. The app schedules the six-month term; the contract imposes no
+  deposit cap.
 - The `opaquePaymentId` is unique per deposit and binds the on-chain deposit
   to a payment request. Matching uses the id plus verified events, never memo
   guessing.

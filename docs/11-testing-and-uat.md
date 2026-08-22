@@ -24,8 +24,7 @@ Property Score tests must cover band boundaries, clamping, invalid market
 rent, the 0.60 → 1.10 example, and proof that derived Property Score does
 not change quote pricing. Payment tests must prove one confirmed deposit
 cannot duplicate collection or claim, that a deposit requires the exact
-monthly amount, that an offer accepts at most 6 installments, and that a
-claim by a non-owner is rejected. App-link tests must prove external
+monthly amount, and that a claim by a non-owner is rejected. App-link tests must prove external
 HTTPS URLs open externally and missing or invalid URLs stay inside the demo.
 Verification tests must prove the server matches the exact expected
 event/log (mint, purchase, transfer, deposit, claim) and rejects

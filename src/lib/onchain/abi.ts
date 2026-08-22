@@ -16,14 +16,11 @@ export const MERKADO_OFFER_ABI = parseAbi([
   "function purchase(uint256 tokenId)",
   "function depositRent(uint256 tokenId, bytes32 paymentId, uint256 amount)",
   "function claimRent(uint256 tokenId)",
-  "function pause()",
-  "function unpause()",
   // views
-  "function offers(uint256) returns (bytes32, address, uint256, uint256, uint8, bool)",
+  "function offers(uint256) returns (bytes32, address, uint256, uint256, bool)",
   "function claimableRent(uint256) returns (uint256)",
   "function totalRentLiability() returns (uint256)",
   "function usedPaymentIds(bytes32) returns (bool)",
   "function usdc() returns (address)",
   "function companySafe() returns (address)",
-  "function paused() returns (bool)",
 ]);

@@ -108,7 +108,7 @@ point any leftover script at those names.
   (ADR-0008): one non-upgradeable ERC-721 (`MerkadoRentOfferV1`), pooled USDC
   rent per token id, company Safe mint, transferable NFT where the current
   owner is the holder, whole-offer purchase paid to the locked landlord
-  address, `depositRent` (exact monthly amount, max 6 installments), and
+  address, `depositRent` (exact monthly amount), and
   `claimRent` by the current owner. There is no mock provider,
   `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes.
 - **Not approved and not activated:** contract deployment, applying the chain
@@ -148,8 +148,8 @@ Operational detail: `12-deployment-runbook.md`.
   browser code, logs, or source control.
 - Server-side verification must check: correct chain (`cryptoConfig.chainId`),
   exact expected event (mint / purchase / transfer / deposit / claim),
-  exact atomic amount, the current token owner for claims, at most one
-  confirmed deposit per payment request, and at most 6 installments per offer.
+  exact atomic amount, the current token owner for claims, and at most one
+  confirmed deposit per payment request.
 - A different address is rejected for a locked landlord payout once set.
 - The pooled USDC balance must always be ≥ total deposited-but-unclaimed
   rent (the contract enforces the invariant; the server verifies it).

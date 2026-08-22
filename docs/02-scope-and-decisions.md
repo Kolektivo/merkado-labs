@@ -21,7 +21,7 @@ repo**. They live on merkado-cw.
 | P0 | Direct IA | Nav is Home, My Offers, Create Offer, Simulator, Marketplace, Portfolio, Pay, Account; Admin at the bottom. A header bell lists offer updates and holder actions. |
 | P0 | Simulator | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote. Amounts in XCG |
 | P0 | My Offers | Draft/unfunded totals excluded; sale + collection/claim status |
-| P0 | Merkado Pay | Live USDC rent deposit on **Base Sepolia** via `depositRent` (Base Mainnet later); exact monthly amount, max 6 installments, opaque payment id; English-only; no demo outcomes |
+| P0 | Merkado Pay | Live USDC rent deposit on **Base Sepolia** via `depositRent` (Base Mainnet later); exact monthly amount, opaque payment id; English-only; no demo outcomes |
 | P0 | Shared state | One confirmed deposit updates request, receivable, collection, claim once |
 | P0 | Portfolio | Pre-seeded positions; Position ID; current NFT owner claims rent (`claimRent`) |
 | P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled. Only Merkado Pay and Merkado Direct are live apps. |
@@ -60,7 +60,7 @@ repo**. They live on merkado-cw.
 | Contract | `MerkadoRentOfferV1`, non-upgradeable, holds pooled Circle native USDC rent accounted per `tokenId`. No listing expiry. |
 | Landlord money | The buyer pays the exact purchase price **directly to the locked landlord payout address**; the NFT moves company Safe → buyer atomically in the same transaction. No landlord claim button, no funding record, no separate payout Safe. The fee is already included and must not look like a second deduction. |
 | Holder claims | Rent stays in the pooled contract until the current NFT owner calls `claimRent(tokenId)` in Portfolio. Only the current owner can claim. NFT transfers move claim rights with the token. |
-| Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly amount, max **6 installments** per offer. Rent is not paid to the landlord a second time. |
+| Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly amount. The app schedules the six-month term; the contract imposes no deposit cap. Rent is not paid to the landlord a second time. |
 | Opaque payment id | Unique per deposit, binds a deposit to a payment request. No memo guessing needed. |
 | Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |
