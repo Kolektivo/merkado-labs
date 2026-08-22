@@ -22,7 +22,7 @@ alwaysApply: true
   require explicit Product Lead approval. Base Mainnet, real funds, and
   production stay blocked.
 - Product/architecture source of truth: `docs/00-docs-index.md` (`docs/01`–`12`); dashboard ops: `docs/12-deployment-runbook.md` + root `README.md`; safety narrative: `docs/08-security-and-privacy.md`. Detailed historical evidence is local-only under `docs/private/` (gitignored); do not commit it.
-- Supabase operations may target only Labs project reference `csaefdkpwukshtouyixg`.
+- Supabase operations may target only Labs project reference `ewoxmzznkavapcxdporm`.
 - Project reference `jkrfyvukhhsapoivntms` is production and is strictly forbidden.
 - Never access or copy production data, users, schemas, secrets, credentials, or configuration.
 - Never run destructive SQL without explicit user approval.

@@ -54,7 +54,7 @@ Direct presentation and filtering only. Never feed it back into the engine.
 
 ## 4. Data
 
-Labs project `csaefdkpwukshtouyixg` only. RLS on. `anon` / `authenticated`
+Labs project `ewoxmzznkavapcxdporm` only. RLS on. `anon` / `authenticated`
 have no grants. Service-role is server-only.
 
 The persisted Labs book is one JSON row in `ra_demo_state`. A trigger on that

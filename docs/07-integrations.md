@@ -7,7 +7,7 @@
 
 | System | Use |
 |---|---|
-| Labs Supabase `csaefdkpwukshtouyixg` | Demo book, chain store, RLS, service-role server access |
+| Labs Supabase `ewoxmzznkavapcxdporm` | Demo book, chain store, RLS, service-role server access |
 | Base Sepolia (`sepolia.base.org`) | Read-only RPC for the server to read receipts and events |
 | Injected wallet (EIP-1193) | Holder purchase and `claimRent`; renter `depositRent` (WalletConnect / Privy later) |
 
@@ -147,7 +147,7 @@ only when mainnet is enabled.
 | Holder claim | Current NFT owner calls `claimRent(tokenId)` in Portfolio. Transferring the NFT moves the claim right with it. |
 | Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)`; exact monthly amount; app schedules the six-month term, contract has no deposit cap. |
 | Wallet | Injected EIP-1193. WalletConnect versus Privy is a later choice. No mock provider or demo wallet. |
-| Supabase | Labs `csaefdkpwukshtouyixg` only; service-role server-only; RLS on. |
+| Supabase | Labs `ewoxmzznkavapcxdporm` only; service-role server-only; RLS on. |
 
 MRA-001 locked Pay request:
 
@@ -305,7 +305,7 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 ### Data ownership and privacy
 
-- Allowed Supabase: Labs `csaefdkpwukshtouyixg` only.
+- Allowed Supabase: Labs `ewoxmzznkavapcxdporm` only.
 - Forbidden: production `jkrfyvukhhsapoivntms`.
 - On-chain wallet addresses and payout amounts are public once active;
   tenant and property identity stay off-chain.

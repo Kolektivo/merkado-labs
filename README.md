@@ -35,7 +35,7 @@ npm run lint
 npm run test:unit
 ```
 
-Labs Supabase only: `csaefdkpwukshtouyixg`. Production is forbidden.
+Labs Supabase only: `ewoxmzznkavapcxdporm`. Production is forbidden.
 `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` stays empty until the contract is
 deployed. Do not deploy unless the Product Lead asks.
 

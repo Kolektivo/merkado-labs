@@ -1,6 +1,6 @@
 import "server-only";
 
-const LABS_PROJECT_REF = "csaefdkpwukshtouyixg";
+const LABS_PROJECT_REF = "ewoxmzznkavapcxdporm";
 const LABS_URL = `https://${LABS_PROJECT_REF}.supabase.co`;
 
 export class DashboardConfigurationError extends Error {

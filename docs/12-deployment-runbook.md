@@ -17,7 +17,7 @@ npm run dev
 Open http://localhost:3000. Start at Home. Local stays open unless
 `LABS_DEMO_PASSWORD` is set.
 
-Required env (Labs project `csaefdkpwukshtouyixg` only):
+Required env (Labs project `ewoxmzznkavapcxdporm` only):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -55,7 +55,7 @@ it to `apps/labs-dashboard` — that folder was removed.
 
 That hosted URL is not a public launch.
 
-Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
+Required Vercel env (Labs project `ewoxmzznkavapcxdporm` only):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -94,7 +94,7 @@ Base Mainnet from this repository.
 `.github/workflows/verify.yml` runs lint, typecheck, unit tests, and build
 on pull requests and on pushes to `main`. It uses Node 24, clearly fake
 CI-only configuration values, and the approved Labs URL
-`https://csaefdkpwukshtouyixg.supabase.co`. It must not receive production
+`https://ewoxmzznkavapcxdporm.supabase.co`. It must not receive production
 credentials, write to Supabase, or expose secrets. The app requires
 Node 22 or newer. Two optional packages (`@emnapi/core` and
 `@emnapi/runtime`) are listed so Linux `npm ci` stays in sync with a
@@ -120,7 +120,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 |---|---|---|
 | GitHub repo [Kolektivo/merkado-labs](https://github.com/Kolektivo/merkado-labs) | **Write** collaborator | Repo → **Settings** → **Collaborators** → **Add people** → choose **Write**. He should open a pull request, not push to `main`. |
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
-| Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
+| Supabase **merkado-labs** (`ewoxmzznkavapcxdporm`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `ewoxmzznkavapcxdporm`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
 | Safe{Wallet} | Testnet operator on the verified 2-of-3 company Safe | The company Safe mints offer NFTs. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |

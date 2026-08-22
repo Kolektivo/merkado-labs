@@ -83,7 +83,7 @@ repo**. They live on merkado-cw.
 | Listing window | No listing expiry. Offers stay purchasable until sold. |
 | Demo book | Two seeded offers for the walkthrough: **MRA-001** (seeded funded reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |
 | Production marketplace | merkado-cw only |
-| Supabase | Labs `csaefdkpwukshtouyixg` only |
+| Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
 | Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
 | Demo account identity | Labs account and seeded renter are **Luuk Weber**, with the Product Lead–supplied avatar. |

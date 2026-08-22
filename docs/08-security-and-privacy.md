@@ -17,7 +17,7 @@ The live Merkado system must remain completely untouched.
 **Allowed Supabase target only:**
 
 - name: `merkado-labs`
-- project reference: `csaefdkpwukshtouyixg`
+- project reference: `ewoxmzznkavapcxdporm`
 - region (Labs identity): `eu-west-3`
 
 **Forbidden production target:**
