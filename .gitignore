@@ -36,5 +36,10 @@ supabase/.temp/
 supabase/.branches/
 .vercel/
 
+# Foundry
+cache/
+broadcast/
+out/
+
 # Private local working material
 docs/private/
