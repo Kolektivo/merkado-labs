@@ -4,39 +4,29 @@ import { CheckCircle2, Clock3, LockKeyhole } from "lucide-react";
 
 import { HelpTip } from "@/components/help-tip";
 import { Money } from "@/components/money-display";
-import { StatusBadge, type StatusTone } from "@/components/status-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { truncateHash } from "@/lib/rent-advance/ids";
-import { cn } from "@/lib/utils";
+import type { ProceedsPresentation } from "@/lib/rent-advance/custody";
 
-export type LandlordProceedsUiStatus =
-  | "waiting"
-  | "available"
-  | "processing"
-  | "failed"
-  | "paid";
+type ProceedsUiState = "waiting" | "minted" | "paid";
 
-const STATUS_LABEL: Record<LandlordProceedsUiStatus, string> = {
-  waiting: "Waiting",
-  available: "Available",
-  processing: "Processing",
-  failed: "Failed",
+function stateFor(presentation: ProceedsPresentation): ProceedsUiState {
+  if (presentation.landlordPaid) return "paid";
+  if (presentation.minted) return "minted";
+  return "waiting";
+}
+
+const STATUS_LABEL: Record<ProceedsUiState, string> = {
+  waiting: "Mint pending",
+  minted: "Minted",
   paid: "Paid",
-};
-
-const STATUS_TONE: Record<LandlordProceedsUiStatus, StatusTone> = {
-  waiting: "warning",
-  available: "success",
-  processing: "info",
-  failed: "error",
-  paid: "neutral",
 };
 
 function LockedAddress({ address }: { address: string }) {
@@ -45,9 +35,11 @@ function LockedAddress({ address }: { address: string }) {
       <LockKeyhole className="text-muted-foreground" aria-hidden />
       <div className="min-w-0">
         <p className="flex items-center gap-1 text-sm font-medium">
-          Demo address locked
+          Payout address locked at mint
           <HelpTip label="Locked payout address">
-            This destination was saved before the offer was submitted.
+            The company Safe locks this address when it mints the offer NFT. The
+            buyer pays the sale amount here. It is never shown on payer or
+            purchaser screens.
           </HelpTip>
         </p>
         <p className="truncate font-mono text-xs text-muted-foreground">
@@ -60,57 +52,39 @@ function LockedAddress({ address }: { address: string }) {
 
 export function LandlordProceedsCard({
   propertyName,
-  status,
-  purchasePriceCents,
-  feeCents,
-  amountCents,
-  lockedAddress,
+  presentation,
 }: {
   propertyName: string;
-  status: LandlordProceedsUiStatus;
-  purchasePriceCents: number;
-  feeCents: number;
-  amountCents: number;
-  lockedAddress?: string | null;
+  presentation: ProceedsPresentation;
 }) {
-  const funded = status !== "waiting";
+  const state = stateFor(presentation);
 
   return (
-    <Card
-      className={cn(
-        status === "available" && "ring-primary/35 shadow-md",
-      )}
-    >
-      <CardHeader
-        className={cn(
-          "border-b pb-4",
-          status === "available" && "bg-primary/5",
-        )}
-      >
+    <Card>
+      <CardHeader className="border-b pb-4">
         <p className="flex items-center gap-1 text-sm text-muted-foreground">
           Sale amount for the landlord
           <HelpTip label="Landlord sale amount">
-            This is the one-time amount from selling the offer. Monthly rent
-            later belongs to the holder.
+            The one-time amount the buyer pays to the payout address once the
+            offer NFT is purchased. Monthly rent later belongs to the NFT owner.
           </HelpTip>
         </p>
         <CardTitle className="text-lg">{propertyName}</CardTitle>
-        <CardAction>
-          <StatusBadge tone={STATUS_TONE[status]}>
-            {STATUS_LABEL[status]}
-          </StatusBadge>
-        </CardAction>
+        <StatusBadge tone={state === "paid" ? "success" : state === "minted" ? "info" : "warning"}>
+          {STATUS_LABEL[state]}
+        </StatusBadge>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {status === "waiting" ? (
+        {state === "waiting" ? (
           <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-4">
             <Clock3 className="mt-0.5 text-muted-foreground" aria-hidden />
             <div>
-              <p className="font-medium">Wait for the full purchase</p>
+              <p className="font-medium">Wait for the Safe mint and full purchase</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                When the whole offer is bought,{" "}
-                <Money cents={purchasePriceCents} /> is paid automatically to
-                the saved payout destination.
+                After the company Safe mints the offer NFT, the buyer can
+                purchase the whole offer. The buyer pays{" "}
+                <Money cents={presentation.purchasePriceCents} /> to the payout
+                address locked at mint.
               </p>
             </div>
           </div>
@@ -119,60 +93,47 @@ export function LandlordProceedsCard({
             <div>
               <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <CheckCircle2 className="text-primary" aria-hidden />
-                {status === "paid"
-                  ? "Paid automatically"
-                  : status === "available"
-                    ? "Preparing automatic payout"
-                    : status === "failed"
-                      ? "Payout failed"
-                      : "Payout in progress"}
-                <HelpTip label="Offer fully bought">
-                  The demo has recorded the full purchase of this offer.
+                {state === "paid"
+                  ? "Paid by the buyer"
+                  : "Minted · awaiting purchase"}
+                <HelpTip label="Verified on chain">
+                  {state === "paid"
+                    ? "The OfferPurchased receipt was verified on Base Sepolia."
+                    : "The OfferMinted receipt was verified on Base Sepolia."}
                 </HelpTip>
               </p>
-              <p
-                className={cn(
-                  "mt-1 text-3xl font-semibold tracking-tight",
-                  status === "available" && "text-primary",
-                )}
-              >
-                <Money cents={amountCents} />
+              <p className="mt-1 text-3xl font-semibold tracking-tight">
+                <Money cents={presentation.purchasePriceCents} />
               </p>
             </div>
-            {feeCents > 0 ? (
+            {presentation.feeCents > 0 ? (
               <p className="flex items-center gap-1 text-sm text-muted-foreground">
                 Fee already included
                 <HelpTip label="Included fee">
-                  Merkado’s fee is <Money cents={feeCents} />. It will not be
-                  deducted again.
+                  Merkado’s fee is <Money cents={presentation.feeCents} />. It
+                  will not be deducted again.
                 </HelpTip>
               </p>
             ) : null}
           </>
         )}
 
-        {status === "processing" && lockedAddress ? (
-          <LockedAddress address={lockedAddress} />
-        ) : null}
-
-        {status === "failed" && lockedAddress ? (
-          <>
-            <p className="text-sm text-muted-foreground">
-              The automatic demo payout failed. Operations can retry only to
-              the same saved destination.
-            </p>
-            <LockedAddress address={lockedAddress} />
-          </>
-        ) : null}
-
-        {status === "paid" && lockedAddress ? (
-          <LockedAddress address={lockedAddress} />
-        ) : null}
-
-        {funded ? (
+        {presentation.payoutAddress ? (
+          <LockedAddress address={presentation.payoutAddress} />
+        ) : (
           <Alert className="py-2">
             <AlertDescription>
-              Demo only — no bank, wallet, or transfer was used.
+              Add a Base Sepolia payout address before the mint. It is locked
+              when the offer NFT is minted.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {state === "paid" ? (
+          <Alert className="py-2">
+            <AlertDescription>
+              Verified from the purchase receipt. The sale amount went to the
+              payout address above.
             </AlertDescription>
           </Alert>
         ) : null}

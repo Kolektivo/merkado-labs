@@ -1,8 +1,10 @@
 import { formatDayMonthYear } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
 import { loadBook } from "@/lib/rent-advance/store";
 import { toPublicCryptoConfig } from "@/lib/pay/networks";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -25,6 +27,7 @@ export default async function PayRequestPage({
   }
 
   const offer = book.offers.find((row) => row.reference === request.offerReference);
+  const onchain = mergeOnchain(offer?.onchain);
   const earlier = earlierOpenPaymentRequest(book, request.paymentRequestId);
   const history = (book.paymentRequests ?? [])
     .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
@@ -38,6 +41,7 @@ export default async function PayRequestPage({
       dueDateLabel: formatDayMonthYear(row.dueDate),
     }));
   const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
+  const configured = isMerkadoConfigured();
 
   return (
     <PayApp
@@ -47,7 +51,6 @@ export default async function PayRequestPage({
       amountUsdcAtomic={request.amountUsdcAtomic}
       amountXcgCents={request.amountXcgCents}
       paymentReference={request.paymentReference}
-      receivingAddress={request.receivingAddress}
       networkLabel={publicCryptoConfig?.networkLabel?.trim() ?? ""}
       status={request.status}
       txHash={request.txHash}
@@ -55,9 +58,9 @@ export default async function PayRequestPage({
       district={offer?.property.district ?? ""}
       earlierPeriodLabel={earlier?.periodLabel ?? null}
       history={history}
-      cryptoConfig={publicCryptoConfig}
-      offerReference={request.offerReference}
-      receivableId={request.receivableId}
+      configured={configured}
+      minted={onchain.tokenId != null}
+      tokenId={onchain.tokenId}
     />
   );
 }

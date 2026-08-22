@@ -1,4 +1,4 @@
-import { mergeCustody } from "@/lib/rent-advance/custody";
+import { mergeOnchain, type MintState } from "@/lib/rent-advance/custody";
 import { positionIdFor, receivableIdFor } from "@/lib/rent-advance/ids";
 import { formatXcg } from "@/lib/rent-advance/money";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
@@ -196,10 +196,12 @@ export function canSubscribe(
   fundedCents: number,
   expiresAt?: string | null,
   at?: string,
+  minted = true,
 ): boolean {
   return (
     (status === "funding" || status === "live" || status === "collecting") &&
     (status !== "funding" || Boolean(expiresAt)) &&
+    minted &&
     !isListingExpired(expiresAt, at) &&
     remainingOfferingCents({ offeringCents, fundedCents }) > 0
   );
@@ -238,7 +240,7 @@ export function statusLabel(status: OfferStatus): string {
     case "live":
       return "Sold";
     case "funding":
-      return "Listed";
+      return "Mint pending";
     case "collecting":
       return "Sold";
     case "denied":
@@ -251,6 +253,17 @@ export function statusLabel(status: OfferStatus): string {
       return "Default";
     case "draft":
       return "Draft";
+  }
+}
+
+export function mintStateLabel(state: MintState): string {
+  switch (state) {
+    case "not_minted":
+      return "Mint pending";
+    case "minted":
+      return "Listed";
+    case "purchased":
+      return "Sold";
   }
 }
 
@@ -282,10 +295,12 @@ export function isMarketplaceStatus(status: OfferStatus): boolean {
 export function canShowContribute(
   status: OfferStatus,
   expiresAt?: string | null,
+  minted = true,
 ): boolean {
   return (
     (status === "live" || status === "funding" || status === "collecting") &&
     (status !== "funding" || Boolean(expiresAt)) &&
+    minted &&
     !isListingExpired(expiresAt)
   );
 }
@@ -299,6 +314,7 @@ export function payerPayee(offer: Offer): string {
 export function anonymizeOffer(offer: Offer): BuyerOfferCard {
   const derived = propertyScoreFor(offer);
   const district = publicDistrictName(offer.property.district);
+  const onchain = mergeOnchain(offer.onchain);
   return {
     reference: offer.reference,
     district,
@@ -320,6 +336,9 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     status: offer.status,
     expiresAt: offer.expiresAt,
     coverImageSrc: offer.property.coverImageSrc ?? null,
+    minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
+    tokenId: onchain.tokenId,
+    purchased: onchain.purchased,
   };
 }
 
@@ -361,10 +380,10 @@ export function distributionTotals(book: DemoBook, offer: Offer) {
   return {
     collectedCents: distributionsReceivedCents(offer),
     pendingDistributionCents: rows
-      .filter((row) => row.status === "pending")
+      .filter((row) => row.status === "claimable")
       .reduce((sum, row) => sum + row.amountCents, 0),
     distributedCents: rows
-      .filter((row) => row.status === "distributed")
+      .filter((row) => row.status === "claimed")
       .reduce((sum, row) => sum + row.amountCents, 0),
     settlementTxHash: null,
   };
@@ -379,10 +398,11 @@ export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPos
         distributedCents: distributionsReceivedCents(offer),
         settlementTxHash: null,
       };
+  const onchain = mergeOnchain(offer.onchain);
   return {
     ...anonymizeOffer(offer),
     positionId: positionIdFor(offer.reference),
-    offerAddress: mergeCustody(offer.custody).nftPaymentAddress,
+    offerAddress: onchain.contractAddress,
     receivedCents: money.collectedCents,
     remainingCents: outstandingCents(offer),
     collectedCents: money.collectedCents,
@@ -479,7 +499,7 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
 export function bookTotals(book: DemoBook) {
   const counted = book.offers.filter(countsAsAdvanced);
   const totalAdvanced = counted.reduce(
-    (sum, offer) => sum + mergeCustody(offer.custody).landlordClaimedCents,
+    (sum, offer) => sum + (mergeOnchain(offer.onchain).landlordPaid ? offer.purchasePriceCents : 0),
     0,
   );
   const outstanding = counted.reduce(

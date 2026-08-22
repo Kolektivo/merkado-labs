@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/status-badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -10,6 +11,8 @@ import {
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
 import { loadBook } from "@/lib/rent-advance/store";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
+import { NOT_CONFIGURED } from "@/lib/rent-advance/copy";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,7 @@ function tone(status: PaymentRequestStatus) {
 
 export default async function PayIndexPage() {
   const book = await loadBook();
+  const configured = isMerkadoConfigured();
   const requests = (book.paymentRequests ?? [])
     .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
     .slice()
@@ -49,6 +53,13 @@ export default async function PayIndexPage() {
           Pay the same rent. Amounts are shown in XCG. Settlement is USDC.
         </p>
       </div>
+
+      {!configured ? (
+        <Alert variant="destructive">
+          <AlertTitle>{NOT_CONFIGURED.title}</AlertTitle>
+          <AlertDescription>{NOT_CONFIGURED.body}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {next ? (
         <Card>

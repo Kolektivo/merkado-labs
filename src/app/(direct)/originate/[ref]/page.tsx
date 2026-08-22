@@ -29,7 +29,7 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
-import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
+import { proceedsPresentation } from "@/lib/rent-advance/custody";
 import { getOffer } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ export default async function OfferOpsPage({
   if (!offer) notFound();
 
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
-  const proceeds = landlordProceedsPresentation(offer);
+  const proceeds = proceedsPresentation(offer);
   const effectiveStatus = effectiveOfferStatus(offer);
   const showProceedsCard = offer.status !== "draft";
   const lifecycleEvents = offer.events.filter((event) =>
@@ -132,11 +132,7 @@ export default async function OfferOpsPage({
       {showProceedsCard ? (
         <LandlordProceedsCard
           propertyName={offerDisplayName(offer)}
-          status={proceeds.status}
-          purchasePriceCents={proceeds.purchasePriceCents}
-          feeCents={proceeds.feeCents}
-          amountCents={proceeds.amountCents}
-          lockedAddress={proceeds.lockedAddress}
+          presentation={proceeds}
         />
       ) : null}
 

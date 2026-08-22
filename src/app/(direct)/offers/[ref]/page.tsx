@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
-  canShowContribute,
   coverSrcFor,
   formatDayMonthYear,
   isListingExpired,
@@ -22,6 +21,7 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 import { SubscribeForm } from "./subscribe-form";
 
@@ -51,7 +51,10 @@ export default async function BuyerOfferPage({
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
   const expired = isListingExpired(offer.expiresAt);
-  const openToBuy = canShowContribute(offer.status, offer.expiresAt);
+  const openToBuy =
+    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting") &&
+    !expired;
+  const configured = isMerkadoConfigured();
   const expiresLabel = offer.expiresAt
     ? formatDayMonthYear(offer.expiresAt)
     : null;
@@ -112,6 +115,9 @@ export default async function BuyerOfferPage({
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
               expiresLabel={expiresLabel}
+              minted={offer.minted}
+              configured={configured}
+              tokenId={offer.tokenId}
             />
           ) : (
             <ClosedOfferCard

@@ -13,6 +13,9 @@ import { ARREARS_LADDER } from "@/lib/rent-advance/arrears";
 import { canRecordCollection, statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
+import { mergeOnchain, mintCalldata } from "@/lib/rent-advance/custody";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
+import { MintControl } from "./mint-control";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +35,13 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();
 
+  const onchain = mergeOnchain(offer.onchain);
+  const configured = isMerkadoConfigured();
+  const calldata = mintCalldata(offer);
+
   const nextReceivable =
     offer.receivables.find((row) => row.status === "scheduled") ?? null;
   const missed = offer.receivables.find((row) => row.status === "missed");
-  const releasable = offer.collections.filter(
-    (row) => row.status === "received" || row.status === "reconciled",
-  );
 
   let quote = null;
   try {
@@ -103,12 +107,22 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
         </Card>
       </div>
 
+      <MintControl
+        reference={offer.reference}
+        configured={configured}
+        offerKey={onchain.offerKey}
+        tokenId={onchain.tokenId}
+        contractAddress={onchain.contractAddress}
+        mintTxHash={onchain.mintTxHash}
+        purchased={onchain.purchased}
+        calldata={calldata}
+      />
+
       <OfferAdminForms
         reference={offer.reference}
         status={offer.status}
         nextReceivableN={nextReceivable?.n ?? null}
         actors={book.actors}
-        releasableCollections={releasable}
       />
 
       {canRecordCollection(offer.status) ? (

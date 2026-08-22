@@ -53,9 +53,15 @@ export function MarketplaceOfferCard({
   const bedsLabel = `${card.bedrooms} ${card.bedrooms === 1 ? "bed" : "beds"}`;
   const monthsLabel = `${card.months} ${card.months === 1 ? "month" : "months"}`;
   const effectiveStatus = effectiveOfferStatus(card);
-  const metaLabel = `${statusLabel(effectiveStatus)}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
+  const statusLine =
+    effectiveStatus === "funding"
+      ? card.minted
+        ? "Listed"
+        : "Mint pending"
+      : statusLabel(effectiveStatus);
+  const metaLabel = `${statusLine}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
   const remaining = remainingOfferingCents(card);
-  const purchasable = remaining > 0 && effectiveStatus === "funding";
+  const purchasable = remaining > 0 && effectiveStatus === "funding" && card.minted;
   const specs = [
     {
       key: "beds",

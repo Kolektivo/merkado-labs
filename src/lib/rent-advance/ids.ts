@@ -1,16 +1,27 @@
-export const DEMO_RECEIVING_ADDRESS =
-  "0xDEMO0000SAFE00MERKADOPAY000000000000000";
-export const DEMO_COMPANY_SAFE = "0xDEMO0000SAFE00COMPANY000000000000000000";
-export const DEMO_SALES_PROCEEDS_SAFE =
-  "0xDEMO0000SAFE00SALESPROCEEDS00000000000";
-export const DEMO_NFT_CONTRACT = "0xDEMO0000NFT00OFFERFACTORY0000000000000";
-export const DEMO_PAYER_WALLET = "0xDEMO0000RENTER00MERKADOPAY000000000001";
-export const DEMO_LANDLORD_PAYOUT = "0xDEMO0000LANDLORD00PAYOUT00000000000001";
+/**
+ * Stable demo ids and address helpers. Real on-chain addresses come from
+ * the network/contract config, never from fabricated 0xDEMO constants.
+ */
+
+/** Verified Base Sepolia test EOA used as the seeded demo landlord payout. */
+export const DEMO_LANDLORD_EOA = "0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8";
+
 export const CANONICAL_PAYMENT_REQUEST_ID = "payreq-mra-001-202609";
 export const RENTER_ACCOUNT_ID = "acc-renter-001";
 export const SAFE_ACCOUNT_ID = "safe-demo-001";
 export const COMPANY_SAFE_ACCOUNT_ID = "safe-demo-company";
-export const SALES_PROCEEDS_SAFE_ACCOUNT_ID = "safe-demo-sales";
+
+/**
+ * Normalize a configured address value. Returns the trimmed value when
+ * present, otherwise the fallback. Never fabricates a value.
+ */
+export function configAddress(
+  value: string | null | undefined,
+  fallback: string | null = null,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
+}
 
 export function slugRef(reference: string): string {
   return reference.toLowerCase();
@@ -36,27 +47,6 @@ export function distributionIdFor(reference: string, n: number): string {
   return `dist-${slugRef(reference)}-${n}`;
 }
 
-export function companyFeeTxIdFor(reference: string): string {
-  return `tx-fee-${slugRef(reference)}`;
-}
-
-export function landlordClaimTxIdFor(reference: string): string {
-  return `tx-claim-${slugRef(reference)}`;
-}
-
-export function offerNftTokenId(reference: string): string {
-  return `nft-${slugRef(reference)}`;
-}
-
-export function offerNftPaymentAddress(reference: string): string {
-  const body = slugRef(reference)
-    .replace(/[^a-z0-9]/g, "")
-    .toUpperCase()
-    .padEnd(20, "0")
-    .slice(0, 20);
-  return `0xDEMO0000NFT00${body}`.slice(0, 42).padEnd(42, "0");
-}
-
 export function paymentTxIdFor(paymentRequestId: string): string {
   return `tx-pay-${paymentRequestId}`;
 }
@@ -65,20 +55,15 @@ export function distributionTxIdFor(reference: string, n: number): string {
   return `tx-dist-${slugRef(reference)}-${n}`;
 }
 
-export function demoTxHash(seed: string): string {
-  const padded = seed.replace(/[^a-zA-Z0-9]/g, "").padEnd(40, "0").slice(0, 40);
-  return `0xDEMO${padded}`;
-}
-
-export function isExplorableTxHash(value: string | null | undefined): boolean {
+export function isExplorableTxHash(
+  value: string | null | undefined,
+): value is string {
   return Boolean(value && /^0x[a-fA-F0-9]{64}$/.test(value));
 }
 
-export function acceptedPaymentTxHash(value: string | null | undefined): string | null {
-  if (!value) return null;
-  if (value.startsWith("0xDEMO")) return value;
-  if (isExplorableTxHash(value)) return value;
-  return null;
+/** Accept a tx hash only when it is a real 64-hex value. No demo hashes. */
+export function acceptedLiveTxHash(value: string | null | undefined): string | null {
+  return isExplorableTxHash(value) ? value : null;
 }
 
 export function periodLabelFromDueDate(dueDate: string): string {
