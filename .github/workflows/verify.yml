@@ -42,5 +42,12 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Contract tests
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Forge test
+        run: forge test
+
       - name: Build
         run: npm run build
