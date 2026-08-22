@@ -236,6 +236,10 @@ export type PaymentRequest = {
   txHash: string | null;
   /** Opaque bytes32 on-chain payment id created for the rent deposit attempt. */
   opaquePaymentId?: string | null;
+  /** Submitted on-chain deposit tx hash, persisted so a pending payment can be re-verified after a refresh. */
+  submittedTxHash?: string | null;
+  /** The payer (msg.sender) of the submitted deposit, needed to re-verify on resume. */
+  submittedPayer?: string | null;
 };
 
 export type LedgerTransaction = {

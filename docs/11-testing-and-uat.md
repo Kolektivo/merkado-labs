@@ -40,7 +40,7 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
    page.
 2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
    Portfolio, plus Pay, Account, and Admin at the bottom.
-3. My Offers lists the two seeded offers (**MRA-001** and **MRA-010**);
+3. My Offers is empty until you create an offer via Create Offer;
    draft/unsold rows are not counted as cash already advanced.
 4. Simulator: Listing Score and Payer Score sliders; market rent in XCG;
    Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
@@ -82,8 +82,8 @@ it felt wrong.
    Base Sepolia contract and `MERKADO_RPC_URL` points at
    `https://sepolia.base.org`.
 2. Open **Admin** at the bottom of the left nav. Click **Reset the book** and
-   confirm **Yes, reset**. Both seeded offers (**MRA-001** and **MRA-010**)
-   start as approved listings awaiting the Safe mint.
+   confirm **Yes, reset**. The book is empty — create an offer via Create Offer,
+   approve it in Admin, and the backend mints it automatically.
 3. Fund test wallets with Base Sepolia ETH (gas) and test USDC from
    [faucet.circle.com](https://faucet.circle.com).
 
@@ -140,8 +140,8 @@ it felt wrong.
 - Confirm in the wallet. You should see pending, then **Rent paid** only
   after the server verifies the deposit event.
 - Deposit the same month again: the second attempt must be rejected
-  (already paid). A wrong amount must be rejected. A sixth installment is
-  the maximum; a seventh is rejected.
+  (already paid). A wrong amount and a duplicate payment id must be rejected;
+  unique payment ids keep working (the contract has no deposit cap).
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.
@@ -183,9 +183,9 @@ it felt wrong.
 
 ### 9. Reset
 
-- Open **Admin**. **Reset the book** restores the two seeded offers
-  (**MRA-001** and the cheap Punda studio), payments, and distributions.
-  The payment network you selected stays. On-chain state is **not** rolled
+- Open **Admin**. **Reset the book** restores the empty book (no offers). You
+  create and mint offers yourself. The payment network you selected stays. On-chain
+  state is **not** rolled
   back by Reset — Reset restores the Labs book only; deployed contracts and
   their balances keep their chain state.
 

@@ -165,6 +165,18 @@ export function effectiveOfferStatus(
   return offer.status;
 }
 
+
+/** True when an approved offer still needs minting (not broadcast, or broadcast
+ *  but not yet verified to 5-block depth). */
+export function isPendingMintOffer(offer: {
+  status: OfferStatus;
+  onchain?: Offer["onchain"];
+}): boolean {
+  if (offer.status !== "funding") return false;
+  const onchain = mergeOnchain(offer.onchain);
+  return onchain.mintTxHash == null || onchain.tokenId == null;
+}
+
 export function canSubscribe(
   status: OfferStatus,
   offeringCents: number,

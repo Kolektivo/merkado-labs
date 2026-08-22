@@ -61,6 +61,10 @@ export default async function PayRequestPage({
       configured={configured}
       minted={onchain.tokenId != null}
       tokenId={onchain.tokenId}
+      pendingRecovery={
+        Boolean(request.submittedTxHash) &&
+        (request.status === "pending" || request.status === "initiated" || request.status === "due")
+      }
     />
   );
 }

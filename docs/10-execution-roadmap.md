@@ -14,13 +14,13 @@
   `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; apply the chain store migration
   (`ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`,
   `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`,
-  `ra_rent_claim_verifications`); send test USDC; execute the Safe mint.
+  `ra_rent_claim_verifications`); send test USDC.
   Each requires explicit Product Lead approval. Do **not** merge or activate
   the flow until each gate closes.
 - Set `LABS_DEMO_PASSWORD` on the Labs Vercel Production environment,
   then approve commit and push so the host password is live on
   `merkado-labs.vercel.app`.
-- **Luis** confirms the Safe mint execution (Safe Transaction Service or an
+- **Luis** confirms `MERKADO_MINTER_PRIVATE_KEY` funding/rotation for minting
   approved relayer) and the fee settlement path. The fee is informational and
   must never reduce the landlord below the purchase price shown.
 - Stage 0 questions stay unresolved. Do not pretend they are closed.
@@ -30,7 +30,7 @@
 
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
 - **Luis** completes an end-to-end **Base Sepolia** walkthrough once
-  deployed: Safe mint → whole-offer purchase → renter `depositRent` → owner
+  deployed: backend mint → whole-offer purchase → renter `depositRent` → owner
   `claimRent` → NFT transfer to a new owner and claim as the new owner.
   Do **not** merge and do **not** activate hosted flows until that
   walkthrough works and the Product Lead approves.
@@ -63,6 +63,6 @@
 | 3-month term origination | Separate short-dated advice |
 | Contract deployment | Not approved; `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty |
 | Chain store migration | Not approved / not applied |
-| Test USDC + Safe mint | Not approved; requires contract deployed |
+| Test USDC + live mint | Not approved; requires contract deployed |
 | Hosted activation / merge | Product Lead approval after the Base Sepolia E2E |
 | Base Mainnet / real funds | Explicitly blocked; testnet only |

@@ -76,9 +76,7 @@ single flow.
 - **One contract.** `MerkadoRentOfferV1`, a non-upgradeable ERC-721. It
   holds **pooled Circle native USDC rent**, accounted per `tokenId`. The
   pooled balance is always ≥ total deposited-but-unclaimed rent.
-- **Mint.** The verified backend mint key
-  (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`, Base Sepolia, 2 of 3:
-  Enrique, Luuk, Luis) mints **one offer NFT per approved listing**. No
+- **Mint.** The server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`) mints **one offer NFT per approved listing**. No
   listing expiry.
 - **Transferable NFT.** There is no transfer lock. The current token owner
   is the **holder**. Only the current owner can claim that token's accrued
@@ -138,7 +136,7 @@ only when mainnet is enabled.
 | Customer money | **USD**. Stored as integer cents. |
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
 | Contract | `MerkadoRentOfferV1`, non-upgradeable ERC-721, pooled USDC rent per token id |
-| Backend mint key | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. |
+| Backend mint key | server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` is a legacy display label, not the minter. |
 | Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; empty shows not-configured |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Listing offer | **One transferable NFT per listing**, minted by the backend mint key. No expiry. |
@@ -259,8 +257,8 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 1. **Deployment.** Deploy and verify `MerkadoRentOfferV1` on Base Sepolia,
    then set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`. Apply the chain store
-   migration. Send test USDC and execute a Safe mint only after approval.
-2. **Safe mint execution.** Confirm how the backend mint key signs the mint
+   migration. Send test USDC only after approval.
+2. **Mint signing.** The backend mint key signs each `mintOffer` directly (no Safe transaction). Confirm funding/rotation of `MERKADO_MINTER_PRIVATE_KEY`.
    (Safe Transaction Service, a relayer, or another approved design). It
    must not reduce the landlord below the purchase price shown.
 3. **Fee settlement.** How the company fee is realised. It is informational

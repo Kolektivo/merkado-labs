@@ -23,9 +23,7 @@ entirely.
 - **Contract.** One non-upgradeable ERC-721, `MerkadoRentOfferV1`, on
   Base Sepolia. It holds pooled native USDC rent, accounted per `tokenId`.
   No listing expiry exists in the contract; offers do not auto-close.
-- **Mint.** The verified backend mint key
-  (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`, Base Sepolia, 2-of-3:
-  Enrique, Luuk, Luis) mints one offer NFT per approved listing. Landlords
+- **Mint.** The server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`) mints one offer NFT per approved listing. Landlords
   never sign.
 - **Transferable NFT = holder.** There is no transfer lock. The current
   NFT owner is the HOLDER. Only the current owner can claim that token's
@@ -47,7 +45,7 @@ entirely.
 - **Configuration.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` holds the
   deployed Base Sepolia address; it is **empty until deployment** and
   surfaces show a not-configured state. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE`
-  defaults to the verified backend mint key. Server-only `MERKADO_RPC_URL`
+  is a legacy display label. Server-only `MERKADO_RPC_URL`
   defaults to `https://sepolia.base.org`. `NEXT_PUBLIC_PAY_NETWORK` stays
   `base-sepolia`.
 - **Gates that stay closed.** Contract deployment, applying new

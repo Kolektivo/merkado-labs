@@ -82,7 +82,7 @@ explicitly approved and done (see `docs/10-execution-roadmap.md`):
 1. Deploy and verify `MerkadoRentOfferV1` on **Base Sepolia**.
 2. Set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` to the verified address.
 3. Apply the chain store migration.
-4. Send test USDC and execute the Safe mint.
+4. Send test USDC (the backend mint key signs `mintOffer` directly).
 5. Product Lead approves hosted activation and the merge.
 
 Base Mainnet and real funds remain blocked. Do not deploy the contract to
@@ -121,7 +121,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`ewoxmzznkavapcxdporm`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `ewoxmzznkavapcxdporm`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Testnet operator on the verified 2-of-3 backend mint key | The backend mint key mints offer NFTs. Do not start with a mainnet Safe that holds real USDC. |
+| Minter | Testnet EOA backing `MERKADO_MINTER_PRIVATE_KEY` | The backend mint key mints offer NFTs. Do not use a mainnet key or real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 | Privy, only if selected | Developer on a Kolektivo-owned Labs app | Do not create a personal production dependency or add billing without approval. |
 
@@ -140,7 +140,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him the backend mint key is the verified Base Sepolia 2-of-3 Safe
+2. The backend mint key is the EOA behind `MERKADO_MINTER_PRIVATE_KEY`
    (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) and mints offer NFTs. The
    design is one transferable ERC-721 per listing; the old PR #19 / #20 / #22
    draft framing is superseded by ADR-0008.

@@ -13,6 +13,7 @@ import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import {
   buildScheduledReceivables,
   canRecordCollection,
+  isPendingMintOffer,
 } from "@/lib/rent-advance/helpers";
 import {
   applyPayoutAddress,
@@ -44,7 +45,7 @@ import {
   assertMerkadoConfigured,
   merkadoContractAddress,
 } from "@/lib/onchain/config";
-import { offerKey, opaquePaymentId } from "@/lib/onchain/ids";
+import { opaquePaymentId, randomOfferKey } from "@/lib/onchain/ids";
 import {
   ensureActiveEpoch,
   markOfferPurchased,
@@ -278,13 +279,9 @@ async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   const purchasePrice = purchasePriceAtomicFor(offer);
   const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
   const epoch = await ensureActiveEpoch();
-  const key =
-    onchain.offerKey ??
-    offerKey({
-      chainId: MERKADO_CHAIN_ID,
-      contractAddress,
-      internalId: offer.reference,
-    });
+  // A fresh random key avoids the contract's usedOfferKeys collision if the
+  // demo book is ever reset; the key is persisted with the broadcast.
+  const key = onchain.offerKey ?? randomOfferKey();
 
   // Broadcast once with the server mint key.
   let txHash = onchain.mintTxHash;
@@ -338,8 +335,26 @@ async function mintOfferFor(reference: string): Promise<AutoMintResult> {
     hash: txHash as `0x${string}`,
     timeout: 90_000,
   }).catch(() => null);
-  if (!receipt || receipt.status !== "success") {
+  if (!receipt) {
     return { status: "pending", txHash, reason: "Waiting for the mint transaction on chain." };
+  }
+  if (receipt.status !== "success") {
+    await updateOffer(reference, (current) => ({
+      ...current,
+      nextAction: "Mint failed · retry",
+      onchain: { ...mergeOnchain(current.onchain), mintTxHash: null },
+      events: [
+        {
+          id: `ev-${reference}-mint-reverted-${Date.now()}`,
+          at: new Date().toISOString(),
+          title: "Mint failed",
+          detail: "The mintOffer transaction reverted. Retry to broadcast a new mint.",
+          actor: "System",
+        },
+        ...current.events,
+      ],
+    }));
+    return { status: "pending", txHash, reason: "The mint transaction reverted. Press Mint now to retry." };
   }
 
   let mintedTokenId: bigint | null = onchain.tokenId != null ? BigInt(onchain.tokenId) : null;
@@ -451,6 +466,7 @@ export type PendingMintResult = {
   reason?: string;
 };
 
+
 /** Mints every approved offer that has not been minted yet. Idempotent. */
 export async function sweepPendingMintsAction(): Promise<{
   minted: number;
@@ -458,9 +474,7 @@ export async function sweepPendingMintsAction(): Promise<{
 }> {
   assertMerkadoConfigured();
   const book = await loadBook();
-  const pending = book.offers.filter(
-    (offer) => offer.status === "funding" && !mergeOnchain(offer.onchain).mintTxHash,
-  );
+  const pending = book.offers.filter(isPendingMintOffer);
   const results: PendingMintResult[] = [];
   for (const offer of pending) {
     try {
@@ -536,6 +550,48 @@ type RentDepositVerifiedResult = {
   reason?: string;
 };
 
+/** Persist the submitted deposit tx so a pending payment can be re-verified later. */
+export async function attachSubmittedTxAction(
+  paymentRequestId: string,
+  txHash: string,
+  payerAddress: string,
+) {
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request) throw new Error("Payment request not found.");
+  await saveBook({
+    ...book,
+    paymentRequests: (book.paymentRequests ?? []).map((row) =>
+      row.paymentRequestId === paymentRequestId
+        ? { ...row, submittedTxHash: txHash, submittedPayer: payerAddress }
+        : row,
+    ),
+  });
+}
+
+/** Re-verify a previously submitted deposit using the persisted hash. */
+export async function checkPendingPaymentAction(
+  paymentRequestId: string,
+): Promise<RentDepositVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request) throw new Error("Payment request not found.");
+  if (request.status === "confirmed") return { status: "confirmed" };
+  if (!request.submittedTxHash || !request.submittedPayer) {
+    return { status: "pending", reason: "No submitted transaction was recorded yet." };
+  }
+  return verifyRentPaymentAction(
+    paymentRequestId,
+    request.submittedTxHash,
+    request.submittedPayer,
+  );
+}
+
 /** Verify a rent deposit receipt and update the book exactly once. */
 export async function verifyRentPaymentAction(
   paymentRequestId: string,
@@ -583,7 +639,7 @@ export async function verifyRentPaymentAction(
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
   }
-  const verification = await recordDepositVerification({
+  await recordDepositVerification({
     chainId: MERKADO_CHAIN_ID,
     txHash,
     logIndex,
@@ -611,19 +667,19 @@ export async function verifyRentPaymentAction(
       amount: expectedAmount.toString(),
     },
   });
-  if (verification.recorded) {
-    const facts: VerifiedRentDepositFacts = {
-      tokenId: onchain.tokenId,
-      opaquePaymentId: opaque,
-      payerAddress,
-      amountAtomic: expectedAmount,
-      txHash,
-      blockNumber: result.blockNumber,
-    };
-    await saveBook(
-      applyVerifiedRentDeposit(book, paymentRequestId, facts, new Date().toISOString()),
-    );
-  }
+  // Apply the book even when the verification row already exists (a prior
+  // write may have succeeded before the book save). The helper is idempotent.
+  const facts: VerifiedRentDepositFacts = {
+    tokenId: onchain.tokenId,
+    opaquePaymentId: opaque,
+    payerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentDeposit(book, paymentRequestId, facts, new Date().toISOString()),
+  );
   refresh();
   return { status: "confirmed" };
 }
@@ -761,7 +817,7 @@ export async function verifyRentClaimAction(
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
   }
-  const verification = await recordClaimVerification({
+  await recordClaimVerification({
     chainId: MERKADO_CHAIN_ID,
     txHash,
     logIndex,
@@ -787,18 +843,16 @@ export async function verifyRentClaimAction(
       amount: expectedAmount.toString(),
     },
   });
-  if (verification.recorded) {
-    const facts: VerifiedRentClaimFacts = {
-      tokenId: onchain.tokenId,
-      ownerAddress,
-      amountAtomic: expectedAmount,
-      txHash,
-      blockNumber: result.blockNumber,
-    };
-    await saveBook(
-      applyVerifiedRentClaim(book, reference, facts, new Date().toISOString()),
-    );
-  }
+  const facts: VerifiedRentClaimFacts = {
+    tokenId: onchain.tokenId,
+    ownerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentClaim(book, reference, facts, new Date().toISOString()),
+  );
   refresh();
   return { status: "confirmed" };
 }

@@ -76,12 +76,12 @@ repo**. They live on merkado-cw.
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
 | Explorer | Official explorer for the selected network (real 64-hex hashes only) |
 | Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; surfaces show a not-configured state when empty |
-| Backend mint key | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3: Enrique, Luuk, Luis). `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. Mints offer NFTs. |
+| Backend mint key | server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` is a legacy display label, not the minter. |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |
 | Marketplace purchase | Any wallet buys the whole offer. Buyer pays the exact purchase price to the locked landlord payout address; NFT moves Safe → buyer atomically. Fractional purchases are rejected. Not a public offering. |
 | Listing window | No listing expiry. Offers stay purchasable until sold. |
-| Demo book | Two seeded offers for the walkthrough: **MRA-001** (seeded funded reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |
+| Demo book | No offers are pre-created. The Product Lead creates each offer via Create Offer (MRA-001/010 are not auto-seeded). |
 | Production marketplace | merkado-cw only |
 | Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
@@ -98,7 +98,7 @@ repo**. They live on merkado-cw.
 | M.1.4 | Investor-funds licensing | Public Merkado Direct |
 | M.2.1 | Assignment of future rent claims | Document template sign-off |
 | M.3.1 | Related-party arm's-length file | Nothing if +25 bp is kept |
-| Safe execution | How the backend mint key mints and authorises each offer NFT | Production minting |
+| Mint key | How `MERKADO_MINTER_PRIVATE_KEY` is funded, rotated, and authorises each offer NFT | Production minting |
 | Contract deployment | When and how `MerkadoRentOfferV1` is deployed and verified on Base Sepolia | Live activation |
 | Fee settlement | How the company fee is realised without reducing the landlord payout | Production fee flow |
 | Wallet onboarding | WalletConnect, Privy, or both for production purchase/claim ownership | Holder authentication |

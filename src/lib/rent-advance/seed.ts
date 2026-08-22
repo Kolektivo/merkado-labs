@@ -545,7 +545,7 @@ function buildOffers(): Offer[] {
       at: "2026-08-28T10:05:00-04:00",
       title: "Approved and prepared",
       detail:
-        "Approved by the independent approver. The offer is awaiting a Safe mint before it can open on Marketplace.",
+        "Approved by the independent approver. The offer awaits an automatic backend mint before it can open on Marketplace.",
       actor: "System",
     },
     {
@@ -614,6 +614,29 @@ export function getSeedBook(): DemoBook {
     checklist: CHECKLIST,
     openQuestions: OPEN_QUESTIONS,
     assignedTenancies: ["tn-001", "tn-010"],
+  });
+}
+
+/**
+ * A fresh, empty demo book with no pre-created offers. The Product Lead
+ * creates offers themselves via Create Offer. Keep the base actors,
+ * checklist, open questions, and the demo renter account so the rest of the
+ * walkthrough (approvers, payment inbox) still works.
+ */
+export function emptyBook(): DemoBook {
+  return normalizeBook({
+    series: {
+      platform: "merkado_direct",
+      seriesType: "rent_advance",
+      displayName: "Merkado Direct · Rent Advance",
+      referencePrefix: "MRA",
+      instrument: "Digital Participation Right",
+    },
+    actors: ACTORS,
+    offers: [],
+    checklist: CHECKLIST,
+    openQuestions: OPEN_QUESTIONS,
+    assignedTenancies: [],
   });
 }
 

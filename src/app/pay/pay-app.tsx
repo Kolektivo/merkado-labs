@@ -15,6 +15,8 @@ import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, depositRent } from "@/lib/pay/wallet-adapter";
 import {
+  attachSubmittedTxAction,
+  checkPendingPaymentAction,
   createRentPaymentAttemptAction,
   verifyRentPaymentAction,
 } from "@/lib/rent-advance/actions";
@@ -99,6 +101,7 @@ export function PayApp({
   configured,
   minted,
   tokenId,
+  pendingRecovery,
 }: {
   paymentRequestId: string;
   periodLabel: string;
@@ -116,6 +119,7 @@ export function PayApp({
   configured: boolean;
   minted: boolean;
   tokenId: number | null;
+  pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
   const copy = useMemo(() => payerCopy[locale], [locale]);
@@ -170,6 +174,11 @@ export function PayApp({
         paymentId,
         amountAtomic,
       });
+      await attachSubmittedTxAction(
+        paymentRequestId,
+        hash,
+        wallet.address ?? "0x0000000000000000000000000000000000000000",
+      );
       setWalletUi("pending");
       let result = await verifyRentPaymentAction(
         paymentRequestId,
@@ -201,6 +210,25 @@ export function PayApp({
       }
       setWalletUi(err instanceof Error && /reverted/i.test(err.message) ? "reverted" : "failed");
       setError(err instanceof Error ? err.message : copy.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCheckStatus() {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await checkPendingPaymentAction(paymentRequestId);
+      if (result.status === "confirmed") {
+        setWalletUi("confirmed");
+        router.refresh();
+      } else {
+        setWalletUi("pending");
+        setError(result.reason ?? copy.awaiting);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not check the payment status.");
     } finally {
       setBusy(false);
     }
@@ -357,6 +385,18 @@ export function PayApp({
                   <AlertTitle>{copy.pending}</AlertTitle>
                   <AlertDescription>{copy.awaiting}</AlertDescription>
                 </Alert>
+              ) : null}
+
+              {pendingRecovery ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full"
+                  disabled={busy}
+                  onClick={() => void handleCheckStatus()}
+                >
+                  {busy ? "Checking…" : "Check payment status"}
+                </Button>
               ) : null}
 
               {error ? (

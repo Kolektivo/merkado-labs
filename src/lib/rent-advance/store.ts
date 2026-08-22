@@ -14,7 +14,7 @@ import {
   normalizeBook,
 } from "@/lib/rent-advance/payment-apply";
 import { resolvePayNetworkKey } from "@/lib/pay/networks";
-import { dropRetiredDemoOffers, getSeedBook } from "@/lib/rent-advance/seed";
+import { dropRetiredDemoOffers, emptyBook } from "@/lib/rent-advance/seed";
 import type {
   BuyerOfferCard,
   DemoBook,
@@ -28,8 +28,9 @@ import { createLabsAdminClient } from "@/lib/supabase/admin";
 
 const STATE_ID = "live";
 
+/** A fresh book with no pre-created offers. The Product Lead creates offers. */
 function cloneBook(): DemoBook {
-  return structuredClone(getSeedBook());
+  return structuredClone(emptyBook());
 }
 
 export async function loadBook(): Promise<DemoBook> {
