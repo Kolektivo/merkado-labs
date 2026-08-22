@@ -33,13 +33,13 @@ export const PLAIN = {
   cashNow:
     "The one-time amount the buyer pays to your payout address once this offer NFT is purchased. Later rent goes to the offer contract, then to the NFT owner — not back to the landlord. You do not connect a wallet to request an offer.",
   walletlessRequest:
-    "You request this from your Merkado account. After review, Merkado prepares the offer for the company Safe to mint. You do not connect a wallet.",
+    "You request this from your Merkado account. After review, Merkado mints the offer NFT automatically after approval. You do not connect a wallet.",
   claimProceeds:
     "After the offer NFT is purchased, the sale amount is paid to the payout address locked at mint. It is not sent again.",
   landlordProceeds:
     "These are sale proceeds from the purchase. They are not monthly rent and not a loan.",
   payoutAddress:
-    "Enter the Base Sepolia address the buyer pays once this offer NFT is purchased. It is locked at mint by the company Safe. Bank payout through Girasol is a coming-soon preview.",
+    "Enter the Base Sepolia address the buyer pays once this offer NFT is purchased. It is locked at mint by the backend. Bank payout through Girasol is a coming-soon preview.",
   payoutAddressUnverified:
     "Use a real Base Sepolia 0x address. It is locked at mint and not verified as yours by this demo. It is never shown on payer or purchaser screens.",
   payoutAddressLocked:

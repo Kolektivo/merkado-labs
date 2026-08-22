@@ -67,7 +67,7 @@ export function dashboardNotifications(
         kind: "offer_update",
         title: "Offer approved · Mint pending",
         subject: offerDisplayName(offer),
-        detail: "Awaiting the company Safe to mint the offer NFT",
+        detail: "Minting automatically after approval",
         href: `/originate/${offer.reference}`,
         actionLabel: "View offer",
       });

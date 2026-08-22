@@ -34,11 +34,11 @@ series/legal wording may remain. “Merkado Premium” is retired.
 - **Digital Participation Right (DPR)** = instrument name. The instrument
   is now a **transferable offer NFT** (`MerkadoRentOfferV1`, ERC-721) on
   Base Sepolia. Merkado mints one offer NFT per approved listing from the
-  company Safe. The current NFT owner is the holder. Customer copy still
+  backend mint key. The current NFT owner is the holder. Customer copy still
   does not sell this as a token market or public offering.
 - **MerkadoRentOfferV1** = the single non-upgradeable ERC-721 contract.
   It holds pooled Circle native USDC rent, accounted per `tokenId`. The
-  company Safe mints; the current owner claims accrued rent.
+  backend mint key mints; the current owner claims accrued rent.
 - **OfferFundingRecord / LandlordProceedsClaim** = retired. The buyer pays
   the exact purchase price directly to the locked landlord payout address;
   there is no separate funding record or landlord claim.

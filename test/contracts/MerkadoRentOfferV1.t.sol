@@ -47,7 +47,7 @@ contract MerkadoRentOfferV1Test is Test {
     MockUSDC internal mock;
     MerkadoRentOfferV1 internal nft;
 
-    address internal companySafe = makeAddr("companySafe");
+    address internal minter = makeAddr("minter");
     address internal buyer = makeAddr("buyer");
     address internal renter = makeAddr("renter");
     address internal other = makeAddr("other");
@@ -60,7 +60,7 @@ contract MerkadoRentOfferV1Test is Test {
 
     function setUp() public {
         mock = new MockUSDC();
-        nft = new MerkadoRentOfferV1(address(mock), companySafe);
+        nft = new MerkadoRentOfferV1(address(mock), minter);
         _fund(renter, 10_000_000 * 10 ** 6);
         _fund(buyer, 10_000_000 * 10 ** 6);
     }
@@ -75,7 +75,7 @@ contract MerkadoRentOfferV1Test is Test {
         internal
         returns (uint256 tokenId)
     {
-        vm.prank(companySafe);
+        vm.prank(minter);
         tokenId = nft.mintOffer(key, payout, price, installment);
     }
 
@@ -106,7 +106,7 @@ contract MerkadoRentOfferV1Test is Test {
     // 1. Non-Safe cannot mint.
     function test_NonSafeCannotMint() public {
         vm.prank(buyer);
-        vm.expectRevert(MerkadoRentOfferV1.NotCompanySafe.selector);
+        vm.expectRevert(MerkadoRentOfferV1.NotMinter.selector);
         nft.mintOffer(keccak256("A"), payout1, PRICE, INSTALLMENT);
     }
 
@@ -114,7 +114,7 @@ contract MerkadoRentOfferV1Test is Test {
     function test_MintRejectsInvalidArgs() public {
         bytes32 key = keccak256("B");
 
-        vm.startPrank(companySafe);
+        vm.startPrank(minter);
         vm.expectRevert(MerkadoRentOfferV1.ZeroPayoutAddress.selector);
         nft.mintOffer(key, address(0), PRICE, INSTALLMENT);
 
@@ -131,12 +131,12 @@ contract MerkadoRentOfferV1Test is Test {
         uint256 tokenId = _mintOffer(key, payout1, PRICE, INSTALLMENT);
         assertEq(tokenId, 1);
 
-        vm.prank(companySafe);
+        vm.prank(minter);
         vm.expectRevert(MerkadoRentOfferV1.OfferKeyUsed.selector);
         nft.mintOffer(key, payout2, PRICE, INSTALLMENT);
     }
 
-    // 3. Mint mints to companySafe, sets terms, emits OfferMinted, increments id.
+    // 3. Mint mints to minter, sets terms, emits OfferMinted, increments id.
     function test_MintMintsToCompanySafeAndEmits() public {
         bytes32 key = keccak256("C");
 
@@ -145,8 +145,8 @@ contract MerkadoRentOfferV1Test is Test {
         uint256 tokenId = _mintOffer(key, payout1, PRICE, INSTALLMENT);
 
         assertEq(tokenId, 1, "first token id should be 1");
-        assertEq(nft.ownerOf(tokenId), companySafe, "minted to companySafe");
-        assertEq(nft.balanceOf(companySafe), 1);
+        assertEq(nft.ownerOf(tokenId), minter, "minted to minter");
+        assertEq(nft.balanceOf(minter), 1);
 
         MerkadoRentOfferV1.OfferTerms memory t = _offer(tokenId);
         assertEq(t.offerKey, key);
@@ -178,12 +178,12 @@ contract MerkadoRentOfferV1Test is Test {
         // When the Company Safe no longer owns the token (transferred away),
         // the sale transfer fails and the whole purchase reverts.
         uint256 movedId = _mintOffer(keccak256("F"), payout2, PRICE, INSTALLMENT);
-        vm.startPrank(companySafe);
-        nft.transferFrom(companySafe, other, movedId);
+        vm.startPrank(minter);
+        nft.transferFrom(minter, other, movedId);
         vm.stopPrank();
         vm.prank(buyer);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC721Errors.ERC721IncorrectOwner.selector, companySafe, movedId, other)
+            abi.encodeWithSelector(IERC721Errors.ERC721IncorrectOwner.selector, minter, movedId, other)
         );
         nft.purchase(movedId);
 
@@ -225,7 +225,7 @@ contract MerkadoRentOfferV1Test is Test {
         assertEq(mock.balanceOf(payout1), payoutBefore + PRICE, "payout receives exact price");
         assertEq(mock.balanceOf(buyer), buyerBefore - PRICE, "buyer pays exactly the price");
         assertEq(nft.ownerOf(tokenId), buyer, "NFT moved to buyer");
-        assertEq(nft.balanceOf(companySafe), 0, "companySafe no longer holds the NFT");
+        assertEq(nft.balanceOf(minter), 0, "minter no longer holds the NFT");
         assertEq(nft.balanceOf(buyer), 1);
 
         MerkadoRentOfferV1.OfferTerms memory t = _offer(tokenId);
@@ -251,7 +251,7 @@ contract MerkadoRentOfferV1Test is Test {
         );
         nft.purchase(tokenId);
 
-        assertEq(nft.ownerOf(tokenId), companySafe, "NFT stays with companySafe");
+        assertEq(nft.ownerOf(tokenId), minter, "NFT stays with minter");
         assertEq(nft.balanceOf(poorBuyer2), 0, "buyer got nothing");
         assertFalse(_offer(tokenId).purchased, "offer not marked purchased");
         assertEq(mock.balanceOf(payout1), payoutBefore, "payout received nothing");
@@ -264,8 +264,8 @@ contract MerkadoRentOfferV1Test is Test {
         uint256 tokenId = _mintOffer(keccak256("K"), payout1, PRICE, INSTALLMENT);
 
         // Company Safe moves the NFT to `other` before purchase.
-        vm.startPrank(companySafe);
-        nft.transferFrom(companySafe, other, tokenId);
+        vm.startPrank(minter);
+        nft.transferFrom(minter, other, tokenId);
         vm.stopPrank();
 
         uint256 buyerBefore = mock.balanceOf(buyer);
@@ -273,7 +273,7 @@ contract MerkadoRentOfferV1Test is Test {
 
         vm.prank(buyer);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC721Errors.ERC721IncorrectOwner.selector, companySafe, tokenId, other)
+            abi.encodeWithSelector(IERC721Errors.ERC721IncorrectOwner.selector, minter, tokenId, other)
         );
         nft.purchase(tokenId);
 
@@ -317,7 +317,7 @@ contract MerkadoRentOfferV1Test is Test {
         vm.expectRevert(
             abi.encodeWithSelector(IERC721Errors.ERC721InsufficientApproval.selector, renter, token2)
         );
-        nft.transferFrom(renter, companySafe, token2);
+        nft.transferFrom(renter, minter, token2);
     }
     // 9. depositRent rejects unknown token, unpurchased token, wrong amount,
     //    duplicate / zero paymentId, and the 7th deposit.
@@ -454,7 +454,7 @@ contract MerkadoRentOfferV1Test is Test {
     // 14. Reentrancy attempt on claim cannot double-pay.
     function test_ClaimReentrancyCannotDoublePay() public {
         ReentrantUSDC evil = new ReentrantUSDC();
-        MerkadoRentOfferV1 nft2 = new MerkadoRentOfferV1(address(evil), companySafe);
+        MerkadoRentOfferV1 nft2 = new MerkadoRentOfferV1(address(evil), minter);
 
         evil.mint(renter, 10_000_000 * 10 ** 6);
         evil.mint(buyer, 10_000_000 * 10 ** 6);
@@ -465,7 +465,7 @@ contract MerkadoRentOfferV1Test is Test {
         evil.approve(address(nft2), type(uint256).max);
         vm.stopPrank();
 
-        vm.prank(companySafe);
+        vm.prank(minter);
         uint256 tokenId = nft2.mintOffer(keccak256("U"), payout1, PRICE, INSTALLMENT);
         vm.prank(buyer);
         nft2.purchase(tokenId);
@@ -510,7 +510,7 @@ contract MerkadoRentOfferV1Test is Test {
     function testFuzz_SolvencyInvariant(uint256 seed) public {
         seed = bound(seed, 1, type(uint128).max);
 
-        vm.startPrank(companySafe);
+        vm.startPrank(minter);
         nft.mintOffer(keccak256("F1"), payout1, PRICE, INSTALLMENT); // token 1
         nft.mintOffer(keccak256("F2"), payout2, PRICE, INSTALLMENT); // token 2
         nft.mintOffer(keccak256("F3"), payout3, PRICE, INSTALLMENT); // token 3

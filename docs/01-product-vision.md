@@ -53,7 +53,7 @@ for the Direct / Pay demo.
 The selected network is **Base Sepolia**, with Circle native USDC. Merkado
 Labs implements a real Base Sepolia flow with one non-upgradeable ERC-721
 contract, **`MerkadoRentOfferV1`**. The contract holds pooled USDC rent,
-accounted per `tokenId`. The verified company Safe
+accounted per `tokenId`. The verified backend mint key
 (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) mints one offer NFT per
 approved listing. The NFT is **transferable**: the current token owner is
 the holder, and only the holder can claim that token's accrued rent. A buyer
@@ -66,7 +66,7 @@ behaviour is removed — the flow is the live flow on Base Sepolia, enabled by
 configuration. See ADR-0008.
 
 The landlord selects a payout destination before requesting an offer. After
-approval, Merkado mints the offer NFT from the company Safe. A buyer
+approval, Merkado mints the offer NFT from the server-held mint key. A buyer
 purchases the complete offer by sending the purchase price to the landlord's
 payout address; there is no landlord claim step and no listing expiry. Later
 rent is not paid to the landlord a second time. It stays in the pooled

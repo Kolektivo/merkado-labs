@@ -37,7 +37,7 @@ function LockedAddress({ address }: { address: string }) {
         <p className="flex items-center gap-1 text-sm font-medium">
           Payout address locked at mint
           <HelpTip label="Locked payout address">
-            The company Safe locks this address when it mints the offer NFT. The
+            The backend locks this address when it mints the offer NFT. The
             buyer pays the sale amount here. It is never shown on payer or
             purchaser screens.
           </HelpTip>
@@ -81,7 +81,7 @@ export function LandlordProceedsCard({
             <div>
               <p className="font-medium">Wait for the Safe mint and full purchase</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                After the company Safe mints the offer NFT, the buyer can
+                After the offer NFT is minted, the buyer can
                 purchase the whole offer. The buyer pays{" "}
                 <Money cents={presentation.purchasePriceCents} /> to the payout
                 address locked at mint.

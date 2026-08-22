@@ -42,11 +42,11 @@ Home.
    submission. No landlord wallet is needed. 9/12 and cap-breached quotes
    cannot be submitted.
 5. Offer detail — after approval Merkado mints **one offer NFT for this
-   listing** from the company Safe. Every purchased offer shows one
+   listing** from the backend mint key. Every purchased offer shows one
    **Landlord proceeds** card (Waiting, Processing, or Paid). When a buyer
    purchases the whole offer, the buyer pays the exact purchase price
    **directly to the locked landlord payout address** and the NFT moves
-   company Safe → buyer atomically. There is no landlord claim action, no
+   minter → buyer atomically. There is no landlord claim action, no
    funding record, and no listing expiry. Later rent is not paid to the
    landlord again. Independent approval, Record collection, and
    dual-control live in **Admin**.
@@ -67,7 +67,7 @@ Home.
    term, and whole-offer price. A holder connects a real wallet (injected
    EIP-1193, e.g. WalletConnect/Privy) and buys 100% of the offer. The
    buyer pays the exact purchase price **directly to the locked landlord
-   payout address**; the NFT moves company Safe → buyer atomically in the
+   payout address**; the NFT moves minter → buyer atomically in the
    same transaction. The cheap Punda studio (MRA-010) is the small
    walkthrough purchase. A successful purchase opens a confirmation dialog
    on the new Portfolio position.
@@ -118,7 +118,7 @@ Home.
 Submitted offers are approved in **Admin**. The approver selector contains the
 two walkthrough options **Enrique** and **Luuk**. Approval remains independent
 from the person who submitted the request. After approval, operators execute
-the prepared `mintOffer` calldata from the company Safe, and the server
+the prepared `mintOffer` calldata from the backend mint key, and the server
 verifies the mint receipt on Base Sepolia (requires the contract to be
 deployed and the env address set).
 

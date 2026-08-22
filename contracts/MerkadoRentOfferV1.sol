@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// @title MerkadoRentOfferV1
 /// @notice Non-upgradeable ERC-721 contract that pools Circle native USDC rent
 ///         for Merkado rent offers. Each tokenId represents one approved offer.
-///         The Company Safe mints one offer NFT per approved listing. NFTs are
+///         The Merkado operator mints one offer NFT per approved listing. NFTs are
 ///         fully transferable: the current token owner is the holder.
 /// @dev    Base Sepolia testnet-only demo contract. Rent liabilities are tracked
 ///         per tokenId and the contract always keeps
@@ -47,10 +47,10 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     /// @notice The pooled USDC token accepted by this contract.
     IERC20 public immutable usdc;
 
-    /// @notice The Company Safe. Only it may mint offers.
-    address public immutable companySafe;
+    /// @notice The Merkado operator. Only it may mint offers.
+    address public immutable minter;
 
-    /// @notice Offer minted by the Company Safe.
+    /// @notice Offer minted by the Merkado operator key.
     event OfferMinted(
         uint256 indexed tokenId,
         bytes32 indexed offerKey,
@@ -59,7 +59,7 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
         uint256 rentInstallmentAmount
     );
 
-    /// @notice A buyer purchased a whole offer directly from the Company Safe.
+    /// @notice A buyer purchased a whole offer directly from the operator.
     event OfferPurchased(
         uint256 indexed tokenId,
         address indexed buyer,
@@ -78,7 +78,7 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     /// @notice The holder claimed the full claimable rent for a token.
     event RentClaimed(uint256 indexed tokenId, address indexed owner, uint256 amount);
 
-    error NotCompanySafe();
+    error NotMinter();
     error OfferAlreadyPurchased();
     error TokenNotPurchased();
     error TokenNotExists();
@@ -93,14 +93,14 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
     error ZeroInstallment();
 
     /// @param usdc_ The pooled Circle native USDC token address.
-    /// @param companySafe_ The Company Safe allowed to mint offers.
-    constructor(address usdc_, address companySafe_) ERC721("Merkado Rent Offer", "MRO") {
-        if (usdc_ == address(0) || companySafe_ == address(0)) revert ZeroAddress();
+    /// @param minter_ The Merkado operator key allowed to mint offers.
+    constructor(address usdc_, address minter_) ERC721("Merkado Rent Offer", "MRO") {
+        if (usdc_ == address(0) || minter_ == address(0)) revert ZeroAddress();
         usdc = IERC20(usdc_);
-        companySafe = companySafe_;
+        minter = minter_;
     }
 
-    /// @notice The Company Safe mints one offer NFT per approved listing.
+    /// @notice The Merkado operator mints one offer NFT per approved listing.
     /// @param offerKey Unique offer identifier. Cannot be reused.
     /// @param payoutAddress Locked landlord payout address (purchase price goes here).
     /// @param purchasePrice Whole-offer purchase price in USDC atomic units.
@@ -112,7 +112,7 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
         uint256 purchasePrice,
         uint256 rentInstallmentAmount
     ) external returns (uint256 tokenId) {
-        if (msg.sender != companySafe) revert NotCompanySafe();
+        if (msg.sender != minter) revert NotMinter();
         if (payoutAddress == address(0)) revert ZeroPayoutAddress();
         if (purchasePrice == 0) revert ZeroPurchasePrice();
         if (rentInstallmentAmount == 0) revert ZeroInstallment();
@@ -130,14 +130,14 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
             purchased: false
         });
 
-        _safeMint(companySafe, tokenId);
+        _safeMint(minter, tokenId);
 
         emit OfferMinted(tokenId, offerKey, payoutAddress, purchasePrice, rentInstallmentAmount);
     }
 
     /// @notice Anyone can purchase a whole offer. The exact purchase price is paid
     ///         directly to the locked landlord payout address and the NFT moves
-    ///         from the Company Safe to the buyer atomically. No fee is charged.
+    ///         from the operator to the buyer atomically. No fee is charged.
     /// @param tokenId The offer token to purchase.
     function purchase(uint256 tokenId) external nonReentrant {
         _purchase(tokenId);
@@ -158,7 +158,7 @@ contract MerkadoRentOfferV1 is ERC721, ReentrancyGuard {
 
         usdc.safeTransferFrom(msg.sender, payoutAddress, purchasePrice);
 
-        _transfer(companySafe, msg.sender, tokenId);
+        _transfer(minter, msg.sender, tokenId);
 
         emit OfferPurchased(tokenId, msg.sender, payoutAddress, purchasePrice);
     }

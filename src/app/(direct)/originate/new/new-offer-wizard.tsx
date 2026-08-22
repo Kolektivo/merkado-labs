@@ -816,7 +816,7 @@ export function NewOfferWizard({
                 <p className="font-medium">Stablecoin address</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   The buyer pays the sale amount here once the offer NFT is
-                  purchased. It is locked at mint by the company Safe.
+                  purchased. It is locked at mint by the backend.
                 </p>
               </button>
               <button
@@ -852,7 +852,7 @@ export function NewOfferWizard({
               <Field
                 id="payout-address"
                 label="Recipient address"
-                hint="A checksummed Base Sepolia 0x address. The company Safe locks it at mint; it is never shown on payer or purchaser screens."
+                hint="A checksummed Base Sepolia 0x address. It is locked at mint; it is never shown on payer or purchaser screens."
               >
                 <Input
                   id="payout-address"

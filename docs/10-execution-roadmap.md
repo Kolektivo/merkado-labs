@@ -6,7 +6,7 @@
 ## Now
 
 - Product Lead reviews the Base Sepolia NFT flow: payout locked before
-  submission, mint by the company Safe, whole-offer purchase (buyer pays the
+  submission, mint by the backend mint key, whole-offer purchase (buyer pays the
   landlord address; NFT Safe → buyer atomic), renter `depositRent`, owner
   `claimRent`, and the not-configured state while the contract env is empty.
 - **Deployment gates (all still closed).** Deploy and verify

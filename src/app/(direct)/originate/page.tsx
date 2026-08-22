@@ -75,7 +75,7 @@ function nextOfferStep(
   if (status === "denied") return "Review the decision";
   if (proceeds.purchased && proceeds.landlordPaid) return "Sale proceeds paid to the payout address";
   if (proceeds.minted) return "Minted · open on Marketplace";
-  if (status === "funding") return "Awaiting Safe mint";
+  if (status === "funding") return "Minting automatically after approval";
   return "Offer sold";
 }
 

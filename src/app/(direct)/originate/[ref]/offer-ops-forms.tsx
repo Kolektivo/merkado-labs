@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   approveOfferAction,
+  autoMintAction,
   recordCollectionAction,
   setOfferStatusAction,
   submitOfferForReviewAction,
@@ -169,8 +170,8 @@ export function OfferAdminForms({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Approval moves the offer to Mint pending. The company Safe mints
-              one offer NFT per listing; the landlord never signs.
+              Approval moves the offer to Mint pending. The backend mints
+              one offer NFT per listing automatically; the landlord never signs.
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="approver">Approver</Label>
@@ -190,7 +191,11 @@ export function OfferAdminForms({
             <Button
               type="button"
               disabled={pending || !approverId}
-              onClick={() => run(() => approveOfferAction(reference, approverId))}
+              onClick={() =>
+                run(async () => {
+                  await approveOfferAction(reference, approverId);
+                  await autoMintAction(reference);
+                })}
             >
               Approve offer
             </Button>

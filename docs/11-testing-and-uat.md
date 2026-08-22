@@ -109,12 +109,11 @@ it felt wrong.
   destination. On Review, the page should say you do not need a wallet.
   Click **Submit request**.
 - Open **Admin**. Open the new offer. Pick **Enrique** or **Luuk**, then
-  click **Approve offer**. Operators execute the prepared `mintOffer`
-  calldata from the company Safe; the admin pastes the mint tx hash into
-  Mint Control, and the server verifies the mint receipt. One offer NFT is
-  minted to the company Safe.
+  click **Approve offer**. The backend broadcasts `mintOffer` from the server-held mint key and
+  verifies the receipt; Mint Control shows the verified status. One offer NFT is
+  minted to the backend mint key.
 - On the offer detail, confirm the offer is Listed, has no expiry, and the
-  company Safe is the initial owner on the explorer (real 64-hex mint
+  backend mint key is the initial owner on the explorer (real 64-hex mint
   hash only).
 
 ### 4. Marketplace — whole-offer purchase
@@ -126,7 +125,7 @@ it felt wrong.
 - Connect the injected wallet (must be on Base Sepolia; wrong-network is
   rejected with a prompt to switch). Click **Purchase whole offer**.
 - The buyer pays the exact purchase price **directly to the locked landlord
-  payout address** and the NFT moves company Safe → buyer atomically.
+  payout address** and the NFT moves minter → buyer atomically.
 - Open **My Offers** for Punda. It is **Sold** and its Landlord proceeds card
   is **Paid**. There is no landlord claim button.
 - Explorer shows the real sale transaction: the USDC transfer to the

@@ -74,14 +74,14 @@ other retired payer subpages) still redirect. `/pay/history` is not reused.
 - Network default: **Base Sepolia** (chain ID 84532). Circle native USDC
   `0x036CbD53842c5426634e7929541eC2318f3dCF7e`. Base Mainnet stays later
   and is hidden unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
-- Company Safe (default for `NEXT_PUBLIC_MERKADO_COMPANY_SAFE`):
+- Backend mint key (legacy env note):
   `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (Base Sepolia, 2 of 3).
 
 A weak-score + related-party quote is blocked by the 24% cap. Use this quote
 stays disabled. There is no override.
 
 Both seeded offers (**MRA-001** and **MRA-010**) start as approved listings
-awaiting the Safe mint: no NFT exists and no money has moved until the mint
+awaiting the automatic backend mint: no NFT exists and no money has moved until the mint
 receipt is verified on Base Sepolia. After Reset, that seed is restored.
 
 ### Shared demo book (verified)
@@ -126,7 +126,7 @@ new drafts.
   on `ra_demo_state`).
 - Independent approval moves a newly submitted Create Offer request to funding
   from Admin. Operators then execute the prepared `mintOffer` calldata from the
-  company Safe; the admin pastes the mint tx hash into Mint Control, and the
+  backend mint key; the admin pastes the mint tx hash into Mint Control, and the
   server verifies the mint receipt on Base Sepolia.
 - Create offer can save a new six-month draft (MRA-007 in the walkthrough;
   Reset removes it). 9/12 still cannot be saved.

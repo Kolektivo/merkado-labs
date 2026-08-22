@@ -80,9 +80,9 @@ set to the minted NFT token id. There is no listing expiry.
 
 The ERC-721 token is the offer. Per `tokenId`:
 
-- `Offered` — minted by the company Safe after approval. Owner = company Safe.
+- `Offered` — minted by the backend mint key after approval. Owner = backend mint key.
 - `Sold` — a buyer paid the exact purchase price to the locked landlord payout
-  address; the NFT moved company Safe → buyer atomically. Owner = the holder.
+  address; the NFT moved backend mint key → buyer atomically. Owner = the holder.
 - `Renting` — rent is being deposited (`depositRent`); accrued USDC grows.
 - `Claimed` — the current owner called `claimRent`; the token's accrued USDC
   balance resets.
@@ -122,7 +122,7 @@ written only by server-side verification, never by browser code.
 Product rules for landlord sale proceeds:
 
 - One sale per offer. The buyer pays the exact purchase price **directly to
-  the locked landlord payout address**; the NFT moves company Safe → buyer
+  the locked landlord payout address**; the NFT moves backend mint key → buyer
   atomically. There is no funding record and no landlord claim.
 - Payout amount equals the purchase price. The fee is informational and
   is never deducted twice.
@@ -167,7 +167,7 @@ distribution economics.
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
 crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
-explorer, company Safe, contract address). Older
+explorer, backend mint key, contract address). Older
 `optimism` and OP Sepolia books rematch to **Base Sepolia**. Reset
 restores the complete current seed and keeps the selected payment
 network. The chain store tables (`ra_chain_*`, `ra_rent_*`) are a separate

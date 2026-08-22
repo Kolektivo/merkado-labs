@@ -128,7 +128,7 @@ export function rentInstallmentAtomicFor(offer: Offer): bigint {
 }
 
 /**
- * Read-only calldata operators execute from the Safe after deployment.
+ * Mint terms for the backend operator key.
  * No signing, no execution, no private key.
  */
 export function mintCalldata(offer: Offer): {

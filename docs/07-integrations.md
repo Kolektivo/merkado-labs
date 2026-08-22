@@ -76,7 +76,7 @@ single flow.
 - **One contract.** `MerkadoRentOfferV1`, a non-upgradeable ERC-721. It
   holds **pooled Circle native USDC rent**, accounted per `tokenId`. The
   pooled balance is always ≥ total deposited-but-unclaimed rent.
-- **Mint.** The verified company Safe
+- **Mint.** The verified backend mint key
   (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`, Base Sepolia, 2 of 3:
   Enrique, Luuk, Luis) mints **one offer NFT per approved listing**. No
   listing expiry.
@@ -85,7 +85,7 @@ single flow.
   rent.
 - **Whole-offer purchase.** Anyone buys a whole offer: the buyer pays the
   **exact purchase price directly to the locked landlord payout address**,
-  and the NFT moves company Safe → buyer **atomically** in the same
+  and the NFT moves minter → buyer **atomically** in the same
   transaction. No fractional purchase.
 - **Rent deposit.** The renter calls `depositRent(tokenId,
   opaquePaymentId, amount)` with the **exact monthly amount**. The app
@@ -138,10 +138,10 @@ only when mainnet is enabled.
 | Customer money | **USD**. Stored as integer cents. |
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
 | Contract | `MerkadoRentOfferV1`, non-upgradeable ERC-721, pooled USDC rent per token id |
-| Company Safe | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. |
+| Backend mint key | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. |
 | Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; empty shows not-configured |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
-| Listing offer | **One transferable NFT per listing**, minted by the company Safe. No expiry. |
+| Listing offer | **One transferable NFT per listing**, minted by the backend mint key. No expiry. |
 | Landlord payout | The buyer pays the **exact purchase price directly to the locked landlord payout address**. No landlord claim, no funding record, no separate payout Safe. |
 | Holder purchase | Any wallet buys the whole offer; NFT moves Safe → buyer atomically. No fractions. |
 | Holder claim | Current NFT owner calls `claimRent(tokenId)` in Portfolio. Transferring the NFT moves the claim right with it. |
@@ -174,7 +174,7 @@ MRA-001 locked Pay request:
 
 ### Verification rules
 
-- Mint: company Safe is the caller; one NFT per approved offer reference.
+- Mint: backend mint key is the caller; one NFT per approved offer reference.
 - Purchase: buyer paid the exact `purchasePrice` to the locked landlord
   address **and** the NFT owner changed Safe → buyer in the same tx.
 - Deposit: `depositRent(tokenId, opaquePaymentId, amount)` where `amount`
@@ -221,7 +221,7 @@ No landlord wallet. Merkado does the on-chain work.
 | Step | Screen | Your work |
 |---|---|---|
 | Choose payout | Create Offer → Payout | Lock the landlord payout address before submission |
-| Request offer | Create Offer | No wallet for the landlord. After Admin approval, **your system** mints the NFT from the company Safe |
+| Request offer | Create Offer | No wallet for the landlord. After Admin approval, **your system** mints the NFT from the backend mint key |
 | List | Admin approval | Mint via Safe. No expiry. Reject purchase if the contract env is empty (not-configured state) |
 | Sale | Whole-offer purchase | Buyer pays the exact purchase price to the locked landlord address; NFT Safe → buyer atomic. Fee already included |
 | See payout | My Offers / offer detail | Show Waiting / Processing / Paid. No landlord claim button. Explorer link only if a **real** tx hash exists |
@@ -260,7 +260,7 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 1. **Deployment.** Deploy and verify `MerkadoRentOfferV1` on Base Sepolia,
    then set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`. Apply the chain store
    migration. Send test USDC and execute a Safe mint only after approval.
-2. **Safe mint execution.** Confirm how the company Safe signs the mint
+2. **Safe mint execution.** Confirm how the backend mint key signs the mint
    (Safe Transaction Service, a relayer, or another approved design). It
    must not reduce the landlord below the purchase price shown.
 3. **Fee settlement.** How the company fee is realised. It is informational
@@ -291,7 +291,7 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 - `MerkadoRentOfferV1` is deployed and verified on **Base Sepolia** and the
   env address is set.
-- The company Safe mints one offer NFT per approved listing.
+- The backend mint key mints one offer NFT per approved listing.
 - A connected holder buys a whole offer (pays the landlord address; NFT
   Safe → buyer atomic) on **Base Sepolia**.
 - The renter deposits **1,800.00** native USDC via `depositRent` and sees

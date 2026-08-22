@@ -78,7 +78,7 @@ are the on-chain evidence record; the JSON book is the product state.
 ## 5. Base Sepolia contract flow
 
 - **Contract.** `MerkadoRentOfferV1`, one non-upgradeable ERC-721, holds
-  pooled Circle native USDC rent accounted per `tokenId`. Company Safe
+  pooled Circle native USDC rent accounted per `tokenId`. Backend mint key
   (`NEXT_PUBLIC_MERKADO_COMPANY_SAFE`, default
   `0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) mints one NFT per approved
   listing. There is no listing expiry.

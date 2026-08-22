@@ -147,7 +147,7 @@ export function SubscribeForm({
         <Alert className="mt-6">
           <AlertTitle>Mint pending</AlertTitle>
           <AlertDescription>
-            The company Safe has not minted this offer NFT yet. It becomes
+            The offer NFT has not been minted yet. It becomes
             purchasable once the mint is verified on Base Sepolia.
           </AlertDescription>
         </Alert>

@@ -26,7 +26,7 @@ repo**. They live on merkado-cw.
 | P0 | Portfolio | Pre-seeded positions; Position ID; current NFT owner claims rent (`claimRent`) |
 | P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled. Only Merkado Pay and Merkado Direct are live apps. |
 | P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
-| P1 | NFT contract | One non-upgradeable ERC-721 (`MerkadoRentOfferV1`); pooled USDC rent per tokenId; company Safe mints; transferable; whole-offer purchase pays landlord directly |
+| P1 | NFT contract | One non-upgradeable ERC-721 (`MerkadoRentOfferV1`); pooled USDC rent per tokenId; backend mint key mints; transferable; whole-offer purchase pays landlord directly |
 | P1 | Labs schema | RLS on; service-role only; no production project; chain store tables in a reviewed migration |
 
 ## 3. Out of scope
@@ -34,7 +34,7 @@ repo**. They live on merkado-cw.
 - Public Merkado Direct marketing page
 - Public third-party holder onboarding (demo Marketplace purchase is in-scope)
 - Public token market or secondary trading
-- Landlord-signed on-chain offer creation (Merkado mints from the company Safe)
+- Landlord-signed on-chain offer creation (Merkado mints from the backend mint key)
 - Live fiat rails (Girasol bank payout, Sentoo bank payment)
 - 3-month term origination
 - Contract deployment, applying new migrations, sending test USDC, Safe
@@ -55,10 +55,10 @@ repo**. They live on merkado-cw.
 | Landlord customer brand | Do not prominently brand a separate Rent Advance product |
 | Holder platform | Merkado Direct · series Rent Advance (internal) |
 | Renter product | Merkado Pay (USDC rent deposit in this demo) |
-| Instrument | Transferable offer NFT (`MerkadoRentOfferV1`, ERC-721) on Base Sepolia. One NFT per approved listing, minted by the company Safe. Current token owner = holder. Not a public token market. |
+| Instrument | Transferable offer NFT (`MerkadoRentOfferV1`, ERC-721) on Base Sepolia. One NFT per approved listing, minted by the backend mint key. Current token owner = holder. Not a public token market. |
 | Commercial form | True sale of receivables (*koop en cessie*) |
 | Contract | `MerkadoRentOfferV1`, non-upgradeable, holds pooled Circle native USDC rent accounted per `tokenId`. No listing expiry. |
-| Landlord money | The buyer pays the exact purchase price **directly to the locked landlord payout address**; the NFT moves company Safe → buyer atomically in the same transaction. No landlord claim button, no funding record, no separate payout Safe. The fee is already included and must not look like a second deduction. |
+| Landlord money | The buyer pays the exact purchase price **directly to the locked landlord payout address**; the NFT moves minter → buyer atomically in the same transaction. No landlord claim button, no funding record, no separate payout Safe. The fee is already included and must not look like a second deduction. |
 | Holder claims | Rent stays in the pooled contract until the current NFT owner calls `claimRent(tokenId)` in Portfolio. Only the current owner can claim. NFT transfers move claim rights with the token. |
 | Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly amount. The app schedules the six-month term; the contract imposes no deposit cap. Rent is not paid to the landlord a second time. |
 | Opaque payment id | Unique per deposit, binds a deposit to a payment request. No memo guessing needed. |
@@ -76,7 +76,7 @@ repo**. They live on merkado-cw.
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
 | Explorer | Official explorer for the selected network (real 64-hex hashes only) |
 | Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; surfaces show a not-configured state when empty |
-| Company Safe | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3: Enrique, Luuk, Luis). `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. Mints offer NFTs. |
+| Backend mint key | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3: Enrique, Luuk, Luis). `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. Mints offer NFTs. |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |
 | Marketplace purchase | Any wallet buys the whole offer. Buyer pays the exact purchase price to the locked landlord payout address; NFT moves Safe → buyer atomically. Fractional purchases are rejected. Not a public offering. |
@@ -98,7 +98,7 @@ repo**. They live on merkado-cw.
 | M.1.4 | Investor-funds licensing | Public Merkado Direct |
 | M.2.1 | Assignment of future rent claims | Document template sign-off |
 | M.3.1 | Related-party arm's-length file | Nothing if +25 bp is kept |
-| Safe execution | How the company Safe mints and authorises each offer NFT | Production minting |
+| Safe execution | How the backend mint key mints and authorises each offer NFT | Production minting |
 | Contract deployment | When and how `MerkadoRentOfferV1` is deployed and verified on Base Sepolia | Live activation |
 | Fee settlement | How the company fee is realised without reducing the landlord payout | Production fee flow |
 | Wallet onboarding | WalletConnect, Privy, or both for production purchase/claim ownership | Holder authentication |

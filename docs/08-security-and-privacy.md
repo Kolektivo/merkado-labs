@@ -106,7 +106,7 @@ point any leftover script at those names.
 - Keep work focused on the Curaçao Direct / Pay demo.
 - The Base Sepolia flow is the only approved crypto implementation
   (ADR-0008): one non-upgradeable ERC-721 (`MerkadoRentOfferV1`), pooled USDC
-  rent per token id, company Safe mint, transferable NFT where the current
+  rent per token id, backend mint key, transferable NFT where the current
   owner is the holder, whole-offer purchase paid to the locked landlord
   address, `depositRent` (exact monthly amount), and
   `claimRent` by the current owner. There is no mock provider,

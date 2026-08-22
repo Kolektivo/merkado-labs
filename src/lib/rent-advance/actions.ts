@@ -55,6 +55,14 @@ import {
   recordOffer,
 } from "@/lib/onchain/chain-store";
 import {
+  createPublicClient,
+  createWalletClient,
+  decodeEventLog,
+  http,
+} from "viem";
+import { waitForTransactionReceipt } from "viem/actions";
+import { baseSepolia } from "viem/chains";
+import {
   verifyOfferMinted,
   verifyOfferPurchased,
   verifyRentClaimed,
@@ -62,6 +70,9 @@ import {
   MERKADO_CONFIRMATION_BLOCKS,
   confirmationsReady,
 } from "@/lib/onchain/verify";
+import { MERKADO_OFFER_ABI } from "@/lib/onchain/abi";
+import { merkadoMinterAccount } from "@/lib/onchain/minter";
+import { merkadoRpcUrl } from "@/lib/onchain/config";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 
 function refresh() {
@@ -146,7 +157,7 @@ export async function approveOfferAction(reference: string, actorId: string) {
       status: "funding" as const,
       publishedAt,
       expiresAt: null,
-      nextAction: "Awaiting Safe mint",
+      nextAction: "Minting automatically after approval",
       events: [
         {
           id: `ev-${reference}-approve-${Date.now()}`,
@@ -235,20 +246,37 @@ export async function submitOfferForReviewAction(reference: string) {
 }
 
 /** Prepare a mint: generate the opaque offer key and store expected terms. Throws when not configured. */
-export async function prepareMintAction(reference: string) {
+export type AutoMintResult = {
+  status: "submitted" | "pending" | "confirmed";
+  txHash?: string;
+  tokenId?: number;
+  reason?: string;
+};
+
+/**
+ * Automatically mints the offer NFT from the server-held minter key right
+ * after Admin approval. Idempotent: a retry resumes an already-broadcast
+ * mint and only records the verified OfferMinted event once.
+ */
+export async function autoMintAction(reference: string): Promise<AutoMintResult> {
   assertMerkadoConfigured();
   const contractAddress = merkadoContractAddress();
-  const at = new Date().toISOString();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   if (offer.status !== "funding") {
-    throw new Error("Only an approved offer can be prepared for minting.");
+    throw new Error("Only an approved offer can be minted.");
   }
   const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId != null || onchain.mintTxHash) {
-    throw new Error("This offer is already minted.");
+  if (onchain.tokenId != null && onchain.mintTxHash) {
+    return { status: "confirmed", txHash: onchain.mintTxHash, tokenId: onchain.tokenId };
   }
+  const payoutAddress = payoutAddressLocked(offer);
+  if (!payoutAddress) {
+    throw new Error("Add a payout address before minting.");
+  }
+  const purchasePrice = purchasePriceAtomicFor(offer);
+  const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
   const epoch = await ensureActiveEpoch();
   const key =
     onchain.offerKey ??
@@ -257,77 +285,110 @@ export async function prepareMintAction(reference: string) {
       contractAddress,
       internalId: offer.reference,
     });
-  await updateOffer(reference, (current) => ({
-    ...current,
-    nextAction: "Ready to mint from the Safe",
-    onchain: {
-      ...mergeOnchain(current.onchain),
-      offerKey: key,
-      contractAddress,
-      epochId: epoch.id,
-    },
-    events: [
-      {
-        id: `ev-${reference}-prepare-${Date.now()}`,
-        at,
-        title: "Mint prepared",
-        detail:
-          "Offer key and expected terms are stored. Operators execute mintOffer from the Safe.",
-        actor: "System",
-      },
-      ...current.events,
-    ],
-  }));
-  refresh();
-}
 
-/** Verify an OfferMinted receipt and record the verified mint. Throws when not configured. */
-export async function verifyOfferMintedAction(
-  reference: string,
-  txHash: string,
-  tokenId: string,
-) {
-  assertMerkadoConfigured();
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (!onchain.offerKey || !onchain.contractAddress) {
-    throw new Error("Prepare the mint before verifying it.");
+  // Broadcast once with the server mint key.
+  let txHash = onchain.mintTxHash;
+  if (!txHash) {
+    const account = merkadoMinterAccount();
+    const walletClient = createWalletClient({
+      account,
+      chain: baseSepolia,
+      transport: http(merkadoRpcUrl()),
+    });
+    txHash = await walletClient.writeContract({
+      address: contractAddress as `0x${string}`,
+      abi: MERKADO_OFFER_ABI,
+      functionName: "mintOffer",
+      args: [
+        key as `0x${string}`,
+        payoutAddress as `0x${string}`,
+        purchasePrice,
+        rentInstallmentAmount,
+      ],
+    });
+    await updateOffer(reference, (current) => ({
+      ...current,
+      nextAction: "Mint broadcast · verifying on chain",
+      onchain: {
+        ...mergeOnchain(current.onchain),
+        offerKey: key,
+        contractAddress,
+        epochId: epoch.id,
+        mintTxHash: txHash,
+      },
+      events: [
+        {
+          id: `ev-${reference}-mint-broadcast-${Date.now()}`,
+          at: new Date().toISOString(),
+          title: "Mint broadcast",
+          detail: "The backend submitted mintOffer from the server mint key.",
+          actor: "System",
+        },
+        ...current.events,
+      ],
+    }));
   }
-  if (onchain.mintTxHash) {
-    throw new Error("This offer is already minted.");
+
+  // Wait for the receipt, then decode the minted token id.
+  const publicClient = createPublicClient({
+    chain: baseSepolia,
+    transport: http(merkadoRpcUrl()),
+  });
+  const receipt = await waitForTransactionReceipt(publicClient, {
+    hash: txHash as `0x${string}`,
+    timeout: 90_000,
+  }).catch(() => null);
+  if (!receipt || receipt.status !== "success") {
+    return { status: "pending", txHash, reason: "Waiting for the mint transaction on chain." };
   }
-  const payoutAddress = payoutAddressLocked(offer);
-  if (!payoutAddress) {
-    throw new Error("Add a payout address before minting.");
+
+  let mintedTokenId: bigint | null = onchain.tokenId != null ? BigInt(onchain.tokenId) : null;
+  if (mintedTokenId == null) {
+    for (const log of receipt.logs) {
+      if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
+      try {
+        const decoded = decodeEventLog({
+          abi: MERKADO_OFFER_ABI,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (decoded.eventName === "OfferMinted") {
+          mintedTokenId = decoded.args.tokenId as bigint;
+          break;
+        }
+      } catch {
+        // Not one of our events; skip.
+      }
+    }
   }
-  const purchasePrice = purchasePriceAtomicFor(offer);
-  const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
+  if (mintedTokenId == null) {
+    return { status: "pending", txHash, reason: "OfferMinted event not found yet." };
+  }
+
   const result = await verifyOfferMinted(txHash, {
-    contractAddress: onchain.contractAddress,
-    tokenId: BigInt(tokenId),
-    offerKey: onchain.offerKey,
+    contractAddress,
+    tokenId: mintedTokenId,
+    offerKey: key,
     payoutAddress,
     purchasePrice,
     rentInstallmentAmount,
   });
   if (result.status === "pending") {
-    return { status: "pending" as const, reason: result.reason };
+    return { status: "pending", txHash, tokenId: Number(mintedTokenId), reason: result.reason };
   }
   if (!result.verified) {
     throw new Error(result.reason ?? "The mint receipt could not be verified.");
   }
   const depthPending = confirmationDepthPending(result);
   if (depthPending) {
-    return { status: "pending" as const, reason: depthPending };
+    return { status: "pending", txHash, tokenId: Number(mintedTokenId), reason: depthPending };
   }
-  const epoch = await ensureActiveEpoch();
+
   await recordOffer({
-    offerKey: onchain.offerKey,
+    offerKey: key,
     chainId: MERKADO_CHAIN_ID,
-    contractAddress: onchain.contractAddress,
-    tokenId: result.tokenId ?? BigInt(tokenId),
+    contractAddress,
+    tokenId: mintedTokenId,
     payoutAddress,
     purchasePrice,
     rentInstallmentAmount,
@@ -340,13 +401,13 @@ export async function verifyOfferMintedAction(
     await recordChainEvent({
       epochId: epoch.id,
       chainId: MERKADO_CHAIN_ID,
-      contractAddress: onchain.contractAddress,
+      contractAddress,
       txHash,
       logIndex,
       blockNumber: Number(result.blockNumber),
       blockHash: result.blockHash ?? "",
       eventName: "OfferMinted",
-      eventArgs: { tokenId: String(result.tokenId ?? tokenId), offerKey: onchain.offerKey },
+      eventArgs: { tokenId: mintedTokenId.toString(), offerKey: key },
     });
   }
   await updateOffer(reference, (current) => ({
@@ -355,9 +416,9 @@ export async function verifyOfferMintedAction(
     nextAction: "Minted · open on Marketplace",
     onchain: {
       ...mergeOnchain(current.onchain),
-      tokenId: Number(result.tokenId ?? BigInt(tokenId)),
-      offerKey: onchain.offerKey,
-      contractAddress: onchain.contractAddress,
+      tokenId: Number(mintedTokenId),
+      offerKey: key,
+      contractAddress,
       epochId: epoch.id,
       mintTxHash: txHash,
       mintBlockNumber: result.blockNumber ?? null,
@@ -368,16 +429,14 @@ export async function verifyOfferMintedAction(
         id: `ev-${reference}-mint-${Date.now()}`,
         at: new Date().toISOString(),
         title: "Offer minted",
-        detail: `Offer NFT minted to the company Safe. Token ${String(
-          result.tokenId ?? tokenId,
-        )} is now purchasable on Marketplace.`,
+        detail: `Offer NFT minted by the backend. Token ${mintedTokenId.toString()} is now purchasable on Marketplace.`,
         actor: "System",
       },
       ...current.events,
     ],
   }));
   refresh();
-  return { status: "confirmed" as const };
+  return { status: "confirmed", txHash, tokenId: Number(mintedTokenId) };
 }
 
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */

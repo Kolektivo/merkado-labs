@@ -28,8 +28,7 @@ Optional:
 - `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty)
 - `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — **empty until the contract is
   deployed**; empty shows a not-configured state on surfaces
-- `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` — defaults to the verified Base Sepolia
-  Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4`
+- `MERKADO_MINTER_PRIVATE_KEY` — server-only Base Sepolia key the backend uses to mint offer NFTs
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
 ## Vercel (Labs demo host)
@@ -63,7 +62,7 @@ Required Vercel env (Labs project `ewoxmzznkavapcxdporm` only):
 - `LABS_DEMO_PASSWORD` (server only; Production)
 - `NEXT_PUBLIC_PAY_NETWORK` (optional; default `base-sepolia`)
 - `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` (optional; empty until deployed)
-- `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` (optional; defaults to the verified Safe)
+- `MERKADO_MINTER_PRIVATE_KEY` (server-only; required for automatic minting)
 - `MERKADO_RPC_URL` (optional server-only; default `https://sepolia.base.org`)
 
 ## Database
@@ -122,7 +121,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`ewoxmzznkavapcxdporm`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `ewoxmzznkavapcxdporm`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Testnet operator on the verified 2-of-3 company Safe | The company Safe mints offer NFTs. Do not start with a mainnet Safe that holds real USDC. |
+| Safe{Wallet} | Testnet operator on the verified 2-of-3 backend mint key | The backend mint key mints offer NFTs. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
 | Privy, only if selected | Developer on a Kolektivo-owned Labs app | Do not create a personal production dependency or add billing without approval. |
 
@@ -141,7 +140,7 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him the company Safe is the verified Base Sepolia 2-of-3 Safe
+2. Tell him the backend mint key is the verified Base Sepolia 2-of-3 Safe
    (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) and mints offer NFTs. The
    design is one transferable ERC-721 per listing; the old PR #19 / #20 / #22
    draft framing is superseded by ADR-0008.

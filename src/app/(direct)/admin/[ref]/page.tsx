@@ -13,8 +13,9 @@ import { ARREARS_LADDER } from "@/lib/rent-advance/arrears";
 import { canRecordCollection, statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
-import { mergeOnchain, mintCalldata } from "@/lib/rent-advance/custody";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { isMerkadoConfigured } from "@/lib/onchain/config";
+import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 import { MintControl } from "./mint-control";
 
 export const dynamic = "force-dynamic";
@@ -37,8 +38,7 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
 
   const onchain = mergeOnchain(offer.onchain);
   const configured = isMerkadoConfigured();
-  const calldata = mintCalldata(offer);
-
+  const minterAddress = configured ? merkadoMinterAddressOrNull() : null;
   const nextReceivable =
     offer.receivables.find((row) => row.status === "scheduled") ?? null;
   const missed = offer.receivables.find((row) => row.status === "missed");
@@ -110,12 +110,11 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
       <MintControl
         reference={offer.reference}
         configured={configured}
-        offerKey={onchain.offerKey}
         tokenId={onchain.tokenId}
         contractAddress={onchain.contractAddress}
         mintTxHash={onchain.mintTxHash}
         purchased={onchain.purchased}
-        calldata={calldata}
+        minterAddress={minterAddress}
       />
 
       <OfferAdminForms

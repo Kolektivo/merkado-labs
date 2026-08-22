@@ -27,12 +27,14 @@ import {
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
 import { isMerkadoConfigured } from "@/lib/onchain/config";
+import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
 
 export default async function AdminPage() {
   const book = await loadBook();
+  const minterAddress = merkadoMinterAddressOrNull();
   const offers = sortOffersForLandlordList(book.offers);
   const review = offers.filter((offer) => offer.status === "under_review");
   const funding = offers.filter((offer) => offer.status === "funding");
@@ -154,20 +156,20 @@ export default async function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contract and receiving Safe (Base Sepolia)</CardTitle>
+          <CardTitle>Contract and addresses (Base Sepolia)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            Landlords never sign. The company Safe mints one offer NFT per
+            Landlords never sign. The backend mints one offer NFT per
             listing. A buyer pays the purchase price to the payout address
             locked at mint, and rent is deposited into the offer contract.
           </p>
           <div className="space-y-3">
             <AddressRow
-              title="Company Safe"
-              copyLabel="company Safe"
-              value={book.cryptoConfig?.companySafeAddress ?? ""}
-              tip="The Safe that mints each offer NFT. Landlords never connect a wallet or sign from here."
+              title="Merkado operator (minter)"
+              copyLabel="Merkado operator"
+              value={minterAddress ?? book.cryptoConfig?.companySafeAddress ?? ""}
+              tip="The backend key that mints each offer NFT after Admin approval. Landlords never connect a wallet or sign."
             />
             <AddressRow
               title="USDC contract"

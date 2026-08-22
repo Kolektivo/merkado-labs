@@ -22,5 +22,5 @@ export const MERKADO_OFFER_ABI = parseAbi([
   "function totalRentLiability() returns (uint256)",
   "function usedPaymentIds(bytes32) returns (bool)",
   "function usdc() returns (address)",
-  "function companySafe() returns (address)",
+  "function minter() returns (address)",
 ]);
