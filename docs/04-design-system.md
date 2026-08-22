@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 ## 1. Scope
 
@@ -82,6 +82,8 @@ outside this scoped layer.
 - The hosted password door (`/enter`) is a compact shadcn card: title,
   one line of copy, **Shared password**, and **Continue**. No logo, pill,
   or prototype alert.
+- When `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, Purchase and Pay
+  show a quiet **not configured** state instead of a fake transaction.
 - Customer scores: show **Property quality**, **Payment history**, and
   **Combined property view**. Official names Listing Score, Payer Score,
   and Property Score stay inside tooltips only.
@@ -101,7 +103,7 @@ outside this scoped layer.
   the next action.
 - Completed purchases and holder rent claims use one
   accessible success dialog with a check mark, plain-language result, and the
-  amount when it is useful. Mock claims must still say that no money was sent.
+  amount when it is useful.
 
 ## 5. Accessibility
 
@@ -118,13 +120,15 @@ external app URLs include accessible new-tab text.
 
 ## 6. What not to invent
 
-No gradients-as-brand, no “yield” badges, no loan calculators labeled as
+No gradients-as-brand, no "yield" badges, no loan calculators labeled as
 loans, no explorer link for demo hashes. The **Landlord proceeds** card
 uses Waiting (amber), Processing (blue), Failed (red), and Paid (quiet
-grey). Paid is automatic after the whole offer is purchased; there is no
-landlord claim button. Holder **Claim rent** stays a separate mocked,
-wallet-gated action, not a public token market. Marketplace and Portfolio
-use a standard **Connect wallet** button. WalletConnect versus Privy is a
-later Luis choice and is not shown. Pay has no Connect wallet control.
-Wallet chrome stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base
-Sepolia** is the default demo network. **Base Mainnet** is later.
+grey). Paid is the sale completing; there is no
+landlord claim button. Holder **Claim rent** is the current NFT owner's
+action in Portfolio. Marketplace and Portfolio
+use a standard wallet-connect control (injected EIP-1193; WalletConnect
+versus Privy is a later choice and is not shown). Pay has no Connect
+wallet control. The Base Sepolia contract address comes from
+`NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; an empty value shows a not-configured
+state, never a fake hash. Explorer links open only for real 64-hex hashes.
+**Base Sepolia** is the default demo network. **Base Mainnet** is later.

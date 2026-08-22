@@ -1,64 +1,52 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 21, 2026 (Luuk flow decisions and Luis handoff)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 ## Now
 
-- Product Lead reviews the payout-first local walkthrough: payout selection
-  before submission, 60-day listing, whole-offer wallet-gated purchase,
-  automatic landlord Paid state, holder wallet-gated claim, Pay QR, and disabled
-  Girasol / Sentoo previews.
-- **Luis** finishes the deposit walkthrough and the mocked NFT /
-  listing-offer flow (expected next working slice tomorrow night). Keep
-  renter-payment verification in PR #20 untouched.
-- **Luis** closes the final no-go audit items in `docs/07-integrations.md`:
-  block mock confirmation in live mode, decode real padded ERC-20 logs,
-  verify listing addresses rather than the one company Safe, keep the
-  real Safe out of mock Pay, isolate real-money actions from the shared
-  resettable book, and reconcile the provider hook / factory seam.
+- Product Lead reviews the Base Sepolia NFT flow: payout locked before
+  submission, mint by the company Safe, whole-offer purchase (buyer pays the
+  landlord address; NFT Safe → buyer atomic), renter `depositRent`, owner
+  `claimRent`, and the not-configured state while the contract env is empty.
+- **Deployment gates (all still closed).** Deploy and verify
+  `MerkadoRentOfferV1` on **Base Sepolia**; set
+  `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; apply the chain store migration
+  (`ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`,
+  `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`,
+  `ra_rent_claim_verifications`); send test USDC; execute the Safe mint.
+  Each requires explicit Product Lead approval. Do **not** merge or activate
+  the flow until each gate closes.
 - Set `LABS_DEMO_PASSWORD` on the Labs Vercel Production environment,
   then approve commit and push so the host password is live on
   `merkado-labs.vercel.app`.
-- **Luis** treats the existing Base Sepolia Safe
-  `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3) as the **company
-  Safe** (create offers; live fee handling still needs confirmation).
-  Create a **second** Base Sepolia
-  **sales proceeds Safe**. Do not use a Base Mainnet Safe. Send both
-  addresses when they exist. Draft
-  [PR 19](https://github.com/Kolektivo/merkado-labs/pull/19),
-  [PR 20](https://github.com/Kolektivo/merkado-labs/pull/20), and
-  [PR 22](https://github.com/Kolektivo/merkado-labs/pull/22) stay unmerged.
-- Send Luis the updated `docs/07-integrations.md` (one NFT per listing, two
-  Safes, whole-offer purchase, rent-to-listing, automatic landlord payout,
-  wallet ownership, holder claim, 60-day expiry, and sponsorship of `claim()`).
+- **Luis** confirms the Safe mint execution (Safe Transaction Service or an
+  approved relayer) and the fee settlement path. The fee is informational and
+  must never reduce the landlord below the purchase price shown.
 - Stage 0 questions stay unresolved. Do not pretend they are closed.
   They are not shown on customer Home.
 
 ## Next
 
 - Counsel opinions on M.1.2, M.1.3, M.1.4, and assignment mechanics.
-- **Luis** designs the per-listing offer contract, automatic landlord-payout send,
-  and holder `claim()`, then completes an end-to-end **Base Sepolia**
-  walkthrough on the draft stack (create listing offer from company Safe,
-  sale into proceeds Safe, fee sweep, automatic landlord payout, rent to listing,
-  holder claim). Confirm whether holder `claim()` can be sponsored. Do
-  **not** merge and do **not** flip `PAYMENT_RAIL_MODE` to `"live"` until
-  that walkthrough works and the Product Lead approves.
-- Luis / Finance confirm how any company-fee sweep is funded. It must not
-  reduce the landlord below the purchase price shown on the approved
-  offer.
-- Decide production payment allocation now that rent is per-offer.
+- **Luis** completes an end-to-end **Base Sepolia** walkthrough once
+  deployed: Safe mint → whole-offer purchase → renter `depositRent` → owner
+  `claimRent` → NFT transfer to a new owner and claim as the new owner.
+  Do **not** merge and do **not** activate hosted flows until that
+  walkthrough works and the Product Lead approves.
+- Confirm company fee settlement without reducing the landlord payout.
 - Attested collection evidence from a real foundation sub-ledger (still no
   oracle).
 
 ## Later
 
+- **Base Mainnet** after the Base Sepolia walkthrough works and the Product
+  Lead turns it on.
 - Girasol bank payout for landlord proceeds after commercial/API/KYC approval.
 - Sentoo renter bank payment after consent, callback, reconciliation, and
   bank-data handling approval.
 - Product Lead chooses WalletConnect, Privy, or both for production holder
-  onboarding after Luis recommends the safest maintainable option.
+  onboarding after the technical recommendation.
 - Merkado Direct · Property series (not authorised to start).
 - Third-party holders after written opinions.
 - Production Auth and merkado.cw embedding.
@@ -73,4 +61,8 @@
 | Real collection flow | M.1.3 |
 | Public Merkado Direct page | M.1.4 |
 | 3-month term origination | Separate short-dated advice |
-| Real wallet / Safe / USDC transfer | Draft PRs 19/20/22 must not merge until Base Sepolia E2E + Product Lead approval; two Safes + offer contract still open |
+| Contract deployment | Not approved; `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty |
+| Chain store migration | Not approved / not applied |
+| Test USDC + Safe mint | Not approved; requires contract deployed |
+| Hosted activation / merge | Product Lead approval after the Base Sepolia E2E |
+| Base Mainnet / real funds | Explicitly blocked; testnet only |

@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 21, 2026 (Luuk flow and Luis handoff)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 ## Local dashboard
 
@@ -23,7 +23,14 @@ Required env (Labs project `csaefdkpwukshtouyixg` only):
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
 
-Optional: `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty).
+Optional:
+
+- `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty)
+- `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — **empty until the contract is
+  deployed**; empty shows a not-configured state on surfaces
+- `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` — defaults to the verified Base Sepolia
+  Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4`
+- `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
 ## Vercel (Labs demo host)
 
@@ -55,11 +62,32 @@ Required Vercel env (Labs project `csaefdkpwukshtouyixg` only):
 - `SUPABASE_SECRET_KEY` (server only)
 - `LABS_DEMO_PASSWORD` (server only; Production)
 - `NEXT_PUBLIC_PAY_NETWORK` (optional; default `base-sepolia`)
+- `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` (optional; empty until deployed)
+- `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` (optional; defaults to the verified Safe)
+- `MERKADO_RPC_URL` (optional server-only; default `https://sepolia.base.org`)
 
 ## Database
 
-Migrations live in `supabase/migrations/`. Only the Rent Advance rebuild and
-dual-control trigger remain. Do not apply this to production.
+Migrations live in `supabase/migrations/`. The Rent Advance rebuild and
+dual-control trigger are applied. The Base Sepolia chain store migration
+(`ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`,
+`ra_rent_payment_attempts`, `ra_rent_deposit_verifications`,
+`ra_rent_claim_verifications`) is **not applied** — applying it requires
+explicit approval. Do not apply any of this to production.
+
+## Contract deployment gates
+
+The Base Sepolia flow stays inactive until all of the following are
+explicitly approved and done (see `docs/10-execution-roadmap.md`):
+
+1. Deploy and verify `MerkadoRentOfferV1` on **Base Sepolia**.
+2. Set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` to the verified address.
+3. Apply the chain store migration.
+4. Send test USDC and execute the Safe mint.
+5. Product Lead approves hosted activation and the merge.
+
+Base Mainnet and real funds remain blocked. Do not deploy the contract to
+Base Mainnet from this repository.
 
 ## GitHub verification
 
@@ -75,18 +103,9 @@ Windows-generated lockfile. After adding packages on Windows, confirm
 `node_modules/@emnapi/runtime` at `1.11.3`. If `npm install` drops those
 entries, restore them before pushing. They are not a wallet or chain
 dependency.
-`qrcode.react` renders the mock stablecoin payment QR locally; it does not
-connect to a payment provider.
 
 The first passing remote Verify run on `main` was 2026-08-19
 (run 32228015203).
-
-Luis draft preview for Wave 3 (PR #22, product-stale manual claim flow):
-https://merkado-labs-git-task-pr21-mocked-proceeds-claim-kolektivolabs.vercel.app
-Vercel SSO is on. After SSO, the app still requires
-`LABS_DEMO_PASSWORD`; do not put that password in Git or chat. Local
-review of that same branch: run it on
-http://localhost:3001 from a separate worktree. Do not merge.
 
 ## Access to give Luis (Web3)
 
@@ -103,9 +122,9 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 | Vercel team **Kolektivo Labs**, project `merkado-labs` | **Developer** or **Member** | [vercel.com](https://vercel.com) → the Kolektivo Labs team → **Settings** → **Members** → invite his email. Do **not** add him to the live merkado.cw Vercel project. |
 | Supabase **merkado-labs** (`csaefdkpwukshtouyixg`) | **Developer** | [supabase.com](https://supabase.com) → open the Labs project (check the reference is `csaefdkpwukshtouyixg`) → **Project Settings** → **Team** → invite as **Developer**. |
 | Labs `.env.local` values | Read-only copy | Send `NEXT_PUBLIC_SUPABASE_URL`, the publishable key, and `SUPABASE_SECRET_KEY` for **Labs only**. Also send `LABS_DEMO_PASSWORD` so he can open the hosted walkthrough. |
-| Safe{Wallet} | Testnet operator on the existing 2-of-3 company Safe | Keep that Safe for offer creation and fees. Ask him to create a **second** Base Sepolia **sales proceeds** Safe. Do not start with a mainnet Safe that holds real USDC. |
+| Safe{Wallet} | Testnet operator on the verified 2-of-3 company Safe | The company Safe mints offer NFTs. Do not start with a mainnet Safe that holds real USDC. |
 | Reown / WalletConnect Cloud | Member on a Labs project | He can create the project. Prefer inviting him into a Kolektivo-owned project so the connect ID is not a personal account. |
-| Privy, only if selected after Luis recommends an adapter | Developer on a Kolektivo-owned Labs app | Do not create a personal production dependency or add billing without approval. |
+| Privy, only if selected | Developer on a Kolektivo-owned Labs app | Do not create a personal production dependency or add billing without approval. |
 
 ### Do not give
 
@@ -122,14 +141,14 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 ### After you invite him
 
 1. Send the link to `docs/07-integrations.md` in this repo.
-2. Tell him the company Safe can stay the existing Base Sepolia 2-of-3
-   Safe, and that he should create a second **sales proceeds** Safe. The new
-   design is whole-offer purchase plus automatic landlord payout; PR #22's
-   manual claim must not be merged. Send `docs/07-integrations.md`.
-3. Tell him not to install a wallet SDK until you reply that the
-   integration task is approved.
-4. When his Base Sepolia pay walkthrough works, you still approve before
-   anyone repeats the Safe on **Base Mainnet**.
+2. Tell him the company Safe is the verified Base Sepolia 2-of-3 Safe
+   (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) and mints offer NFTs. The
+   design is one transferable ERC-721 per listing; the old PR #19 / #20 / #22
+   draft framing is superseded by ADR-0008.
+3. Tell him the contract deployment, chain store migration, test USDC, and
+   Safe transactions each need the Product Lead's approval.
+4. When his Base Sepolia walkthrough works, you still approve before
+   anyone moves toward **Base Mainnet**.
 
 ## Do not
 
@@ -139,3 +158,6 @@ Share secrets through a password manager, not email, Slack, or GitHub.
 - Point env vars at project `jkrfyvukhhsapoivntms`
 - Publish a public Merkado Direct page
 - Invite Luis to production Supabase or the live merkado.cw Vercel project
+- Deploy the contract, apply the chain store migration, send test USDC, or
+  execute Safe transactions without explicit approval
+- Deploy `MerkadoRentOfferV1` on Base Mainnet or use real funds

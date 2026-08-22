@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 21, 2026 (payout-first and bank-preview privacy)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -80,8 +80,7 @@ Never:
 - Server components and server actions use the Labs service role. Browser
   code never receives that key.
 - Offer server actions strip undeclared root and nested fields before writing
-  the shared JSON book. This also blocks crafted Girasol / Sentoo-style bank
-  fields from being retained; the visible previews stay client-only.
+  the shared JSON book. Crafted or unknown fields are never retained.
 - Dual-control release is rejected if instructor and signatory are the same person
   (application check on every save, and a database trigger on `ra_demo_state`).
 
@@ -105,61 +104,66 @@ point any leftover script at those names.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
 - Keep work focused on the Curaçao Direct / Pay demo.
-- Wallet, Safe, USDC, transactions, and distributions remain mocked until
-  a separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK before that approval. When that adapter ships, flip
-  `PAYMENT_RAIL_MODE` to `"live"` in the same change and confirm Pay from
-  chain data on the server — do not keep the 1.4s client auto-confirm.
-- No real transaction can be initiated from any control.
+- The Base Sepolia flow is the only approved crypto implementation
+  (ADR-0008): one non-upgradeable ERC-721 (`MerkadoRentOfferV1`), pooled USDC
+  rent per token id, company Safe mint, transferable NFT where the current
+  owner is the holder, whole-offer purchase paid to the locked landlord
+  address, `depositRent` (exact monthly amount, max 6 installments), and
+  `claimRent` by the current owner. There is no mock provider,
+  `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes.
+- **Not approved and not activated:** contract deployment, applying the chain
+  store migration, sending test USDC, Safe transactions, hosted activation,
+  and merging the PR. Base Mainnet, real funds, and production stay blocked.
+  A client can never mark rent paid on its own; the server confirms from
+  verified chain events.
+- No real transaction can be initiated before the deployment gates close and
+  the Product Lead approves.
 
 Operational detail: `12-deployment-runbook.md`.
 
 ## 7. Privacy walls
 
+- Wallet addresses, token ids, and payout amounts are **public on-chain**
+  once the contract is active. Tenant and property identity stay off-chain.
 - Payer screens: no fee, purchase price, holders, or scheduled holder figures.
   The browser receives only public network facts (network, chain, token,
-  decimals, explorer), never company / proceeds Safe fields or the offer
-  factory from the full crypto config.
+  decimals, explorer) and the public contract address.
 - Purchaser screens: no tenant name, employer, address, contact, or exact
   income. Address-like free text is replaced with a neutral Curaçao label
   before entering the purchaser payload.
-- Landlord screens: no holder wallet or Safe address. The local mock accepts a
-  fictional `0xDEMO…` payout address before offer submission; users do not
-  connect a wallet. The whole-offer purchase marks payout automatic. That value
-  stays server-side and must not appear on
-  Marketplace, Pay, or Portfolio.
-- Automatic landlord payouts never show a mock transaction hash or explorer
-  link. Paid is final. There is no landlord claim action.
-- Merkado is not a custody product. After sale, monthly rent sits on the
-  listing offer until the holder claims it. Sale proceeds stay in the
-  sales proceeds Safe only until the automatic landlord payout executes.
+- Landlord screens: no holder wallet details beyond the public token owner.
+  The locked landlord payout address stays server-side and must not appear on
+  Marketplace, Pay, or Portfolio surfaces, even though it is on-chain.
+- The landlord payout address is chosen before submission and locked for the
+  offer; the buyer pays that exact address. There is no landlord claim action.
+- Merkado is not a custody product. After sale, monthly rent sits in the
+  pooled contract until the current NFT owner claims it.
 - No public offering copy. Sole-holder mode until written opinions exist.
 - The related-party flag and note are internal review facts. Neither enters
   the purchaser payload. They are not an excuse for softer arrears.
 
-## 8. Mock wallet and payment-link safety
+## 8. Chain safety (Base Sepolia flow)
 
-- Mock addresses must be obviously fictional and unusable for real funds.
-- Girasol and Sentoo fields are visual previews only. They must not persist,
-  transmit, log, or autofill real bank details. The UI explicitly asks for
-  fictional values and keeps the action disabled.
-- The mocked **Connect wallet** button must not imply ownership verification.
-  Real purchase and holder claim require server-enforced wallet ownership,
-  network checks, and authorization before this shared book can touch funds.
-- Never put secrets or sensitive identity in a URL.
-- Payment deep-link IDs in this demo are fictional. Production links need
-  opaque, scoped, expiring authorization.
-- Do not silently report a successful saved payment if Labs persistence is
-  unavailable.
+- Never expose the service-role key or `MERKADO_RPC_URL` credentials to
+  browser code, logs, or source control.
+- Server-side verification must check: correct chain (`cryptoConfig.chainId`),
+  exact expected event (mint / purchase / transfer / deposit / claim),
+  exact atomic amount, the current token owner for claims, at most one
+  confirmed deposit per payment request, and at most 6 installments per offer.
+- A different address is rejected for a locked landlord payout once set.
+- The pooled USDC balance must always be ≥ total deposited-but-unclaimed
+  rent (the contract enforces the invariant; the server verifies it).
 - Show an explorer link only when the base URL is an official catalog
   explorer (Base Sepolia, Base Mainnet, or a later catalog network) **and** the
-  hash is a real 64-hex `0x` value. Demo `0xDEMO…` hashes must not open
-  the explorer.
-- `confirmPaymentAction` is a Labs mock write. It must not trust a client
-  ledger id. Live Pay must confirm from chain data on the server.
+  hash is a real 64-hex `0x` value. There are no demo hashes.
+- The chain store tables (`ra_chain_*`, `ra_rent_*`) have RLS on and no
+  `anon` / `authenticated` grants. They are written only by server-side
+  verification.
 - The shared walkthrough persists **Base Sepolia**. Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
   Short names such as `base` or `op` must not select mainnet.
+- Empty `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` must show a not-configured
+  state; it must never fake a transaction.
 
 ## 9. Service-role credential rules
 

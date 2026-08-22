@@ -1,7 +1,8 @@
 # ADR-0006 — Walletless landlord and Merkado-created listing offer
 
 **Status:** Accepted; landlord-claim and fractional-purchase decisions
-superseded by ADR-0007  
+superseded by ADR-0007; mock crypto boundary, sales-proceeds Safe payout,
+and listing expiry superseded by ADR-0008
 **Date:** 2026-08-20
 
 ## Context
@@ -138,3 +139,9 @@ allowed purchases of any remaining amount. The approved flow now selects payout
 before submission, sells 100% of the offer to one buyer, and executes landlord
 payout automatically. Walletless origination, Merkado-created per-listing
 offers, renter-to-offer rent, and holder-initiated rent claim remain accepted.
+
+ADR-0008 (Base Sepolia transferable NFT rent offer) supersedes the remaining
+mock details of this ADR: the typed mock provider boundary, the sales-proceeds
+Safe automatic payout, the 60-day listing expiry, and fictional `0xDEMO…`
+addresses. The transferable `MerkadoRentOfferV1` NFT, company Safe mint,
+buyer-pays-landlord purchase, `depositRent`, and owner `claimRent` now govern.
