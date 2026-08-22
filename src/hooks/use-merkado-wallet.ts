@@ -1,16 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useAppKit,
+  useAppKitAccount,
+  useAppKitNetwork,
+  useAppKitProvider,
+  useDisconnect,
+} from "@reown/appkit/react";
 import type { EIP1193Provider } from "viem";
 
-declare global {
-  interface Window {
-    ethereum?: EIP1193Provider;
-  }
-}
+import { isReownConfigured } from "@/lib/pay/reown-config";
 
 export type MerkadoWallet = {
-  /** The injected EIP-1193 provider (window.ethereum), null on the server or when no wallet is installed. */
+  /** The active EIP-1193 provider (Reown wallet or window.ethereum). */
   provider: EIP1193Provider | null;
   /** Connected account, or null when disconnected. */
   address: `0x${string}` | null;
@@ -23,7 +26,7 @@ export type MerkadoWallet = {
 };
 
 const NO_WALLET_MESSAGE =
-  "No injected wallet was found. Install a browser wallet (such as MetaMask or Rabby) and try again.";
+  "No wallet was found. Connect one from the wallet modal, or install a browser wallet (such as MetaMask or Rabby).";
 
 function parseHexChainId(value: unknown): number | null {
   if (typeof value !== "string") return null;
@@ -43,10 +46,18 @@ function getUserSafeError(error: unknown): Error {
   return new Error("The wallet could not be connected. Try again.");
 }
 
-export function useMerkadoWallet(): MerkadoWallet {
+function useInjectedWallet(): Omit<
+  MerkadoWallet,
+  "provider" | "address" | "chainId" | "isConnected"
+> & {
+  provider: EIP1193Provider | null;
+  address: `0x${string}` | null;
+  chainId: number | null;
+  isConnected: boolean;
+} {
   const [provider, setProvider] = useState<EIP1193Provider | null>(() => {
     if (typeof window === "undefined") return null;
-    return window.ethereum ?? null;
+    return (window as unknown as { ethereum?: EIP1193Provider }).ethereum ?? null;
   });
   const [address, setAddress] = useState<`0x${string}` | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -69,27 +80,18 @@ export function useMerkadoWallet(): MerkadoWallet {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const ethereum = window.ethereum;
+    const ethereum = (window as unknown as { ethereum?: EIP1193Provider }).ethereum;
     if (!ethereum) return;
-
     providerRef.current = ethereum;
-
-    const handleAccountsChanged = (accounts: string[]) => {
-      applyAccount(accounts);
-    };
-    const handleChainChanged = (hexChainId: string) => {
-      setChainId(parseHexChainId(hexChainId));
-    };
-    const handleDisconnect = () => {
+    const onAccounts = (accounts: string[]) => applyAccount(accounts);
+    const onChain = (hexChainId: string) => setChainId(parseHexChainId(hexChainId));
+    const onDisconnect = () => {
       setAddress(null);
       setChainId(null);
     };
-
-    ethereum.on("accountsChanged", handleAccountsChanged);
-    ethereum.on("chainChanged", handleChainChanged);
-    ethereum.on("disconnect", handleDisconnect);
-
-    // Restore an already-connected session without prompting the user.
+    ethereum.on("accountsChanged", onAccounts);
+    ethereum.on("chainChanged", onChain);
+    ethereum.on("disconnect", onDisconnect);
     ethereum
       .request({ method: "eth_accounts" })
       .then((accounts) => {
@@ -100,23 +102,20 @@ export function useMerkadoWallet(): MerkadoWallet {
         setAddress(null);
         setChainId(null);
       });
-
     return () => {
-      ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      ethereum.removeListener("chainChanged", handleChainChanged);
-      ethereum.removeListener("disconnect", handleDisconnect);
+      ethereum.removeListener("accountsChanged", onAccounts);
+      ethereum.removeListener("chainChanged", onChain);
+      ethereum.removeListener("disconnect", onDisconnect);
       providerRef.current = null;
     };
   }, [applyAccount, syncChainId]);
 
   const connect = useCallback(async () => {
-    if (typeof window === "undefined") {
-      throw new Error(NO_WALLET_MESSAGE);
-    }
-    const ethereum = window.ethereum ?? providerRef.current;
-    if (!ethereum) {
-      throw new Error(NO_WALLET_MESSAGE);
-    }
+    if (typeof window === "undefined") throw new Error(NO_WALLET_MESSAGE);
+    const ethereum =
+      (window as unknown as { ethereum?: EIP1193Provider }).ethereum ??
+      providerRef.current;
+    if (!ethereum) throw new Error(NO_WALLET_MESSAGE);
     if (connecting) return;
     setConnecting(true);
     try {
@@ -147,5 +146,52 @@ export function useMerkadoWallet(): MerkadoWallet {
     connecting,
     connect,
     disconnect,
+  };
+}
+
+/**
+ * Wallet boundary. When Reown AppKit is configured it drives connection through
+ * the Reown modal; otherwise it falls back to the injected EIP-1193 path.
+ * `connect` opens the modal (never blocks), `disconnect` disconnects.
+ */
+export function useMerkadoWallet(): MerkadoWallet {
+  const reownEnabled = isReownConfigured();
+  const injected = useInjectedWallet();
+  const { open } = useAppKit();
+  const { address: reownAddress, isConnected: reownConnected } = useAppKitAccount();
+  const { chainId: reownChain } = useAppKitNetwork();
+  const { walletProvider } = useAppKitProvider("eip155");
+  const { disconnect: reownDisconnect } = useDisconnect();
+  const [connecting, setConnecting] = useState(false);
+
+  if (!reownEnabled) {
+    return {
+      provider: injected.provider,
+      address: injected.address,
+      chainId: injected.chainId,
+      isConnected: injected.isConnected,
+      connecting: injected.connecting,
+      connect: injected.connect,
+      disconnect: injected.disconnect,
+    };
+  }
+
+  return {
+    provider: (walletProvider as unknown as EIP1193Provider | undefined) ?? null,
+    address: reownConnected ? (reownAddress as `0x${string}` | null) : null,
+    chainId: typeof reownChain === "number" ? reownChain : null,
+    isConnected: reownConnected,
+    connecting,
+    connect: async () => {
+      setConnecting(true);
+      try {
+        open();
+      } finally {
+        setConnecting(false);
+      }
+    },
+    disconnect: () => {
+      reownDisconnect();
+    },
   };
 }

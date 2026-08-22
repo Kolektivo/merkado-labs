@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { HelpTip } from "@/components/help-tip";
 import { PropertyCover } from "@/components/property-cover";
 import { PLAIN } from "@/lib/rent-advance/copy";
-import { formatXcg } from "@/lib/rent-advance/money";
+import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { bandPlainName } from "@/lib/rent-advance/scoring";
 import {
   coverSrcFor,
@@ -124,6 +124,9 @@ export function MarketplaceOfferCard({
                   {purchasable
                     ? formatXcg(remaining, true)
                     : formatXcg(card.offeringCents, true)}
+                </span>
+                <span className="ml-1.5 text-[13px] font-normal text-grey-800">
+                  {purchasable ? formatUsd(remaining) : formatUsd(card.offeringCents)}
                 </span>
                 <span className="text-[14px] font-medium leading-5 text-grey-800">
                   {" "}

@@ -17,6 +17,7 @@ import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { isMerkadoConfigured } from "@/lib/onchain/config";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 import { MintControl } from "./mint-control";
+import { MintSweep } from "@/components/rent-advance/mint-sweep";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
 
   return (
     <div className="space-y-6">
+      <MintSweep />
       <PageHeader
         title={offer.reference}
         description={`${offer.property.summary} · ${offer.property.district}`}

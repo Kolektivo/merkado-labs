@@ -194,7 +194,7 @@ MRA-001 locked Pay request:
 |---|---|---|---|
 | 1. Open Pay | Hub → Merkado Pay, or `/pay` | Loads the next unpaid request for the demo renter | Nothing |
 | 2. Deep link | `/pay/payreq-mra-001-202609` | Shows 1,800.00 USDC, $1,800.00 rent, selected network, opaque payment id | Read the token id and amount from the offer |
-| 3. Deposit | **Pay rent** | Connects the injected wallet on `cryptoConfig.chainId` | Prompt a chain switch when the wallet `chainId` differs |
+| 3. Deposit | **Pay rent** | Connects the Reown/AppKit wallet on `cryptoConfig.chainId` | Prompt a chain switch when the wallet `chainId` differs |
 | 4. Confirm | "Payment submitted" | Book status `pending` | Keep pending until the server has seen the deposit event |
 | 5. Confirmed | "Rent paid" | Server verifies the deposit event, records it, and writes the book once | Only verified chain evidence marks rent paid |
 | 6. Revisit | Same page stays paid | Idempotent. Second confirm does nothing | Do not send a second deposit |

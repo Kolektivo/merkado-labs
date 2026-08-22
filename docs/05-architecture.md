@@ -91,7 +91,7 @@ are the on-chain evidence record; the JSON book is the product state.
   opaquePaymentId, amount)` — exact monthly amount (app schedules six months).
   The opaque payment id binds the deposit to a payment request, so matching
   does not rely on memo guessing.
-- **Wallet.** The UI uses an injected EIP-1193 wallet (WalletConnect /
+- **Wallet.** The UI uses an Reown/AppKit wallet (Reown/AppKit (injected EIP-1193)) (WalletConnect /
   Privy later). There is no mock provider, `PAYMENT_RAIL_MODE`, demo wallet,
   demo outcome menu, or demo hashes.
 - **Server verification.** The server reads the receipt for the exact

@@ -126,7 +126,7 @@ uses Waiting (amber), Processing (blue), Failed (red), and Paid (quiet
 grey). Paid is the sale completing; there is no
 landlord claim button. Holder **Claim rent** is the current NFT owner's
 action in Portfolio. Marketplace and Portfolio
-use a standard wallet-connect control (injected EIP-1193; WalletConnect
+use a standard wallet-connect control (Reown/AppKit (injected EIP-1193); WalletConnect
 versus Privy is a later choice and is not shown). Pay has no Connect
 wallet control. The Base Sepolia contract address comes from
 `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; an empty value shows a not-configured

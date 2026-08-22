@@ -122,7 +122,7 @@ it felt wrong.
   open **Punda** studio (MRA-010).
 - Open the **Punda** studio. The card shows one whole-offer price and no
   fractional option.
-- Connect the injected wallet (must be on Base Sepolia; wrong-network is
+- Connect the Reown/AppKit wallet (must be on Base Sepolia; wrong-network is
   rejected with a prompt to switch). Click **Purchase whole offer**.
 - The buyer pays the exact purchase price **directly to the locked landlord
   payout address** and the NFT moves minter → buyer atomically.

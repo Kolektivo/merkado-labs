@@ -70,7 +70,7 @@ repo**. They live on merkado-cw.
 | Listing Score | Raw 0–100 pricing input |
 | Property Score | Derived for presentation/filtering only; never prices the quote |
 | Rent-to-market | contractual ÷ estimated market; lower is more favourable |
-| Crypto in this task | Real Base Sepolia flow; wallet injected EIP-1193; server receipt verification; no mock provider, `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes |
+| Crypto in this task | Real Base Sepolia flow; wallet Reown/AppKit (injected EIP-1193); server receipt verification; no mock provider, `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes |
 | Network now | **Base Sepolia** (Base testnet). Shown in Admin and via `NEXT_PUBLIC_PAY_NETWORK`. |
 | Network later | **Base Mainnet**, only when `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |

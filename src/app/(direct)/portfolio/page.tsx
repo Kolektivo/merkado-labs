@@ -33,19 +33,19 @@ export default async function PortfolioPage() {
         items={[
           {
             label: "Contributed",
-            value: <Money cents={contributed} compact />,
+            value: <Money cents={contributed} compact showUsd />,
             helper: `across ${positions.length} positions`,
             tip: "What the holder contributed. The landlord receives a lower one-time purchase price.",
           },
           {
             label: "Collected",
-            value: <Money cents={received} compact />,
+            value: <Money cents={received} compact showUsd />,
             helper: "actual collections only",
             tip: "Rent that actually arrived — never a promised figure.",
           },
           {
             label: "Expected remaining",
-            value: <Money cents={expectedRemaining} compact />,
+            value: <Money cents={expectedRemaining} compact showUsd />,
             helper: "if remaining collections arrive",
             tip: "Scheduled leftover only if later months are collected.",
           },
@@ -83,19 +83,19 @@ export default async function PortfolioPage() {
               <div>
                 <dt className="text-xs text-muted-foreground">Collected</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.collectedCents} />
+                  <Money cents={position.collectedCents} showUsd />
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Ready</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.pendingDistributionCents} />
+                  <Money cents={position.pendingDistributionCents} showUsd />
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Claimed</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.distributedCents} />
+                  <Money cents={position.distributedCents} showUsd />
                 </dd>
               </div>
             </dl>
@@ -131,13 +131,13 @@ export default async function PortfolioPage() {
                 </TableCell>
                 <TableCell>{position.positionId}</TableCell>
                 <TableCell>
-                  <Money cents={position.collectedCents} />
+                  <Money cents={position.collectedCents} showUsd />
                 </TableCell>
                 <TableCell>
-                  <Money cents={position.pendingDistributionCents} />
+                  <Money cents={position.pendingDistributionCents} showUsd />
                 </TableCell>
                 <TableCell>
-                  <Money cents={position.distributedCents} />
+                  <Money cents={position.distributedCents} showUsd />
                 </TableCell>
                 <TableCell>
                   <StatusBadge tone={statusTone(position.status)}>

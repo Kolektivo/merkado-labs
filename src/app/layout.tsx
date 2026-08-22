@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ReownProvider } from "@/lib/pay/reown-provider";
 
 import "./globals.css";
 
@@ -51,7 +52,9 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
+        <ReownProvider>
         <TooltipProvider>{children}</TooltipProvider>
+      </ReownProvider>
       </body>
     </html>
   );

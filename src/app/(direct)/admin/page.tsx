@@ -27,6 +27,7 @@ import {
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
 import { isMerkadoConfigured } from "@/lib/onchain/config";
+import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,7 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
+      <MintSweep />
       <PageHeader
         title="Admin"
         description="Approve offers, record collections, set the payment network, and restore the starting book."

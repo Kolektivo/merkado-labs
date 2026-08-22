@@ -258,7 +258,7 @@ export type AutoMintResult = {
  * after Admin approval. Idempotent: a retry resumes an already-broadcast
  * mint and only records the verified OfferMinted event once.
  */
-export async function autoMintAction(reference: string): Promise<AutoMintResult> {
+async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   assertMerkadoConfigured();
   const contractAddress = merkadoContractAddress();
   const book = await loadBook();
@@ -437,6 +437,50 @@ export async function autoMintAction(reference: string): Promise<AutoMintResult>
   }));
   refresh();
   return { status: "confirmed", txHash, tokenId: Number(mintedTokenId) };
+}
+
+
+export async function autoMintAction(reference: string): Promise<AutoMintResult> {
+  return mintOfferFor(reference);
+}
+
+export type PendingMintResult = {
+  reference: string;
+  status: AutoMintResult["status"];
+  txHash?: string;
+  reason?: string;
+};
+
+/** Mints every approved offer that has not been minted yet. Idempotent. */
+export async function sweepPendingMintsAction(): Promise<{
+  minted: number;
+  results: PendingMintResult[];
+}> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const pending = book.offers.filter(
+    (offer) => offer.status === "funding" && !mergeOnchain(offer.onchain).mintTxHash,
+  );
+  const results: PendingMintResult[] = [];
+  for (const offer of pending) {
+    try {
+      const result = await mintOfferFor(offer.reference);
+      results.push({
+        reference: offer.reference,
+        status: result.status,
+        txHash: result.txHash,
+        reason: result.reason,
+      });
+    } catch (err) {
+      results.push({
+        reference: offer.reference,
+        status: "pending",
+        reason: err instanceof Error ? err.message : "The mint could not be completed.",
+      });
+    }
+  }
+  refresh();
+  return { minted: results.filter((r) => r.status === "confirmed").length, results };
 }
 
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */

@@ -18,7 +18,7 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { formatXcg } from "@/lib/rent-advance/money";
+import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
 import { isMerkadoConfigured } from "@/lib/onchain/config";
 
@@ -306,7 +306,7 @@ function ClosedOfferCard({
         Closed
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        {formatXcg(offeringCents)} offering · not open to purchase
+        {formatXcg(offeringCents)} ({formatUsd(offeringCents)}) offering · not open to purchase
       </p>
     </div>
   );

@@ -98,6 +98,7 @@ export default async function OfferOpsPage({
             <Money
               cents={offer.purchasePriceCents}
               className="text-xl font-semibold text-primary"
+              showUsd
             />
           </CardContent>
         </Card>
@@ -294,7 +295,7 @@ export default async function OfferOpsPage({
                       </TableCell>
                       <TableCell>{row.district}</TableCell>
                       <TableCell className="text-right">
-                        <Money cents={row.rentCents} />
+                        <Money cents={row.rentCents} showUsd />
                       </TableCell>
                       <TableCell>{row.bedrooms}</TableCell>
                       <TableCell>{row.interiorM2}</TableCell>

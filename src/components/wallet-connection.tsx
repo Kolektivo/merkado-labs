@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Wallet, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { ensureBaseSepolia } from "@/lib/pay/wallet-adapter";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import { BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_NETWORK_LABEL } from "@/lib/pay/networks";
+import { isReownConfigured } from "@/lib/pay/reown-config";
 import { cn } from "@/lib/utils";
 
+/**
+ * Wallet connect/disconnect surface. When Reown AppKit is configured it uses
+ * the Reown modal and its polished connect button; otherwise it falls back to
+ * the injected-wallet button.
+ */
 export function WalletConnection({
   className,
   variant = "default",
@@ -24,21 +30,13 @@ export function WalletConnection({
   const wallet = useMerkadoWallet();
   const [error, setError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
+  const reown = isReownConfigured();
 
   useEffect(() => {
     onConnectedChange?.(wallet.isConnected);
   }, [wallet.isConnected, onConnectedChange]);
 
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
-
-  const handleConnect = async () => {
-    setError(null);
-    try {
-      await wallet.connect();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "The wallet could not be connected.");
-    }
-  };
 
   const handleSwitch = async () => {
     setError(null);
@@ -57,7 +55,7 @@ export function WalletConnection({
         onBaseSepolia ? ` on ${BASE_SEPOLIA_NETWORK_LABEL}` : ` on chain ${wallet.chainId ?? "unknown"}`
       }`
     : wallet.connecting
-      ? "Connecting to your wallet…"
+      ? "Opening wallet…"
       : "Wallet not connected";
 
   return (
@@ -94,16 +92,23 @@ export function WalletConnection({
       ) : null}
 
       {!wallet.isConnected ? (
-        <Button
-          type="button"
-          variant={variant}
-          className={cn("min-h-11 px-4", compact && "min-h-9")}
-          disabled={wallet.connecting}
-          onClick={handleConnect}
-        >
-          <Wallet data-icon="inline-start" />
-          {wallet.connecting ? "Connecting…" : "Connect wallet"}
-        </Button>
+        reown ? (
+          <appkit-button
+            label="Connect wallet"
+            size={compact ? "sm" : "md"}
+            balance="hide"
+          />
+        ) : (
+          <Button
+            type="button"
+            variant={variant}
+            className={cn("min-h-11 px-4", compact && "min-h-9")}
+            disabled={wallet.connecting}
+            onClick={() => void wallet.connect()}
+          >
+            {wallet.connecting ? "Opening…" : "Connect wallet"}
+          </Button>
+        )
       ) : (
         <div className={cn("flex flex-wrap gap-2", compact && "gap-1.5")}>
           {!onBaseSepolia ? (
@@ -121,7 +126,7 @@ export function WalletConnection({
             type="button"
             variant="outline"
             className={cn("min-h-11 px-4", compact && "min-h-9")}
-            onClick={wallet.disconnect}
+            onClick={() => wallet.disconnect()}
           >
             Disconnect
           </Button>

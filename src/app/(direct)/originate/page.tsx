@@ -194,7 +194,7 @@ export default async function OriginatePage({
                     </StatusBadge>
                   </div>
                   <p className="mt-2 text-sm">
-                    <Money cents={offer.purchasePriceCents} /> · {offer.months}{" "}
+                    <Money cents={offer.purchasePriceCents} showUsd /> · {offer.months}{" "}
                     months
                   </p>
                   <p
@@ -252,7 +252,7 @@ export default async function OriginatePage({
                         ) : null}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Money cents={offer.purchasePriceCents} />
+                        <Money cents={offer.purchasePriceCents} showUsd />
                       </TableCell>
                       <TableCell>{offer.months} months</TableCell>
                       <TableCell>

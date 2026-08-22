@@ -154,7 +154,7 @@ export default async function PortfolioDetailPage({
             <CardTitle>Rent claimed</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            <Money cents={position.distributedCents} /> claimed so far.
+            <Money cents={position.distributedCents} showUsd /> claimed so far.
           </CardContent>
         </Card>
       ) : null}
