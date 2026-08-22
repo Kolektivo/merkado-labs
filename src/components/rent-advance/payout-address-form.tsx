@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { savePayoutAddressAction } from "@/lib/rent-advance/actions";
+import { isValidPayoutAddress } from "@/lib/rent-advance/custody";
 import { PLAIN } from "@/lib/rent-advance/copy";
 
 export function PayoutAddressForm({ savedAddress }: { savedAddress: string | null }) {
@@ -16,6 +17,8 @@ export function PayoutAddressForm({ savedAddress }: { savedAddress: string | nul
   const [address, setAddress] = useState(savedAddress ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const valid = isValidPayoutAddress(address);
 
   return (
     <form
@@ -45,23 +48,29 @@ export function PayoutAddressForm({ savedAddress }: { savedAddress: string | nul
         <Alert>
           <AlertTitle>Saved</AlertTitle>
           <AlertDescription>
-            This demo will use this address when you claim. Nothing is sent.
+            This address will be locked at mint. It is never shown on payer or
+            purchaser screens.
           </AlertDescription>
         </Alert>
       ) : null}
       <p className="text-sm text-muted-foreground">{PLAIN.payoutAddress}</p>
       <div className="space-y-1.5">
-        <Label htmlFor="payout-address">Demo payout address</Label>
+        <Label htmlFor="payout-address">Base Sepolia payout address</Label>
         <Input
           id="payout-address"
           value={address}
           onChange={(event) => setAddress(event.target.value)}
-          placeholder="0xDEMOLANDLORD001"
+          placeholder="0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"
           autoComplete="off"
           spellCheck={false}
         />
+        {address && !valid ? (
+          <p className="text-xs text-destructive">
+            Enter a valid checksummed Base Sepolia 0x address.
+          </p>
+        ) : null}
       </div>
-      <Button type="submit" disabled={pending || !address.trim()}>
+      <Button type="submit" disabled={pending || !valid}>
         Save payout method
       </Button>
     </form>

@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PropertyCover } from "@/components/property-cover";
 import { submitNewOfferAction } from "@/lib/rent-advance/actions";
 import { readCoverImage } from "@/lib/rent-advance/cover-image";
-import { isClaimableAddress } from "@/lib/rent-advance/custody";
+import { isValidPayoutAddress } from "@/lib/rent-advance/custody";
 import { buildScheduledReceivables, coverSrcFor } from "@/lib/rent-advance/helpers";
 import { CapExceededError, usdCentsToXcgInput, xcgMajorToUsdCents } from "@/lib/rent-advance/money";
 import { priceOrBlock, priceQuote, type Quote } from "@/lib/rent-advance/pricing";
@@ -184,10 +184,10 @@ export function NewOfferWizard({
     }
     if (currentStep === 6) {
       if (offer.payout.method === "bank") {
-        return "Girasol bank payout is a preview and cannot be used in this demo. Choose crypto payout.";
+        return "Girasol bank payout is a preview and cannot be used in this demo. Choose a Base Sepolia payout address.";
       }
-      if (!isClaimableAddress(offer.payout.cryptoAddress)) {
-        return "Use a fictional payout address beginning with 0xDEMO.";
+      if (!isValidPayoutAddress(offer.payout.cryptoAddress)) {
+        return "Enter a valid checksummed Base Sepolia 0x payout address.";
       }
     }
     return null;
@@ -815,7 +815,8 @@ export function NewOfferWizard({
                 <WalletCards className="mb-3 size-5 text-primary" aria-hidden />
                 <p className="font-medium">Stablecoin address</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Available in this mock. No real funds are sent.
+                  The buyer pays the sale amount here once the offer NFT is
+                  purchased. It is locked at mint by the backend.
                 </p>
               </button>
               <button
@@ -851,7 +852,7 @@ export function NewOfferWizard({
               <Field
                 id="payout-address"
                 label="Recipient address"
-                hint="Demo only. Use a fictional address beginning with 0xDEMO. This is saved with the offer."
+                hint="A checksummed Base Sepolia 0x address. It is locked at mint; it is never shown on payer or purchaser screens."
               >
                 <Input
                   id="payout-address"
@@ -866,7 +867,7 @@ export function NewOfferWizard({
                       },
                     }))
                   }
-                  placeholder="0xDEMOLANDLORDPAYOUT0001"
+                  placeholder="0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"
                 />
               </Field>
             ) : (
@@ -940,10 +941,10 @@ export function NewOfferWizard({
                 {offer.months} months
               </p>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
-                <p className="font-medium">Automatic payout</p>
+                <p className="font-medium">Payout address (locked at mint)</p>
                 <p className="mt-1 text-muted-foreground">
                   {offer.payout.method === "crypto"
-                    ? `Stablecoin demo address · ${offer.payout.cryptoAddress}`
+                    ? offer.payout.cryptoAddress
                     : "Girasol bank payout preview · Coming soon (cannot submit)"}
                 </p>
               </div>

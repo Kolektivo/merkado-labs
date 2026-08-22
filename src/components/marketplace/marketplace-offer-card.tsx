@@ -5,12 +5,11 @@ import type { ReactNode } from "react";
 import { HelpTip } from "@/components/help-tip";
 import { PropertyCover } from "@/components/property-cover";
 import { PLAIN } from "@/lib/rent-advance/copy";
-import { formatXcg } from "@/lib/rent-advance/money";
+import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { bandPlainName } from "@/lib/rent-advance/scoring";
 import {
   coverSrcFor,
   effectiveOfferStatus,
-  formatDayMonthYear,
   remainingOfferingCents,
   statusLabel,
 } from "@/lib/rent-advance/helpers";
@@ -53,9 +52,15 @@ export function MarketplaceOfferCard({
   const bedsLabel = `${card.bedrooms} ${card.bedrooms === 1 ? "bed" : "beds"}`;
   const monthsLabel = `${card.months} ${card.months === 1 ? "month" : "months"}`;
   const effectiveStatus = effectiveOfferStatus(card);
-  const metaLabel = `${statusLabel(effectiveStatus)}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
+  const statusLine =
+    effectiveStatus === "funding"
+      ? card.minted
+        ? "Listed"
+        : "Mint pending"
+      : statusLabel(effectiveStatus);
+  const metaLabel = `${statusLine}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
   const remaining = remainingOfferingCents(card);
-  const purchasable = remaining > 0 && effectiveStatus === "funding";
+  const purchasable = remaining > 0 && effectiveStatus === "funding" && card.minted;
   const specs = [
     {
       key: "beds",
@@ -120,13 +125,14 @@ export function MarketplaceOfferCard({
                     ? formatXcg(remaining, true)
                     : formatXcg(card.offeringCents, true)}
                 </span>
+                <span className="ml-1.5 text-[13px] font-normal text-grey-800">
+                  {purchasable ? formatUsd(remaining) : formatUsd(card.offeringCents)}
+                </span>
                 <span className="text-[14px] font-medium leading-5 text-grey-800">
                   {" "}
                   {purchasable
                     ? "for the whole offer"
-                    : effectiveStatus === "expired"
-                      ? "listing expired"
-                      : "purchased"}
+                    : "purchased"}
                 </span>
                 <span className="pointer-events-auto relative z-20 ml-1 inline-flex align-middle">
                   <HelpTip label="Amount filled">{PLAIN.amountTaken}</HelpTip>
@@ -136,11 +142,6 @@ export function MarketplaceOfferCard({
             <p className="text-xs leading-5 font-normal text-grey-900">
               Combined property view {card.propertyScore} · {card.propertyLabel}
             </p>
-            {purchasable && card.expiresAt ? (
-              <p className="text-xs leading-5 font-normal text-grey-800">
-                Available until {formatDayMonthYear(card.expiresAt)}
-              </p>
-            ) : null}
             <p className="flex items-center gap-1.5 text-xs leading-5 font-normal text-grey-800">
               Payment history · {bandPlainName(card.payerBand)}
               <span className="pointer-events-auto relative z-20">

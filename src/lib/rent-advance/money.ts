@@ -98,6 +98,12 @@ export function usdcAtomicFromUsdCents(cents: number): number {
   return roundHalfUp(cents * (USDC_ATOMIC_FACTOR / 100));
 }
 
+/** Reverse of `usdcAtomicFromUsdCents`: USD integer cents from USDC atomic units. */
+export function usdCentsFromUsdcAtomic(atomic: number | bigint): number {
+  const value = typeof atomic === "bigint" ? atomic : BigInt(Math.round(atomic));
+  return Number(value / BigInt(10_000));
+}
+
 /** @deprecated Book cents are USD. Same as usdcAtomicFromUsdCents. */
 export function usdcAtomicFromXcgCents(cents: number): number {
   return usdcAtomicFromUsdCents(cents);

@@ -12,16 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
-  canShowContribute,
   coverSrcFor,
   formatDayMonthYear,
-  isListingExpired,
   remainingOfferingCents,
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { formatXcg } from "@/lib/rent-advance/money";
+import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 import { SubscribeForm } from "./subscribe-form";
 
@@ -50,11 +49,9 @@ export default async function BuyerOfferPage({
   const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
-  const expired = isListingExpired(offer.expiresAt);
-  const openToBuy = canShowContribute(offer.status, offer.expiresAt);
-  const expiresLabel = offer.expiresAt
-    ? formatDayMonthYear(offer.expiresAt)
-    : null;
+  const openToBuy =
+    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting");
+  const configured = isMerkadoConfigured();
 
   return (
     <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
@@ -111,11 +108,13 @@ export default async function BuyerOfferPage({
               remainingCents={remaining}
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
-              expiresLabel={expiresLabel}
+              minted={offer.minted}
+              configured={configured}
+              tokenId={offer.tokenId}
             />
           ) : (
             <ClosedOfferCard
-              status={expired ? "Expired" : statusLabel(offer.status)}
+              status={statusLabel(offer.status)}
               offeringCents={offer.offeringCents}
             />
           )}
@@ -307,7 +306,7 @@ function ClosedOfferCard({
         Closed
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        {formatXcg(offeringCents)} offering · not open to purchase
+        {formatXcg(offeringCents)} ({formatUsd(offeringCents)}) offering · not open to purchase
       </p>
     </div>
   );

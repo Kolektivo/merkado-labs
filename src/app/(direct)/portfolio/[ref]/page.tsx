@@ -25,7 +25,9 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
+import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 export const dynamic = "force-dynamic";
 
@@ -51,10 +53,13 @@ export default async function PortfolioDetailPage({
     loadBook(),
   ]);
   if (!position) notFound();
+  const offer = book.offers.find((row) => row.reference === position.reference);
+  const onchain = mergeOnchain(offer?.onchain);
+  const configured = isMerkadoConfigured();
   const distributions = (book.distributions ?? []).filter(
     (row) => row.offerReference === position.reference,
   );
-  const pendingCollect = distributions.filter((row) => row.status === "pending");
+  const pendingCollect = distributions.filter((row) => row.status === "claimable");
   const pendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
 
   return (
@@ -69,7 +74,7 @@ export default async function PortfolioDetailPage({
       ) : query.success === "rent" ? (
         <RouteSuccessDialog
           title="Rent claimed"
-          description={`${position.summary} rent was added to your claimed total. No money was sent.`}
+          description={`${position.summary} rent was added to your claimed total.`}
           storageKey={`merkado:success:rent:${position.reference}`}
           closeHref={`/portfolio/${position.reference}`}
         />
@@ -119,12 +124,12 @@ export default async function PortfolioDetailPage({
           <CardContent className="space-y-2">
             <CopyValue
               value={position.offerAddress}
-              label="offer rent address"
+              label="offer contract address"
               truncate
             />
             <p className="text-xs text-muted-foreground">
-              Merkado Pay sends this offer&apos;s rent here. A mocked demo
-              wallet claims rent from Portfolio.
+              Merkado Pay deposits this offer&apos;s rent into the contract.
+              The current NFT owner claims it from Portfolio.
             </p>
           </CardContent>
         </Card>
@@ -137,7 +142,9 @@ export default async function PortfolioDetailPage({
           <CardContent>
             <ClaimRentForm
               reference={position.reference}
+              tokenId={onchain.tokenId}
               amountCents={pendingCents}
+              configured={configured}
             />
           </CardContent>
         </Card>
@@ -147,7 +154,7 @@ export default async function PortfolioDetailPage({
             <CardTitle>Rent claimed</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            <Money cents={position.distributedCents} /> claimed so far.
+            <Money cents={position.distributedCents} showUsd /> claimed so far.
           </CardContent>
         </Card>
       ) : null}
@@ -192,9 +199,9 @@ export default async function PortfolioDetailPage({
                       {distribution ? (
                         <div className="space-y-1">
                           <p>
-                            {distribution.status === "pending"
+                            {distribution.status === "claimable"
                               ? "Ready to claim"
-                              : distribution.status === "distributed"
+                              : distribution.status === "claimed"
                                 ? "Claimed"
                                 : distribution.status}
                           </p>

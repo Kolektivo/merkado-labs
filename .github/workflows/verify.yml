@@ -16,13 +16,15 @@ jobs:
     env:
       # CI-only fake values so Next.js can parse configuration. Not credentials.
       # URL must stay the approved Labs project so the runtime guard is not weakened.
-      NEXT_PUBLIC_SUPABASE_URL: https://csaefdkpwukshtouyixg.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://ewoxmzznkavapcxdporm.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-fake-labs-publishable-key-not-a-secret
       SUPABASE_SECRET_KEY: ci-fake-labs-service-role-key-not-a-secret
       # Do not set LABS_DEMO_PASSWORD here. CI must stay ungated.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -41,6 +43,13 @@ jobs:
 
       - name: Unit tests
         run: npm run test:unit
+
+      - name: Contract tests
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Forge test
+        run: forge test
 
       - name: Build
         run: npm run build

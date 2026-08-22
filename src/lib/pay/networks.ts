@@ -1,9 +1,55 @@
 /** Demo network facts. Do not treat this as a live wallet or RPC setup. */
 
+import { getAddress } from "viem";
+
 import type {
   CryptoConfig,
   PublicCryptoConfig,
 } from "@/lib/rent-advance/types";
+
+/** Verified Base Sepolia company receiving Safe (matches onchain config). */
+export const MERKADO_COMPANY_SAFE_ADDRESS =
+  "0xfC6ec9718d89d4935594E7DB78399913071FcDc4";
+
+const MERKADO_CONTRACT_ENV = "NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS";
+const MERKADO_COMPANY_SAFE_ENV = "NEXT_PUBLIC_MERKADO_COMPANY_SAFE";
+
+function isPlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return (
+    !normalized ||
+    normalized.includes("<") ||
+    normalized.includes(">") ||
+    normalized.includes("placeholder") ||
+    normalized.includes("replace-me") ||
+    normalized.includes("your-") ||
+    normalized === "changeme"
+  );
+}
+
+/** The deployed Merkado contract address, or null until configured. */
+export function merkadoContractAddressOrNull(): `0x${string}` | null {
+  const raw = process.env[MERKADO_CONTRACT_ENV]?.trim();
+  if (!raw || isPlaceholder(raw)) return null;
+  try {
+    return getAddress(raw) as `0x${string}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Company receiving Safe, from env (trimmed) or the verified default. */
+export function resolvedCompanySafe(): `0x${string}` {
+  const raw = process.env[MERKADO_COMPANY_SAFE_ENV]?.trim();
+  if (raw && !isPlaceholder(raw)) {
+    try {
+      return getAddress(raw) as `0x${string}`;
+    } catch {
+      return MERKADO_COMPANY_SAFE_ADDRESS as `0x${string}`;
+    }
+  }
+  return MERKADO_COMPANY_SAFE_ADDRESS as `0x${string}`;
+}
 
 export const OP_SEPOLIA_NETWORK_KEY = "op-sepolia";
 export const BASE_SEPOLIA_NETWORK_KEY = "base-sepolia";

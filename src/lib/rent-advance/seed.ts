@@ -1,15 +1,12 @@
 import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
-import {
-  defaultLandlordPayout,
-  fundedSeedCustody,
-} from "@/lib/rent-advance/custody";
+import { defaultLandlordPayout } from "@/lib/rent-advance/custody";
 import { ACTORS } from "@/lib/rent-advance/actors";
 import {
+  DEMO_LANDLORD_EOA,
   offerIdFromReference,
   receivableIdFor,
 } from "@/lib/rent-advance/ids";
 import { normalizeBook } from "@/lib/rent-advance/payment-apply";
-import { listingExpiresAt } from "@/lib/rent-advance/helpers";
 import { holderSchedule, priceQuote } from "@/lib/rent-advance/pricing";
 import type {
   ChecklistItem,
@@ -262,9 +259,12 @@ function makeOffer(input: {
     seriesDisplayName: "Merkado Direct · Rent Advance",
     createdAt: input.createdAt ?? "2026-08-13T09:44:00-04:00",
     publishedAt,
-    expiresAt: listingExpiresAt(publishedAt),
+    expiresAt: null,
     nextAction: input.nextAction,
-    payout: defaultLandlordPayout(),
+    payout: defaultLandlordPayout({
+      method: "crypto",
+      cryptoAddress: DEMO_LANDLORD_EOA,
+    }),
     relatedParty: related,
     relatedPartyNote: input.relatedPartyNote ?? null,
     paymentOption: "A",
@@ -317,7 +317,7 @@ function makeOffer(input: {
     unitsIssued: units,
     subscriptionPriceCents,
     offeringCents,
-    fundedCents: input.fundedCents ?? (input.status === "draft" ? 0 : offeringCents),
+    fundedCents: input.fundedCents ?? 0,
     originationSpreadCents: schedule.originationSpreadCents,
     receivables: rows,
     collections: rows
@@ -341,15 +341,13 @@ function makeOffer(input: {
       },
     ],
     holders:
-      (input.fundedCents ?? (input.status === "draft" ? 0 : offeringCents)) > 0
+      (input.fundedCents ?? 0) > 0
         ? [
             {
               holderId: "act-purchaser",
               holderName: "Merkado Receivables I B.V.",
               units,
-              contributedCents:
-                input.fundedCents ??
-                (input.status === "draft" ? 0 : offeringCents),
+              contributedCents: input.fundedCents ?? 0,
               receivedCents: receivedCount * input.rent,
               anonymised: true,
             },
@@ -509,8 +507,8 @@ const OPEN_QUESTIONS: OpenQuestion[] = [
 function buildOffers(): Offer[] {
   const mra001 = makeOffer({
     reference: "MRA-001",
-    status: "live",
-    nextAction: "Record month 1 · 30 Sep",
+    status: "funding",
+    nextAction: "Minting automatically after approval",
     relatedParty: true,
     relatedPartyNote:
       "The landlord on this offer is a family member of an EcoLabs board member. An independent approver must sign. The fee carries a +25 bp related-party premium.",
@@ -519,7 +517,7 @@ function buildOffers(): Offer[] {
     passportTotal: 89,
     payerScore: 95,
     agency: "Moret Real Estate",
-    fundedCents: 1020600,
+    fundedCents: 0,
     offeringCents: 1020600,
     marketRentCents: 300000,
     property: makeProperty({
@@ -541,58 +539,20 @@ function buildOffers(): Offer[] {
   mra001.purchasePriceCents = 1020600;
   mra001.advanceRate = 0.945;
   mra001.originationSpreadCents = 0;
-  mra001.custody = fundedSeedCustody(mra001, "2026-09-04T14:40:00-04:00");
   mra001.events = [
-    {
-      id: "ev-001-6",
-      at: "2026-09-30",
-      title: "Collection month 1 scheduled",
-      detail: "End of month · XCG 3,222.00. Rent will go to the offer collection address.",
-      actor: "System",
-    },
-    {
-      id: "ev-001-5",
-      at: "2026-09-04T14:40:00-04:00",
-      title: "Mock funding recorded",
-      detail:
-        "The offer is fully bought. The sale amount was paid automatically to the saved payout address.",
-      actor: "System",
-    },
-    {
-      id: "ev-001-4",
-      at: "2026-09-03T11:22:00-04:00",
-      title: "Offer sold",
-      detail:
-        "The holder received the offer. Later rent goes to the offer collection address.",
-      actor: "System",
-    },
-    {
-      id: "ev-001-paid",
-      at: "2026-09-04T14:40:00-04:00",
-      title: "Sale amount paid automatically",
-      detail:
-        "The sale amount was marked paid to the payout address saved before submission.",
-      actor: "System",
-    },
-    {
-      id: "ev-001-3",
-      at: "2026-09-01T10:05:00-04:00",
-      title: "Notice of assignment served on the payer",
-      detail: "By hand against receipt · EN · NL · PAP · Option A",
-      actor: "D. Martina",
-    },
     {
       id: "ev-001-2",
       at: "2026-08-28T10:05:00-04:00",
-      title: "Offer created by Merkado",
-      detail: "Created after approval. The landlord did not connect a wallet.",
+      title: "Approved and prepared",
+      detail:
+        "Approved by the independent approver. The offer is awaiting a Safe mint before it can open on Marketplace.",
       actor: "System",
     },
     {
       id: "ev-001-1",
       at: "2026-08-27T16:31:00-04:00",
       title: "Approved",
-      detail: "Enrique · independent approver. Listed on Marketplace for 60 days.",
+      detail: "Enrique · independent approver. Payout address is locked at mint.",
       actor: "Enrique",
     },
     {
@@ -609,7 +569,7 @@ function buildOffers(): Offer[] {
     makeOffer({
       reference: "MRA-010",
       status: "funding",
-      nextAction: "Open on Marketplace",
+      nextAction: "Minting automatically after approval",
       relatedParty: false,
       months: 6,
       rent: 100,

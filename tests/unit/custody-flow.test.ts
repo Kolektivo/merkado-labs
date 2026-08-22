@@ -2,21 +2,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  applyHolderCollect,
-  isClaimableAddress,
-  landlordProceedsPresentation,
-  mergeCustody,
+  isValidPayoutAddress,
+  mergeOnchain,
+  proceedsPresentation,
+  payoutAddressLocked,
+  rentReceivingAddressFor,
 } from "@/lib/rent-advance/custody";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
   collectionIdFor,
-  offerNftPaymentAddress,
 } from "@/lib/rent-advance/ids";
 import { toPortfolioPosition } from "@/lib/rent-advance/helpers";
+import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import {
-  applyPaymentOutcome,
-  applySubscribe,
+  applyVerifiedPurchase,
+  applyVerifiedRentClaim,
+  applyVerifiedRentDeposit,
   normalizeBook,
+  type VerifiedRentClaimFacts,
 } from "@/lib/rent-advance/payment-apply";
 import {
   CANONICAL_REFERENCE,
@@ -24,180 +27,214 @@ import {
   getSeedBook,
 } from "@/lib/rent-advance/seed";
 
-test("only fictional demo addresses are accepted for mock payouts", () => {
-  assert.equal(isClaimableAddress("0xDEMO0000LANDLORD00PAYOUT00000000000001"), true);
+const BUYER = "0x5555555555555555555555555555555555555555";
+const PAYER = "0x4444444444444444444444444444444444444444";
+const TX_PURCHASE = "0x" + "c".repeat(64);
+const TX_RENT = "0x" + "d".repeat(64);
+const TX_CLAIM = "0x" + "f".repeat(64);
+const OPAQUE = "0x" + "e".repeat(64);
+const CONTRACT = "0x1111111111111111111111111111111111111111";
+
+function buyOffer(reference: string, tokenId = 1) {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  assert.ok(offer);
+  offer.onchain = {
+    tokenId,
+    offerKey: "0x" + "a".repeat(64),
+    contractAddress: CONTRACT,
+    epochId: "epoch-test",
+    mintTxHash: "0x" + "b".repeat(64),
+    mintBlockNumber: "100",
+    purchased: false,
+    purchaseTxHash: null,
+    purchaserAddress: null,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    landlordPaid: false,
+    claimableRentCents: 0,
+    claimedRentCents: 0,
+  };
+  return applyVerifiedPurchase(book, reference, {
+    tokenId,
+    purchaserAddress: BUYER,
+    txHash: TX_PURCHASE,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    purchasePriceAtomic: BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)),
+  }, "2026-08-20T12:00:00.000Z");
+}
+
+test("only real checksummed addresses are accepted for payouts", () => {
   assert.equal(
-    isClaimableAddress("0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"),
-    false,
+    isValidPayoutAddress("0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"),
+    true,
   );
-  assert.equal(isClaimableAddress("not-an-address"), false);
+  assert.equal(isValidPayoutAddress("0xDEMOLANDLORDPAYOUT0001"), false);
+  assert.equal(isValidPayoutAddress("0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D7"), false);
+  assert.equal(isValidPayoutAddress("not-an-address"), false);
+  assert.equal(isValidPayoutAddress(""), false);
 
   const legacy = getSeedBook();
   assert.ok(legacy.accounts?.[0]);
-  legacy.accounts[0].payoutAddress =
-    "0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8";
+  legacy.accounts[0].payoutAddress = "0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8";
+  assert.equal(
+    normalizeBook(legacy).accounts?.[0]?.payoutAddress,
+    "0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8",
+  );
+  legacy.accounts[0].payoutAddress = "0xDEMOLANDLORDPAYOUT0001";
   assert.equal(normalizeBook(legacy).accounts?.[0]?.payoutAddress, null);
 });
 
-test("an older MRA-001 migrates to automatic payout without legacy settlement", () => {
+test("an older MRA-001 payload normalizes to pre-mint onchain defaults", () => {
   const book = getSeedBook();
   const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
   assert.ok(offer);
-  delete offer.custody;
-  offer.settlementTransactionId = "tx-settle-mra-001";
-  book.ledgerTransactions = [
-    ...(book.ledgerTransactions ?? []),
-    {
-      transactionId: "tx-settle-mra-001",
-      kind: "advance_settlement",
-      offerId: offer.offerId ?? "offer-mra-001",
-      offerReference: offer.reference,
-      paymentRequestId: null,
-      collectionId: null,
-      distributionId: null,
-      amountXcgCents: offer.purchasePriceCents,
-      amountUsdcAtomic: null,
-      status: "confirmed",
-      createdAt: offer.createdAt,
-      confirmedAt: offer.createdAt,
-      txHash: "0xDEMOlegacy",
-      fromLabel: "Holder wallet",
-      toLabel: "Landlord",
-    },
-  ];
-  const position = book.positions?.find(
-    (row) => row.offerReference === CANONICAL_REFERENCE,
-  );
-  assert.ok(position);
-  position.settlementTransactionId = "tx-settle-mra-001";
-  const next = normalizeBook(book);
-  const custody = mergeCustody(
-    next.offers.find((row) => row.reference === CANONICAL_REFERENCE)?.custody,
-  );
-  assert.equal(custody.saleProceedsStatus, "claimed");
+  const legacy = structuredClone(book) as unknown as Record<string, unknown>;
+  const offers = legacy.offers as Array<Record<string, unknown>>;
+  const target = offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(target);
+  target.custody = {
+    nftTokenId: "nft-mra-001",
+    nftOwner: "holder",
+    saleProceedsStatus: "claimed",
+    landlordClaimedCents: 1020600,
+  };
+  delete target.onchain;
+  const next = normalizeBook(legacy);
+  const normalized = next.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(normalized);
+  const onchain = mergeOnchain(normalized.onchain);
+  assert.equal(onchain.tokenId, null);
+  assert.equal(onchain.purchased, false);
+  assert.equal(onchain.landlordPaid, false);
+  assert.equal(onchain.mintTxHash, null);
   assert.equal(
-    next.offers.find((row) => row.reference === CANONICAL_REFERENCE)
-      ?.settlementTransactionId,
-    null,
-  );
-  assert.equal(
-    next.ledgerTransactions?.some((row) => row.kind === "advance_settlement"),
+    next.ledgerTransactions?.some((row) => (row.kind as unknown as string) === "advance_settlement"),
     false,
   );
   assert.equal(
-    next.positions?.find((row) => row.offerReference === CANONICAL_REFERENCE)
-      ?.settlementTransactionId,
-    null,
+    next.ledgerTransactions?.some((row) => (row.kind as unknown as string) === "landlord_claim"),
+    false,
   );
 });
 
-test("landlord proceeds card maps waiting and automatically paid", () => {
+test("sale proceeds card maps waiting, minted, and paid", () => {
   const seed = getSeedBook();
-  const funded = seed.offers.find((row) => row.reference === CANONICAL_REFERENCE);
   const open = seed.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-  assert.ok(funded && open);
-  assert.equal(landlordProceedsPresentation(open).status, "waiting");
-  assert.equal(landlordProceedsPresentation(funded).status, "paid");
-  const filled = applySubscribe(seed, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z");
-  const paid = filled.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(open);
+  const waiting = proceedsPresentation(open);
+  assert.equal(waiting.minted, false);
+  assert.equal(waiting.landlordPaid, false);
+  assert.ok(waiting.payoutAddress);
+
+  const minted = seed.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(minted);
+  const mintedView = proceedsPresentation(minted);
+  assert.equal(mintedView.minted, false);
+
+  const bought = buyOffer(CHEAP_OFFER_REFERENCE, 2);
+  const paid = bought.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(paid);
-  const presentation = landlordProceedsPresentation(paid);
-  assert.equal(presentation.status, "paid");
-  assert.equal(presentation.amountCents, paid.purchasePriceCents);
-  assert.equal(toPortfolioPosition(funded, seed).settlementTxHash, null);
+  const paidView = proceedsPresentation(paid);
+  assert.equal(paidView.purchased, true);
+  assert.equal(paidView.landlordPaid, true);
+  assert.equal(paidView.purchasePriceCents, paid.purchasePriceCents);
+  assert.equal(toPortfolioPosition(paid, bought).settlementTxHash, null);
 });
 
-test("MRA-001 is minted, fully purchased, and paid automatically", () => {
+test("seeded offers are pre-mint listings with no fabricated chain state", () => {
   const book = getSeedBook();
-  const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
-  const custody = mergeCustody(offer?.custody);
-  assert.equal(custody.nftOwner, "holder");
-  assert.equal(custody.saleProceedsStatus, "claimed");
-  assert.equal(custody.landlordClaimableCents, 0);
-  assert.equal(custody.landlordClaimedCents, offer?.purchasePriceCents);
-  assert.equal(offer?.fundedCents, offer?.purchasePriceCents);
-  assert.equal(offer?.offeringCents, offer?.purchasePriceCents);
-  assert.equal(custody.landlordClaimTxHash, null);
-  assert.equal(custody.feeTransferTxHash, null);
-  assert.equal(custody.saleProceedsTxHash, null);
-  assert.ok(custody.nftTokenId);
-  assert.equal(
-    book.paymentRequests?.find((row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID)
-      ?.receivingAddress,
-    offerNftPaymentAddress(CANONICAL_REFERENCE),
-  );
+  for (const reference of [CANONICAL_REFERENCE, CHEAP_OFFER_REFERENCE]) {
+    const offer = book.offers.find((row) => row.reference === reference);
+    assert.ok(offer);
+    assert.equal(offer.status, "funding");
+    assert.equal(offer.fundedCents, 0);
+    const onchain = mergeOnchain(offer.onchain);
+    assert.equal(onchain.tokenId, null);
+    assert.equal(onchain.purchased, false);
+    assert.equal(onchain.landlordPaid, false);
+    assert.equal(onchain.mintTxHash, null);
+    assert.equal(offer.payout.method, "crypto");
+    assert.ok(offer.payout.cryptoAddress);
+  }
 });
 
-test("MRA-010 is minted and still owned by Merkado until sale", () => {
-  const book = getSeedBook();
-  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-  const custody = mergeCustody(offer?.custody);
-  assert.equal(offer?.status, "funding");
-  assert.equal(custody.nftOwner, "company_safe");
-  assert.equal(custody.saleProceedsStatus, "none");
-  assert.ok(custody.nftTokenId);
-});
-
-test("filling an offer pays the landlord and points rent at the offer", () => {
-  const book = getSeedBook();
-  const next = applySubscribe(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z");
+test("a verified purchase points rent at the contract and pays the landlord", () => {
+  const next = buyOffer(CHEAP_OFFER_REFERENCE, 2);
   const offer = next.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-  const custody = mergeCustody(offer?.custody);
-  assert.equal(custody.nftOwner, "holder");
-  assert.equal(custody.saleProceedsStatus, "claimed");
-  assert.equal(custody.landlordClaimableCents, 0);
-  assert.equal(custody.landlordClaimedCents, offer?.purchasePriceCents);
+  assert.ok(offer);
+  assert.equal(offer.status, "live");
+  assert.equal(offer.fundedCents, offer.offeringCents);
+  assert.equal(offer.onchain?.purchased, true);
+  assert.equal(offer.onchain?.landlordPaid, true);
+  assert.equal(offer.onchain?.purchaserAddress, BUYER);
   const request = next.paymentRequests?.find(
     (row) => row.offerReference === CHEAP_OFFER_REFERENCE,
   );
-  assert.equal(request?.receivingAddress, offerNftPaymentAddress(CHEAP_OFFER_REFERENCE));
+  assert.ok(request);
+  assert.equal(request.amountXcgCents, 100);
+  assert.equal(request.amountUsdcAtomic, 1_000_000);
 });
 
-test("whole-offer purchase pays the address saved on the offer", () => {
+test("the locked payout address is the one locked at mint", () => {
   const book = getSeedBook();
   const open = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.ok(open);
-  open.payout.cryptoAddress = "0xDEMO0000LANDLORD00PAYOUT00000000000001";
-  const claimed = applySubscribe(
-    book,
-    CHEAP_OFFER_REFERENCE,
-    "2026-08-20T12:00:00.000Z",
-  );
-  const offer = claimed.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
-  const custody = mergeCustody(offer?.custody);
-  assert.equal(custody.saleProceedsStatus, "claimed");
-  assert.equal(custody.landlordClaimableCents, 0);
-  assert.equal(
-    custody.landlordClaimToAddress,
-    "0xDEMO0000LANDLORD00PAYOUT00000000000001",
-  );
-  const ledger = claimed.ledgerTransactions?.find((row) => row.kind === "landlord_claim");
-  assert.ok(ledger);
-  assert.equal(ledger.txHash, null);
+  const locked = payoutAddressLocked(open);
+  assert.ok(locked);
+  const bought = buyOffer(CHEAP_OFFER_REFERENCE, 2);
+  const offer = bought.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.equal(payoutAddressLocked(offer ?? open), locked);
 });
 
-test("confirmed rent stays on the listing until the holder claims it", () => {
-  const book = normalizeBook(getSeedBook());
-  const paid = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-  );
+test("confirmed rent stays claimable until the owner claims it", () => {
+  const book = buyOffer(CANONICAL_REFERENCE, 1);
+  const paid = applyVerifiedRentDeposit(book, CANONICAL_PAYMENT_REQUEST_ID, {
+    tokenId: 1,
+    opaquePaymentId: OPAQUE,
+    payerAddress: PAYER,
+    amountAtomic: BigInt(1_800_000_000),
+    txHash: TX_RENT,
+  }, "2026-09-28T12:00:00.000Z");
   const collectionId = collectionIdFor(CANONICAL_REFERENCE, 1);
   const waiting = paid.distributions?.find((row) => row.collectionId === collectionId);
-  assert.equal(waiting?.status, "pending");
-  const holder = paid.offers.find((row) => row.reference === CANONICAL_REFERENCE)?.holders[0];
-  assert.equal(holder?.receivedCents, 0);
-
-  const collected = applyHolderCollect(
-    paid,
-    CANONICAL_REFERENCE,
-    waiting?.distributionId,
-    "2026-09-28T12:05:00.000Z",
+  assert.equal(waiting?.status, "claimable");
+  assert.equal(paid.offers.find((row) => row.reference === CANONICAL_REFERENCE)?.holders[0]?.receivedCents, 0);
+  assert.equal(
+    paid.offers.find((row) => row.reference === CANONICAL_REFERENCE)?.onchain?.claimableRentCents,
+    180000,
   );
-  const done = collected.distributions?.find((row) => row.collectionId === collectionId);
-  assert.equal(done?.status, "distributed");
-  const after = collected.offers.find((row) => row.reference === CANONICAL_REFERENCE)?.holders[0];
-  assert.equal(after?.receivedCents, 180000);
+
+  const facts: VerifiedRentClaimFacts = {
+    tokenId: 1,
+    ownerAddress: BUYER,
+    amountAtomic: BigInt(1_800_000_000),
+    txHash: TX_CLAIM,
+  };
+  const claimed = applyVerifiedRentClaim(paid, CANONICAL_REFERENCE, facts, "2026-09-28T12:05:00.000Z");
+  const done = claimed.distributions?.find((row) => row.collectionId === collectionId);
+  assert.equal(done?.status, "claimed");
+  const offer = claimed.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.equal(offer?.onchain?.claimableRentCents, 0);
+  assert.equal(offer?.onchain?.claimedRentCents, 180000);
+  assert.equal(offer?.holders[0]?.receivedCents, 180000);
+
+  const repeat = applyVerifiedRentClaim(claimed, CANONICAL_REFERENCE, facts, "2026-09-28T12:06:00.000Z");
+  const afterRepeat = repeat.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.equal(afterRepeat?.onchain?.claimedRentCents, 180000);
+  assert.equal(
+    (repeat.distributions ?? []).filter((row) => row.status === "claimed").length,
+    1,
+  );
+});
+
+test("rent paying address is the offer contract when minted", () => {
+  const book = getSeedBook();
+  const config = book.cryptoConfig!;
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  const bought = buyOffer(CHEAP_OFFER_REFERENCE, 2);
+  const boughtOffer = bought.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(boughtOffer?.onchain?.contractAddress ?? null);
+  const address = rentReceivingAddressFor(boughtOffer!, config);
+  assert.equal(address, boughtOffer!.onchain?.contractAddress ?? config.offerNftContract);
 });

@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 21, 2026 (automatic payout and listing expiry)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 ## 1. Money
 
@@ -70,36 +70,69 @@ and checklist.
 
 Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
 `paymentRequestId`, `positionId`, `collectionId`, `distributionId`,
-`transactionId`, optional `txHash`, and `safeAccountId`. Offers carry a
-mocked per-listing `custody` object (listing offer id, offer address, owner,
-sale-proceeds status, automatic landlord payout). `Offer.payout` stores the
-selected method and fictional crypto destination; `publishedAt` plus `expiresAt`
-enforce the 60-day purchase window. That object tracks the listing
-offer; it is not a custody-product ledger. `externalTokenId` is set after
-Merkado creates the offer. After sale, rent lands on that listing until
-the holder claims it. Do not present this as a public token market.
+`transactionId`, optional `txHash`, and `safeAccountId`. On the Base Sepolia
+flow, an offer has an **offer token id** and an **opaque payment id** per rent
+deposit. `Offer.payout` stores the selected method and the locked landlord
+payout destination; the buyer pays that address directly. `externalTokenId` is
+set to the minted NFT token id. There is no listing expiry.
 
-Product rules for landlord sale proceeds, whichever book shape is live:
+### Contract state machine (`MerkadoRentOfferV1`)
 
-- One automatic payout per sold offer. `normalizeBook()` removes legacy
-  `advance_settlement` rows and clears their offer / position references;
-  migrates legacy claimable proceeds to Paid when a valid fictional destination
-  exists; the mock does not merely hide them.
+The ERC-721 token is the offer. Per `tokenId`:
+
+- `Offered` — minted by the backend mint key after approval. Owner = backend mint key.
+- `Sold` — a buyer paid the exact purchase price to the locked landlord payout
+  address; the NFT moved backend mint key → buyer atomically. Owner = the holder.
+- `Renting` — rent is being deposited (`depositRent`); accrued USDC grows.
+- `Claimed` — the current owner called `claimRent`; the token's accrued USDC
+  balance resets.
+
+The NFT is transferable at any point; the current token owner is the holder
+and the only claimant.
+
+### Opaque payment ids and money invariants
+
+- `depositRent(tokenId, opaquePaymentId, amount)` requires the **exact monthly
+  amount**. The app schedules the six-month term; the contract imposes no
+  deposit cap.
+- The `opaquePaymentId` is unique per deposit and binds the on-chain deposit
+  to a payment request. Matching uses the id plus verified events, never memo
+  guessing.
+- **Money invariant:** the pooled USDC balance in the contract is always
+  **≥ totalRentLiability** (sum of all deposited-but-unclaimed rent).
+- Claim moves accrued rent from the pool to the current owner's wallet and
+  reduces `totalRentLiability` by the same amount.
+- Contract store is **USD cents** in the book and **USDC atomic units** (6
+  decimals) on chain, 1:1 with USD.
+
+### Chain store tables (new migration, not yet applied)
+
+| Table | Purpose |
+|---|---|
+| `ra_chain_epochs` | Bookkeeping epoch per chain; tracks which blocks the server has indexed |
+| `ra_chain_offers` | On-chain offer facts per token id (offer reference, token id, contract, minter, current owner, purchase tx) |
+| `ra_chain_events` | Immutable record of mint / purchase / transfer / deposit / claim events observed |
+| `ra_rent_payment_attempts` | Renter deposit attempts, initiated → pending → confirmed/failed |
+| `ra_rent_deposit_verifications` | Verified deposit rows (unique per payment request; at most one confirmed) |
+| `ra_rent_claim_verifications` | Verified claim rows (unique per claim; owner bound to the current token owner) |
+
+All tables have RLS on and no `anon` / `authenticated` grants. They are
+written only by server-side verification, never by browser code.
+
+Product rules for landlord sale proceeds:
+
+- One sale per offer. The buyer pays the exact purchase price **directly to
+  the locked landlord payout address**; the NFT moves backend mint key → buyer
+  atomically. There is no funding record and no landlord claim.
 - Payout amount equals the purchase price. The fee is informational and
   is never deducted twice.
-- The destination is chosen before submission. Demo submission requires
-  `method = crypto` and an obviously fictional `0xDEMO…` address. Girasol bank
-  payout remains `coming_soon`.
-- Paid is terminal. There is no landlord claim action.
-- `txHash` for this mock payout is `null`. Legacy demo hashes are discarded.
-  No explorer link.
+- The destination is chosen before submission. Paid is terminal when the sale
+  completes.
+- `txHash` is set from the real purchase transaction once the contract is
+  deployed; explorer links open only for a real 64-hex hash.
 - The payout address is server-side and must not enter Marketplace,
-  Pay, or Portfolio payloads.
-
-Luis PR #22 (draft, not on `main`) still models a manual landlord claim and is
-now superseded by this Product Lead decision. Reconcile or replace its
-`OfferFundingRecord` / `LandlordProceedsClaim` flow with payout-first automatic
-execution before review. Do not treat PR #22 as live.
+  Pay, or Portfolio payloads. On-chain, the payout address and amounts are
+  public once active.
 
 `property` series type exists on `ra_series` so the platform is not
 hardcoded to receivables. It is not implemented.
@@ -107,7 +140,7 @@ hardcoded to receivables. It is not implemented.
 ## 5. Lifecycle
 
 `draft → under_review → funding (Listed) → live/collecting (Sold) → closed`  
-`denied` is a review outcome. `expired` ends an unsold listing after 60 days.
+`denied` is a review outcome. There is no 60-day expiry.
 `default` is an arrears outcome, not a shortcut.
 
 Payment request: `due → initiated → pending → confirmed` (also failed,
@@ -115,17 +148,18 @@ overdue, expired, already paid). Confirmed is distinct from the first click.
 
 Stage 0 is a hard gate. Dual-control release requires two different people.
 
-Draft, under-review, and unfunded offers are not counted as money already
+Draft, under-review, and unsold offers are not counted as money already
 advanced or receivables already sold.
 
 ## 6. Anonymisation
 
-Purchaser serialisation may include district, grades, Property Score, term.
-It may not include tenant name, employer, address, contact, or exact income.
-Marketplace and portfolio pages load that anonymised shape only.
+Purchaser serialisation may include district, grades, Property Score, term,
+and the public token id. It may not include tenant name, employer, address,
+contact, or exact income. Marketplace and portfolio pages load that
+anonymised shape only.
 
-Payer serialisation may include rent, dates, USDC amount, and a fictional
-receiving address. It may not include fee, purchase price, holders, or
+Payer serialisation may include rent, dates, USDC amount, opaque payment id,
+and the contract address. It may not include fee, purchase price, holders, or
 distribution economics.
 
 ## 7. Persistence
@@ -133,8 +167,9 @@ distribution economics.
 The walkthrough stores the entire `DemoBook` as JSON in `ra_demo_state`.
 New fields must default via `normalizeBook()` so an older payload does not
 crash. `cryptoConfig` is catalog-owned (network, chain ID, native USDC,
-explorer, company Safe, sales proceeds Safe, offer factory). Older
+explorer, backend mint key, contract address). Older
 `optimism` and OP Sepolia books rematch to **Base Sepolia**. Reset
 restores the complete current seed and keeps the selected payment
-network. Legacy `DemoAccount.payoutAddress` remains optional for compatibility;
-new payout ownership is per offer. No new migration for this pivot.
+network. The chain store tables (`ra_chain_*`, `ra_rent_*`) are a separate
+reviewed migration that is **not yet applied**; the JSON book remains the
+product state until then.

@@ -131,21 +131,15 @@ export type PaymentRequestStatus =
   | "expired"
   | "partial";
 
-export type DistributionStatus = "pending" | "distributed";
+export type DistributionStatus = "claimable" | "claimed";
 
-export type LedgerTransactionKind =
-  | "advance_settlement"
-  | "company_fee"
-  | "landlord_claim"
-  | "rent_payment"
-  | "holder_distribution";
+export type LedgerTransactionKind = "rent_payment" | "holder_distribution";
 
-export type OfferNftOwner = "company_safe" | "holder";
-export type LandlordProceedsStatus = "none" | "held" | "claimable" | "claimed";
 export type LandlordPayoutMethod = "crypto" | "bank";
 
 export type LandlordPayout = {
   method: LandlordPayoutMethod;
+  /** The Base Sepolia payout address locked at mint. Null until a valid address is saved. */
   cryptoAddress: string | null;
   fiatCurrency: "XCG";
   partner: "Girasol";
@@ -153,30 +147,39 @@ export type LandlordPayout = {
   bankAvailability: "coming_soon";
 };
 
-/** Per-listing offer record. Not a custody-product ledger. */
-export type OfferCustody = {
-  nftTokenId: string | null;
-  nftContractAddress: string | null;
-  nftPaymentAddress: string | null;
-  nftOwner: OfferNftOwner | null;
-  mintedAt: string | null;
-  transferredAt: string | null;
-  saleProceedsStatus: LandlordProceedsStatus;
-  saleGrossCents: number;
-  companyFeeCents: number;
-  landlordClaimableCents: number;
-  landlordClaimedCents: number;
-  landlordClaimToAddress: string | null;
-  landlordClaimedAt: string | null;
-  landlordClaimTxHash: string | null;
-  feeTransferredAt: string | null;
-  feeTransferTxHash: string | null;
-  saleProceedsTxHash: string | null;
+/**
+ * Verified on-chain facts for one Merkado Rent Offer NFT (Base Sepolia).
+ * All values start null/zero and are only filled by a verified receipt
+ * recorded through a server action. Nothing here is ever fabricated.
+ */
+export type OnchainOfferState = {
+  /** ERC-721 token id, assigned by the Safe mint. */
+  tokenId: number | null;
+  /** Opaque bytes32 offer key (keccak of the internal reference). */
+  offerKey: string | null;
+  /** Deployed Merkado contract address. */
+  contractAddress: string | null;
+  /** Active chain-store epoch id the offer was prepared in. */
+  epochId: string | null;
+  mintTxHash: string | null;
+  mintBlockNumber: bigint | string | null;
+  /** True once a verified OfferPurchased event exists. */
+  purchased: boolean;
+  purchaseTxHash: string | null;
+  purchaserAddress: string | null;
+  /** Landlord payout address locked at mint by the Safe. */
+  payoutAddress: string | null;
+  /** True when the verified purchase paid the landlord payout address. */
+  landlordPaid: boolean;
+  /** Pooled USDC rent waiting for the current NFT owner to claim, in USD cents. */
+  claimableRentCents: number;
+  /** Pooled USDC rent already claimed by the current owner, in USD cents. */
+  claimedRentCents: number;
 };
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
 
-/** Demo chain facts. Safe addresses stay fictional until Luis replaces them. */
+/** Network / contract facts the walkthrough runs on. */
 export type CryptoConfig = {
   networkKey: string | null;
   chainId: number | null;
@@ -187,7 +190,7 @@ export type CryptoConfig = {
   /** Legacy alias for the company Safe. */
   safeAddress: string | null;
   companySafeAddress: string | null;
-  salesProceedsSafeAddress: string | null;
+  /** Deployed Merkado Rent Offer contract, or null until configured. */
   offerNftContract: string | null;
   explorerBaseUrl: string | null;
 };
@@ -231,6 +234,8 @@ export type PaymentRequest = {
   confirmedAt: string | null;
   transactionId: string | null;
   txHash: string | null;
+  /** Opaque bytes32 on-chain payment id created for the rent deposit attempt. */
+  opaquePaymentId?: string | null;
 };
 
 export type LedgerTransaction = {
@@ -260,7 +265,7 @@ export type DistributionRecord = {
   amountCents: number;
   status: DistributionStatus;
   createdAt: string;
-  distributedAt: string | null;
+  claimedAt: string | null;
   transactionId: string;
   txHash: string | null;
 };
@@ -386,7 +391,8 @@ export type Offer = {
   holders: HolderPosition[];
   releases: ReleaseInstruction[];
   agency: string;
-  custody?: OfferCustody;
+  /** Verified on-chain NFT facts. Nulls until a verified mint event exists. */
+  onchain?: OnchainOfferState;
 };
 
 export type OpenQuestion = {
@@ -438,6 +444,10 @@ export type BuyerOfferCard = {
   status: OfferStatus;
   expiresAt: string | null;
   coverImageSrc?: string | null;
+  /** True once a verified OfferMinted event exists for the NFT. */
+  minted: boolean;
+  tokenId: number | null;
+  purchased: boolean;
 };
 
 export type PurchaserOfferDetail = BuyerOfferCard & {

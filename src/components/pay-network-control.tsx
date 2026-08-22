@@ -6,7 +6,6 @@ import { useState, useTransition } from "react";
 import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { Label } from "@/components/ui/label";
-import { paymentNetworkBody, paymentNetworkHelp } from "@/lib/pay/mode";
 import {
   defaultPayNetworkKey,
   visiblePayNetworks,
@@ -38,13 +37,16 @@ export function PayNetworkControl({
       <div className="space-y-1">
         <p className="flex items-center gap-2 font-medium">
           Payment network
-          <HelpTip label="Payment network">{paymentNetworkHelp()}</HelpTip>
+          <HelpTip label="Payment network">
+            Choose the network Pay uses. Stay on Base Sepolia until the Product
+            Lead turns on Base Mainnet.
+          </HelpTip>
           <StatusBadge tone={isTestnet ? "info" : "warning"}>
             {isTestnet ? "Test" : "Mainnet"}
           </StatusBadge>
         </p>
         <p className="text-sm text-muted-foreground">
-          {paymentNetworkBody(networkLabel)}
+          Pay will show {networkLabel}.
         </p>
       </div>
       <div className="space-y-1.5 sm:min-w-56">

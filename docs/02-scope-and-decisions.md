@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
+**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
 
 ## 1. MVP goal
 
@@ -20,26 +20,26 @@ repo**. They live on merkado-cw.
 | P0 | Pricing engine | Reproduces MRA-001 cents and IRR; blocks >24% with no override |
 | P0 | Direct IA | Nav is Home, My Offers, Create Offer, Simulator, Marketplace, Portfolio, Pay, Account; Admin at the bottom. A header bell lists offer updates and holder actions. |
 | P0 | Simulator | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote. Amounts in XCG |
-| P0 | My Offers | Draft/unfunded totals excluded; settlement + collection/distribution status |
-| P0 | Merkado Pay | Working mocked USDC payment-link on **Base Sepolia** facts (Base Mainnet later); stablecoin QR and copy-address path; collapsed Sentoo preview; English-only; no Connect wallet on Pay; no real wallet or bank payment |
-| P0 | Shared state | One confirmed payment updates request, receivable, collection, distribution once |
-| P0 | Portfolio | Pre-seeded positions; Position ID; holder claim after rent arrives |
-| P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled, including Account Settings. There is no Payouts item in account chrome. |
+| P0 | My Offers | Draft/unfunded totals excluded; sale + collection/claim status |
+| P0 | Merkado Pay | Live USDC rent deposit on **Base Sepolia** via `depositRent` (Base Mainnet later); exact monthly amount, opaque payment id; English-only; no demo outcomes |
+| P0 | Shared state | One confirmed deposit updates request, receivable, collection, claim once |
+| P0 | Portfolio | Pre-seeded positions; Position ID; current NFT owner claims rent (`claimRent`) |
+| P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled. Only Merkado Pay and Merkado Direct are live apps. |
 | P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
-| P1 | Luis boundary | Typed mock provider; no wallet/Safe SDK installed |
-| P1 | Labs schema | RLS on; service-role only; no production project; no new migration |
+| P1 | NFT contract | One non-upgradeable ERC-721 (`MerkadoRentOfferV1`); pooled USDC rent per tokenId; backend mint key mints; transferable; whole-offer purchase pays landlord directly |
+| P1 | Labs schema | RLS on; service-role only; no production project; chain store tables in a reviewed migration |
 
 ## 3. Out of scope
 
 - Public Merkado Direct marketing page
 - Public third-party holder onboarding (demo Marketplace purchase is in-scope)
 - Public token market or secondary trading
-- Landlord-signed on-chain offer creation
-- Live Girasol bank payout (the coming-soon fee/details preview is in scope)
+- Landlord-signed on-chain offer creation (Merkado mints from the backend mint key)
+- Live fiat rails (Girasol bank payout, Sentoo bank payment)
 - 3-month term origination
-- Real wallet connection, signing, RPC, Safe SDK/API, or live USDC transfer
-- Creating the production Safe (Luis/Luuk; demo address stays fictional)
-- Live Sentoo or bank transfer (the coming-soon renter form is visual only)
+- Contract deployment, applying new migrations, sending test USDC, Safe
+  transactions, hosted activation, or merging this PR (separate gates)
+- Base Mainnet, real funds, or production activation
 - Production authentication or shared merkado.cw account
 - Real email or reminder scheduling
 - Property series (enum reserved, not built)
@@ -54,12 +54,14 @@ repo**. They live on merkado-cw.
 | Umbrella name | Merkado Direct |
 | Landlord customer brand | Do not prominently brand a separate Rent Advance product |
 | Holder platform | Merkado Direct · series Rent Advance (internal) |
-| Renter product | Merkado Pay (USDC-only pilot in this demo) |
-| Instrument | Digital Participation Right. Merkado creates one listing offer after approval (ADR-0006). Not a public token market. Not a custody product. |
+| Renter product | Merkado Pay (USDC rent deposit in this demo) |
+| Instrument | Transferable offer NFT (`MerkadoRentOfferV1`, ERC-721) on Base Sepolia. One NFT per approved listing, minted by the backend mint key. Current token owner = holder. Not a public token market. |
 | Commercial form | True sale of receivables (*koop en cessie*) |
-| Landlord money | Payout is chosen before submission. The mock crypto route accepts only a fictional `0xDEMO…` address. After a whole-offer purchase, the purchase price is marked paid automatically to that saved destination. No landlord claim button, mock hash, or explorer link. The fee is already included and must not look like a second deduction. |
-| Fiat payout preview | Girasol bank payout is visible as Coming soon with a 1.5% illustrative fee and fictional, browser-only fields. Final pricing and integration terms remain open. |
-| Holder claims | Product intent: rent sits on the sold listing until the holder claims it in Portfolio. Luis PR #22 still auto-pays holder rent as an interim Wave 3 state until his NFT wave. |
+| Contract | `MerkadoRentOfferV1`, non-upgradeable, holds pooled Circle native USDC rent accounted per `tokenId`. No listing expiry. |
+| Landlord money | The buyer pays the exact purchase price **directly to the locked landlord payout address**; the NFT moves minter → buyer atomically in the same transaction. No landlord claim button, no funding record, no separate payout Safe. The fee is already included and must not look like a second deduction. |
+| Holder claims | Rent stays in the pooled contract until the current NFT owner calls `claimRent(tokenId)` in Portfolio. Only the current owner can claim. NFT transfers move claim rights with the token. |
+| Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly amount. The app schedules the six-month term; the contract imposes no deposit cap. Rent is not paid to the landlord a second time. |
+| Opaque payment id | Unique per deposit, binds a deposit to a payment request. No memo guessing needed. |
 | Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |
 | Fee model | Single % of gross receivables; no flat fees |
@@ -68,20 +70,22 @@ repo**. They live on merkado-cw.
 | Listing Score | Raw 0–100 pricing input |
 | Property Score | Derived for presentation/filtering only; never prices the quote |
 | Rent-to-market | contractual ÷ estimated market; lower is more favourable |
-| Crypto in this task | Mocked wallet; typed provider for Luis; `PAYMENT_RAIL_MODE` flips mock labels when the real adapter ships |
+| Crypto in this task | Real Base Sepolia flow; wallet Reown/AppKit (injected EIP-1193); server receipt verification; no mock provider, `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes |
 | Network now | **Base Sepolia** (Base testnet). Shown in Admin and via `NEXT_PUBLIC_PAY_NETWORK`. |
 | Network later | **Base Mainnet**, only when `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
-| Explorer | Official explorer for the selected network (real hashes only) |
-| Test Safes | **Base Sepolia**. Company Safe plus a separate sales proceeds Safe. Draft PR 20 has a 2-of-3 company Safe (`0xfC6ec9718d89d4935594E7DB78399913071FcDc4`) that is **not** on `main`. Draft PR #22 adds the mocked landlord proceeds claim on that stack. Address not in the mocked app until confirmed. |
-| Safe address | Fictional in the mock until that verified Base Sepolia Safe is written in |
-| Other networks | Optimism keys stay in the catalog if Luis later opts in. They are hidden in Admin. |
-| Marketplace purchase | One buyer purchases 100% of the open offer. Fractional purchases are rejected in the UI and server helper. Purchase requires the mocked **Connect wallet** step. WalletConnect versus Privy is a later Luis choice and is not shown in Labs. Not a public offering. |
-| Listing window | Approval lists the offer for 60 days. After `expiresAt`, purchase is blocked. Sold offers remain viewable and shareable. |
+| Explorer | Official explorer for the selected network (real 64-hex hashes only) |
+| Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; surfaces show a not-configured state when empty |
+| Backend mint key | Verified Base Sepolia Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` (2 of 3: Enrique, Luuk, Luis). `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` defaults to it. Mints offer NFTs. |
+| RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
+| Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |
+| Marketplace purchase | Any wallet buys the whole offer. Buyer pays the exact purchase price to the locked landlord payout address; NFT moves Safe → buyer atomically. Fractional purchases are rejected. Not a public offering. |
+| Listing window | No listing expiry. Offers stay purchasable until sold. |
 | Demo book | Two seeded offers for the walkthrough: **MRA-001** (seeded funded reference) and **MRA-010** (open Punda studio). Extra filler offers were retired. Create Offer can still add a draft. |
 | Production marketplace | merkado-cw only |
-| Supabase | Labs `csaefdkpwukshtouyixg` only |
-| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, **Account Settings**, and other chrome stay visibly disabled. There is no Payouts item here. Automatic payout status stays on My Offers / the offer page. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
+| Supabase | Labs `ewoxmzznkavapcxdporm` only |
+| Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
+| Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
 | Demo account identity | Labs account and seeded renter are **Luuk Weber**, with the Product Lead–supplied avatar. |
 | Hosted demo access | Shared host password in the app (`LABS_DEMO_PASSWORD`). Not a Merkado account and not the paid Vercel password add-on. Local stays open unless that env is set. Hosted production stays locked if the password is missing. |
 
@@ -93,9 +97,10 @@ repo**. They live on merkado-cw.
 | M.1.3 | Stichting object and board | All real collection flow |
 | M.1.4 | Investor-funds licensing | Public Merkado Direct |
 | M.2.1 | Assignment of future rent claims | Document template sign-off |
-| M.3.1 | Related-party arm’s-length file | Nothing if +25 bp is kept |
-| Allocation | How a pooled USDC transfer maps to a payment request | Production Pay matching |
-| Safe execution | How Merkado creates offers, sweeps fees, executes the automatic landlord payout, and lets holders collect | Production payouts |
+| M.3.1 | Related-party arm's-length file | Nothing if +25 bp is kept |
+| Safe execution | How the backend mint key mints and authorises each offer NFT | Production minting |
+| Contract deployment | When and how `MerkadoRentOfferV1` is deployed and verified on Base Sepolia | Live activation |
+| Fee settlement | How the company fee is realised without reducing the landlord payout | Production fee flow |
 | Wallet onboarding | WalletConnect, Privy, or both for production purchase/claim ownership | Holder authentication |
 | Payment partners | Final Girasol and Sentoo fees, API contracts, KYC/consent, failure handling, and data ownership | Live fiat rails |
 
@@ -106,8 +111,9 @@ fee, advance, participation, holder, distribution, rent paid forward.
 
 Never use in customer-facing product copy: investment, investor, yield,
 guaranteed return, fund (as product), loan, borrow, debt, token, or share.
-The factual phrase **“not a loan”** may remain where legally useful. Do not
+The factual phrase **"not a loan"** may remain where legally useful. Do not
 blindly rewrite internal legal questions or private underwriting fields.
+Internal and ops docs may say NFT, Safe, `depositRent`, and `claimRent`.
 
 Schema and code may keep legacy names (`passport`, `passportScore`) as
 internal aliases for Listing Score.
