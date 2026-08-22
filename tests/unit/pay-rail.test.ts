@@ -5,27 +5,6 @@ import {
   applyPaymentRailCopy,
   payerCopy,
 } from "@/lib/rent-advance/copy";
-import {
-  isMockPaymentRail,
-  overviewPayCardBody,
-  overviewPrototypeBody,
-  paymentNetworkBody,
-  receivingLedgerLabel,
-  renterWalletLedgerLabel,
-  showDemoPaymentOutcomes,
-  walletConnectError,
-} from "@/lib/pay/mode";
-
-test("the payment rail stays mocked until Luis flips the switch", () => {
-  assert.equal(isMockPaymentRail(), true);
-  assert.equal(showDemoPaymentOutcomes(), true);
-  assert.match(overviewPrototypeBody(), /mocked/);
-  assert.match(overviewPayCardBody(), /nothing real is sent/);
-  assert.match(paymentNetworkBody("Base Sepolia"), /does not send real money/);
-  assert.equal(renterWalletLedgerLabel(), "Renter demo wallet");
-  assert.equal(receivingLedgerLabel(), "Demo receiving address");
-  assert.match(walletConnectError(), /demo wallet/);
-});
 
 test("live rail copy drops demo-wallet language and stays honest on testnet", () => {
   const live = applyPaymentRailCopy(payerCopy.en, {

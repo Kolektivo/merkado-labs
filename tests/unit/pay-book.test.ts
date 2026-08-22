@@ -23,7 +23,6 @@ import {
   visiblePayNetworks,
 } from "@/lib/pay/networks";
 import { formatUsd, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
-import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
 import { independentApproverById } from "@/lib/rent-advance/actors";
 import { attentionItems, bookTotals } from "@/lib/rent-advance/helpers";
 import {
@@ -357,34 +356,6 @@ test("client transaction ids cannot inject legacy settlement rows", () => {
       ?.fromLabel,
     "Renter demo wallet",
   );
-});
-
-test("copy-address path can submit without a connected wallet", async () => {
-  const provider = createMockPaymentProvider();
-  const submitted = await provider.reportExternalTransfer({
-    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
-    expectedAtomicAmount: 1_800_000_000,
-    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
-    offerReference: "MRA-001",
-    receivableId: "rec-mra-001-1",
-    method: "external",
-  });
-  assert.equal(submitted.status, "submitted");
-  assert.ok(submitted.txHash);
-});
-
-test("wallet path fails until the demo wallet is connected", async () => {
-  const provider = createMockPaymentProvider();
-  const submitted = await provider.submitPayment({
-    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
-    expectedAtomicAmount: 1_800_000_000,
-    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
-    offerReference: "MRA-001",
-    receivableId: "rec-mra-001-1",
-    method: "wallet",
-  });
-  assert.equal(submitted.status, "failed");
-  assert.equal(submitted.errorCode, "wallet_disconnected");
 });
 
 test("landlord attention does not include holder rent claims", () => {

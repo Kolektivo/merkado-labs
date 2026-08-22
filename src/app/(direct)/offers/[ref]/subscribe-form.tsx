@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { MockWalletConnection } from "@/components/mock-wallet-connection";
+import { WalletConnection } from "@/components/wallet-connection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { subscribeOfferAction } from "@/lib/rent-advance/actions";
@@ -75,11 +75,7 @@ export function SubscribeForm({
       ) : null}
 
       <div className="mt-6 space-y-3">
-        <MockWalletConnection
-          connected={connected}
-          onConnect={() => setConnected(true)}
-          width="fill"
-        />
+        <WalletConnection onConnectedChange={setConnected} />
         {connected ? (
           <Button
             type="button"

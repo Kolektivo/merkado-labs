@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
-import { MockWalletConnection } from "@/components/mock-wallet-connection";
+import { WalletConnection } from "@/components/wallet-connection";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -45,10 +45,7 @@ export function ClaimRentForm({
           not the landlord.
         </HelpTip>
       </div>
-      <MockWalletConnection
-        connected={connected}
-        onConnect={() => setConnected(true)}
-      />
+      <WalletConnection onConnectedChange={setConnected} />
       {connected ? (
         <Button
           type="button"
