@@ -186,3 +186,66 @@ export async function updateOffer(
   book.offers[index] = updater(book.offers[index], book);
   return saveBook(book);
 }
+
+/**
+ * Background-job variants of load/save/update that skip the interactive demo
+ * password gate. Only safe to call from a server-authorized job (e.g. the
+ * CRON_SECRET-protected mint sweep). Never expose these to client code.
+ */
+export async function loadBookForJob(): Promise<DemoBook> {
+  const supabase = createLabsAdminClient();
+  const { data, error } = await supabase
+    .from("ra_demo_state")
+    .select("payload")
+    .eq("id", STATE_ID)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.payload) {
+    const seed = cloneBook();
+    const { error: writeError } = await supabase.from("ra_demo_state").upsert({
+      id: STATE_ID,
+      payload: seed,
+      updated_at: new Date().toISOString(),
+    });
+    if (writeError) throw writeError;
+    return seed;
+  }
+  const incoming = normalizeBook(data.payload);
+  const book = dropRetiredDemoOffers(incoming);
+  const known = new Set(book.offers.map((offer) => offer.reference));
+  const missing = cloneBook().offers.filter((offer) => !known.has(offer.reference));
+  if (missing.length || book !== incoming) {
+    book.offers.push(...missing);
+    return saveBookForJob(book);
+  }
+  if (storedMoneyOrNetworkStale(data.payload, book)) {
+    return saveBookForJob(book);
+  }
+  return book;
+}
+
+export async function saveBookForJob(book: DemoBook): Promise<DemoBook> {
+  for (const offer of book.offers) {
+    assertReleasesDistinct(offer.releases);
+  }
+  const normalized = normalizeBook(book);
+  const supabase = createLabsAdminClient();
+  const { error } = await supabase.from("ra_demo_state").upsert({
+    id: STATE_ID,
+    payload: normalized,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+  return normalized;
+}
+
+export async function updateOfferForJob(
+  reference: string,
+  updater: (offer: Offer, book: DemoBook) => Offer,
+): Promise<DemoBook> {
+  const book = await loadBookForJob();
+  const index = book.offers.findIndex((offer) => offer.reference === reference);
+  if (index === -1) throw new Error(`Offer ${reference} was not found.`);
+  book.offers[index] = updater(book.offers[index], book);
+  return saveBookForJob(book);
+}

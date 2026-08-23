@@ -5,6 +5,8 @@
 
 ## Now
 
+- Background mint sweep: `/api/cron/mint` runs on a schedule (vercel.json, every 5 min) so approved offers are minted automatically without needing an Admin page load; it also resumes broadcast-but-unverified mints.
+
 - Product Lead reviews the Base Sepolia NFT flow: payout locked before
   submission, mint by the backend mint key, whole-offer purchase (buyer pays the
   landlord address; NFT Safe → buyer atomic), renter `depositRent`, owner

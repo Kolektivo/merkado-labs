@@ -29,6 +29,7 @@ Optional:
 - `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — **empty until the contract is
   deployed**; empty shows a not-configured state on surfaces
 - `MERKADO_MINTER_PRIVATE_KEY` — server-only Base Sepolia key the backend uses to mint offer NFTs
+- `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
 ## Vercel (Labs demo host)
