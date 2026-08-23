@@ -26,7 +26,6 @@ import {
   normalizePayoutAddress,
   payoutAddressLocked,
   purchasePriceAtomicFor,
-  rentInstallmentAtomicFor,
 } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
@@ -57,27 +56,14 @@ import {
   recordChainEvent,
   recordClaimVerification,
   recordDepositVerification,
-  recordOffer,
 } from "@/lib/onchain/chain-store";
 import {
-  createPublicClient,
-  createWalletClient,
-  decodeEventLog,
-  http,
-} from "viem";
-import { waitForTransactionReceipt } from "viem/actions";
-import { baseSepolia } from "viem/chains";
-import {
-  verifyOfferMinted,
   verifyOfferPurchased,
   verifyRentClaimed,
   verifyRentDeposit,
   MERKADO_CONFIRMATION_BLOCKS,
   confirmationsReady,
 } from "@/lib/onchain/verify";
-import { MERKADO_OFFER_ABI } from "@/lib/onchain/abi";
-import { merkadoMinterAccount } from "@/lib/onchain/minter";
-import { merkadoRpcUrl } from "@/lib/onchain/config";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 
 function refresh() {
@@ -450,6 +436,45 @@ type PurchaseVerifiedResult = {
   reason?: string;
 };
 
+/** Persist the submitted purchase tx so a pending purchase can be re-verified later. */
+export async function attachSubmittedPurchaseTxAction(
+  reference: string,
+  txHash: string,
+  buyerAddress: string,
+) {
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedPurchaseTxHash: txHash,
+      submittedPurchaseBuyer: buyerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted purchase using the persisted hash. */
+export async function checkPendingPurchaseAction(
+  reference: string,
+): Promise<PurchaseVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchased) return { status: "confirmed", reason: "Already purchased" };
+  if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
+    return { status: "pending", reason: "No submitted purchase transaction was recorded yet." };
+  }
+  return verifyPurchaseAction(
+    reference,
+    onchain.submittedPurchaseTxHash,
+    onchain.submittedPurchaseBuyer,
+  );
+}
+
 /** Verify a whole-offer purchase receipt and update the book exactly once. */
 export async function verifyPurchaseAction(
   reference: string,
@@ -616,6 +641,48 @@ export async function verifyRentClaimAction(
   );
   refresh();
   return { status: "confirmed" };
+}
+
+
+/** Persist the submitted claim tx so a pending claim can be re-verified later. */
+export async function attachSubmittedClaimTxAction(
+  reference: string,
+  txHash: string,
+  ownerAddress: string,
+) {
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedClaimTxHash: txHash,
+      submittedClaimOwner: ownerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted claim using the persisted hash. */
+export async function checkPendingClaimAction(
+  reference: string,
+): Promise<RentClaimVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
+    return { status: "confirmed" };
+  }
+  if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
+    return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
+  }
+  return verifyRentClaimAction(
+    reference,
+    onchain.submittedClaimTxHash,
+    onchain.submittedClaimOwner,
+  );
 }
 
 export async function submitNewOfferAction(offer: Offer) {

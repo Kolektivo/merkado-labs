@@ -162,13 +162,21 @@ MRA-001 locked Pay request:
 |---|---|---|
 | Contract | `contracts/` | `MerkadoRentOfferV1` (ERC-721). Deploy/verify scripts. Not deployed yet. |
 | Env | `.env.example` | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` (empty), `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` (default), `MERKADO_RPC_URL` (server-only default) |
-| Wallet | Injected EIP-1193 | WalletConnect / Privy adapter behind a thin interface. No mock provider. |
+| Wallet | Reown/AppKit (external wallets, Base Sepolia) | Opens the wallet modal; injected EIP-1193 fallback when Reown is unconfigured. No mock provider. |
 | Renter deposit | Pay screen | `depositRent(tokenId, opaquePaymentId, amount)`; pending → confirmed from the chain. |
 | Holder purchase | Marketplace | Pay exact purchase price to the locked landlord address; NFT Safe → buyer atomic. |
 | Holder claim | Portfolio | `claimRent(tokenId)`; only the current owner; verify non-owner rejection. |
 | Book write / no double-pay | `src/lib/rent-advance/payment-apply.ts` | Do not rewrite. Confirm once from verified chain events. |
 | Chain store | `supabase/migrations` | `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`. RLS on; no `anon`/`authenticated` grants. Migration not applied yet. |
 | Server save | server actions | Only verified chain events may write the book as confirmed. |
+
+### Pending-transaction recovery
+
+When a purchase, rent deposit, or claim is broadcast, the submitted tx hash is
+persisted server-side (on the payment request / offer). If the client poll is
+interrupted before 5 confirmations, the Pay / Marketplace / Portfolio page shows a
+**Check status** button that re-verifies the stored hash; a background cron
+(`/api/cron/mint`, protected by `CRON_SECRET`) resumes minted-but-unverified offers.
 
 ### Verification rules
 

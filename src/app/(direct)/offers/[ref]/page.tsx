@@ -111,6 +111,7 @@ export default async function BuyerOfferPage({
               minted={offer.minted}
               configured={configured}
               tokenId={offer.tokenId}
+              pendingRecovery={offer.pendingPurchase}
             />
           ) : (
             <ClosedOfferCard

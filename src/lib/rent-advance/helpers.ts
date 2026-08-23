@@ -322,6 +322,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     tokenId: onchain.tokenId,
     purchased: onchain.purchased,
+    pendingPurchase: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
   };
 }
 

@@ -175,6 +175,12 @@ export type OnchainOfferState = {
   claimableRentCents: number;
   /** Pooled USDC rent already claimed by the current owner, in USD cents. */
   claimedRentCents: number;
+  /** Submitted claim tx hash + owner, persisted so a pending claim can be re-verified. */
+  submittedClaimTxHash?: string | null;
+  submittedClaimOwner?: string | null;
+  /** Submitted purchase tx hash + buyer, persisted so a pending purchase can be re-verified. */
+  submittedPurchaseTxHash?: string | null;
+  submittedPurchaseBuyer?: string | null;
 };
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
@@ -452,6 +458,8 @@ export type BuyerOfferCard = {
   minted: boolean;
   tokenId: number | null;
   purchased: boolean;
+  /** True when a purchase was submitted but not yet verified (recovery). */
+  pendingPurchase: boolean;
 };
 
 export type PurchaserOfferDetail = BuyerOfferCard & {
