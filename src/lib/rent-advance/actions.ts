@@ -687,6 +687,9 @@ export async function checkPendingClaimAction(
 
 export async function submitNewOfferAction(offer: Offer) {
   offer = sanitizeOfferInput(offer);
+  if (offer.reference === "MRA-001") {
+    throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
+  }
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
@@ -750,6 +753,9 @@ export async function submitNewOfferAction(offer: Offer) {
 
 export async function saveDraftOfferAction(offer: Offer) {
   offer = sanitizeOfferInput(offer);
+  if (offer.reference === "MRA-001") {
+    throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
+  }
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }

@@ -79,8 +79,10 @@ other retired payer subpages) still redirect. `/pay/history` is not reused.
 A weak-score + related-party quote is blocked by the 24% cap. Use this quote
 stays disabled. There is no override.
 
-No offers are pre-created. The demo book starts empty and the Product Lead creates
-each offer via Create Offer; it mints automatically after Admin approval.
+The demo book seeds **MRA-001** and **MRA-010** automatically, both approved
+(`funding`) and **minted as NFTs** on the deployed Base Sepolia contract after
+Admin approval. The Product Lead creates any additional offers via Create Offer;
+`MRA-001` stays reserved (locked reference deal) and cannot be re-created.
 
 ### Shared demo book (verified)
 
@@ -89,9 +91,9 @@ payment request as paid, the receivable as received, one collection, and
 claimable rent for the current NFT owner. Refreshing or retrying the same
 request does not duplicate collection.
 
-Reset restores the empty demo book (no offers) — you create and mint offers yourself. Loading the book also adds any missing seed
-offer and drops retired filler offers (**MRA-002**–**MRA-006**) without wiping
-new drafts.
+Reset restores the demo book to the seeded offers (**MRA-001** + **MRA-010**,
+`funding`). Loading the book also adds any missing seed offer and drops retired
+filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 
 ### Privacy walls (verified)
 

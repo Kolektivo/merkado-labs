@@ -81,7 +81,7 @@ repo**. They live on merkado-cw.
 | Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |
 | Marketplace purchase | Any wallet buys the whole offer. Buyer pays the exact purchase price to the locked landlord payout address; NFT moves Safe → buyer atomically. Fractional purchases are rejected. Not a public offering. |
 | Listing window | No listing expiry. Offers stay purchasable until sold. |
-| Demo book | No offers are pre-created. The Product Lead creates each offer via Create Offer (MRA-001/010 are not auto-seeded). |
+| Demo book | Auto-seeds **MRA-001** + **MRA-010**, both approved (`funding`) and minted as NFTs. `MRA-001` is the locked reference deal and cannot be re-created. Additional offers are created via Create Offer. |
 | Production marketplace | merkado-cw only |
 | Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
