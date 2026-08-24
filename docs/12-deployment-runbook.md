@@ -82,6 +82,11 @@ explicitly approved and done (see `docs/10-execution-roadmap.md`):
 
 1. Deploy and verify `MerkadoRentOfferV1` on **Base Sepolia**.
 2. Set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` to the verified address.
+   Current cold-start (2026-08-24): `0x2075653c0aab05d2331886cbd01f8b8e40fc400f`
+   (minter `0x27D9333E178BEeaA92EE0e5C80DE75C133eA19E5`). Verify with
+   `forge verify-contract <addr> contracts/MerkadoRentOfferV1.sol:MerkadoRentOfferV1
+   --chain 84532 --constructor-args <encoded>` (falls back to Sourcify without an
+   API key).
 3. Apply the chain store migration.
 4. Send test USDC (the backend mint key signs `mintOffer` directly).
 5. Product Lead approves hosted activation and the merge.

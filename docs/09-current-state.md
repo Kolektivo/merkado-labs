@@ -145,11 +145,20 @@ new drafts.
 - With `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty, purchase and pay actions
   show a quiet **not configured** state and never fake a transaction.
 
-### Base Sepolia flow status (NOT deployed / NOT activated / NOT merged)
+### Base Sepolia flow status (NOT activated / NOT merged)
 
-- `MerkadoRentOfferV1` contract source is in the repo (ADR-0008), but the
-  contract is **not deployed** and `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is
-  **empty**.
+- `MerkadoRentOfferV1` source is in the repo (ADR-0008). A Base Sepolia
+  deployment exists for local/staging testing but hosted activation is **not
+  approved**. On **2026-08-24** the demo was reset for a **cold start**: the
+  shared demo book (`ra_demo_state`) was flushed to an empty book (no offers,
+  `cryptoConfig` preserved as `base-sepolia`) and the contract was redeployed
+  to a fresh, source-verified address with no on-chain state (no token ids, no
+  used offer keys, no claimable rent). The previous contract
+  `0x6dfdd931375808f8ee701db063b30198cb247a6e` is superseded.
+- Current cold-start contract: `0x2075653c0aab05d2331886cbd01f8b8e40fc400f`
+  (minter `0x27D9333E178BEeaA92EE0e5C80DE75C133eA19E5`,
+  USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
+  tx `0x654ff84d20163b15e045d2a6b6f2345aca09e9b5eaf7507fb0643cf2d78de6d0`).
 - The chain store migration (`ra_chain_epochs`, `ra_chain_offers`,
   `ra_chain_events`, `ra_rent_payment_attempts`,
   `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`) is **not
