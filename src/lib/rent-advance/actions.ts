@@ -89,6 +89,10 @@ function assertPayoutReady(offer: Offer) {
 
 export async function resetDemoAction() {
   await resetBook();
+  // Seed the fresh approved offers on the env deployment immediately, so the
+  // tokens are minted even if the Admin page is closed before the sweep/cron
+  // would otherwise run. Idempotent: already-minted offers are skipped.
+  await runPendingMintSweep();
   refresh();
 }
 

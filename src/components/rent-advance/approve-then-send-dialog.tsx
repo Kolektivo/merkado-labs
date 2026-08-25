@@ -75,6 +75,9 @@ export function ApproveThenSendDialog({
     setPendingReason(next.pendingReason);
     if (outcome.status === "confirmed") {
       onConfirmed();
+      // The payment/purchase went through; close the modal and show the
+      // success on the underlying page.
+      onOpenChange(false);
     }
   }
 
