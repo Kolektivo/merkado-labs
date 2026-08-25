@@ -4,6 +4,7 @@ import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import {
   anonymizeOffer,
   isMarketplaceStatus,
+  marketplaceOfferFilter,
   toPortfolioPosition,
   toPortfolioPositionDetail,
   toPurchaserOffer,
@@ -135,7 +136,7 @@ export async function getOffer(reference: string): Promise<Offer | null> {
 
 export async function listMarketplaceCards(): Promise<BuyerOfferCard[]> {
   const book = await loadBook();
-  return book.offers.filter((offer) => isMarketplaceStatus(offer.status)).map(anonymizeOffer);
+  return book.offers.filter(marketplaceOfferFilter).map(anonymizeOffer);
 }
 
 export async function getPurchaserOffer(

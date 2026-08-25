@@ -30,7 +30,7 @@ import {
   effectiveOfferStatus,
   offerDisplayName,
   sortOffersForLandlordList,
-  statusLabel,
+  displayStatusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { loadBook } from "@/lib/rent-advance/store";
@@ -190,7 +190,7 @@ export default async function OriginatePage({
                       </p>
                     </div>
                     <StatusBadge tone={statusTone(effectiveStatus)}>
-                      {statusLabel(effectiveStatus)}
+                      {displayStatusLabel(effectiveStatus, proceeds.minted)}
                     </StatusBadge>
                   </div>
                   <p className="mt-2 text-sm">
@@ -257,7 +257,7 @@ export default async function OriginatePage({
                       <TableCell>{offer.months} months</TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTone(effectiveStatus)}>
-                          {statusLabel(effectiveStatus)}
+                          {displayStatusLabel(effectiveStatus, proceeds.minted)}
                         </StatusBadge>
                       </TableCell>
                       <TableCell

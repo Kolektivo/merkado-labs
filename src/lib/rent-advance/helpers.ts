@@ -241,6 +241,17 @@ export function statusLabel(status: OfferStatus): string {
   }
 }
 
+/**
+ * Mint-aware display label. A `funding` offer stays "Mint pending" only until
+ * its offer NFT is minted; once minted it reads "Listed" (matching the
+ * Marketplace card), even though `offer.status` is still `funding`. The status
+ * only moves to `live`/`collecting` on purchase.
+ */
+export function displayStatusLabel(status: OfferStatus, minted: boolean): string {
+  if (status === "funding") return minted ? "Listed" : "Mint pending";
+  return statusLabel(status);
+}
+
 export function mintStateLabel(state: MintState): string {
   switch (state) {
     case "not_minted":
@@ -275,6 +286,10 @@ export function canRecordCollection(status: OfferStatus): boolean {
 
 export function isMarketplaceStatus(status: OfferStatus): boolean {
   return status !== "draft" && status !== "under_review" && status !== "denied";
+}
+
+export function marketplaceOfferFilter(offer: Offer): boolean {
+  return isMarketplaceStatus(offer.status) && !isPendingMintOffer(offer);
 }
 
 export function canShowContribute(
