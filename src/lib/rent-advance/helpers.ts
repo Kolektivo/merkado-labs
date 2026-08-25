@@ -275,7 +275,9 @@ export function customerStatusLabel(status: OfferStatus): string {
     case "closed":
       return "Closed";
     case "default":
-      return "Default";
+      // An arrears outcome after a sale: the offer is still sold to a holder,
+      // so customers keep reading "Sold". "Default" stays an internal label.
+      return "Sold";
     case "draft":
       return "Draft";
   }

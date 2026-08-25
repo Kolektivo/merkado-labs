@@ -11,6 +11,8 @@ import {
   coverSrcFor,
   customerStatusLabel,
   effectiveOfferStatus,
+  formatDayMonthYear,
+  listingExpiresAt,
   remainingOfferingCents,
 } from "@/lib/rent-advance/helpers";
 import type { BuyerOfferCard } from "@/lib/rent-advance/types";
@@ -56,6 +58,8 @@ export function MarketplaceOfferCard({
   const metaLabel = `${statusLine}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
   const remaining = remainingOfferingCents(card);
   const purchasable = remaining > 0 && effectiveStatus === "funding" && card.minted;
+  const expiresAt = listingExpiresAt(card.publishedAt);
+  const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
   const specs = [
     {
       key: "beds",
@@ -143,6 +147,11 @@ export function MarketplaceOfferCard({
                 <HelpTip label="Payment history">{PLAIN.paymentHistory}</HelpTip>
               </span>
             </p>
+            {purchasable && expiresLabel ? (
+              <p className="text-xs leading-5 font-normal text-grey-800">
+                Available until {expiresLabel} · 60-day listing window
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

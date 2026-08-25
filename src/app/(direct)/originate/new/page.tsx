@@ -25,7 +25,7 @@ export default async function NewOfferPage({
         description={
           carry
             ? `${initial.reference} has pricing prefilled from the Simulator. Check the property and renter before you submit the six-month request. No wallet is needed.`
-            : `${initial.reference} is ready to complete. Add a photo, check the figures, then request review. No wallet is needed.`
+            : `Start a new offer — ${initial.reference} is the next reference. Add a photo, check the figures, then request review. No wallet is needed.`
         }
       />
       <NewOfferWizard initial={initial} startStep={carry ? 5 : 1} />

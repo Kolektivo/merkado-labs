@@ -10,7 +10,7 @@ import { Money } from "@/components/money-display";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ARREARS_LADDER } from "@/lib/rent-advance/arrears";
-import { canRecordCollection, displayStatusLabel, statusTone } from "@/lib/rent-advance/helpers";
+import { canRecordCollection, customerStatusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
@@ -65,10 +65,7 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
         actions={
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone={statusTone(offer.status)}>
-              {displayStatusLabel(
-                offer.status,
-                onchain.tokenId != null && Boolean(onchain.mintTxHash),
-              )}
+              {customerStatusLabel(offer.status)}
             </StatusBadge>
             <Button variant="outline" size="sm" asChild>
               <Link href="/admin">All offers</Link>

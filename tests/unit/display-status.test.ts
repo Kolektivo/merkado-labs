@@ -34,9 +34,10 @@ test("customer status labels never expose mint state on customer surfaces", () =
   assert.equal(customerStatusLabel("denied"), "Denied");
   assert.equal(customerStatusLabel("expired"), "Expired");
   assert.equal(customerStatusLabel("closed"), "Closed");
-  assert.equal(customerStatusLabel("default"), "Default");
+  assert.equal(customerStatusLabel("default"), "Sold");
   assert.equal(customerStatusLabel("draft"), "Draft");
   assert.notEqual(customerStatusLabel("funding"), "Mint pending");
+  assert.notEqual(customerStatusLabel("default"), "Default");
 });
 
 test("the 60-day listing window is display-only and never enforced", () => {

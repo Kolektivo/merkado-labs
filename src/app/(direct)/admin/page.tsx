@@ -21,8 +21,7 @@ import { isTestnetConfig, mainnetSelectionAllowed } from "@/lib/pay/networks";
 import {
   sortOffersForLandlordList,
   statusTone,
-  mintStateLabel,
-  displayStatusLabel,
+  customerStatusLabel,
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
@@ -100,10 +99,7 @@ export default async function AdminPage() {
                   </TableCell>
                   <TableCell>
                     <StatusBadge tone={statusTone(offer.status)}>
-                      {displayStatusLabel(
-                        offer.status,
-                        onchain.tokenId != null && Boolean(onchain.mintTxHash),
-                      )}
+                      {customerStatusLabel(offer.status)}
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
@@ -116,11 +112,6 @@ export default async function AdminPage() {
                             ? "Mint in progress"
                             : "Not minted"}
                     </p>
-                    {onchain.mintTxHash && configured ? (
-                      <p className="text-xs text-muted-foreground">
-                        {mintStateLabel(state)}
-                      </p>
-                    ) : null}
                   </TableCell>
                   <TableCell>
                     <Money cents={offer.monthlyRentCents} />

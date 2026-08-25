@@ -199,7 +199,7 @@ export function applyVerifiedPurchase(
       at,
       title: "Whole offer purchased",
       detail:
-        "A buyer bought the whole offer NFT. The sale amount was paid to the payout address locked at mint. Rent now goes to the offer contract.",
+        "A buyer bought the whole offer. The sale amount was paid to the locked payout address. Rent now goes to the buyer.",
       actor: "System",
     },
     ...offer.events.filter((row) => row.id !== `ev-${reference}-purchase-${at}`),
