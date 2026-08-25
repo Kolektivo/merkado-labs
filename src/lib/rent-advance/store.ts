@@ -26,6 +26,7 @@ import type {
 } from "@/lib/rent-advance/types";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
+import { newEpoch } from "@/lib/onchain/chain-store";
 
 const STATE_ID = "live";
 
@@ -111,6 +112,15 @@ export async function saveBook(book: DemoBook): Promise<DemoBook> {
 
 export async function resetBook(): Promise<DemoBook> {
   await assertDemoUnlocked();
+  // Start a new chain-store epoch so old on-chain facts are never reused.
+  // Reset does NOT roll back the chain: old contract state is abandoned, and
+  // pairing this with a fresh Base Sepolia contract redeploy + env address
+  // update remains a separate approved operational gate.
+  try {
+    await newEpoch(`reset ${new Date().toISOString()}`);
+  } catch {
+    // The chain-store tables are not applied yet; keep a book-only reset.
+  }
   const seed = cloneBook();
   try {
     const supabase = createLabsAdminClient();

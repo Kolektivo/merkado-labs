@@ -453,6 +453,8 @@ export type BuyerOfferCard = {
   scheduledAnnualised: number;
   status: OfferStatus;
   expiresAt: string | null;
+  /** Set at approval. Used only to render the display-only 60-day window. */
+  publishedAt: string | null;
   coverImageSrc?: string | null;
   /** True once a verified OfferMinted event exists for the NFT. */
   minted: boolean;

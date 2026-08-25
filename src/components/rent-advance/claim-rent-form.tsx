@@ -74,7 +74,7 @@ export function ClaimRentForm({
           attempts += 1;
         }
         if (result.status !== "confirmed") {
-          setError(result.reason ?? "The claim is still pending on chain.");
+          setError(result.reason ?? "The claim is still being verified.");
           return;
         }
         try {
@@ -114,7 +114,7 @@ export function ClaimRentForm({
           router.push(`/portfolio/${reference}?success=rent`);
           router.refresh();
         } else {
-          setError(result.reason ?? "The claim is still pending on chain.");
+          setError(result.reason ?? "The claim is still being verified.");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not check the claim status.");
@@ -140,22 +140,22 @@ export function ClaimRentForm({
           </p>
         </div>
         <HelpTip label="claiming rent">
-          This is monthly rent the renter paid into the offer contract. It
-          belongs to the current NFT owner, not the landlord.
+          This is monthly rent the renter paid. It belongs to the current
+          holder, not the landlord.
         </HelpTip>
       </div>
       {!configured ? (
         <Alert variant="destructive">
           <AlertTitle>Claims are not configured yet</AlertTitle>
           <AlertDescription>
-            NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Nothing was claimed.
+            Live claiming is not enabled yet. Nothing was claimed.
           </AlertDescription>
         </Alert>
       ) : tokenId == null ? (
         <Alert>
-          <AlertTitle>Listing not minted</AlertTitle>
+          <AlertTitle>Not available yet</AlertTitle>
           <AlertDescription>
-            This offer NFT does not exist yet, so nothing can be claimed.
+            This listing has no rent to claim yet.
           </AlertDescription>
         </Alert>
       ) : (
@@ -183,8 +183,7 @@ export function ClaimRentForm({
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            The current NFT owner claims pooled rent from the offer contract on
-            Base Sepolia.
+            The current holder claims rent that was paid for this listing.
           </p>
         </>
       )}

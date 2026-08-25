@@ -28,6 +28,7 @@ export function SubscribeForm({
   remainingCents,
   fundedCents,
   offeringCents,
+  expiresLabel,
   minted,
   configured,
   tokenId,
@@ -37,6 +38,7 @@ export function SubscribeForm({
   remainingCents: number;
   fundedCents: number;
   offeringCents: number;
+  expiresLabel: string | null;
   minted: boolean;
   configured: boolean;
   tokenId: number | null;
@@ -96,7 +98,7 @@ export function SubscribeForm({
           attempts += 1;
         }
         if (result.status !== "confirmed") {
-          setError(result.reason ?? "The purchase is still pending on chain.");
+          setError(result.reason ?? "The purchase is still being verified.");
           return;
         }
         try {
@@ -136,7 +138,7 @@ export function SubscribeForm({
           router.push(`/portfolio/${reference}?success=purchase`);
           router.refresh();
         } else {
-          setError(result.reason ?? "The purchase is still pending on chain.");
+          setError(result.reason ?? "The purchase is still being verified.");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not check the purchase status.");
@@ -182,13 +184,18 @@ export function SubscribeForm({
       <p className="mt-1 text-sm text-grey-800">
         100% ownership · no fractional purchase
       </p>
+      {expiresLabel ? (
+        <p className="mt-2 text-xs text-grey-800">
+          Available until {expiresLabel} · 60-day listing window
+        </p>
+      ) : null}
 
       {!minted ? (
         <Alert className="mt-6">
-          <AlertTitle>Mint pending</AlertTitle>
+          <AlertTitle>Not available yet</AlertTitle>
           <AlertDescription>
-            The offer NFT has not been minted yet. It becomes
-            purchasable once the mint is verified on Base Sepolia.
+            This listing is not open to purchase yet. It becomes available
+            once it is listed on Marketplace.
           </AlertDescription>
         </Alert>
       ) : !configured ? (
@@ -245,8 +252,8 @@ export function SubscribeForm({
         </Link>
       ) : (
         <p className="mt-4 text-center text-xs leading-5 text-grey-800">
-          After purchase, the offer NFT moves to Portfolio. Rent paid into the
-          offer contract can be claimed by its current owner.
+          After purchase, the offer moves to your Portfolio. Rent paid for the
+          listing can be claimed by its owner.
         </p>
       )}
     </div>

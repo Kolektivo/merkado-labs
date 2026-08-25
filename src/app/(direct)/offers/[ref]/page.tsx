@@ -13,8 +13,9 @@ import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
   coverSrcFor,
-  displayStatusLabel,
+  customerStatusLabel,
   formatDayMonthYear,
+  listingExpiresAt,
   remainingOfferingCents,
   statusTone,
 } from "@/lib/rent-advance/helpers";
@@ -45,6 +46,8 @@ export default async function BuyerOfferPage({
   if (!offer) notFound();
 
   const remaining = remainingOfferingCents(offer);
+  const expiresAt = listingExpiresAt(offer.publishedAt);
+  const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
   const bedsLabel = `${offer.bedrooms} ${offer.bedrooms === 1 ? "bed" : "beds"}`;
   const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
@@ -77,7 +80,7 @@ export default async function BuyerOfferPage({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge tone={statusTone(offer.status)}>
-                {displayStatusLabel(offer.status, offer.minted)}
+                {customerStatusLabel(offer.status)}
               </StatusBadge>
               <span className="text-xs tracking-wide text-grey-800">
                 {offer.reference}
@@ -108,6 +111,7 @@ export default async function BuyerOfferPage({
               remainingCents={remaining}
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
+              expiresLabel={expiresLabel}
               minted={offer.minted}
               configured={configured}
               tokenId={offer.tokenId}
@@ -115,7 +119,7 @@ export default async function BuyerOfferPage({
             />
           ) : (
             <ClosedOfferCard
-              status={displayStatusLabel(offer.status, offer.minted)}
+              status={customerStatusLabel(offer.status)}
               offeringCents={offer.offeringCents}
             />
           )}

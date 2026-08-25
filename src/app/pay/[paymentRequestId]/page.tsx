@@ -1,4 +1,4 @@
-import { formatDayMonthYear } from "@/lib/rent-advance/helpers";
+import { formatDayMonthYear, isUpcomingPaymentRequest } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
@@ -39,6 +39,7 @@ export default async function PayRequestPage({
       amountUsdcAtomic: row.amountUsdcAtomic,
       amountXcgCents: row.amountXcgCents,
       dueDateLabel: formatDayMonthYear(row.dueDate),
+      upcoming: isUpcomingPaymentRequest(book.paymentRequests ?? [], row),
     }));
   const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
   const configured = isMerkadoConfigured();
@@ -51,6 +52,7 @@ export default async function PayRequestPage({
       amountUsdcAtomic={request.amountUsdcAtomic}
       amountXcgCents={request.amountXcgCents}
       paymentReference={request.paymentReference}
+      receivingAddress={request.receivingAddress}
       networkLabel={publicCryptoConfig?.networkLabel?.trim() ?? ""}
       status={request.status}
       txHash={request.txHash}

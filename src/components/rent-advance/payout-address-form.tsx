@@ -48,8 +48,8 @@ export function PayoutAddressForm({ savedAddress }: { savedAddress: string | nul
         <Alert>
           <AlertTitle>Saved</AlertTitle>
           <AlertDescription>
-            This address will be locked at mint. It is never shown on payer or
-            purchaser screens.
+            This address is locked for this offer. It is never shown on payer
+            or purchaser screens.
           </AlertDescription>
         </Alert>
       ) : null}

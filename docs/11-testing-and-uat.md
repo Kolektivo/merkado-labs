@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## Automated
 
@@ -29,6 +29,14 @@ HTTPS URLs open externally and missing or invalid URLs stay inside the demo.
 Verification tests must prove the server matches the exact expected
 event/log (mint, purchase, transfer, deposit, claim) and rejects
 self-transfers, wrong amounts, wrong network, and duplicate confirmations.
+Tests must also cover: the display-only 60-day window (offer stays
+purchasable after the date, no Expired status derives from it), Reset
+starting a new chain-store epoch (old on-chain facts are never reused),
+informational-only Pay QR / copy controls (they never submit a payment;
+`depositRent` is the only path), customer statuses (Paid = proceeds card
+only; the offer stays Sold), **Save draft** persistence, and Admin
+mint-state consistency (broadcast-but-unverified reads "Mint in progress",
+never "Minted").
 
 GitHub Actions runs the same commands via `.github/workflows/verify.yml`.
 The first passing remote run on `main` was 2026-08-19 (run 32228015203).
@@ -41,32 +49,47 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
    Portfolio, plus Pay, Account, and Admin at the bottom.
 3. My Offers is empty until you create an offer via Create Offer;
-   draft/unsold rows are not counted as cash already advanced.
+   draft/unsold rows are not counted as cash already advanced. A **Save
+   draft** button persists the wizard's in-progress offer into **My Offers →
+   Draft** (landlord workflow only; no chain or payment state).
 4. Simulator: Listing Score and Payer Score sliders; market rent in XCG;
    Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
    disabled when unapproved or above 24%.
 5. Use this quote prefills Create Offer. 9/12 cannot submit.
 6. Offer detail: landlord sees review / listed / sold / paid, the locked
    payout destination, and no listing expiry; no holder or monthly
-   collection detail. Operations controls are only in Admin.
+   collection detail. Operations controls are only in Admin. The
+   **Landlord proceeds** card moves **Waiting → Processing → Paid**
+   automatically (Processing = purchase submitted but not yet verified);
+   **Paid** is the proceeds card only and the offer itself stays **Sold**.
+   Listed offers show the **Listed for 60 days** next step and the
+   display-only **"Available until [date] · 60-day listing window"** text.
 7. Marketplace: no tenant name or address; **mint-pending offers are not
    listed** (their detail page stays reachable with a Mint pending alert);
    server rejects fractional purchases; a whole-offer purchase pays the exact
    purchase price to the locked landlord address and moves the NFT Safe →
-   buyer atomically. Empty contract env shows a not-configured state.
+   buyer atomically. Cards carry the display-only **"Available until [date] ·
+   60-day listing window"** text — the offer stays purchasable after the date
+   and no Expired status derives from it. Empty contract env shows a
+   not-configured state.
 8. Portfolio: Position ID; offer token id; accrued rent per token; the
    current NFT owner can `claimRent`; non-owners are rejected.
 9. Pay: seeded request **XCG 3,222.00** / **1,800.00 USDC** on the selected
    network (**Base Sepolia** after Reset); `depositRent(tokenId,
    opaquePaymentId, amount)`; visible pending then success; invalid id is a
-   safe not-found. The active card shows a muted, non-actionable **Bank
-   payment · Coming soon** (Sentoo) teaser.
+   safe not-found. The expanded **Pay with stablecoin** panel holds the
+   **QR**, **copy address**, and **copy amount** controls as **informational
+   only** (never submit a payment), with the live **Connect**, **Approve
+   USDC**, and **Pay rent** actions. **Continue with Sentoo** is a collapsed
+   panel with a **Coming soon** badge.
 10. One confirmed deposit appears once in Pay history, My Payments, offer
     collections, and holder claimable rent. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab
     behaviour only for absolute URLs.
 12. Customer screens do not show a sale-not-loan wall, fee buildup, or
-    extra comparison figures. Those live in Admin if needed.
+    extra comparison figures. Status pills stay limited to **Under review →
+    Listed → Sold → Paid** plus **Denied / Expired / Closed**; no mint / NFT
+    / contract wording appears on customer surfaces.
 
 ## Manual Base Sepolia E2E (run once the flow is deployed and activated)
 
@@ -84,8 +107,10 @@ it felt wrong.
    Base Sepolia contract and `MERKADO_RPC_URL` points at
    `https://sepolia.base.org`.
 2. Open **Admin** at the bottom of the left nav. Click **Reset the book** and
-   confirm **Yes, reset**. The book is empty — create an offer via Create Offer,
-   approve it in Admin, and the backend mints it automatically.
+   confirm **Yes, reset**. The book is seeded fresh — **MRA-001** and **MRA-010**
+   return as `funding` offers with **empty on-chain state** — approve them in
+   Admin, and the backend mints them automatically. A **new chain-store epoch**
+   starts so old on-chain facts are never reused.
 3. Fund test wallets with Base Sepolia ETH (gas) and test USDC from
    [faucet.circle.com](https://faucet.circle.com).
 
@@ -113,7 +138,9 @@ it felt wrong.
 - Open **Admin**. Open the new offer. Pick **Enrique** or **Luuk**, then
   click **Approve offer**. The backend broadcasts `mintOffer` from the server-held mint key and
   verifies the receipt; Mint Control shows the verified status. One offer NFT is
-  minted to the backend mint key.
+  minted to the backend mint key. A broadcast-but-unverified mint must read
+  **Mint in progress**, never **Minted** (Admin derives mint state from
+  verified facts only).
 - On the offer detail, confirm the offer is Listed, has no expiry, and the
   backend mint key is the initial owner on the explorer (real 64-hex mint
   hash only).
@@ -137,8 +164,13 @@ it felt wrong.
 
 - Open **Merkado Pay**. MRA-001 is **XCG 3,222.00**. After purchasing
   MRA-010, a **XCG 1.79** rent also appears.
-- Open the XCG 1.79 payment. The pay action calls
-  `depositRent(tokenId, opaquePaymentId, 1000000)` (1.00 USDC atomic).
+- Open the XCG 1.79 payment. The expanded **Pay with stablecoin** panel
+  shows the **QR**, **copy address**, and **copy amount** controls as
+  **informational only** — using them must never submit a payment.
+  **Continue with Sentoo** is a collapsed panel with a **Coming soon**
+  badge. The pay action calls
+  `depositRent(tokenId, opaquePaymentId, 1000000)` (1.00 USDC atomic)
+  through the live **Pay rent** action.
 - Confirm in the wallet. You should see pending, then **Rent paid** only
   after the server verifies the deposit event.
 - Deposit the same month again: the second attempt must be rejected
@@ -185,11 +217,14 @@ it felt wrong.
 
 ### 9. Reset
 
-- Open **Admin**. **Reset the book** restores the empty book (no offers). You
-  create and mint offers yourself. The payment network you selected stays. On-chain
-  state is **not** rolled
-  back by Reset — Reset restores the Labs book only; deployed contracts and
-  their balances keep their chain state.
+- Open **Admin**. **Reset the book** seeds a fresh demo book (**MRA-001** and
+  **MRA-010** as `funding` offers with **empty on-chain state**) and starts a
+  **new chain-store epoch** so old on-chain facts are never reused. The
+  payment network you selected stays. On-chain state is **not** rolled back
+  by Reset — old contract state is abandoned. Pairing Reset operationally
+  with a fresh Base Sepolia contract redeploy + env address update is a
+  separate approved gate; deployed contracts and their balances keep their
+  chain state until then.
 
 ### What you are judging
 

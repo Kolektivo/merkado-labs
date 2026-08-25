@@ -112,7 +112,9 @@ export default async function AdminPage() {
                         ? "Purchased"
                         : state === "minted"
                           ? `Minted · token ${onchain.tokenId}`
-                          : "Not minted (Mint pending)"}
+                          : onchain.mintTxHash
+                            ? "Mint in progress"
+                            : "Not minted"}
                     </p>
                     {onchain.mintTxHash && isMerkadoConfigured() ? (
                       <p className="text-xs text-muted-foreground">

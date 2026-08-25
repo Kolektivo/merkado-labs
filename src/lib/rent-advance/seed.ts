@@ -508,7 +508,7 @@ function buildOffers(): Offer[] {
   const mra001 = makeOffer({
     reference: "MRA-001",
     status: "funding",
-    nextAction: "Minting automatically after approval",
+    nextAction: "Listing in progress",
     relatedParty: true,
     relatedPartyNote:
       "The landlord on this offer is a family member of an EcoLabs board member. An independent approver must sign. The fee carries a +25 bp related-party premium.",
@@ -545,7 +545,7 @@ function buildOffers(): Offer[] {
       at: "2026-08-28T10:05:00-04:00",
       title: "Approved and prepared",
       detail:
-        "Approved by the independent approver. The offer awaits an automatic backend mint before it can open on Marketplace.",
+        "Approved by the independent approver. The offer will open on Marketplace shortly.",
       actor: "System",
     },
     {
@@ -569,7 +569,7 @@ function buildOffers(): Offer[] {
     makeOffer({
       reference: "MRA-010",
       status: "funding",
-      nextAction: "Minting automatically after approval",
+      nextAction: "Listing in progress",
       relatedParty: false,
       months: 6,
       rent: 100,

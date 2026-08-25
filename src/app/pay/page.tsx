@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   formatDayMonthYear,
+  isUpcomingPaymentRequest,
+  openPaymentRequests,
   paymentStatusLabel,
 } from "@/lib/rent-advance/helpers";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
@@ -17,15 +19,6 @@ import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Merkado Pay" };
-
-const OPEN: PaymentRequestStatus[] = [
-  "due",
-  "initiated",
-  "pending",
-  "failed",
-  "partial",
-  "overdue",
-];
 
 function tone(status: PaymentRequestStatus) {
   if (status === "confirmed") return "success" as const;
@@ -42,7 +35,7 @@ export default async function PayIndexPage() {
     .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
     .slice()
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const open = requests.filter((row) => OPEN.includes(row.status));
+  const open = openPaymentRequests(requests);
   const next = open[0] ?? null;
 
   return (
@@ -86,10 +79,9 @@ export default async function PayIndexPage() {
       <ul className="divide-y rounded-xl border bg-card">
         {requests.map((row) => {
           const offer = book.offers.find((item) => item.reference === row.offerReference);
-          const label =
-            row.status === "due" && next && row.dueDate > next.dueDate
-              ? paymentStatusLabel(row.status, true)
-              : paymentStatusLabel(row.status);
+          const label = isUpcomingPaymentRequest(requests, row)
+            ? paymentStatusLabel(row.status, true)
+            : paymentStatusLabel(row.status);
           return (
             <li key={row.paymentRequestId}>
               <Link

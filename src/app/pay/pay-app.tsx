@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
+import { CopyValue } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { UsdcMark } from "@/components/usdc-mark";
@@ -22,9 +25,11 @@ import {
   verifyRentPaymentAction,
 } from "@/lib/rent-advance/actions";
 import { payerCopy, type PayerCopy } from "@/lib/rent-advance/copy";
-import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
+import { formatUsdcAtomic, formatUsdcAtomicAmount, formatXcg } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
+
+import { cn } from "@/lib/utils";
 
 import { usePayerLocale } from "./payer-locale";
 
@@ -36,6 +41,7 @@ type HistoryRow = {
   amountUsdcAtomic: number;
   amountXcgCents: number;
   dueDateLabel: string;
+  upcoming: boolean;
 };
 
 type WalletUi =
@@ -52,14 +58,139 @@ function wait(ms: number) {
   });
 }
 
-function historyStatusLabel(status: PaymentRequestStatus, copy: PayerCopy) {
+function PaymentMethodPanel({
+  expanded,
+  onExpand,
+  title,
+  compactTitle,
+  compactHint,
+  mark,
+  badge,
+  children,
+}: {
+  expanded: boolean;
+  onExpand: () => void;
+  title: string;
+  compactTitle: string;
+  compactHint: string;
+  mark?: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      aria-label={title}
+      className={cn(
+        "overflow-hidden rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300 ease-out motion-reduce:transition-none",
+        expanded
+          ? "border-primary/25 bg-muted/20 shadow-sm"
+          : "border-border bg-transparent",
+      )}
+    >
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center justify-between gap-3 px-4 text-left transition-colors duration-300 ease-out motion-reduce:transition-none",
+          expanded ? "cursor-default pt-4 pb-0" : "min-h-11 py-2.5 hover:bg-muted/40",
+        )}
+        aria-expanded={expanded}
+        onClick={() => {
+          if (!expanded) onExpand();
+        }}
+      >
+        {mark}
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "flex items-center gap-2 transition-[font-size,line-height] duration-300 ease-out motion-reduce:transition-none",
+              expanded ? "text-lg font-semibold" : "text-sm font-medium",
+            )}
+          >
+            {compactTitle}
+            {badge ? (
+              <span
+                className={cn(
+                  "overflow-hidden transition-[max-width,opacity] duration-300 ease-out motion-reduce:transition-none",
+                  expanded
+                    ? "max-w-40 opacity-100"
+                    : "pointer-events-none max-w-0 opacity-0",
+                )}
+              >
+                {badge}
+              </span>
+            ) : null}
+          </span>
+          <span
+            aria-hidden={expanded}
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+              expanded ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+            )}
+          >
+            <span className="overflow-hidden text-xs text-muted-foreground">
+              {compactHint}
+            </span>
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-out motion-reduce:transition-none",
+            expanded ? "rotate-180 opacity-0" : "rotate-0 opacity-100",
+          )}
+          aria-hidden
+        />
+      </button>
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div
+          className="min-h-0 overflow-hidden"
+          aria-hidden={!expanded}
+          {...(!expanded ? { inert: true } : {})}
+        >
+          <div
+            className={cn(
+              "px-4 pb-4 pt-3 transition-opacity duration-300 ease-out motion-reduce:transition-none",
+              expanded ? "opacity-100 delay-75" : "opacity-0",
+            )}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SentooPreview() {
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Bank payment through Sentoo is coming soon. Your rent and lease stay
+        the same.
+      </p>
+      <Button type="button" className="min-h-11 w-full" disabled>
+        Sentoo payments coming soon
+      </Button>
+    </div>
+  );
+}
+
+function historyStatusLabel(
+  status: PaymentRequestStatus,
+  copy: PayerCopy,
+  upcoming = false,
+) {
   if (status === "confirmed") return copy.paid;
   if (status === "pending" || status === "initiated") return copy.pending;
   if (status === "failed") return copy.failed;
   if (status === "partial") return copy.partial;
   if (status === "overdue") return copy.overdue;
   if (status === "expired") return copy.expired;
-  return copy.dueStatus;
+  return upcoming ? copy.scheduled : copy.dueStatus;
 }
 
 function statusTone(
@@ -92,6 +223,7 @@ export function PayApp({
   amountUsdcAtomic,
   amountXcgCents,
   paymentReference,
+  receivingAddress,
   networkLabel,
   status,
   txHash,
@@ -110,6 +242,7 @@ export function PayApp({
   amountUsdcAtomic: number;
   amountXcgCents: number;
   paymentReference: string;
+  receivingAddress: string;
   networkLabel: string;
   status: PaymentRequestStatus;
   txHash: string | null;
@@ -139,6 +272,7 @@ export function PayApp({
   const [approved, setApproved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentRail, setPaymentRail] = useState<"stablecoin" | "sentoo">("stablecoin");
 
   const locked = status === "confirmed" || walletUi === "confirmed";
   const overdue = status === "overdue";
@@ -147,6 +281,8 @@ export function PayApp({
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
 
   const blockedByEarlier = Boolean(earlierPeriodLabel) && !locked && !expired;
+
+  const qrValue = `merkado-demo:pay?address=${encodeURIComponent(receivingAddress)}&amount=${encodeURIComponent(formatUsdcAtomicAmount(amountUsdcAtomic))}&reference=${encodeURIComponent(paymentReference)}`;
 
   async function handleApprove() {
     setError(null);
@@ -340,82 +476,127 @@ export function PayApp({
 
               <p className="text-sm">{copy.due} {dueDateLabel}</p>
 
-              <div className="mt-2 space-y-4 rounded-xl bg-muted/40 p-4">
-                <h3 className="text-sm font-semibold text-surface-dark">
-                  {copy.payByStablecoinTitle}
-                </h3>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-muted-foreground">{copy.reference}</span>
-                    <span className="font-medium">{paymentReference}</span>
+              <div className="flex flex-col gap-3" aria-label="Payment method">
+                <PaymentMethodPanel
+                  expanded={paymentRail === "stablecoin"}
+                  onExpand={() => setPaymentRail("stablecoin")}
+                  title="Pay with stablecoin"
+                  compactTitle={copy.payByStablecoinTitle}
+                  compactHint="USDC · QR and copy details"
+                >
+                  <div className="flex flex-col gap-4">
+                    {walletUi === "pending" ? (
+                      <Alert>
+                        <AlertTitle>{copy.pending}</AlertTitle>
+                        <AlertDescription>{copy.awaiting}</AlertDescription>
+                      </Alert>
+                    ) : null}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="text-muted-foreground">{copy.reference}</span>
+                        <span className="font-medium">{paymentReference}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          {copy.network}
+                          <HelpTip label={copy.network}>{copy.networkTip}</HelpTip>
+                        </span>
+                        <span className="font-medium">{networkLabel || copy.networkUnset}</span>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-sm text-muted-foreground">{copy.receiving}</p>
+                        <CopyValue
+                          value={receivingAddress}
+                          label={copy.copyAddress}
+                          truncate
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-2 rounded-lg bg-white p-4 text-center">
+                        <QRCodeSVG
+                          value={qrValue}
+                          size={152}
+                          level="M"
+                          marginSize={2}
+                          title={`Stablecoin payment QR for ${paymentReference}`}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Informational QR only. Use Pay rent below to submit
+                          your payment.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-sm text-muted-foreground">{copy.copyAmount}</p>
+                        <CopyValue
+                          value={formatUsdcAtomicAmount(amountUsdcAtomic)}
+                          label={copy.copyAmount}
+                        />
+                      </div>
+                    </div>
+
+                    <WalletConnection onConnectedChange={setConnected} />
+
+                    {connected && onBaseSepolia ? (
+                      <div className="space-y-2">
+                        <Button
+                          type="button"
+                          className="min-h-11 w-full"
+                          variant="outline"
+                          disabled={busy || approved}
+                          onClick={() => void handleApprove()}
+                        >
+                          {approved ? copy.approved : copy.approveUsdc}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="min-h-11 w-full"
+                          disabled={!approved || inFlight}
+                          onClick={() => void handlePay()}
+                        >
+                          {walletUi === "pending"
+                            ? copy.awaiting
+                            : copy.confirmPay}
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    {pendingRecovery ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11 w-full"
+                        disabled={busy}
+                        onClick={() => void handleCheckStatus()}
+                      >
+                        {busy ? "Checking…" : "Check payment status"}
+                      </Button>
+                    ) : null}
+
+                    {error ? (
+                      <Alert variant="destructive">
+                        <AlertTitle>
+                          {walletUi === "reverted" ? copy.reverted : copy.failed}
+                        </AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    ) : null}
                   </div>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      {copy.network}
-                      <HelpTip label={copy.network}>{copy.networkTip}</HelpTip>
+                </PaymentMethodPanel>
+
+                <PaymentMethodPanel
+                  expanded={paymentRail === "sentoo"}
+                  onExpand={() => setPaymentRail("sentoo")}
+                  title="Continue with Sentoo"
+                  compactTitle="Continue with Sentoo"
+                  compactHint="Bank payment · Coming soon"
+                  mark={<SentooMark expanded={paymentRail === "sentoo"} />}
+                  badge={
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+                      Coming soon
                     </span>
-                    <span className="font-medium">{networkLabel || copy.networkUnset}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{copy.payByWalletBody}</p>
-                </div>
-
-                <WalletConnection onConnectedChange={setConnected} />
-
-                {connected && onBaseSepolia ? (
-                  <div className="space-y-2">
-                    <Button
-                      type="button"
-                      className="min-h-11 w-full"
-                      variant="outline"
-                      disabled={busy || approved}
-                      onClick={() => void handleApprove()}
-                    >
-                      {approved ? copy.approved : copy.approveUsdc}
-                    </Button>
-                    <Button
-                      type="button"
-                      className="min-h-11 w-full"
-                      disabled={!approved || inFlight}
-                      onClick={() => void handlePay()}
-                    >
-                      {walletUi === "pending"
-                        ? copy.awaiting
-                        : copy.confirmPay}
-                    </Button>
-                  </div>
-                ) : null}
-
-                {walletUi === "pending" ? (
-                  <Alert>
-                    <AlertTitle>{copy.pending}</AlertTitle>
-                    <AlertDescription>{copy.awaiting}</AlertDescription>
-                  </Alert>
-                ) : null}
-
-                {pendingRecovery ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11 w-full"
-                    disabled={busy}
-                    onClick={() => void handleCheckStatus()}
-                  >
-                    {busy ? "Checking…" : "Check payment status"}
-                  </Button>
-                ) : null}
-
-                {error ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>
-                      {walletUi === "reverted" ? copy.reverted : copy.failed}
-                    </AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                ) : null}
-              </div>
-              <div className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-                <SentooMark />
-                <span>{copy.bankPaymentComingSoon}</span>
+                  }
+                >
+                  <SentooPreview />
+                </PaymentMethodPanel>
               </div>
             </CardContent>
           </Card>
@@ -438,7 +619,7 @@ export function PayApp({
                     <span>
                       <span className="font-medium">{row.periodLabel}</span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {row.offerReference} · {historyStatusLabel(row.status, copy)}
+                        {row.offerReference} · {historyStatusLabel(row.status, copy, row.upcoming)}
                       </span>
                     </span>
                     <span className="tabular-nums">

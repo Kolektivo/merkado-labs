@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -162,6 +162,16 @@ Operational detail: `12-deployment-runbook.md`.
 - The shared walkthrough persists **Base Sepolia**. Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
   Short names such as `base` or `op` must not select mainnet.
+- The Pay QR and **copy address** / **copy amount** controls are
+  **informational only** — they display the receiving address, USDC amount,
+  and payment reference and never submit (or encourage) a plain USDC
+  transfer. The only payment path is the wallet **Pay rent** action calling
+  `depositRent(tokenId, opaquePaymentId, amount)`.
+- Admin **Reset** does **not** roll back the chain. It seeds a fresh demo
+  book (canonical offers as `funding`, empty on-chain state) and starts a
+  **new chain-store epoch** so old on-chain facts are never reused; pairing
+  it with a fresh contract redeploy and env address update is a separate
+  approved operational gate.
 - Empty `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` must show a not-configured
   state; it must never fake a transaction.
 

@@ -44,11 +44,11 @@ function minted(book: ReturnType<typeof getSeedBook>, reference: string) {
   return book;
 }
 
-test("seeded pre-mint offers notify that they await a Safe mint", () => {
+test("seeded pre-mint offers notify as Listed with no mint wording", () => {
   const items = dashboardNotifications(normalizeBook(getSeedBook()));
   const pending = items.find((item) => item.id === `mint-pending:${CANONICAL_REFERENCE}`);
   assert.ok(pending);
-  assert.equal(pending.title, "Offer approved · Mint pending");
+  assert.equal(pending.title, "Offer approved · Listed");
   assert.equal(pending.href, `/originate/${CANONICAL_REFERENCE}`);
   assert.equal(
     items.some((item) => item.kind === "rent_claim"),
@@ -58,6 +58,14 @@ test("seeded pre-mint offers notify that they await a Safe mint", () => {
     items.some((item) => item.id.startsWith("sale-paid:")),
     false,
   );
+});
+
+test("a minted offer notifies as listed on Marketplace with no mint wording", () => {
+  const items = dashboardNotifications(minted(getSeedBook(), CANONICAL_REFERENCE));
+  const listed = items.find((item) => item.id === `listed:${CANONICAL_REFERENCE}`);
+  assert.ok(listed);
+  assert.equal(listed.title, "Offer listed on Marketplace");
+  assert.equal(listed.href, `/originate/${CANONICAL_REFERENCE}`);
 });
 
 test("a verified purchase notifies that sale proceeds were paid", () => {

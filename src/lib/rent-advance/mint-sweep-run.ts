@@ -111,7 +111,7 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
     });
     await updateOfferForJob(reference, (current) => ({
       ...current,
-      nextAction: "Mint broadcast · verifying on chain",
+      nextAction: "Listing being prepared",
       onchain: {
         ...mergeOnchain(current.onchain),
         offerKey: key,
@@ -123,8 +123,8 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
         {
           id: `ev-${reference}-mint-broadcast-${Date.now()}`,
           at: new Date().toISOString(),
-          title: "Mint broadcast",
-          detail: "The backend submitted mintOffer from the server mint key.",
+          title: "Listing being prepared",
+          detail: "Merkado is preparing this offer for Marketplace.",
           actor: "System",
         },
         ...current.events,
@@ -146,14 +146,14 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   if (receipt.status !== "success") {
     await updateOfferForJob(reference, (current) => ({
       ...current,
-      nextAction: "Mint failed · retry",
+      nextAction: "Listing needs attention",
       onchain: { ...mergeOnchain(current.onchain), mintTxHash: null },
       events: [
         {
           id: `ev-${reference}-mint-reverted-${Date.now()}`,
           at: new Date().toISOString(),
-          title: "Mint failed",
-          detail: "The mintOffer transaction reverted. Retry to broadcast a new mint.",
+          title: "Could not prepare the listing",
+          detail: "We could not prepare this listing yet. It will retry automatically.",
           actor: "System",
         },
         ...current.events,
@@ -233,7 +233,7 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   await updateOfferForJob(reference, (current) => ({
     ...current,
     status: "funding",
-    nextAction: "Minted · open on Marketplace",
+    nextAction: "Listed · available for 60 days",
     onchain: {
       ...mergeOnchain(current.onchain),
       tokenId: Number(mintedTokenId),
@@ -248,8 +248,8 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
       {
         id: `ev-${reference}-mint-${Date.now()}`,
         at: new Date().toISOString(),
-        title: "Offer minted",
-        detail: `Offer NFT minted by the backend. Token ${mintedTokenId.toString()} is now purchasable on Marketplace.`,
+        title: "Listing ready",
+        detail: "This offer is now listed on Marketplace.",
         actor: "System",
       },
       ...current.events,

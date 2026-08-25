@@ -15,17 +15,17 @@ import {
 import { truncateHash } from "@/lib/rent-advance/ids";
 import type { ProceedsPresentation } from "@/lib/rent-advance/custody";
 
-type ProceedsUiState = "waiting" | "minted" | "paid";
+type ProceedsUiState = "waiting" | "processing" | "paid";
 
 function stateFor(presentation: ProceedsPresentation): ProceedsUiState {
   if (presentation.landlordPaid) return "paid";
-  if (presentation.minted) return "minted";
+  if (presentation.processing) return "processing";
   return "waiting";
 }
 
 const STATUS_LABEL: Record<ProceedsUiState, string> = {
-  waiting: "Mint pending",
-  minted: "Minted",
+  waiting: "Waiting",
+  processing: "Processing",
   paid: "Paid",
 };
 
@@ -35,11 +35,10 @@ function LockedAddress({ address }: { address: string }) {
       <LockKeyhole className="text-muted-foreground" aria-hidden />
       <div className="min-w-0">
         <p className="flex items-center gap-1 text-sm font-medium">
-          Payout address locked at mint
+          Locked payout address
           <HelpTip label="Locked payout address">
-            The backend locks this address when it mints the offer NFT. The
-            buyer pays the sale amount here. It is never shown on payer or
-            purchaser screens.
+            The buyer pays the sale amount to this address. It is never shown
+            on payer or purchaser screens.
           </HelpTip>
         </p>
         <p className="truncate font-mono text-xs text-muted-foreground">
@@ -66,11 +65,11 @@ export function LandlordProceedsCard({
           Sale amount for the landlord
           <HelpTip label="Landlord sale amount">
             The one-time amount the buyer pays to the payout address once the
-            offer NFT is purchased. Monthly rent later belongs to the NFT owner.
+            offer is bought. Monthly rent later belongs to the buyer.
           </HelpTip>
         </p>
         <CardTitle className="text-lg">{propertyName}</CardTitle>
-        <StatusBadge tone={state === "paid" ? "success" : state === "minted" ? "info" : "warning"}>
+        <StatusBadge tone={state === "paid" ? "success" : state === "processing" ? "info" : "warning"}>
           {STATUS_LABEL[state]}
         </StatusBadge>
       </CardHeader>
@@ -79,9 +78,9 @@ export function LandlordProceedsCard({
           <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-4">
             <Clock3 className="mt-0.5 text-muted-foreground" aria-hidden />
             <div>
-              <p className="font-medium">Wait for the Safe mint and full purchase</p>
+              <p className="font-medium">Waiting for the offer to be bought</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Once the offer NFT is minted, the buyer pays{" "}
+                Once the offer is bought, the buyer pays{" "}
                 <Money cents={presentation.purchasePriceCents} /> directly to
                 your locked payout address. You do not need to do anything.
               </p>
@@ -94,11 +93,11 @@ export function LandlordProceedsCard({
                 <CheckCircle2 className="text-primary" aria-hidden />
                 {state === "paid"
                   ? "Paid by the buyer"
-                  : "Minted · awaiting purchase"}
-                <HelpTip label="Verified on chain">
+                  : "Purchase in progress"}
+                <HelpTip label="Sale payment">
                   {state === "paid"
-                    ? "The OfferPurchased receipt was verified on Base Sepolia."
-                    : "The OfferMinted receipt was verified on Base Sepolia."}
+                    ? "The sale payment was verified and paid to your payout address."
+                    : "The buyer submitted the sale payment and it is being verified."}
                 </HelpTip>
               </p>
               <p className="mt-1 text-3xl font-semibold tracking-tight">
@@ -122,8 +121,8 @@ export function LandlordProceedsCard({
         ) : (
           <Alert className="py-2">
             <AlertDescription>
-              Add a Base Sepolia payout address before the mint. It is locked
-              when the offer NFT is minted.
+              Add a Base Sepolia payout address before you submit. It is locked
+              for this offer.
             </AlertDescription>
           </Alert>
         )}
@@ -131,7 +130,7 @@ export function LandlordProceedsCard({
         {state === "paid" ? (
           <Alert className="py-2">
             <AlertDescription>
-              Verified from the purchase receipt. The sale amount went to the
+              Verified from the sale payment. The sale amount went to the
               payout address above.
             </AlertDescription>
           </Alert>
