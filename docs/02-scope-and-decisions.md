@@ -1,7 +1,7 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## 1. MVP goal
 
@@ -80,8 +80,13 @@ repo**. They live on merkado-cw.
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |
 | Marketplace purchase | Any wallet buys the whole offer. Buyer pays the exact purchase price to the locked landlord payout address; NFT moves Safe → buyer atomically. Fractional purchases are rejected. Not a public offering. |
-| Listing window | No listing expiry. Offers stay purchasable until sold. |
-| Demo book | Auto-seeds **MRA-001** + **MRA-010**, both approved (`funding`) and minted as NFTs. `MRA-001` is the locked reference deal and cannot be re-created. Additional offers are created via Create Offer. |
+| Listing window | **Display-only 60-day window.** Customer Marketplace and My Offers show "Available until [date] · 60-day listing window" as informational text. It is **NOT enforced**: the offer stays purchasable after the date, no Expired status derives from it, and the contract has no expiry. |
+| Reset the book | Admin **Reset** seeds a fresh demo book with the canonical offers (**MRA-001** + **MRA-010**) as `funding` offers with **empty on-chain state**, and starts a **new chain-store epoch** so old on-chain facts are never reused. Reset does **NOT** roll back the chain; old contract state is abandoned. It is intended to be paired operationally with a fresh Base Sepolia contract redeploy + env address update (a separate approved gate). |
+| Pay QR (Merkado Pay) | The QR, **copy address**, and **copy amount** controls live in the expanded **Pay with stablecoin** panel and are **informational only** (receiving address, USDC amount, payment reference for display). They never submit a payment. The only valid payment path is the wallet **Pay rent** action calling `depositRent(tokenId, opaquePaymentId, amount)`. **Continue with Sentoo** returns as a collapsed panel with a **Coming soon** badge. Live Connect / Approve USDC / Pay rent sit inside the stablecoin section. The renter never sees NFT / mint / contract / token / on-chain wording. |
+| Customer statuses | Customer-facing statuses are limited to **Under review → Listed → Sold → Paid** plus **Denied / Expired / Closed**. **Paid** refers to the landlord proceeds card only; the offer itself stays **Sold**. Mint pending, Minted, token #, NFT, contract, Safe mint, and Funding wording stay in **Admin only**. Landlord proceeds shows **Waiting → Processing → Paid** automatically (Processing = purchase submitted but not yet verified). My Offers next steps: **Listed for 60 days** for a listed offer, **Sale amount paid automatically** once sold. |
+| Create Offer drafts | An explicit **Save draft** button persists the wizard's in-progress offer (e.g. MRA-011) into **My Offers → Draft**. Drafts stay visible in the landlord My Offers workflow only; customer surfaces keep the approved status list. A draft has **no chain or payment state**. |
+| Admin mint state | Admin shows a single consistent mint state **derived from verified facts only**; a broadcast-but-unverified mint shows **Mint in progress**, never **Minted**. After reset, MRA-001 is a fresh `funding` offer with no on-chain facts. |
+| Demo book | Auto-seeds **MRA-001** + **MRA-010**, both approved (`funding`) and minted as offer NFTs on the deployed contract. After **Reset** they are fresh `funding` offers with **empty on-chain state** until the backend mints them again. `MRA-001` is the locked reference deal and cannot be re-created. Additional offers are created via Create Offer. |
 | Production marketplace | merkado-cw only |
 | Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |

@@ -116,24 +116,6 @@ export default async function PortfolioDetailPage({
           },
         ]}
       />
-      {position.offerAddress ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Offer rent address</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <CopyValue
-              value={position.offerAddress}
-              label="offer contract address"
-              truncate
-            />
-            <p className="text-xs text-muted-foreground">
-              Merkado Pay deposits this offer&apos;s rent into the contract.
-              The current NFT owner claims it from Portfolio.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
       {pendingCents > 0 ? (
         <Card className="ring-primary/30 shadow-md">
           <CardHeader>

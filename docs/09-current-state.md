@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses — approved, in progress)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -21,6 +21,20 @@ is empty (surfaces show a not-configured state), the chain store migration is
 not applied, no test USDC has been sent, no Safe transaction has executed, and
 no PR has been merged. The mock payment/wallet layer (`PAYMENT_RAIL_MODE`,
 mock provider, demo wallet, demo outcome menu, demo hashes) is removed.
+
+> **Note (2026-08-25) — approved but NOT yet live:** the Product Lead
+> approved a new stacked implementation on branch **`wave6-main-ui-restore`**
+> covering: a **display-only** 60-day listing window, **Reset = fresh demo
+> book + new chain-store epoch** (chain is not rolled back; paired with a
+> fresh contract redeploy + env address update as a separate gate),
+> **informational-only Pay QR / copy controls**, limited **customer statuses**
+> (Paid = landlord proceeds card only; mint/NFT/contract wording Admin-only),
+> **Save draft** persistence into My Offers → Draft, and an **Admin mint
+> state** derived from verified facts only ("Mint in progress"). These changes
+> are being implemented in parallel and are **NOT yet verified or live**.
+> The rows below describe the current implemented behaviour; they will be
+> updated here after verification. See `02`, `03`, `04`, `05`, `06`, `07`,
+> `08`, `10`, `11`, `12`, and ADR-0008 for the approved intent.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**

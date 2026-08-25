@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -60,6 +60,17 @@ series/legal wording may remain. “Merkado Premium” is retired.
 - **Marketplace / Listings / Cars / Property** on merkado.cw remain defined in
   merkado-cw. This Labs repo no longer operates the listing pipeline.
   This demo is **not** live on merkado.cw.
+- **60-day listing window (display-only)** = informational customer text
+  "Available until [date] · 60-day listing window" on customer Marketplace
+  and My Offers. It is **never enforced**: offers stay purchasable after the
+  date, no Expired status derives from it, and the contract has no expiry.
+- **Pay QR and copy controls** = informational only. The QR (receiving
+  address, USDC amount, payment reference) and "copy address" / "copy amount"
+  controls never submit a payment; the wallet **Pay rent** action calling
+  `depositRent(tokenId, opaquePaymentId, amount)` is the only valid path.
+- **Customer statuses** = Under review → Listed → Sold → Paid plus Denied /
+  Expired / Closed. "Paid" is the landlord proceeds card only; the offer stays
+  "Sold". Mint / NFT / contract / Safe / Funding wording stays in Admin only.
 
 **Supersedes:** Labs-as-property-scraper-kitchen. That work is on merkado-cw.
 ADR-0004 remains the Labs-rebuild record; ADR-0005 supersedes only the
@@ -93,14 +104,14 @@ Connect wallet, listing expiry, landlord claim after sale).
 
 | Area | Status |
 |---|---|
-| Merkado Direct umbrella | [LABS] Buildathon demo (see `09` after verify) |
+| Merkado Direct umbrella | [LABS] Buildathon demo (see `09` after verify). Customer statuses Under review → Listed → Sold → Paid plus Denied / Expired / Closed. Save draft persists into My Offers → Draft |
 | Pricing engine + 24% cap | [LABS] Built |
 | Simulator + Listing / Property Score | [LABS] Buildathon scope |
-| Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically |
+| Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically. Display-only "Available until [date] · 60-day listing window" — never enforced |
 | Portfolio | [LABS] Seeded positions plus purchases; current NFT owner claims rent (`claimRent`) |
-| Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC |
+| Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC. QR / copy controls informational only; depositRent is the only payment path |
 | Merkado account mock | [LABS] Buildathon scope; fictional only |
-| Admin | [LABS] Bottom of left nav — approval, collections, reset |
+| Admin | [LABS] Bottom of left nav — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
 | Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: contract not deployed, env address empty, migrations not applied, not activated, not merged |

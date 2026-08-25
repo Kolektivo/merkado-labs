@@ -8,7 +8,6 @@ import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { ensureBaseSepolia } from "@/lib/pay/wallet-adapter";
 import { truncateHash } from "@/lib/rent-advance/ids";
 import { BASE_SEPOLIA_CHAIN_ID, BASE_SEPOLIA_NETWORK_LABEL } from "@/lib/pay/networks";
-import { isReownConfigured } from "@/lib/pay/reown-config";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +29,6 @@ export function WalletConnection({
   const wallet = useMerkadoWallet();
   const [error, setError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
-  const reown = isReownConfigured();
 
   useEffect(() => {
     onConnectedChange?.(wallet.isConnected);
@@ -53,7 +51,7 @@ export function WalletConnection({
   const shortAddress = wallet.address ? truncateHash(wallet.address) : "wallet";
   const statusText = wallet.isConnected
     ? `Connected to ${shortAddress}${
-        onBaseSepolia ? ` on ${BASE_SEPOLIA_NETWORK_LABEL}` : ` on chain ${wallet.chainId ?? "unknown"}`
+        onBaseSepolia ? ` on ${BASE_SEPOLIA_NETWORK_LABEL}` : " on another network"
       }`
     : wallet.connecting
       ? "Opening wallet…"
@@ -118,23 +116,15 @@ export function WalletConnection({
       ) : null}
 
       {!wallet.isConnected ? (
-        reown ? (
-          <appkit-button
-            label="Connect wallet"
-            size={compact ? "sm" : "md"}
-            balance="hide"
-          />
-        ) : (
-          <Button
-            type="button"
-            variant={variant}
-            className={cn("min-h-11 px-4", compact && "min-h-9")}
-            disabled={wallet.connecting}
-            onClick={() => void wallet.connect()}
-          >
-            {wallet.connecting ? "Opening…" : "Connect wallet"}
-          </Button>
-        )
+        <Button
+          type="button"
+          variant={variant}
+          className={cn("min-h-11 px-4", compact && "min-h-9")}
+          disabled={wallet.connecting}
+          onClick={() => void wallet.connect()}
+        >
+          {wallet.connecting ? "Opening…" : "Connect wallet"}
+        </Button>
       ) : (
         <div className={cn("flex flex-wrap gap-2", compact && "gap-1.5")}>
           {!onBaseSepolia ? (

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   isValidPayoutAddress,
   mergeOnchain,
+  mintState,
   proceedsPresentation,
   payoutAddressLocked,
   rentReceivingAddressFor,
@@ -124,6 +125,7 @@ test("sale proceeds card maps waiting, minted, and paid", () => {
   const waiting = proceedsPresentation(open);
   assert.equal(waiting.minted, false);
   assert.equal(waiting.landlordPaid, false);
+  assert.equal(waiting.processing, false);
   assert.ok(waiting.payoutAddress);
 
   const minted = seed.offers.find((row) => row.reference === CANONICAL_REFERENCE);
@@ -137,8 +139,62 @@ test("sale proceeds card maps waiting, minted, and paid", () => {
   const paidView = proceedsPresentation(paid);
   assert.equal(paidView.purchased, true);
   assert.equal(paidView.landlordPaid, true);
+  assert.equal(paidView.processing, false);
   assert.equal(paidView.purchasePriceCents, paid.purchasePriceCents);
   assert.equal(toPortfolioPosition(paid, bought).settlementTxHash, null);
+});
+
+test("a submitted-but-unverified purchase reads Processing, not Paid", () => {
+  const book = getSeedBook();
+  const open = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(open);
+  open.onchain = {
+    ...mergeOnchain(open.onchain),
+    tokenId: 2,
+    mintTxHash: "0x" + "b".repeat(64),
+    submittedPurchaseTxHash: "0x" + "c".repeat(64),
+    purchased: false,
+    landlordPaid: false,
+  };
+  const processing = proceedsPresentation(open);
+  assert.equal(processing.processing, true);
+  assert.equal(processing.purchased, false);
+  assert.equal(processing.landlordPaid, false);
+});
+
+test("mint state requires both token id and mint tx hash to read Minted", () => {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+
+  const unminted = structuredClone(offer);
+  unminted.onchain = { ...mergeOnchain(offer.onchain), tokenId: null, mintTxHash: null };
+  assert.equal(mintState(unminted), "not_minted");
+
+  const broadcastUnverified = structuredClone(offer);
+  broadcastUnverified.onchain = {
+    ...mergeOnchain(offer.onchain),
+    tokenId: null,
+    mintTxHash: "0x" + "b".repeat(64),
+  };
+  assert.equal(mintState(broadcastUnverified), "not_minted");
+
+  const minted = structuredClone(offer);
+  minted.onchain = {
+    ...mergeOnchain(offer.onchain),
+    tokenId: 2,
+    mintTxHash: "0x" + "b".repeat(64),
+  };
+  assert.equal(mintState(minted), "minted");
+
+  const purchased = structuredClone(minted);
+  purchased.onchain = {
+    ...mergeOnchain(minted.onchain),
+    purchased: true,
+    purchaseTxHash: "0x" + "c".repeat(64),
+    landlordPaid: true,
+  };
+  assert.equal(mintState(purchased), "purchased");
 });
 
 test("seeded offers are pre-mint listings with no fabricated chain state", () => {

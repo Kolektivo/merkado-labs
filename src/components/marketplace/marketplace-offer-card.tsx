@@ -9,7 +9,7 @@ import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { bandPlainName } from "@/lib/rent-advance/scoring";
 import {
   coverSrcFor,
-  displayStatusLabel,
+  customerStatusLabel,
   effectiveOfferStatus,
   remainingOfferingCents,
 } from "@/lib/rent-advance/helpers";
@@ -52,7 +52,7 @@ export function MarketplaceOfferCard({
   const bedsLabel = `${card.bedrooms} ${card.bedrooms === 1 ? "bed" : "beds"}`;
   const monthsLabel = `${card.months} ${card.months === 1 ? "month" : "months"}`;
   const effectiveStatus = effectiveOfferStatus(card);
-  const statusLine = displayStatusLabel(effectiveStatus, card.minted);
+  const statusLine = customerStatusLabel(effectiveStatus);
   const metaLabel = `${statusLine}\u00A0\u00A0•\u00A0\u00A0${monthsLabel}`;
   const remaining = remainingOfferingCents(card);
   const purchasable = remaining > 0 && effectiveStatus === "funding" && card.minted;

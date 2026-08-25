@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PropertyCover } from "@/components/property-cover";
-import { submitNewOfferAction } from "@/lib/rent-advance/actions";
+import { submitNewOfferAction, saveDraftOfferAction } from "@/lib/rent-advance/actions";
 import { readCoverImage } from "@/lib/rent-advance/cover-image";
 import { isValidPayoutAddress } from "@/lib/rent-advance/custody";
 import { buildScheduledReceivables, coverSrcFor } from "@/lib/rent-advance/helpers";
@@ -128,6 +128,7 @@ export function NewOfferWizard({
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const quote = useMemo(() => {
     if (offer.months !== 6) return null;
@@ -191,6 +192,19 @@ export function NewOfferWizard({
       }
     }
     return null;
+  }
+
+  function saveDraft() {
+    setError(null);
+    setDraftSaved(false);
+    startTransition(async () => {
+      try {
+        await saveDraftOfferAction(offer);
+        setDraftSaved(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save this draft.");
+      }
+    });
   }
 
   function submitForReview() {
@@ -815,8 +829,8 @@ export function NewOfferWizard({
                 <WalletCards className="mb-3 size-5 text-primary" aria-hidden />
                 <p className="font-medium">Stablecoin address</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  The buyer pays the sale amount here once the offer NFT is
-                  purchased. It is locked at mint by the backend.
+                  The buyer pays the sale amount here once the offer is
+                  purchased. It is locked for this offer.
                 </p>
               </button>
               <button
@@ -852,7 +866,7 @@ export function NewOfferWizard({
               <Field
                 id="payout-address"
                 label="Recipient address"
-                hint="A checksummed Base Sepolia 0x address. It is locked at mint; it is never shown on payer or purchaser screens."
+                hint="A checksummed Base Sepolia 0x address. It is locked for this offer; it is never shown on payer or purchaser screens."
               >
                 <Input
                   id="payout-address"
@@ -941,7 +955,7 @@ export function NewOfferWizard({
                 {offer.months} months
               </p>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
-                <p className="font-medium">Payout address (locked at mint)</p>
+                <p className="font-medium">Payout address (locked for this offer)</p>
                 <p className="mt-1 text-muted-foreground">
                   {offer.payout.method === "crypto"
                     ? offer.payout.cryptoAddress
@@ -964,14 +978,24 @@ export function NewOfferWizard({
       ) : null}
 
       <div className="flex flex-wrap justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={step === 1 || pending}
-          onClick={() => setStep((current) => Math.max(1, current - 1))}
-        >
-          Back
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={step === 1 || pending}
+            onClick={() => setStep((current) => Math.max(1, current - 1))}
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={saveDraft}
+          >
+            {pending ? "Saving…" : draftSaved ? "Draft saved" : "Save draft"}
+          </Button>
+        </div>
         {step < 7 ? (
           <Button
             type="button"

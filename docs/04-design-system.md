@@ -1,7 +1,7 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## 1. Scope
 
@@ -57,7 +57,9 @@ visible but inactive. Logo and Home return to the Labs Home.
 Marketplace offer cards use merkado-cw listing-card chrome: 12px radius,
 grey-200 border, 3:2 photo, 18px title, icon spec row, and a top-border
 price block. Labs fields stay on the card (status, term, Property Score,
-payer band, whole-offer price, and availability deadline). The whole card opens the offer. No tenant
+payer band, whole-offer price, and the display-only availability text
+**"Available until [date] · 60-day listing window"** — never enforced).
+The whole card opens the offer. No tenant
 name, street, employer, or income.
 
 Do not invent a second component library or a generic “fintech” theme
@@ -74,7 +76,14 @@ outside this scoped layer.
 - Apps **Open Pay** opens this month’s payment page, which includes
   payment history.
 - Customer screens stay quiet. Reset, payment network, and fee buildup live
-  on **Admin**. Buttons use Merkado violet, not near-black.
+  on **Admin**. One button style across the app, using Merkado violet, not
+  near-black. **Connect wallet** and **Claim rent** on Portfolio size to
+  their label and stay violet.
+- Customer status pills are limited to **Under review → Listed → Sold →
+  Paid** plus **Denied / Expired / Closed**. **Paid** is the landlord
+  proceeds card only; the offer itself stays **Sold**. **Mint pending,
+  Minted, token #, NFT, contract, Safe mint, and Funding** wording appears
+  on Admin surfaces only — never on customer screens.
 - Do not add a small page-level eyebrow or brand kicker above a clear page
   title. **Rent paid forward**, **My Offers**, and similar titles stand on
   their own. Field labels, status badges, nav groups, and the logo are not
@@ -127,8 +136,11 @@ grey). Paid is the sale completing; there is no
 landlord claim button. Holder **Claim rent** is the current NFT owner's
 action in Portfolio. Marketplace and Portfolio
 use a standard wallet-connect control (Reown/AppKit (injected EIP-1193); WalletConnect
-versus Privy is a later choice and is not shown). Pay has no Connect
-wallet control. The Base Sepolia contract address comes from
+versus Privy is a later choice and is not shown). Pay keeps **Connect**,
+**Approve USDC**, and **Pay rent** inside the expanded **Pay with stablecoin**
+panel; the QR and **copy address** / **copy amount** controls there are
+informational only and never submit a payment. **Continue with Sentoo** is a
+collapsed panel with a **Coming soon** badge. The Base Sepolia contract address comes from
 `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; an empty value shows a not-configured
 state, never a fake hash. Explorer links open only for real 64-hex hashes.
 **Base Sepolia** is the default demo network. **Base Mainnet** is later.

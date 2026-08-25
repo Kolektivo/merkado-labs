@@ -31,24 +31,24 @@ export const PLAIN = {
   yearlyComparison:
     "A comparison figure so the landlord can compare this flat fee with other ways of getting cash today. It is not an interest rate, and it is not a promised return. Anything above 24% is blocked.",
   cashNow:
-    "The one-time amount the buyer pays to your payout address once this offer NFT is purchased. Later rent goes to the offer contract, then to the NFT owner — not back to the landlord. You do not connect a wallet to request an offer.",
+    "The one-time amount the buyer pays to your payout address once the offer is bought. Later rent goes to the buyer, not back to the landlord. You do not connect a wallet to request an offer.",
   walletlessRequest:
-    "You request this from your Merkado account. After review, Merkado mints the offer NFT automatically after approval. You do not connect a wallet.",
+    "You request this from your Merkado account. After review, Merkado lists the offer automatically. You do not connect a wallet.",
   claimProceeds:
-    "After the offer NFT is purchased, the sale amount is paid to the payout address locked at mint. It is not sent again.",
+    "After the offer is purchased, the sale amount is paid to your payout address. It is not sent again.",
   landlordProceeds:
     "These are sale proceeds from the purchase. They are not monthly rent and not a loan.",
   payoutAddress:
-    "Enter the Base Sepolia address the buyer pays once this offer NFT is purchased. It is locked at mint by the backend. Bank payout through Girasol is a coming-soon preview.",
+    "Enter the Base Sepolia address the buyer pays once the offer is purchased. It is locked for this offer. Bank payout through Girasol is a coming-soon preview.",
   payoutAddressUnverified:
-    "Use a real Base Sepolia 0x address. It is locked at mint and not verified as yours by this demo. It is never shown on payer or purchaser screens.",
+    "Use a real Base Sepolia 0x address. It is locked for this offer and not verified as yours by this demo. It is never shown on payer or purchaser screens.",
   payoutAddressLocked:
-    "This payout address is locked at mint. It cannot be changed after the offer NFT is minted.",
+    "This payout address is locked for the offer. It cannot be changed once the offer is approved.",
   feeAlreadyIncluded: "It will not be taken again.",
   claimRent:
-    "When rent arrives, the offer contract holds it. The current NFT owner claims it from Portfolio. It is not paid back to the landlord.",
+    "When rent arrives, it is set aside for the buyer. The current holder claims it from Portfolio.",
   payoutMethod:
-    "For this walkthrough, the buyer pays the sale amount to the Base Sepolia payout address locked at mint. Bank payout is later.",
+    "For this walkthrough, the buyer pays the sale amount to your Base Sepolia payout address. Bank payout is later.",
   bankPayoutLater:
     "Bank payout through Girasol is planned after the pilot. It is not available in this walkthrough.",
   longestTerm:
@@ -56,23 +56,23 @@ export const PLAIN = {
   paymentHistory:
     "How reliably rent has been paid. Holders never see the renter’s name.",
   amountTaken:
-    "The complete price for the whole offer NFT. Fractional purchases are not available.",
+    "The complete price for the whole offer. Fractional purchases are not available.",
   holders:
-    "The current owner of the offer NFT. They receive later rent only if the renter pays.",
+    "The current owner of the offer. They receive later rent only if the renter pays.",
   usdc:
     "Digital dollars. The amount matches the rent one-to-one and settles on Base Sepolia.",
   network: "The network the USDC payment settles on.",
 } as const;
 
 export const HOLDER_NO_PROMISE =
-  "Collections depend entirely on rent received. If a month is missed, that month’s collection is zero. Rent stays pooled in the offer contract until the current NFT owner claims it.";
+  "Collections depend entirely on rent received. If a month is missed, that month’s collection is zero. Rent is set aside for the current holder to claim from Portfolio.";
 
 export const SOLE_HOLDER_GATE =
   "Merkado Direct is unlaunched. The participation right stays in sole-holder mode while the characterisation opinion (M.1.2) and the public-holder licensing question (M.1.4) are outstanding. This surface is not public, is not indexed, and nothing here is an offer or an invitation to subscribe.";
 
 export const NOT_CONFIGURED = {
-  title: "The live contract is not configured yet",
-  body: "NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Once the Merkado Rent Offer contract is deployed on Base Sepolia and configured, this screen becomes active. Nothing was sent and nothing was recorded.",
+  title: "The live flow is not configured yet",
+  body: "NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Once Merkado enables live payments on Base Sepolia, this screen becomes active. Nothing was sent and nothing was recorded.",
   action: "Not configured",
 } as const;
 
@@ -173,6 +173,8 @@ type PayCopyEntry = {
   partial: string;
   network: string;
   receiving: string;
+  copyAddress: string;
+  copyAmount: string;
   memoNote: string;
   historyLink: string;
   myPayments: string;
@@ -229,7 +231,7 @@ const EN: PayCopyEntry = {
   successTitle: "Rent paid",
   successBody: "Thank you. Your rent and lease are unchanged.",
   failed: "Payment did not go through",
-  reverted: "The transaction reverted on chain",
+  reverted: "The transaction could not be completed",
   retry: "Try again",
   alreadyPaid: "Already paid",
   overdue: "This payment is overdue",
@@ -237,9 +239,10 @@ const EN: PayCopyEntry = {
   notFound: "We could not find that payment link.",
   partial: "The amount sent did not match the rent due.",
   network: "Network",
-  receiving: "Pays to the offer contract",
-  memoNote:
-    "The payment reference is for your records. The on-chain payment id is opaque and never contains it.",
+  receiving: "Pays to",
+  copyAddress: "Copy address",
+  copyAmount: "Copy amount",
+  memoNote: "The payment reference is for your records.",
   historyLink: "Payment history",
   myPayments: "My Payments",
   dueStatus: "Due",
@@ -258,10 +261,10 @@ const EN: PayCopyEntry = {
   payByStablecoinTitle: "Pay with stablecoin",
   bankPaymentComingSoon: "Bank payment · Coming soon",
   approved: "USDC approved",
-  notMinted: "This listing is not minted yet. It becomes payable once the offer NFT exists.",
+  notMinted: "This payment link is not ready yet. Please check back shortly.",
   notConfiguredTitle: "Pay is not configured yet",
   notConfiguredBody:
-    "The Merkado contract is not deployed or configured. Nothing can be sent until NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is set.",
+    "Merkado has not enabled live payments yet. This screen stays inactive until it is configured. Nothing was sent.",
 };
 
 const NL: PayCopyEntry = {
@@ -298,7 +301,7 @@ const NL: PayCopyEntry = {
   successTitle: "Huur betaald",
   successBody: "Dank je. Je huur en contract blijven hetzelfde.",
   failed: "Betaling is niet gelukt",
-  reverted: "De transactie is ongedaan gemaakt op de chain",
+  reverted: "De transactie kon niet worden afgerond",
   retry: "Opnieuw proberen",
   alreadyPaid: "Al betaald",
   overdue: "Deze betaling is te laat",
@@ -306,9 +309,10 @@ const NL: PayCopyEntry = {
   notFound: "We kunnen deze betaallink niet vinden.",
   partial: "Het verstuurde bedrag komt niet overeen met de huur.",
   network: "Netwerk",
-  receiving: "Betaalt aan het offercontract",
-  memoNote:
-    "Het kenmerk is voor je administratie. Het on-chain betaal-id is opake en bevat het nooit.",
+  receiving: "Betaalt aan",
+  copyAddress: "Adres kopiëren",
+  copyAmount: "Bedrag kopiëren",
+  memoNote: "Het kenmerk is voor je administratie.",
   historyLink: "Betalingsgeschiedenis",
   myPayments: "Mijn betalingen",
   dueStatus: "Te betalen",
@@ -327,10 +331,10 @@ const NL: PayCopyEntry = {
   payByStablecoinTitle: "Betaal met stablecoin",
   bankPaymentComingSoon: "Bankbetaling · Binnenkort",
   approved: "USDC goedgekeurd",
-  notMinted: "Deze listing is nog niet gemunt. Hij wordt betaalbaar zodra de offer NFT bestaat.",
+  notMinted: "Deze betaallink is nog niet klaar. Kom hier zo nog eens terug.",
   notConfiguredTitle: "Betalen is nog niet geconfigureerd",
   notConfiguredBody:
-    "Het Merkado-contract is nog niet geactiveerd. Er kan niets worden verstuurd tot NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is ingesteld.",
+    "Merkado heeft live betalen nog niet ingeschakeld. Dit scherm blijft inactief tot het is geconfigureerd. Er is niets verzonden.",
 };
 
 const PAP: PayCopyEntry = {
@@ -366,7 +370,7 @@ const PAP: PayCopyEntry = {
   successTitle: "Huur pagá",
   successBody: "Danki. Bo huur i kontrakt no ta kambia.",
   failed: "E pago no a pasa",
-  reverted: "E transashon a rebolbé riba e chain",
+  reverted: "E transashon no por a wòrdu kompleta",
   retry: "Purba di nobo",
   alreadyPaid: "Kaba pagá",
   overdue: "E pago aki ta lat",
@@ -374,9 +378,10 @@ const PAP: PayCopyEntry = {
   notFound: "Nos no por a haña e link di pago.",
   partial: "E montante mandá no ta koresponde ku e huur.",
   network: "Red",
-  receiving: "Ta paga na e kontrakt di offer",
-  memoNote:
-    "E referensia ta pa bo rekord. E id di pago on-chain ta opako i no ta kontené esaki.",
+  receiving: "Ta paga na",
+  copyAddress: "Kopia direkshon",
+  copyAmount: "Kopia montante",
+  memoNote: "E referensia ta pa bo rekord.",
   historyLink: "Historia di pago",
   myPayments: "Mi pagonan",
   dueStatus: "Pa paga",
@@ -395,10 +400,10 @@ const PAP: PayCopyEntry = {
   payByStablecoinTitle: "Paga ku stablecoin",
   bankPaymentComingSoon: "Pago di banko · Pronto",
   approved: "USDC aprobá",
-  notMinted: "E listing aki no ta mint ainda. E ta bira pagable ora e offer NFT existí.",
+  notMinted: "E link di pago no ta kla ainda. Bina atrobe despues.",
   notConfiguredTitle: "Pago no ta konfigurá ainda",
   notConfiguredBody:
-    "E kontrakt di Merkado no ta aktivá ainda. Nada no por wòrdu mandá te ku NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS ta stipá.",
+    "Merkado no a lanta pago bibu ainda. E pantaya aki ta keda inaktivo te ora ta konfigurá. Nada no a wòrdu mandá.",
 };
 
 export const payerCopy = {

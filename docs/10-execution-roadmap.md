@@ -1,9 +1,19 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## Now
+
+- **In progress (branch `wave6-main-ui-restore`):** the Product Lead–approved
+  stacked implementation of the **display-only** 60-day listing window,
+  **Reset = fresh demo book + new chain-store epoch** (chain not rolled back),
+  **informational-only Pay QR / copy controls**, limited **customer statuses**
+  (Paid = landlord proceeds card only; mint/NFT wording Admin-only),
+  **Save draft**, and **Admin mint-state consistency**. Code is being
+  implemented in parallel; verification and the `09` update follow. The fresh
+  Base Sepolia contract redeploy + env address update that pairs with Reset
+  remains a **separate approved operational gate**.
 
 - Background mint sweep: `/api/cron/mint` runs on a schedule (vercel.json, every 5 min) so approved offers are minted automatically without needing an Admin page load; it also resumes broadcast-but-unverified mints.
 

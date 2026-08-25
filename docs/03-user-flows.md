@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## 1. Hosted access
 
@@ -21,12 +21,18 @@ appear in the header bell and as a count on **My Offers** or
 **Portfolio**. Each update opens the existing offer or Portfolio page. Amounts are
 in XCG. Payment network and Reset live in **Admin**. Stage 0 legal
 questions stay open in documentation; they are not shown on customer
-Home.
+Home. **Reset the book** seeds a fresh demo book (canonical offers as
+`funding`, empty on-chain state) and starts a **new chain-store epoch**; it
+does **not** roll back the chain — pairing a fresh contract redeploy with the
+env address update is a separate approved operational step.
 
 ## 3. Landlord (Merkado Direct)
 
 1. **My Offers** — the two-offer demo book appears as a table (compact rows on
    a phone). Each row shows the sale amount, status, and one **Next** step.
+   Next steps are **Listed for 60 days** for a listed offer and **Sale amount
+   paid automatically** once sold. Listed offers also carry the
+   display-only **"Available until [date] · 60-day listing window"** text.
    Filters and book totals stay available in collapsed sections instead of
    competing with the main journey. **MRA-001** starts fully bought; **MRA-010**
    starts open on Marketplace. Create Offer can still add a draft.
@@ -39,32 +45,44 @@ Home.
    non-sensitive values into Create Offer.
 4. **Create Offer** — seven steps including a cover photo and **Payout**, then
    **Submit request**. The landlord chooses the payout destination before
-   submission. No landlord wallet is needed. 9/12 and cap-breached quotes
-   cannot be submitted.
-5. Offer detail — after approval Merkado mints **one offer NFT for this
-   listing** from the backend mint key. Every purchased offer shows one
-   **Landlord proceeds** card (Waiting, Processing, or Paid). When a buyer
+   submission. No landlord wallet is needed. An explicit **Save draft** button
+   persists the in-progress wizard (e.g. MRA-011) into **My Offers → Draft**;
+   drafts are landlord-only and have no chain or payment state. 9/12 and
+   cap-breached quotes cannot be submitted.
+5. Offer detail — after Admin approval the offer is **Listed** (the backend
+   mints one offer NFT from the backend mint key — an Admin/ops detail, never
+   shown to the landlord). Every purchased offer shows one
+   **Landlord proceeds** card (Waiting, Processing, or Paid). Processing means
+   the purchase was submitted but not yet verified; Paid appears automatically
+   when the sale completes. When a buyer
    purchases the whole offer, the buyer pays the exact purchase price
-   **directly to the locked landlord payout address** and the NFT moves
-   minter → buyer atomically. There is no landlord claim action, no
-   funding record, and no listing expiry. Later rent is not paid to the
+   **directly to the locked landlord payout address** and the offer transfers
+   to the buyer automatically. There is no landlord claim action and no
+   funding record. The **"Available until [date] · 60-day listing window"**
+   text is display-only and never enforced. Later rent is not paid to the
    landlord again. Independent approval, Record collection, and
    dual-control live in **Admin**.
 6. **Landlord proceeds** — use the property name (Sun Set Heights, Punda
-   studio) as the main label. MRA numbers stay secondary. Purchased offers
-   show **Paid** when the sale completes; the purchase price is the hero.
+   studio) as the main label. MRA numbers stay secondary. The card moves
+   **Waiting → Processing → Paid** automatically: Processing means the
+   purchase was submitted but not yet verified, and Paid appears when the
+   sale completes; the purchase price is the hero.
    The fee is informational and already included. Paid is final.
    Disclosure: the buyer pays the exact purchase price directly to the
    locked landlord payout address; there is no landlord claim step.
 7. Landlord-facing lifecycle is **Under review → Listed → Sold → Paid**, with
-   **Denied** as an explicit outcome. There is no 60-day expiry. Monthly
+   **Denied / Expired / Closed** as explicit outcomes. There is no
+   expired-after-60-days state: the 60-day window is display-only and the
+   offer stays purchasable until sold. Monthly
    collections and holder detail stay out of the landlord view.
 
 ## 4. Holder (Merkado Direct)
 
 1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
-   term, and whole-offer price. A holder connects a real wallet (injected
+   term, whole-offer price, and the display-only
+   **"Available until [date] · 60-day listing window"** text (never
+   enforced). A holder connects a real wallet (injected
    EIP-1193, e.g. WalletConnect/Privy) and buys 100% of the offer. The
    buyer pays the exact purchase price **directly to the locked landlord
    payout address**; the NFT moves minter → buyer atomically in the
@@ -92,11 +110,19 @@ Home.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
    unique reference, opaque payment id, selected payment
    network (**Base Sepolia**). A status badge and the pay action sit with
-   the amount so they stay visible on a phone.
+   the amount so they stay visible on a phone. The payment card has an
+   expanded **Pay with stablecoin** panel: the QR, **copy address**, and
+   **copy amount** controls are **informational only** (receiving address,
+   USDC amount, payment reference for display) and never submit a payment.
+   The live actions — **Connect**, **Approve USDC**, and **Pay rent** —
+   sit inside that same stablecoin section. **Continue with Sentoo** returns
+   as a collapsed panel with a **Coming soon** badge.
 3. The renter deposits rent by calling `depositRent(tokenId,
    opaquePaymentId, amount)` through the `MerkadoRentOfferV1` contract.
    The amount must equal the exact monthly rent. The deposit is pending →
-   confirmed on chain. Already paid and overdue remain.
+   confirmed on chain. Already paid and overdue remain. The wallet **Pay
+   rent** action is the **only valid payment path**; the renter never sees
+   NFT / mint / contract / token / on-chain wording.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 
@@ -121,6 +147,19 @@ from the person who submitted the request. After approval, operators execute
 the prepared `mintOffer` calldata from the backend mint key, and the server
 verifies the mint receipt on Base Sepolia (requires the contract to be
 deployed and the env address set).
+
+Admin shows **one consistent mint state derived from verified facts only**:
+a broadcast-but-unverified mint reads **Mint in progress**, never **Minted**.
+After **Reset the book**, MRA-001 and MRA-010 return as fresh `funding`
+offers with **no on-chain facts**, and a **new chain-store epoch** starts so
+old on-chain facts are never reused. Reset does **not** roll back the chain;
+pairing it with a fresh Base Sepolia contract redeploy and env address update
+is a separate approved operational step.
+
+Customer-facing status wording (Under review → Listed → Sold → Paid plus
+Denied / Expired / Closed) stays on customer surfaces; **Mint pending,
+Minted, token #, NFT, contract, Safe mint, and Funding** wording lives in
+Admin only.
 
 ## 8. Shared payment
 

@@ -55,7 +55,7 @@ export function dashboardNotifications(
       items.push({
         id: `listed:${offer.reference}`,
         kind: "offer_update",
-        title: "Offer minted and listed",
+        title: "Offer listed on Marketplace",
         subject: offerDisplayName(offer),
         detail: "Open for purchase on Marketplace",
         href: `/originate/${offer.reference}`,
@@ -65,9 +65,9 @@ export function dashboardNotifications(
       items.push({
         id: `mint-pending:${offer.reference}`,
         kind: "offer_update",
-        title: "Offer approved · Mint pending",
+        title: "Offer approved · Listed",
         subject: offerDisplayName(offer),
-        detail: "Minting automatically after approval",
+        detail: "Opening on Marketplace shortly",
         href: `/originate/${offer.reference}`,
         actionLabel: "View offer",
       });

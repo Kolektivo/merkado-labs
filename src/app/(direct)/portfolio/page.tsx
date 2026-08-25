@@ -152,7 +152,7 @@ export default async function PortfolioPage() {
       ) : null}
       <p className="text-sm text-muted-foreground">
         When rent arrives, open the position, connect a wallet on Base Sepolia,
-        and claim rent from the offer contract.
+        and claim the rent.
       </p>
     </ThemeMerkado>
   );

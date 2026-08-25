@@ -1,7 +1,7 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto architecture handoff.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer; ADR-0008)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses; ADR-0008)
 
 ## Live
 
@@ -144,6 +144,7 @@ only when mainnet is enabled.
 | Holder purchase | Any wallet buys the whole offer; NFT moves Safe → buyer atomically. No fractions. |
 | Holder claim | Current NFT owner calls `claimRent(tokenId)` in Portfolio. Transferring the NFT moves the claim right with it. |
 | Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)`; exact monthly amount; app schedules the six-month term, contract has no deposit cap. |
+| Pay QR / copy controls | Informational only. The QR shows the receiving address, USDC amount, and payment reference; **copy address** / **copy amount** never submit a payment. `depositRent` via the wallet **Pay rent** action is the only valid payment path. **Continue with Sentoo** is a collapsed **Coming soon** panel. The renter never sees NFT / mint / contract / token wording. |
 | Wallet | Injected EIP-1193. WalletConnect versus Privy is a later choice. No mock provider or demo wallet. |
 | Supabase | Labs `ewoxmzznkavapcxdporm` only; service-role server-only; RLS on. |
 
@@ -207,6 +208,14 @@ interrupted before 5 confirmations, the Pay / Marketplace / Portfolio page shows
 | 7. Later month | November while September is open | Page says pay the earlier month first | Do not allow a deposit for a blocked month |
 | 8. Failed / wrong amount | Wallet reject or server error | Book `failed` | Map reject, revert, and amount mismatch to those outcomes |
 | 9. Unknown link | Friendly not-found | No other payment data leaked | Keep that privacy wall |
+
+In the expanded **Pay with stablecoin** panel, the QR and the **copy
+address** / **copy amount** controls are **informational only** — they
+display the receiving address, USDC amount, and payment reference and never
+submit a payment. **Continue with Sentoo** is a collapsed panel with a
+**Coming soon** badge. The live **Connect**, **Approve USDC**, and **Pay
+rent** actions sit inside that same stablecoin section; `depositRent` is the
+only valid payment path.
 
 Do **not** treat the first click as a confirmed chain receipt. Keep
 initiated / pending / confirmed distinct.
@@ -288,6 +297,8 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 - Do not rewrite the idempotent book write. Confirm once from verified
   chain events.
 - Do not show fee, purchase price, or holder economics on Pay.
+- Do not let the QR or **copy address** / **copy amount** controls submit a
+  payment; only the wallet **Pay rent** action calling `depositRent` may do so.
 - Do not treat this as a public token market. Merkado mints the offer NFT,
   then the buyer holds it. Merkado does not custody monthly rent.
 - Do not link demo hashes on the explorer. There are no demo hashes left.

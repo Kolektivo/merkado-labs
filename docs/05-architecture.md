@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## 1. Surfaces
 
@@ -36,7 +36,12 @@ Customer-facing surfaces:
   submit for review, whole-offer purchase, holder claim, confirm rent
   deposit, reset).
 - There is no Merkado login. After deploy, the hosted demo asks for a
-  shared host password at `/enter`. Reset the book sits in Admin.
+  shared host password at `/enter`. Reset the book sits in Admin. **Reset**
+  seeds a fresh demo book (canonical offers as `funding`, empty on-chain
+  state) and starts a **new chain-store epoch** so old on-chain facts are
+  never reused. It does **not** roll back the chain; pairing it
+  operationally with a fresh Base Sepolia contract redeploy + env address
+  update is a separate approved gate.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
   its own Labs mock shell. Direct operations use the sidebar shell
   (`src/app/(direct)/layout.tsx`). The three shells are separate layouts
@@ -98,6 +103,13 @@ are the on-chain evidence record; the JSON book is the product state.
   expected event/log, records it in the chain store tables, and writes the
   book once. Explorer links render only for a real 64-hex transaction hash
   on an official catalog explorer.
+- **Pay QR (informational).** The QR, **copy address**, and **copy amount**
+  controls in the expanded **Pay with stablecoin** panel display the
+  receiving address, USDC amount, and payment reference only. They never
+  submit a payment; the wallet **Pay rent** action calling
+  `depositRent(tokenId, opaquePaymentId, amount)` is the only valid payment
+  path. Server verification remains authoritative and only verified chain
+  events may mark rent paid.
 - **Configuration.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty until
   deployment; empty shows a not-configured state. Server-only
   `MERKADO_RPC_URL` defaults to `https://sepolia.base.org`.

@@ -25,6 +25,7 @@ export function MintControl({
     : tokenId != null && mintTxHash
       ? "minted"
       : "not_minted";
+  const inProgress = state === "not_minted" && Boolean(mintTxHash);
 
   return (
     <Card>
@@ -38,7 +39,9 @@ export function MintControl({
               ? "Purchased"
               : state === "minted"
                 ? `Minted · token ${tokenId}`
-                : "Not minted (Mint pending)"}
+                : inProgress
+                  ? "Mint in progress"
+                  : "Not minted"}
           </StatusBadge>
         </CardTitle>
       </CardHeader>
@@ -68,7 +71,7 @@ export function MintControl({
           </div>
         </div>
 
-        {mintTxHash && contractAddress ? (
+        {state === "minted" && mintTxHash && contractAddress ? (
           <p className="text-xs text-muted-foreground">
             Minted in{" "}
             <a

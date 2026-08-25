@@ -166,6 +166,8 @@ export type ProceedsPresentation = {
   minted: boolean;
   purchased: boolean;
   landlordPaid: boolean;
+  /** True when a purchase was submitted but not yet verified (Processing). */
+  processing: boolean;
   payoutAddress: string | null;
   purchasePriceCents: number;
   feeCents: number;
@@ -177,6 +179,7 @@ export function proceedsPresentation(offer: Offer): ProceedsPresentation {
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     purchased: onchain.purchased,
     landlordPaid: onchain.landlordPaid,
+    processing: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
     payoutAddress: payoutAddressLocked(offer),
     purchasePriceCents: offer.purchasePriceCents,
     feeCents: offer.feeCents,

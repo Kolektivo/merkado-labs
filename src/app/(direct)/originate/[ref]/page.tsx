@@ -24,12 +24,14 @@ import {
   effectiveOfferStatus,
   rentToMarket,
   offerDisplayName,
-  displayStatusLabel,
+  customerStatusLabel,
+  listingExpiresAt,
+  formatDayMonthYear,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
-import { mergeOnchain, proceedsPresentation } from "@/lib/rent-advance/custody";
+import { proceedsPresentation } from "@/lib/rent-advance/custody";
 import { getOffer } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -58,9 +60,10 @@ export default async function OfferOpsPage({
   const proceeds = proceedsPresentation(offer);
   const effectiveStatus = effectiveOfferStatus(offer);
   const showProceedsCard = offer.status !== "draft";
-  const minted = mergeOnchain(offer.onchain).tokenId != null;
+  const expiresAt = listingExpiresAt(offer.publishedAt);
+  const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
   const lifecycleEvents = offer.events.filter((event) =>
-    /offer request|approved|denied|offer created|listed|offer sold|whole offer|sale amount|status set/i.test(
+    /offer request|approved|denied|offer created|listed|listing|offer sold|whole offer|sale amount|status set/i.test(
       event.title,
     ),
   );
@@ -73,7 +76,7 @@ export default async function OfferOpsPage({
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge tone={statusTone(effectiveStatus)}>
-              {displayStatusLabel(effectiveStatus, minted)}
+              {customerStatusLabel(effectiveStatus)}
             </StatusBadge>
             {effectiveStatus === "funding" ||
             effectiveStatus === "live" ||
@@ -110,7 +113,7 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {displayStatusLabel(effectiveStatus, minted)}
+            {customerStatusLabel(effectiveStatus)}
           </CardContent>
         </Card>
         <Card>
@@ -123,8 +126,16 @@ export default async function OfferOpsPage({
             {effectiveStatus === "live" || effectiveStatus === "collecting"
               ? "Offer sold"
               : effectiveStatus === "funding"
-                ? "Open for purchase once minted"
+                ? "Open on Marketplace"
                 : "Not on the marketplace"}
+            {expiresLabel &&
+            (effectiveStatus === "funding" ||
+              effectiveStatus === "live" ||
+              effectiveStatus === "collecting") ? (
+              <span className="mt-1 block text-sm font-normal text-muted-foreground">
+                Available until {expiresLabel} · 60-day listing window
+              </span>
+            ) : null}
           </CardContent>
         </Card>
       </div>

@@ -149,7 +149,7 @@ export async function approveOfferAction(reference: string, actorId: string) {
           id: `ev-${reference}-approve-${Date.now()}`,
           at,
           title: "Approved",
-          detail: `${approver.name} · independent approver. The offer awaits a Safe mint before it can open on Marketplace.`,
+          detail: `${approver.name} · independent approver. The offer will open on Marketplace shortly.`,
           actor: approver.name,
         },
         ...offer.events,
@@ -735,7 +735,7 @@ export async function submitNewOfferAction(offer: Offer) {
         at: new Date().toISOString(),
         title: "Offer request submitted",
         detail:
-          "Requested from the Merkado account. No wallet was needed. Merkado prepares the offer for the Safe to mint after approval.",
+          "Requested from the Merkado account. No wallet was needed. Merkado prepares the offer for listing after approval.",
         actor: "D. Martina",
       },
       ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-submit`),
@@ -759,12 +759,8 @@ export async function saveDraftOfferAction(offer: Offer) {
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
-  priceOrBlock({
-    monthlyRentCents: offer.monthlyRentCents,
-    months: offer.months,
-    feeRate: offer.feeRate,
-    relatedParty: offer.relatedParty,
-  });
+  // Drafts are not priced or cap-blocked: an in-progress draft may be
+  // incomplete or above the cap. Submission re-prices and blocks later.
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
   const toSave = { ...offer, status: "draft" as const, onchain: mergeOnchain(undefined) };

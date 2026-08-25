@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 21, 2026 (Base Sepolia transferable NFT rent offer)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 ## Local dashboard
 
@@ -90,6 +90,15 @@ explicitly approved and done (see `docs/10-execution-roadmap.md`):
 3. Apply the chain store migration.
 4. Send test USDC (the backend mint key signs `mintOffer` directly).
 5. Product Lead approves hosted activation and the merge.
+
+**Reset / redeploy pairing (2026-08-25).** Admin **Reset the book** seeds a
+fresh demo book (**MRA-001** + **MRA-010** as `funding` offers with **empty
+on-chain state**) and starts a **new chain-store epoch** so old on-chain
+facts are never reused. Reset does **not** roll back the chain; old contract
+state is abandoned. Pair Reset operationally with a fresh Base Sepolia
+contract redeploy + `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` update (steps 1–2
+above) so the demo book and the chain start from the same clean state. Each
+of those steps remains a separate approved gate.
 
 Base Mainnet and real funds remain blocked. Do not deploy the contract to
 Base Mainnet from this repository.

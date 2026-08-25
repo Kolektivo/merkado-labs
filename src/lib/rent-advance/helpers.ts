@@ -159,6 +159,19 @@ export function remainingOfferingCents(offer: { offeringCents: number; fundedCen
   return Math.max(0, offer.offeringCents - offer.fundedCents);
 }
 
+/**
+ * Display-only 60-day listing window. This is informational text only —
+ * it is never enforced. Offers stay purchasable after the date, no Expired
+ * status derives from it, and the contract has no expiry.
+ */
+export function listingExpiresAt(publishedAt: string | null): string | null {
+  if (!publishedAt) return null;
+  const expires = new Date(publishedAt);
+  if (Number.isNaN(expires.getTime())) return null;
+  expires.setUTCDate(expires.getUTCDate() + 60);
+  return expires.toISOString();
+}
+
 export function effectiveOfferStatus(
   offer: { status: OfferStatus; expiresAt?: string | null },
 ): OfferStatus {
@@ -242,6 +255,33 @@ export function statusLabel(status: OfferStatus): string {
 }
 
 /**
+ * Customer-facing status label. Mint details never reach these surfaces:
+ * an approved offer reads "Listed" whether or not its NFT is minted, and a
+ * purchased offer stays "Sold" (the landlord proceeds card shows "Paid").
+ */
+export function customerStatusLabel(status: OfferStatus): string {
+  switch (status) {
+    case "under_review":
+      return "Under review";
+    case "funding":
+      return "Listed";
+    case "live":
+    case "collecting":
+      return "Sold";
+    case "denied":
+      return "Denied";
+    case "expired":
+      return "Expired";
+    case "closed":
+      return "Closed";
+    case "default":
+      return "Default";
+    case "draft":
+      return "Draft";
+  }
+}
+
+/**
  * Mint-aware display label. A `funding` offer stays "Mint pending" only until
  * its offer NFT is minted; once minted it reads "Listed" (matching the
  * Marketplace card), even though `offer.status` is still `funding`. The status
@@ -278,6 +318,44 @@ export function paymentStatusLabel(
     default:
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
+}
+
+const OPEN_PAYMENT_STATUSES = new Set<PaymentRequestStatus>([
+  "due",
+  "initiated",
+  "pending",
+  "failed",
+  "partial",
+  "overdue",
+]);
+
+export type PaymentRowLike = {
+  paymentRequestId: string;
+  status: PaymentRequestStatus;
+  dueDate: string;
+};
+
+/** Earliest-actionable open requests, oldest due date first. */
+export function openPaymentRequests<T extends PaymentRowLike>(requests: T[]): T[] {
+  return requests
+    .filter((row) => OPEN_PAYMENT_STATUSES.has(row.status))
+    .slice()
+    .sort(
+      (a, b) =>
+        a.dueDate.localeCompare(b.dueDate) ||
+        a.paymentRequestId.localeCompare(b.paymentRequestId),
+    );
+}
+
+/** True when an earlier open request exists before `row` (so `row` is Upcoming). */
+export function isUpcomingPaymentRequest<T extends PaymentRowLike>(
+  requests: T[],
+  row: T,
+): boolean {
+  if (!OPEN_PAYMENT_STATUSES.has(row.status)) return false;
+  const open = openPaymentRequests(requests);
+  const index = open.findIndex((item) => item.paymentRequestId === row.paymentRequestId);
+  return index > 0;
 }
 
 export function canRecordCollection(status: OfferStatus): boolean {
@@ -333,6 +411,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
     status: offer.status,
     expiresAt: offer.expiresAt,
+    publishedAt: offer.publishedAt,
     coverImageSrc: offer.property.coverImageSrc ?? null,
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     tokenId: onchain.tokenId,

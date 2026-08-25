@@ -27,10 +27,10 @@ import { proceedsPresentation } from "@/lib/rent-advance/custody";
 import {
   attentionItems,
   bookTotals,
+  customerStatusLabel,
   effectiveOfferStatus,
   offerDisplayName,
   sortOffersForLandlordList,
-  displayStatusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { loadBook } from "@/lib/rent-advance/store";
@@ -73,9 +73,9 @@ function nextOfferStep(
   if (status === "draft") return "Submit this request";
   if (status === "under_review") return "Wait for approval";
   if (status === "denied") return "Review the decision";
-  if (proceeds.purchased && proceeds.landlordPaid) return "Sale proceeds paid to the payout address";
-  if (proceeds.minted) return "Minted · open on Marketplace";
-  if (status === "funding") return "Minting automatically after approval";
+  if (status === "live" || status === "collecting") return "Sale amount paid automatically";
+  if (proceeds.landlordPaid) return "Sale amount paid automatically";
+  if (status === "funding") return "Listed for 60 days";
   return "Offer sold";
 }
 
@@ -190,7 +190,7 @@ export default async function OriginatePage({
                       </p>
                     </div>
                     <StatusBadge tone={statusTone(effectiveStatus)}>
-                      {displayStatusLabel(effectiveStatus, proceeds.minted)}
+                      {customerStatusLabel(effectiveStatus)}
                     </StatusBadge>
                   </div>
                   <p className="mt-2 text-sm">
@@ -257,7 +257,7 @@ export default async function OriginatePage({
                       <TableCell>{offer.months} months</TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTone(effectiveStatus)}>
-                          {displayStatusLabel(effectiveStatus, proceeds.minted)}
+                          {customerStatusLabel(effectiveStatus)}
                         </StatusBadge>
                       </TableCell>
                       <TableCell
