@@ -49,16 +49,18 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 6. Offer detail: landlord sees review / listed / sold / paid, the locked
    payout destination, and no listing expiry; no holder or monthly
    collection detail. Operations controls are only in Admin.
-7. Marketplace: no tenant name or address; server rejects fractional
-   purchases; a whole-offer purchase pays the exact purchase price to the
-   locked landlord address and moves the NFT Safe → buyer atomically.
-   Empty contract env shows a not-configured state.
+7. Marketplace: no tenant name or address; **mint-pending offers are not
+   listed** (their detail page stays reachable with a Mint pending alert);
+   server rejects fractional purchases; a whole-offer purchase pays the exact
+   purchase price to the locked landlord address and moves the NFT Safe →
+   buyer atomically. Empty contract env shows a not-configured state.
 8. Portfolio: Position ID; offer token id; accrued rent per token; the
    current NFT owner can `claimRent`; non-owners are rejected.
 9. Pay: seeded request **XCG 3,222.00** / **1,800.00 USDC** on the selected
    network (**Base Sepolia** after Reset); `depositRent(tokenId,
    opaquePaymentId, amount)`; visible pending then success; invalid id is a
-   safe not-found.
+   safe not-found. The active card shows a muted, non-actionable **Bank
+   payment · Coming soon** (Sentoo) teaser.
 10. One confirmed deposit appears once in Pay history, My Payments, offer
     collections, and holder claimable rent. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab

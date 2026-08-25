@@ -51,10 +51,10 @@ requires `LABS_DEMO_PASSWORD`.
 | Create offer `/originate/new` | Seven-step wizard with cover photo and Payout before Review. The landlord locks a payout destination before submission. No landlord wallet. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
 | Offer detail `/originate/MRA-*` | Property name first. A Landlord proceeds card shows Waiting, Processing, Failed, or Paid. Paid is final when the sale completes (buyer pays the locked landlord address). Listed offers stay purchasable (no expiry). |
-| Marketplace `/offers` | Two anonymised cards. Open offers show one whole-offer price. Purchase connects a real Reown/AppKit wallet and buys the whole offer; the buyer pays the exact purchase price to the locked landlord address and the NFT moves Safe → buyer atomically. If `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, purchase shows a not-configured state. |
+| Marketplace `/offers` | Anonymised cards for minted, whole offers only — an approved offer that is still **mint pending is not listed** until its mint receipt is verified (its detail page stays reachable and shows a Mint pending alert). Purchase connects a real Reown/AppKit wallet and buys the whole offer; the buyer pays the exact purchase price to the locked landlord address and the NFT moves Safe → buyer atomically. If `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, purchase shows a not-configured state. |
 | Portfolio `/portfolio` | Property name leads. The offer token id, accrued rent per token, and current owner remain visible. The current NFT owner calls **Claim rent** (`claimRent`); non-owners are rejected. Transferring the NFT moves claim rights with it. |
-| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement. Rent is deposited via `depositRent(tokenId, opaquePaymentId, amount)` — exact monthly amount. Pending → confirmed on chain. No demo outcomes. A later month cannot be paid while an earlier month on the same offer is open. If the contract env is empty, the pay action shows a not-configured state. |
-| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. Fee buildup lives here. |
+| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement, inside a **Pay with stablecoin** section. Rent is deposited via `depositRent(tokenId, opaquePaymentId, amount)` — exact monthly amount. Pending → confirmed on chain. No demo outcomes. A later month cannot be paid while an earlier month on the same offer is open. A muted, non-actionable **Bank payment · Coming soon** (Sentoo) teaser sits at the foot of the active pay card. If the contract env is empty, the pay action shows a not-configured state. |
+| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. Minting is automatic from the background sweep (no manual **Mint now** button). Fee buildup lives here. |
 | Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. **Merkado Pay** and **Merkado Direct** are enabled. Old `/account/payouts` and `/payouts` open My Offers. |
 
 Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
@@ -124,9 +124,13 @@ filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 - Dual-control still rejects the same person twice (app check plus the trigger
   on `ra_demo_state`).
 - Independent approval moves a newly submitted Create Offer request to funding
-  from Admin. Operators then execute the prepared `mintOffer` calldata from the
-  backend mint key; Mint Control shows the live status until the mint is verified.
-  server verifies the mint receipt on Base Sepolia.
+  from Admin. Minting is automatic: the background sweep (Admin page load plus
+  the `/api/cron/mint` cron) broadcasts `mintOffer` from the backend mint key and
+  verifies the receipt on Base Sepolia. There is no manual **Mint now** button.
+- Status labels are mint-aware: an approved offer reads **Mint pending** only
+  until its offer NFT is verified, then **Listed** — on Admin, the offer detail,
+  My Offers, and the Marketplace card alike. The underlying `status` stays
+  `funding` until a buyer purchases the whole offer (`live`/`collecting`).
 - Create offer can save a new six-month draft (MRA-007 in the walkthrough;
   Reset removes it). 9/12 still cannot be saved.
 - Pay is English-only. Copy address, amount, and payment history stay visible.
