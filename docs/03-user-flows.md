@@ -114,9 +114,12 @@ env address update is a separate approved operational step.
    expanded **Pay with stablecoin** panel: the QR, **copy address**, and
    **copy amount** controls are **informational only** (receiving address,
    USDC amount, payment reference for display) and never submit a payment.
-   The live actions — **Connect**, **Approve USDC**, and **Pay rent** —
-   sit inside that same stablecoin section. **Continue with Sentoo** returns
-   as a collapsed panel with a **Coming soon** badge.
+The live actions — **Connect** then a single **Pay rent** action — sit
+    inside that same stablecoin section. **Pay rent** opens one dialog that
+    runs Approve USDC → `depositRent` → server verification, with a **Check
+    status** action for a pending transaction (never a blind re-send).
+    **Continue with Sentoo** returns as a collapsed panel with a **Coming
+    soon** badge.
 3. The renter deposits rent by calling `depositRent(tokenId,
    opaquePaymentId, amount)` through the `MerkadoRentOfferV1` contract.
    The amount must equal the exact monthly rent. The deposit is pending →

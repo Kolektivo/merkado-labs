@@ -13,7 +13,6 @@ import {
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
 import { loadBook } from "@/lib/rent-advance/store";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 import { NOT_CONFIGURED } from "@/lib/rent-advance/copy";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 
@@ -30,7 +29,7 @@ function tone(status: PaymentRequestStatus) {
 
 export default async function PayIndexPage() {
   const book = await loadBook();
-  const configured = isMerkadoConfigured();
+  const configured = Boolean(book.cryptoConfig?.offerNftContract);
   const requests = (book.paymentRequests ?? [])
     .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
     .slice()

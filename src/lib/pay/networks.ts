@@ -38,6 +38,23 @@ export function merkadoContractAddressOrNull(): `0x${string}` | null {
   }
 }
 
+/**
+ * Validate and checksum a contract address. Returns null when missing,
+ * placeholder, or invalid. Used to resolve the stored (variable) contract
+ * address from the demo book before falling back to the env value.
+ */
+export function normalizeContractAddress(
+  value: string | null | undefined,
+): `0x${string}` | null {
+  const raw = value?.trim();
+  if (!raw || isPlaceholder(raw)) return null;
+  try {
+    return getAddress(raw) as `0x${string}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Company receiving Safe, from env (trimmed) or the verified default. */
 export function resolvedCompanySafe(): `0x${string}` {
   const raw = process.env[MERKADO_COMPANY_SAFE_ENV]?.trim();

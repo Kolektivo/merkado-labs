@@ -27,7 +27,6 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +54,8 @@ export default async function PortfolioDetailPage({
   if (!position) notFound();
   const offer = book.offers.find((row) => row.reference === position.reference);
   const onchain = mergeOnchain(offer?.onchain);
-  const configured = isMerkadoConfigured();
+  const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
+  const configured = Boolean(contractAddress);
   const distributions = (book.distributions ?? []).filter(
     (row) => row.offerReference === position.reference,
   );
@@ -127,6 +127,7 @@ export default async function PortfolioDetailPage({
               tokenId={onchain.tokenId}
               amountCents={pendingCents}
               configured={configured}
+              contractAddress={contractAddress}
               pendingRecovery={Boolean(onchain.submittedClaimTxHash)}
             />
           </CardContent>

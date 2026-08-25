@@ -21,7 +21,6 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 import { SubscribeForm } from "./subscribe-form";
 
@@ -54,7 +53,7 @@ export default async function BuyerOfferPage({
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
   const openToBuy =
     (offer.status === "funding" || offer.status === "live" || offer.status === "collecting");
-  const configured = isMerkadoConfigured();
+  const configured = Boolean(offer.contractAddress);
 
   return (
     <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
@@ -115,6 +114,7 @@ export default async function BuyerOfferPage({
               minted={offer.minted}
               configured={configured}
               tokenId={offer.tokenId}
+              contractAddress={offer.contractAddress}
               pendingRecovery={offer.pendingPurchase}
             />
           ) : (

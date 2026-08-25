@@ -13,6 +13,7 @@ import { MERKADO_OFFER_ABI } from "@/lib/onchain/abi";
 import { MERKADO_CHAIN_ID, merkadoContractAddress, merkadoRpcUrl } from "@/lib/onchain/config";
 import { randomOfferKey } from "@/lib/onchain/ids";
 import { merkadoMinterAccount } from "@/lib/onchain/minter";
+import { normalizeContractAddress } from "@/lib/pay/networks";
 import {
   ensureActiveEpoch,
   recordChainEvent,
@@ -68,8 +69,11 @@ function revalidate() {
  * hash so the next call broadcasts a fresh transaction.
  */
 export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
-  const contractAddress = merkadoContractAddress();
   const book = await loadBookForJob();
+  // Mint on the active contract address: the stored (variable) address in the
+  // demo book wins, with the env value as the first-run default.
+  const contractAddress =
+    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   if (offer.status !== "funding") {

@@ -123,6 +123,18 @@ customers read.
    persists the wizard's in-progress offer into **My Offers → Draft**; a
    draft has no chain or payment state and never appears on customer
    surfaces.
+5. **Contract address is a variable.** Because the Base Sepolia contract is
+   redeployed periodically (paired with Reset), the active address is stored
+   in the demo book (`cryptoConfig.offerNftContract`) and updated in **Admin**
+   after each redeploy. The stored value wins; `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`
+   is only the first-run default. Empty everywhere shows the not-configured
+   state.
+6. **Single-action approve + send.** Marketplace purchase and Merkado Pay use
+   one primary button that opens a dialog running Approve USDC → purchase /
+   deposit → server verification. Pending transactions surface a **Check
+   status** action instead of a blind re-send. One button style; there is no
+   separate Approve step on the page. Holder `claimRent` stays a single
+   action (no approval needed).
 
 ## Approval
 

@@ -14,7 +14,6 @@ import { canRecordCollection, displayStatusLabel, statusTone } from "@/lib/rent-
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 import { MintControl } from "./mint-control";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
@@ -38,8 +37,8 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
   if (!offer) notFound();
 
   const onchain = mergeOnchain(offer.onchain);
-  const configured = isMerkadoConfigured();
-  const minterAddress = configured ? merkadoMinterAddressOrNull() : null;
+  const configured = Boolean(onchain.contractAddress ?? book.cryptoConfig?.offerNftContract);
+  const minterAddress = merkadoMinterAddressOrNull();
   const nextReceivable =
     offer.receivables.find((row) => row.status === "scheduled") ?? null;
   const missed = offer.receivables.find((row) => row.status === "missed");

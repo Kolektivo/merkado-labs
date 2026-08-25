@@ -29,12 +29,14 @@ export function ClaimRentForm({
   tokenId,
   amountCents,
   configured,
+  contractAddress,
   pendingRecovery,
 }: {
   reference: string;
   tokenId: number | null;
   amountCents: number;
   configured: boolean;
+  contractAddress: string | null;
   pendingRecovery: boolean;
 }) {
   const router = useRouter();
@@ -52,7 +54,7 @@ export function ClaimRentForm({
     startTransition(async () => {
       setClaiming(true);
       try {
-        const { hash } = await claimRent(wallet, BigInt(tokenId ?? 0));
+        const { hash } = await claimRent(wallet, BigInt(tokenId ?? 0), contractAddress);
         await attachSubmittedClaimTxAction(
           reference,
           hash,

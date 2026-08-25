@@ -28,6 +28,7 @@ import {
   purchasePriceAtomicFor,
 } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
+import { normalizeContractAddress } from "@/lib/pay/networks";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
 import {
   applyOpsCollection,
@@ -42,11 +43,9 @@ import {
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import { loadBook, resetBook, saveBook, updateOffer } from "@/lib/rent-advance/store";
-import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
+import type { CryptoConfig, Offer, OfferStatus } from "@/lib/rent-advance/types";
 import {
   MERKADO_CHAIN_ID,
-  assertMerkadoConfigured,
-  merkadoContractAddress,
 } from "@/lib/onchain/config";
 import { opaquePaymentId } from "@/lib/onchain/ids";
 import {
@@ -91,6 +90,29 @@ function assertPayoutReady(offer: Offer) {
 
 export async function resetDemoAction() {
   await resetBook();
+  refresh();
+}
+
+/**
+ * Set (or clear) the live Merkado offer contract address in the demo book.
+ * Empty clears the stored value so the NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS
+ * environment default is used again. The address is a variable because the
+ * Base Sepolia contract is redeployed periodically (paired with Reset).
+ */
+export async function setContractAddressAction(address: string) {
+  const trimmed = address?.trim() ?? "";
+  let next: `0x${string}` | null = null;
+  if (trimmed) {
+    next = normalizeContractAddress(trimmed);
+    if (!next) {
+      throw new Error(
+        "Enter a valid checksummed 0x address, or clear the field to use the environment default.",
+      );
+    }
+  }
+  const book = await loadBook();
+  book.cryptoConfig = { ...book.cryptoConfig, offerNftContract: next } as CryptoConfig;
+  await saveBook(book);
   refresh();
 }
 
@@ -246,8 +268,6 @@ export async function sweepPendingMintsAction() {
 
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */
 export async function createRentPaymentAttemptAction(paymentRequestId: string) {
-  assertMerkadoConfigured();
-  const contractAddress = merkadoContractAddress();
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -259,8 +279,9 @@ export async function createRentPaymentAttemptAction(paymentRequestId: string) {
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
   if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This listing is not minted yet.");
+    throw new Error("This listing is not ready for payment yet.");
   }
+  const contractAddress = onchain.contractAddress;
   if (request.opaquePaymentId) {
     return { opaquePaymentId: request.opaquePaymentId };
   }
@@ -322,7 +343,6 @@ export async function attachSubmittedTxAction(
 export async function checkPendingPaymentAction(
   paymentRequestId: string,
 ): Promise<RentDepositVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -345,7 +365,6 @@ export async function verifyRentPaymentAction(
   txHash: string,
   payerAddress: string,
 ): Promise<RentDepositVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -357,7 +376,7 @@ export async function verifyRentPaymentAction(
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
   if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This listing is not minted yet.");
+    throw new Error("This listing is not ready for payment yet.");
   }
   const opaque = request.opaquePaymentId;
   if (!opaque) {
@@ -459,7 +478,6 @@ export async function attachSubmittedPurchaseTxAction(
 export async function checkPendingPurchaseAction(
   reference: string,
 ): Promise<PurchaseVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -481,13 +499,12 @@ export async function verifyPurchaseAction(
   txHash: string,
   buyerAddress: string,
 ): Promise<PurchaseVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
   if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This offer is not minted yet.");
+    throw new Error("This offer is not available yet.");
   }
   if (onchain.purchased) {
     return { status: "confirmed", reason: "Already purchased" };
@@ -567,13 +584,12 @@ export async function verifyRentClaimAction(
   txHash: string,
   ownerAddress: string,
 ): Promise<RentClaimVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
   if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This listing is not minted yet.");
+    throw new Error("This listing is not ready for payment yet.");
   }
   const claimableCents = (book.distributions ?? [])
     .filter((row) => row.offerReference === reference && row.status === "claimable")
@@ -667,7 +683,6 @@ export async function attachSubmittedClaimTxAction(
 export async function checkPendingClaimAction(
   reference: string,
 ): Promise<RentClaimVerifiedResult> {
-  assertMerkadoConfigured();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");

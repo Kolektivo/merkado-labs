@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { WalletConnection } from "@/components/wallet-connection";
+import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
@@ -16,6 +17,8 @@ import {
   verifyPurchaseAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -32,6 +35,7 @@ export function SubscribeForm({
   minted,
   configured,
   tokenId,
+  contractAddress,
   pendingRecovery,
 }: {
   reference: string;
@@ -42,108 +46,95 @@ export function SubscribeForm({
   minted: boolean;
   configured: boolean;
   tokenId: number | null;
+  contractAddress: string | null;
   pendingRecovery: boolean;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
   const startTransition = useTransition()[1];
-  const [busy, setBusy] = useState(false);
-  const [approved, setApproved] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
 
   const closed = remainingCents <= 0;
 
-  function handleApprove() {
-    setError(null);
-    setBusy(true);
-    startTransition(async () => {
-      try {
-        await approveUsdc(wallet, BigInt(remainingCents * 10_000));
-        setApproved(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "The approval did not go through.");
-      } finally {
-        setBusy(false);
-      }
-    });
+  async function runApprove() {
+    await approveUsdc(wallet, BigInt(remainingCents * 10_000), contractAddress);
   }
 
-  function handlePurchase() {
-    setError(null);
-    setBusy(true);
-    setApproved(false);
-    startTransition(async () => {
-      try {
-        const { hash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0));
-        await attachSubmittedPurchaseTxAction(
-          reference,
-          hash,
-          wallet.address ?? "0x0000000000000000000000000000000000000000",
-        );
-        let result = await verifyPurchaseAction(
-          reference,
-          hash,
-          wallet.address ?? "0x0000000000000000000000000000000000000000",
-        );
-        let attempts = 0;
-        while (result.status === "pending" && attempts < 5) {
-          await wait(4000);
-          result = await verifyPurchaseAction(
-            reference,
-            hash,
-            wallet.address ?? "0x0000000000000000000000000000000000000000",
-          );
-          attempts += 1;
-        }
-        if (result.status !== "confirmed") {
-          setError(result.reason ?? "The purchase is still being verified.");
-          return;
-        }
-        try {
-          window.sessionStorage.setItem(
-            `merkado:success:purchase:${reference}`,
-            formatXcg(remainingCents),
-          );
-        } catch {
-          // The purchase succeeded; the amount is optional dialog detail.
-        }
-        router.push(`/portfolio/${reference}?success=purchase`);
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Purchase failed.");
-      } finally {
-        setBusy(false);
+  async function runSend() {
+    let hash: string | null = null;
+    try {
+      const { hash: txHash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0), contractAddress);
+      hash = txHash;
+      await attachSubmittedPurchaseTxAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
+      let result = await verifyPurchaseAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
+      let attempts = 0;
+      while (result.status === "pending" && attempts < 5) {
+        await wait(4000);
+        result = await verifyPurchaseAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
+        attempts += 1;
       }
-    });
+      if (result.status === "confirmed") {
+        return { status: "confirmed" as const };
+      }
+      return {
+        status: "pending" as const,
+        reason: result.reason ?? "The purchase is still being verified.",
+      };
+    } catch (err) {
+      if (hash) {
+        return {
+          status: "pending" as const,
+          reason:
+            err instanceof Error
+              ? err.message
+              : "The purchase was submitted and is still being verified.",
+        };
+      }
+      throw err;
+    }
   }
 
+  async function runCheckStatus() {
+    const result = await checkPendingPurchaseAction(reference);
+    if (result.status === "confirmed") return { status: "confirmed" as const };
+    return {
+      status: "pending" as const,
+      reason: result.reason ?? "The purchase is still being verified.",
+    };
+  }
+
+  function onConfirmed() {
+    try {
+      window.sessionStorage.setItem(
+        `merkado:success:purchase:${reference}`,
+        formatXcg(remainingCents),
+      );
+    } catch {
+      // The purchase succeeded; the amount is optional dialog detail.
+    }
+    router.push(`/portfolio/${reference}?success=purchase`);
+    router.refresh();
+  }
 
   async function handleCheckStatus() {
     setError(null);
-    setBusy(true);
+    setChecking(true);
     startTransition(async () => {
       try {
         const result = await checkPendingPurchaseAction(reference);
         if (result.status === "confirmed") {
-          try {
-            window.sessionStorage.setItem(
-              `merkado:success:purchase:${reference}`,
-              formatXcg(remainingCents),
-            );
-          } catch {
-            // optional dialog detail
-          }
-          router.push(`/portfolio/${reference}?success=purchase`);
-          router.refresh();
+          onConfirmed();
         } else {
           setError(result.reason ?? "The purchase is still being verified.");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not check the purchase status.");
       } finally {
-        setBusy(false);
+        setChecking(false);
       }
     });
   }
@@ -202,42 +193,30 @@ export function SubscribeForm({
         <Alert variant="destructive" className="mt-6">
           <AlertTitle>Purchases are not configured yet</AlertTitle>
           <AlertDescription>
-            NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Nothing was sent.
+            Merkado has not set the live payment address yet. Nothing was sent.
           </AlertDescription>
         </Alert>
       ) : (
         <div className="mt-6 space-y-3">
           <WalletConnection onConnectedChange={setConnected} />
           {connected && onBaseSepolia ? (
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 w-full"
-                disabled={busy || approved}
-                onClick={handleApprove}
-              >
-                {approved ? "USDC approved" : "Approve USDC"}
-              </Button>
-              <Button
-                type="button"
-                className="h-11 w-full"
-                disabled={busy || !approved}
-                onClick={handlePurchase}
-              >
-                {busy ? "Purchasing…" : `Purchase whole offer · ${formatXcg(remainingCents)}`}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              className="h-11 w-full"
+              onClick={() => setDialogOpen(true)}
+            >
+              {`Purchase whole offer · ${formatXcg(remainingCents)}`}
+            </Button>
           ) : null}
           {pendingRecovery ? (
             <Button
               type="button"
               variant="outline"
               className="h-11 w-full"
-              disabled={busy}
+              disabled={checking}
               onClick={handleCheckStatus}
             >
-              {busy ? "Checking…" : "Check purchase status"}
+              {checking ? "Checking…" : "Check purchase status"}
             </Button>
           ) : null}
         </div>
@@ -256,6 +235,31 @@ export function SubscribeForm({
           listing can be claimed by its owner.
         </p>
       )}
+
+      <ApproveThenSendDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Purchase the whole offer"
+        description={`${formatXcg(remainingCents)} · 100% ownership. The exact USDC amount is approved, then the offer is bought in one flow.`}
+        confirmLabel={`Approve and purchase · ${formatXcg(remainingCents)}`}
+        sendLabel="Purchasing"
+        needsApproval
+        summary={
+          <div className="rounded-xl bg-muted/40 p-4 text-sm">
+            <p className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">Whole offer</span>
+              <span className="font-medium tabular-nums">{formatXcg(remainingCents)}</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              100% ownership · no fractional purchase
+            </p>
+          </div>
+        }
+        runApprove={runApprove}
+        runSend={runSend}
+        runCheckStatus={runCheckStatus}
+        onConfirmed={onConfirmed}
+      />
     </div>
   );
 }

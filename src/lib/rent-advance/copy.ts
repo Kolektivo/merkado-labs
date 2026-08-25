@@ -72,7 +72,7 @@ export const SOLE_HOLDER_GATE =
 
 export const NOT_CONFIGURED = {
   title: "The live flow is not configured yet",
-  body: "NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Once Merkado enables live payments on Base Sepolia, this screen becomes active. Nothing was sent and nothing was recorded.",
+  body: "Merkado has not set the live payment address yet. Once it is configured, this screen becomes active. Nothing was sent and nothing was recorded.",
   action: "Not configured",
 } as const;
 

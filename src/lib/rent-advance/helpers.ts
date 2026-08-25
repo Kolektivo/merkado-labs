@@ -415,6 +415,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     coverImageSrc: offer.property.coverImageSrc ?? null,
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     tokenId: onchain.tokenId,
+    contractAddress: onchain.contractAddress,
     purchased: onchain.purchased,
     pendingPurchase: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
   };

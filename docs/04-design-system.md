@@ -136,11 +136,16 @@ grey). Paid is the sale completing; there is no
 landlord claim button. Holder **Claim rent** is the current NFT owner's
 action in Portfolio. Marketplace and Portfolio
 use a standard wallet-connect control (Reown/AppKit (injected EIP-1193); WalletConnect
-versus Privy is a later choice and is not shown). Pay keeps **Connect**,
-**Approve USDC**, and **Pay rent** inside the expanded **Pay with stablecoin**
-panel; the QR and **copy address** / **copy amount** controls there are
+versus Privy is a later choice and is not shown). Marketplace purchase and
+Pay each use **one primary button** that opens a single dialog running
+Approve USDC → purchase / `depositRent` → server verification, with a
+**Check status** action for a pending transaction; there is no separate
+Approve step on the page. The QR and **copy address** / **copy amount**
+controls in the expanded **Pay with stablecoin** panel are
 informational only and never submit a payment. **Continue with Sentoo** is a
-collapsed panel with a **Coming soon** badge. The Base Sepolia contract address comes from
-`NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`; an empty value shows a not-configured
+collapsed panel with a **Coming soon** badge. The Base Sepolia contract address is a
+**variable** stored in the demo book (updated in **Admin** after each
+redeploy); `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is only the first-run
+default, and an empty value shows a not-configured
 state, never a fake hash. Explorer links open only for real 64-hex hashes.
 **Base Sepolia** is the default demo network. **Base Mainnet** is later.

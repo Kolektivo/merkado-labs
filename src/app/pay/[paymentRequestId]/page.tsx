@@ -4,7 +4,6 @@ import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
 import { loadBook } from "@/lib/rent-advance/store";
 import { toPublicCryptoConfig } from "@/lib/pay/networks";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -42,7 +41,8 @@ export default async function PayRequestPage({
       upcoming: isUpcomingPaymentRequest(book.paymentRequests ?? [], row),
     }));
   const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
-  const configured = isMerkadoConfigured();
+  const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
+  const configured = Boolean(contractAddress);
 
   return (
     <PayApp
@@ -63,6 +63,7 @@ export default async function PayRequestPage({
       configured={configured}
       minted={onchain.tokenId != null}
       tokenId={onchain.tokenId}
+      contractAddress={contractAddress}
       pendingRecovery={
         Boolean(request.submittedTxHash) &&
         (request.status === "pending" || request.status === "initiated" || request.status === "due")

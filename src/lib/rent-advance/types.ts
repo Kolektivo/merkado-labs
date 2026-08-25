@@ -459,6 +459,8 @@ export type BuyerOfferCard = {
   /** True once a verified OfferMinted event exists for the NFT. */
   minted: boolean;
   tokenId: number | null;
+  /** The contract the offer was minted on; null until verified. Public on-chain. */
+  contractAddress: string | null;
   purchased: boolean;
   /** True when a purchase was submitted but not yet verified (recovery). */
   pendingPurchase: boolean;

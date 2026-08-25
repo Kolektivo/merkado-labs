@@ -75,7 +75,8 @@ repo**. They live on merkado-cw.
 | Network later | **Base Mainnet**, only when `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. |
 | USDC contract | Circle native USDC for the selected network. See `src/lib/pay/networks.ts`. |
 | Explorer | Official explorer for the selected network (real 64-hex hashes only) |
-| Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; surfaces show a not-configured state when empty |
+| Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is the first-run default. The **active address is a variable** stored in the demo book (`cryptoConfig.offerNftContract`) and updated in **Admin** after each Base Sepolia redeploy; the stored value wins, env is the fallback. Empty everywhere → surfaces show a not-configured state. |
+| Approve + send | Marketplace purchase and Merkado Pay use a **single primary action** that opens one dialog and runs Approve USDC → purchase/deposit → server verification, with a **Check status** action for pending transactions (never a blind re-send). One button style; no separate Approve step on the page. |
 | Backend mint key | server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` is a legacy display label, not the minter. |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Other networks | Optimism keys stay in the catalog if later opted in. They are hidden in Admin. |

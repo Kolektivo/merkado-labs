@@ -24,6 +24,7 @@ import {
 import {
   getPayNetwork,
   merkadoContractAddressOrNull,
+  normalizeContractAddress,
   resolvePayNetworkKey,
   resolvedCompanySafe,
 } from "@/lib/pay/networks";
@@ -71,7 +72,9 @@ export function cryptoConfigFor(
 ): CryptoConfig {
   const network = getPayNetwork(key);
   const companySafeAddress = resolvedCompanySafe();
-  const contract = merkadoContractAddressOrNull();
+  // The stored (variable) contract address wins; the env value is the
+  // first-run default and is used only when nothing is stored yet.
+  const contract = normalizeContractAddress(incoming?.offerNftContract) ?? merkadoContractAddressOrNull();
   return {
     networkKey: network.key,
     chainId: network.chainId,

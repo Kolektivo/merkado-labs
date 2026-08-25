@@ -109,6 +109,21 @@ export function merkadoContractAddress(): `0x${string}` {
   return value as `0x${string}`;
 }
 
+/**
+ * Resolve the active contract address. The address is a variable stored in
+ * the demo book and updated after each redeploy, so the caller passes the
+ * offer's configured address; this falls back to the env value when absent.
+ */
+export function resolveMerkadoContractAddress(
+  contractAddress?: string | null,
+): `0x${string}` {
+  const raw = contractAddress?.trim();
+  if (raw && /^0x[0-9a-fA-F]{40}$/i.test(raw)) {
+    return raw as `0x${string}`;
+  }
+  return merkadoContractAddress();
+}
+
 function walletContext(wallet: MerkadoWallet) {
   if (!wallet.provider || !wallet.address) {
     throw userSafeError(CONNECT_FIRST_MESSAGE);
@@ -168,6 +183,7 @@ export async function ensureBaseSepolia(
 export async function approveUsdc(
   wallet: MerkadoWallet,
   amountAtomic: bigint,
+  contractAddress?: string | null,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
   const { client, from } = walletContext(wallet);
@@ -176,7 +192,7 @@ export async function approveUsdc(
       address: BASE_SEPOLIA_USDC_CONTRACT,
       abi: USDC_ABI,
       functionName: "approve",
-      args: [merkadoContractAddress(), amountAtomic],
+      args: [resolveMerkadoContractAddress(contractAddress), amountAtomic],
     });
     return { hash, from };
   } catch (error) {
@@ -188,12 +204,13 @@ export async function approveUsdc(
 export async function purchaseOffer(
   wallet: MerkadoWallet,
   tokenId: bigint,
+  contractAddress?: string | null,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
   const { client, from } = walletContext(wallet);
   try {
     const hash = await client.writeContract({
-      address: merkadoContractAddress(),
+      address: resolveMerkadoContractAddress(contractAddress),
       abi: MERKADO_ABI,
       functionName: "purchase",
       args: [tokenId],
@@ -208,12 +225,13 @@ export async function purchaseOffer(
 export async function depositRent(
   wallet: MerkadoWallet,
   input: { tokenId: bigint; paymentId: `0x${string}`; amountAtomic: bigint },
+  contractAddress?: string | null,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
   const { client, from } = walletContext(wallet);
   try {
     const hash = await client.writeContract({
-      address: merkadoContractAddress(),
+      address: resolveMerkadoContractAddress(contractAddress),
       abi: MERKADO_ABI,
       functionName: "depositRent",
       args: [input.tokenId, input.paymentId, input.amountAtomic],
@@ -228,12 +246,13 @@ export async function depositRent(
 export async function claimRent(
   wallet: MerkadoWallet,
   tokenId: bigint,
+  contractAddress?: string | null,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
   const { client, from } = walletContext(wallet);
   try {
     const hash = await client.writeContract({
-      address: merkadoContractAddress(),
+      address: resolveMerkadoContractAddress(contractAddress),
       abi: MERKADO_ABI,
       functionName: "claimRent",
       args: [tokenId],

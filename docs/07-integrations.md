@@ -27,7 +27,7 @@ Surfaces show a quiet **not configured** state until the contract address is set
 
 | Name | Value / if empty |
 |---|---|
-| `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` | Base Sepolia deployed address. **Empty until deployment** → surfaces show not-configured. |
+| `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` | First-run default Base Sepolia address. The **active address is a variable** stored in the demo book (`cryptoConfig.offerNftContract`) and updated in **Admin** after each redeploy; the stored value wins, env is the fallback. Empty everywhere → surfaces show not-configured. |
 | `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` | Defaults to the verified Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` |
 | `MERKADO_RPC_URL` | Server-only. Default `https://sepolia.base.org` |
 | `NEXT_PUBLIC_MERKADO_PAY_URL` | Apps card uses `/pay` |

@@ -17,8 +17,8 @@ test("live payer copy drops demo-wallet language and stays honest on testnet", (
   assert.doesNotMatch(copy.optionA, /nothing real is sent/i);
 });
 
-test("not-configured copy is honest about the missing contract", () => {
-  assert.match(NOT_CONFIGURED.body, /NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS/);
+test("not-configured copy is honest that nothing was sent", () => {
+  assert.match(NOT_CONFIGURED.body, /Nothing was sent/);
   assert.doesNotMatch(NOT_CONFIGURED.body, /nothing real is sent/i);
 });
 

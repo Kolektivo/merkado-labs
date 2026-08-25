@@ -26,9 +26,9 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
-import { isMerkadoConfigured } from "@/lib/onchain/config";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
+import { ContractAddressForm } from "./contract-address-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
@@ -36,6 +36,7 @@ export const metadata = { title: "Admin" };
 export default async function AdminPage() {
   const book = await loadBook();
   const minterAddress = merkadoMinterAddressOrNull();
+  const configured = Boolean(book.cryptoConfig?.offerNftContract);
   const offers = sortOffersForLandlordList(book.offers);
   const review = offers.filter((offer) => offer.status === "under_review");
 
@@ -116,7 +117,7 @@ export default async function AdminPage() {
                             ? "Mint in progress"
                             : "Not minted"}
                     </p>
-                    {onchain.mintTxHash && isMerkadoConfigured() ? (
+                    {onchain.mintTxHash && configured ? (
                       <p className="text-xs text-muted-foreground">
                         {mintStateLabel(state)}
                       </p>
@@ -172,12 +173,13 @@ export default async function AdminPage() {
               copyLabel="offer contract"
               value={book.cryptoConfig?.offerNftContract ?? ""}
               tip={
-                isMerkadoConfigured()
+                configured
                   ? "The deployed Merkado Rent Offer contract. Mint and purchases happen here."
-                  : "Not deployed or configured yet. Set NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS to activate live flows."
+                  : "Not configured yet. Set it below or via NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS to activate live flows."
               }
             />
           </div>
+          <ContractAddressForm current={book.cryptoConfig?.offerNftContract ?? null} />
         </CardContent>
       </Card>
 

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { UsdcMark } from "@/components/usdc-mark";
 import { SentooMark } from "@/components/sentoo-mark";
 import { WalletConnection } from "@/components/wallet-connection";
+import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -234,6 +235,7 @@ export function PayApp({
   configured,
   minted,
   tokenId,
+  contractAddress,
   pendingRecovery,
 }: {
   paymentRequestId: string;
@@ -253,6 +255,7 @@ export function PayApp({
   configured: boolean;
   minted: boolean;
   tokenId: number | null;
+  contractAddress: string | null;
   pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
@@ -269,7 +272,7 @@ export function PayApp({
           : "disconnected",
   );
   const [connected, setConnected] = useState(false);
-  const [approved, setApproved] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentRail, setPaymentRail] = useState<"stablecoin" | "sentoo">("stablecoin");
@@ -277,49 +280,41 @@ export function PayApp({
   const locked = status === "confirmed" || walletUi === "confirmed";
   const overdue = status === "overdue";
   const expired = status === "expired";
-  const inFlight = walletUi === "pending" || busy;
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
 
   const blockedByEarlier = Boolean(earlierPeriodLabel) && !locked && !expired;
 
   const qrValue = `merkado-demo:pay?address=${encodeURIComponent(receivingAddress)}&amount=${encodeURIComponent(formatUsdcAtomicAmount(amountUsdcAtomic))}&reference=${encodeURIComponent(paymentReference)}`;
 
-  async function handleApprove() {
-    setError(null);
-    setBusy(true);
-    try {
-      await approveUsdc(wallet, BigInt(amountUsdcAtomic));
-      setApproved(true);
-    } catch (err) {
-      setWalletUi("failed");
-      setError(err instanceof Error ? err.message : "The approval did not go through.");
-    } finally {
-      setBusy(false);
-    }
+  async function runApprove() {
+    await approveUsdc(wallet, BigInt(amountUsdcAtomic), contractAddress);
   }
 
-  async function handlePay() {
-    setError(null);
-    setBusy(true);
-    setApproved(false);
+  async function runSend() {
+    let hash: string | null = null;
     try {
       const attempt = await createRentPaymentAttemptAction(paymentRequestId);
       const paymentId = attempt.opaquePaymentId as `0x${string}`;
       const amountAtomic = BigInt(amountUsdcAtomic);
-      const { hash } = await depositRent(wallet, {
-        tokenId: BigInt(tokenId ?? 0),
-        paymentId,
-        amountAtomic,
-      });
+      const { hash: txHash } = await depositRent(
+        wallet,
+        {
+          tokenId: BigInt(tokenId ?? 0),
+          paymentId,
+          amountAtomic,
+        },
+        contractAddress,
+      );
+      hash = txHash;
       await attachSubmittedTxAction(
         paymentRequestId,
-        hash,
+        txHash,
         wallet.address ?? "0x0000000000000000000000000000000000000000",
       );
       setWalletUi("pending");
       let result = await verifyRentPaymentAction(
         paymentRequestId,
-        hash,
+        txHash,
         wallet.address ?? "0x0000000000000000000000000000000000000000",
       );
       let attempts = 0;
@@ -327,29 +322,44 @@ export function PayApp({
         await wait(4000);
         result = await verifyRentPaymentAction(
           paymentRequestId,
-          hash,
+          txHash,
           wallet.address ?? "0x0000000000000000000000000000000000000000",
         );
         attempts += 1;
       }
       if (result.status === "confirmed") {
-        setWalletUi("confirmed");
-        router.refresh();
-      } else {
-        setWalletUi("pending");
-        setError(result.reason ?? copy.awaiting);
+        return { status: "confirmed" as const };
       }
+      return {
+        status: "pending" as const,
+        reason: result.reason ?? copy.awaiting,
+      };
     } catch (err) {
       if (isUserSafeConfigError(err)) {
-        setWalletUi("failed");
-        setError(copy.notConfiguredBody);
-        return;
+        throw new Error(copy.notConfiguredBody);
       }
-      setWalletUi(err instanceof Error && /reverted/i.test(err.message) ? "reverted" : "failed");
-      setError(err instanceof Error ? err.message : copy.failed);
-    } finally {
-      setBusy(false);
+      if (hash) {
+        return {
+          status: "pending" as const,
+          reason: err instanceof Error ? err.message : copy.awaiting,
+        };
+      }
+      throw err;
     }
+  }
+
+  async function runCheckStatus() {
+    const result = await checkPendingPaymentAction(paymentRequestId);
+    if (result.status === "confirmed") return { status: "confirmed" as const };
+    return {
+      status: "pending" as const,
+      reason: result.reason ?? copy.awaiting,
+    };
+  }
+
+  function onConfirmed() {
+    setWalletUi("confirmed");
+    router.refresh();
   }
 
   async function handleCheckStatus() {
@@ -536,27 +546,13 @@ export function PayApp({
                     <WalletConnection onConnectedChange={setConnected} />
 
                     {connected && onBaseSepolia ? (
-                      <div className="space-y-2">
-                        <Button
-                          type="button"
-                          className="min-h-11 w-full"
-                          variant="outline"
-                          disabled={busy || approved}
-                          onClick={() => void handleApprove()}
-                        >
-                          {approved ? copy.approved : copy.approveUsdc}
-                        </Button>
-                        <Button
-                          type="button"
-                          className="min-h-11 w-full"
-                          disabled={!approved || inFlight}
-                          onClick={() => void handlePay()}
-                        >
-                          {walletUi === "pending"
-                            ? copy.awaiting
-                            : copy.confirmPay}
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        className="min-h-11 w-full"
+                        onClick={() => setDialogOpen(true)}
+                      >
+                        {copy.confirmPay}
+                      </Button>
                     ) : null}
 
                     {pendingRecovery ? (
@@ -636,6 +632,35 @@ export function PayApp({
       <p className="text-center text-xs text-muted-foreground" role="note">
         {copy.memoNote}
       </p>
+
+      <ApproveThenSendDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={copy.payThisMonth}
+        description={`${formatUsdcAtomic(amountUsdcAtomic)} · ${networkLabel || copy.networkUnset}`}
+        confirmLabel={`${copy.approveUsdc} & ${copy.confirmPay}`}
+        sendLabel={copy.confirmPay}
+        needsApproval
+        summary={
+          <div className="rounded-xl bg-muted/40 p-4 text-sm">
+            <p className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{copy.reference}</span>
+              <span className="font-medium">{paymentReference}</span>
+            </p>
+            <p className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">USDC</span>
+              <span className="font-medium tabular-nums">{formatUsdcAtomic(amountUsdcAtomic)}</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {copy.payByWalletBody}
+            </p>
+          </div>
+        }
+        runApprove={runApprove}
+        runSend={runSend}
+        runCheckStatus={runCheckStatus}
+        onConfirmed={onConfirmed}
+      />
     </div>
   );
 }

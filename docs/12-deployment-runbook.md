@@ -26,8 +26,11 @@ Required env (Labs project `ewoxmzznkavapcxdporm` only):
 Optional:
 
 - `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty)
-- `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — **empty until the contract is
-  deployed**; empty shows a not-configured state on surfaces
+- `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — first-run default Base Sepolia
+  address. The **active address is a variable** stored in the demo book
+  (`cryptoConfig.offerNftContract`) and updated in **Admin** after each
+  redeploy; the stored value wins, env is the fallback. Empty everywhere →
+  surfaces show a not-configured state
 - `MERKADO_MINTER_PRIVATE_KEY` — server-only Base Sepolia key the backend uses to mint offer NFTs
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
@@ -81,7 +84,10 @@ The Base Sepolia flow stays inactive until all of the following are
 explicitly approved and done (see `docs/10-execution-roadmap.md`):
 
 1. Deploy and verify `MerkadoRentOfferV1` on **Base Sepolia**.
-2. Set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` to the verified address.
+2. Set the active contract address to the verified address. The **address is a
+   variable**: the stored value in the demo book (`cryptoConfig.offerNftContract`,
+   updated in **Admin**) wins, with `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` as the
+   first-run default.
    Current cold-start (2026-08-24): `0x2075653c0aab05d2331886cbd01f8b8e40fc400f`
    (minter `0x27D9333E178BEeaA92EE0e5C80DE75C133eA19E5`). Verify with
    `forge verify-contract <addr> contracts/MerkadoRentOfferV1.sol:MerkadoRentOfferV1
@@ -96,7 +102,7 @@ fresh demo book (**MRA-001** + **MRA-010** as `funding` offers with **empty
 on-chain state**) and starts a **new chain-store epoch** so old on-chain
 facts are never reused. Reset does **not** roll back the chain; old contract
 state is abandoned. Pair Reset operationally with a fresh Base Sepolia
-contract redeploy + `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` update (steps 1–2
+contract redeploy and the Admin contract-address update (steps 1–2
 above) so the demo book and the chain start from the same clean state. Each
 of those steps remains a separate approved gate.
 
