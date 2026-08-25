@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    ".cursor/rules/merkado-labs-safety.mdc",
+    "docs/00-docs-index.md",
+    "docs/01-product-vision.md",
+    "docs/02-scope-and-decisions.md",
+    "docs/03-user-flows.md",
+    "docs/04-design-system.md",
+    "docs/05-architecture.md",
+    "docs/06-data-model.md",
+    "docs/07-integrations.md",
+    "docs/08-security-and-privacy.md",
+    "docs/09-current-state.md",
+    "docs/10-execution-roadmap.md",
+    "docs/11-testing-and-uat.md",
+    "docs/12-deployment-runbook.md"
+  ],
+  "mcp": {
+    "shadcn": {
+      "type": "local",
+      "command": ["npx", "-y", "shadcn@latest", "mcp"],
+      "enabled": true,
+      "cwd": ".",
+      "timeout": 30000
+    }
+  },
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git diff": "allow",
+      "git log *": "allow",
+      "npm run lint": "allow",
+      "npm run typecheck": "allow",
+      "npm run test:unit": "allow",
+      "npm run build": "allow"
+    },
+    "external_directory": "ask"
+  },
+  "share": "disabled"
+}
