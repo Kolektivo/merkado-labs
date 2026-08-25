@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
@@ -50,8 +50,9 @@ export function WalletConnection({
     }
   };
 
+  const shortAddress = wallet.address ? truncateHash(wallet.address) : "wallet";
   const statusText = wallet.isConnected
-    ? `Connected to ${wallet.address ? truncateHash(wallet.address) : "wallet"}${
+    ? `Connected to ${shortAddress}${
         onBaseSepolia ? ` on ${BASE_SEPOLIA_NETWORK_LABEL}` : ` on chain ${wallet.chainId ?? "unknown"}`
       }`
     : wallet.connecting
@@ -64,20 +65,45 @@ export function WalletConnection({
         aria-live="polite"
         aria-atomic="true"
         className={cn(
-          "flex items-center gap-2 rounded-xl border bg-card px-3",
+          "flex items-center gap-3 rounded-xl border bg-card px-3",
           compact ? "py-1.5 text-xs" : "py-2.5 text-sm",
         )}
       >
-        <span
-          className={cn(
-            "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
-            wallet.isConnected ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground",
-          )}
-          aria-hidden
-        >
-          {wallet.isConnected ? <Check className="size-3" /> : <X className="size-3" />}
-        </span>
-        <span className="min-w-0 flex-1 font-medium">{statusText}</span>
+        {wallet.isConnected ? (
+          <>
+            <span
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-semibold text-white"
+              aria-hidden
+            >
+              0x
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex items-center gap-1.5 font-medium">
+                Connected
+                <span
+                  className="inline-block size-2 rounded-full bg-emerald-500"
+                  aria-hidden
+                />
+              </span>
+              <span className="truncate font-mono text-xs text-muted-foreground">
+                {shortAddress}
+              </span>
+            </span>
+          </>
+        ) : (
+          <>
+            <span
+              className={cn(
+                "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
+                "bg-muted text-muted-foreground",
+              )}
+              aria-hidden
+            >
+              <X className="size-3" />
+            </span>
+            <span className="min-w-0 flex-1 font-medium">{statusText}</span>
+          </>
+        )}
         {wallet.isConnected && !onBaseSepolia ? (
           <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
             Wrong network

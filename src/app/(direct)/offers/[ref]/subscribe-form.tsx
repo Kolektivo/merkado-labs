@@ -180,7 +180,7 @@ export function SubscribeForm({
         {formatXcg(remainingCents)}
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        100% of the offer NFT · no fractional purchase
+        100% ownership · no fractional purchase
       </p>
 
       {!minted ? (

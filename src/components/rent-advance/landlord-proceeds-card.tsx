@@ -81,10 +81,9 @@ export function LandlordProceedsCard({
             <div>
               <p className="font-medium">Wait for the Safe mint and full purchase</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                After the offer NFT is minted, the buyer can
-                purchase the whole offer. The buyer pays{" "}
-                <Money cents={presentation.purchasePriceCents} /> to the payout
-                address locked at mint.
+                Once the offer NFT is minted, the buyer pays{" "}
+                <Money cents={presentation.purchasePriceCents} /> directly to
+                your locked payout address. You do not need to do anything.
               </p>
             </div>
           </div>
