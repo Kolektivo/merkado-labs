@@ -39,9 +39,8 @@ Customer-facing surfaces:
   shared host password at `/enter`. Reset the book sits in Admin. **Reset**
   seeds a fresh demo book (canonical offers as `funding`, empty on-chain
   state) and starts a **new chain-store epoch** so old on-chain facts are
-  never reused. It does **not** roll back the chain; pairing it
-  operationally with a fresh Base Sepolia contract redeploy + env address
-  update is a separate approved gate.
+  never reused. It does **not** roll back the chain; the env contract address
+  stays active so approved offers mint again on the same deployment.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
   its own Labs mock shell. Direct operations use the sidebar shell
   (`src/app/(direct)/layout.tsx`). The three shells are separate layouts

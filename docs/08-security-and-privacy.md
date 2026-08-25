@@ -169,11 +169,11 @@ Operational detail: `12-deployment-runbook.md`.
   `depositRent(tokenId, opaquePaymentId, amount)`.
 - Admin **Reset** does **not** roll back the chain. It seeds a fresh demo
   book (canonical offers as `funding`, empty on-chain state) and starts a
-  **new chain-store epoch** so old on-chain facts are never reused; pairing
-  it with a fresh contract redeploy and env address update is a separate
-  approved operational gate.
-- Empty `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` must show a not-configured
-  state; it must never fake a transaction.
+  **new chain-store epoch** so old on-chain facts are never reused; the env
+  contract address stays active so approved offers mint again on the same
+  deployment.
+- An empty `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` must show a not-configured
+  state and never fake a transaction.
 
 ## 9. Service-role credential rules
 

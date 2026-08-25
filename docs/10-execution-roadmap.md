@@ -5,15 +5,15 @@
 
 ## Now
 
-- **In progress (branch `wave6-main-ui-restore`):** the Product Lead–approved
-  stacked implementation of the **display-only** 60-day listing window,
-  **Reset = fresh demo book + new chain-store epoch** (chain not rolled back),
-  **informational-only Pay QR / copy controls**, limited **customer statuses**
-  (Paid = landlord proceeds card only; mint/NFT wording Admin-only),
-  **Save draft**, and **Admin mint-state consistency**. Code is being
-  implemented in parallel; verification and the `09` update follow. The fresh
-  Base Sepolia contract redeploy + env address update that pairs with Reset
-  remains a **separate approved operational gate**.
+- **In progress (branch `wave6-main-ui-restore`):** the approved Wave 6 UI and
+  copy are implemented. The approval-receipt race and pending Check-status
+  state are fixed and covered by automated tests; the contract address again
+  comes from `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` every time, so Reset keeps
+  the env deployment working. Merge and activation remain blocked by the
+  implementation audit: enforce earlier-payment sequencing in the server
+  action, make submitted-hash persistence compare-and-set/recoverable, pin
+  mint recovery to the offer's original contract, and finish the remaining
+  customer/Admin status cleanup.
 
 - Background mint sweep: `/api/cron/mint` runs on a schedule (vercel.json, every 5 min) so approved offers are minted automatically without needing an Admin page load; it also resumes broadcast-but-unverified mints.
 
@@ -73,7 +73,7 @@
 | Real collection flow | M.1.3 |
 | Public Merkado Direct page | M.1.4 |
 | 3-month term origination | Separate short-dated advice |
-| Contract deployment | Not approved; `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty |
+| Approved contract deployment/activation | Not approved; the existing test deployment is not hosted activation |
 | Chain store migration | Not approved / not applied |
 | Test USDC + live mint | Not approved; requires contract deployed |
 | Hosted activation / merge | Product Lead approval after the Base Sepolia E2E |

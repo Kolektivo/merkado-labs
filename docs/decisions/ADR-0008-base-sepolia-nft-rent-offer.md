@@ -42,10 +42,10 @@ entirely.
 - **No mock layer.** `PAYMENT_RAIL_MODE`, the mock provider, the demo
   wallet, the demo outcome menu, and demo hashes are removed. The flow is
   the live flow on Base Sepolia, enabled by configuration.
-- **Configuration.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` holds the
-  deployed Base Sepolia address; it is **empty until deployment** and
-  surfaces show a not-configured state. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE`
-  is a legacy display label. Server-only `MERKADO_RPC_URL`
+- **Configuration.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is the single
+  source of truth for the Base Sepolia address and is used every time; it is
+  **empty until deployment** and surfaces show a not-configured state.
+  `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` is a legacy display label. Server-only `MERKADO_RPC_URL`
   defaults to `https://sepolia.base.org`. `NEXT_PUBLIC_PAY_NETWORK` stays
   `base-sepolia`.
 - **Gates that stay closed.** Contract deployment, applying new
@@ -98,9 +98,8 @@ customers read.
    seeds the canonical offers (**MRA-001** + **MRA-010**) as `funding`
    offers with **empty on-chain state** and starts a **new chain-store
    epoch** so old on-chain facts are never reused. Reset does **not** roll
-   back the chain; old contract state is abandoned. Pairing Reset
-   operationally with a fresh Base Sepolia contract redeploy + env address
-   update is a separate approved gate. Admin derives mint state from
+   back the chain; the env contract address stays active so approved offers
+   mint again on the same deployment. Admin derives mint state from
    verified facts only: a broadcast-but-unverified mint reads **Mint in
    progress**, never **Minted**, and after reset MRA-001 is a fresh `funding`
    offer with no on-chain facts.
@@ -123,15 +122,14 @@ customers read.
    persists the wizard's in-progress offer into **My Offers → Draft**; a
    draft has no chain or payment state and never appears on customer
    surfaces.
-5. **Contract address is a variable.** Because the Base Sepolia contract is
-   redeployed periodically (paired with Reset), the active address is stored
-   in the demo book (`cryptoConfig.offerNftContract`) and updated in **Admin**
-   after each redeploy. The stored value wins; `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`
-   is only the first-run default. Empty everywhere shows the not-configured
-   state.
+5. **Env contract address, used every time.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`
+   is the single source of truth for the Base Sepolia contract address and is
+   used every time. Reset keeps it active so approved offers mint again on
+   the same deployment. Empty shows the not-configured state.
 6. **Single-action approve + send.** Marketplace purchase and Merkado Pay use
-   one primary button that opens a dialog running Approve USDC → purchase /
-   deposit → server verification. Pending transactions surface a **Check
+   one primary button that opens a dialog running Approve USDC → wait for the
+   successful approval receipt → purchase / deposit → server verification.
+   Pending transactions surface a **Check
    status** action instead of a blind re-send. One button style; there is no
    separate Approve step on the page. Holder `claimRent` stays a single
    action (no approval needed).

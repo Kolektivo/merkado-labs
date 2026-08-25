@@ -61,6 +61,8 @@ export type MerkadoTxResult = {
 
 const CONNECT_FIRST_MESSAGE = "Connect a wallet first.";
 const USER_REJECTED_MESSAGE = "The transaction was cancelled in your wallet.";
+const WALLET_RECEIPT_TIMEOUT_MS = 90_000;
+const WALLET_RECEIPT_POLL_MS = 1_000;
 
 function userSafeError(message: string): Error {
   return new Error(message);
@@ -139,6 +141,26 @@ function walletContext(wallet: MerkadoWallet) {
   };
 }
 
+async function waitForSuccessfulWalletTransaction(
+  provider: EIP1193Provider,
+  hash: `0x${string}`,
+  label: string,
+): Promise<void> {
+  const deadline = Date.now() + WALLET_RECEIPT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const receipt = (await provider.request({
+      method: "eth_getTransactionReceipt",
+      params: [hash],
+    })) as { status?: string } | null;
+    if (receipt) {
+      if (receipt.status === "0x1") return;
+      throw userSafeError(`${label} failed on Base Sepolia.`);
+    }
+    await new Promise((resolve) => globalThis.setTimeout(resolve, WALLET_RECEIPT_POLL_MS));
+  }
+  throw userSafeError(`${label} is still pending. Wait for it to confirm before trying again.`);
+}
+
 /**
  * Ensure the wallet is on Base Sepolia (84532).
  * Throws a user-safe error when the chain is wrong. When `switchChain` is
@@ -194,6 +216,9 @@ export async function approveUsdc(
       functionName: "approve",
       args: [resolveMerkadoContractAddress(contractAddress), amountAtomic],
     });
+    // Purchase/deposit gas estimation reads confirmed allowance. Do not send
+    // the dependent transaction until the approval is actually mined.
+    await waitForSuccessfulWalletTransaction(wallet.provider!, hash, "USDC approval");
     return { hash, from };
   } catch (error) {
     throw toUserSafeError(error);

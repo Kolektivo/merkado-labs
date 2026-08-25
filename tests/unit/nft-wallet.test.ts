@@ -33,6 +33,7 @@ type RequestRecord = { method: string; params?: unknown };
 
 function fakeProvider(opts: {
   chainId?: string;
+  receiptStatus?: "0x0" | "0x1";
   failRequest?: { method: string; error: unknown };
 } = {}): { provider: EIP1193Provider; requests: RequestRecord[] } {
   const requests: RequestRecord[] = [];
@@ -61,6 +62,8 @@ function fakeProvider(opts: {
           return "0x5208";
         case "eth_getTransactionCount":
           return "0x0";
+        case "eth_getTransactionReceipt":
+          return { status: opts.receiptStatus ?? "0x1", transactionHash: TX_HASH };
         default:
           throw new Error(`Unhandled request method: ${method}`);
       }
@@ -183,6 +186,17 @@ test("approveUsdc approves the Merkado contract for the exact atomic amount", as
   assert.equal(decoded.functionName, "approve");
   assert.equal(decoded.args[0], CONTRACT);
   assert.equal(decoded.args[1], AMOUNT_1800_USDC);
+  const sendIndex = requests.findIndex((row) => row.method === "eth_sendTransaction");
+  const receiptIndex = requests.findIndex((row) => row.method === "eth_getTransactionReceipt");
+  assert.ok(receiptIndex > sendIndex, "approval must wait for its receipt before returning");
+});
+
+test("approveUsdc stops the dependent flow when the approval reverts", async () => {
+  const { provider } = fakeProvider({ receiptStatus: "0x0" });
+  await assert.rejects(
+    approveUsdc(makeWallet({ provider }), AMOUNT_100_USDC),
+    /USDC approval failed on Base Sepolia/,
+  );
 });
 
 test("purchaseOffer encodes purchase(tokenId)", async () => {

@@ -114,7 +114,7 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Admin | [LABS] Bottom of left nav — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: contract not deployed, env address empty, migrations not applied, not activated, not merged |
+| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; migration not applied; hosted flow not activated or merged |
 | Real wallet / Safe / mainnet | Base Mainnet, real funds, production, and deployment gates stay blocked. See `09`, `10`, `12` |
 
 ## Reading order

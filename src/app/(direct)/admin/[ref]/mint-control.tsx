@@ -48,10 +48,10 @@ export function MintControl({
       <CardContent className="space-y-4">
         {!configured ? (
           <Alert variant="destructive">
-            <AlertTitle>Not configured</AlertTitle>
+            <AlertTitle>No active contract address</AlertTitle>
             <AlertDescription>
-              NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS is not set. Minting is not
-              available until the contract is deployed and configured.
+              No verified Base Sepolia contract address is set. Minting stays
+              paused until the deployed address is saved in Admin.
             </AlertDescription>
           </Alert>
         ) : null}

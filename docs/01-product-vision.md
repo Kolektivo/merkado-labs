@@ -24,8 +24,8 @@ book, renter USDC rent deposit, shared account history, and holder claim of
 listing rent through a transferable offer NFT — while legal, deployment, and
 production architecture decisions remain open. Pay uses **Base Sepolia** now
 (the Base testnet) and **Base Mainnet** later. The flow is implemented
-locally behind configuration; it is **not deployed, not activated, and not
-merged**.
+locally behind configuration; a Base Sepolia test deployment exists for
+local/staging verification, but the hosted flow is **not activated or merged**.
 
 ## 3. Who it is for
 

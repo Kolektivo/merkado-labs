@@ -28,7 +28,6 @@ import {
   purchasePriceAtomicFor,
 } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
-import { normalizeContractAddress } from "@/lib/pay/networks";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
 import {
   applyOpsCollection,
@@ -43,7 +42,7 @@ import {
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import { loadBook, resetBook, saveBook, updateOffer } from "@/lib/rent-advance/store";
-import type { CryptoConfig, Offer, OfferStatus } from "@/lib/rent-advance/types";
+import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 import {
   MERKADO_CHAIN_ID,
 } from "@/lib/onchain/config";
@@ -90,29 +89,6 @@ function assertPayoutReady(offer: Offer) {
 
 export async function resetDemoAction() {
   await resetBook();
-  refresh();
-}
-
-/**
- * Set (or clear) the live Merkado offer contract address in the demo book.
- * Empty clears the stored value so the NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS
- * environment default is used again. The address is a variable because the
- * Base Sepolia contract is redeployed periodically (paired with Reset).
- */
-export async function setContractAddressAction(address: string) {
-  const trimmed = address?.trim() ?? "";
-  let next: `0x${string}` | null = null;
-  if (trimmed) {
-    next = normalizeContractAddress(trimmed);
-    if (!next) {
-      throw new Error(
-        "Enter a valid checksummed 0x address, or clear the field to use the environment default.",
-      );
-    }
-  }
-  const book = await loadBook();
-  book.cryptoConfig = { ...book.cryptoConfig, offerNftContract: next } as CryptoConfig;
-  await saveBook(book);
   refresh();
 }
 

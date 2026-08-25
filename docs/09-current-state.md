@@ -15,26 +15,26 @@ Direct operations show **XCG** at **1.79 to the dollar**. Pay settles in USDC
 stays later.
 
 The Base Sepolia NFT flow (ADR-0008) is **implemented locally behind
-configuration — NOT deployed, NOT activated, NOT merged**. The contract
-(`MerkadoRentOfferV1`) is not deployed, `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`
-is empty (surfaces show a not-configured state), the chain store migration is
-not applied, no test USDC has been sent, no Safe transaction has executed, and
-no PR has been merged. The mock payment/wallet layer (`PAYMENT_RAIL_MODE`,
-mock provider, demo wallet, demo outcome menu, demo hashes) is removed.
+configuration — NOT activated, NOT merged**. A Base Sepolia test deployment
+exists for local/staging verification, but hosted activation is not approved.
+The chain store migration is not applied, no project-authorized test-USDC or
+Safe transaction has been executed, and no PR has been merged. The mock
+payment/wallet layer (`PAYMENT_RAIL_MODE`, mock provider, demo wallet, demo
+outcome menu, demo hashes) is removed.
 
 > **Note (2026-08-25) — approved but NOT yet live:** the Product Lead
 > approved a new stacked implementation on branch **`wave6-main-ui-restore`**
 > covering: a **display-only** 60-day listing window, **Reset = fresh demo
-> book + new chain-store epoch** (chain is not rolled back; paired with a
-> fresh contract redeploy + env address update as a separate gate),
-> **informational-only Pay QR / copy controls**, limited **customer statuses**
+> book + new chain-store epoch** (chain is not rolled back; the env contract
+> address stays active), **informational-only Pay QR / copy controls**, limited
+> **customer statuses**
 > (Paid = landlord proceeds card only; mint/NFT/contract wording Admin-only),
 > **Save draft** persistence into My Offers → Draft, and an **Admin mint
-> state** derived from verified facts only ("Mint in progress"). These changes
-> are being implemented in parallel and are **NOT yet verified or live**.
-> The rows below describe the current implemented behaviour; they will be
-> updated here after verification. See `02`, `03`, `04`, `05`, `06`, `07`,
-> `08`, `10`, `11`, `12`, and ADR-0008 for the approved intent.
+> state** derived from verified facts only ("Mint in progress"). Automated
+> verification now passes after fixing the approval-receipt race, the pending
+> Check-status state, and restoring the env address as the single source of
+> truth. The branch remains **NOT merged or
+> live**; implementation-audit findings in `10` still block activation.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**
@@ -52,10 +52,11 @@ a public product.
 
 ## 2. Labs demo today `[LABS]`
 
-The flow is implemented locally behind configuration. It is **not deployed,
-not activated, and not merged**. Local stays open. No Merkado login. Operations
-live on **Admin**. Hosted production fails closed at `/enter`; unlocking it
-requires `LABS_DEMO_PASSWORD`.
+The flow is implemented locally behind configuration. It is **not deployed to
+the hosted app, not activated, and not merged**. The Base Sepolia contract used
+for local/staging verification is not a public activation. Local stays open. No
+Merkado login. Operations live on **Admin**. Hosted production fails closed at
+`/enter`; unlocking it requires `LABS_DEMO_PASSWORD`.
 
 | Surface | What a visitor sees |
 |---|---|
@@ -65,10 +66,10 @@ requires `LABS_DEMO_PASSWORD`.
 | Create offer `/originate/new` | Seven-step wizard with cover photo and Payout before Review. The landlord locks a payout destination before submission. No landlord wallet. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
 | Offer detail `/originate/MRA-*` | Property name first. A Landlord proceeds card shows Waiting, Processing, Failed, or Paid. Paid is final when the sale completes (buyer pays the locked landlord address). Listed offers stay purchasable (no expiry). |
-| Marketplace `/offers` | Anonymised cards for minted, whole offers only — an approved offer that is still **mint pending is not listed** until its mint receipt is verified (its detail page stays reachable and shows a Mint pending alert). Purchase connects a real Reown/AppKit wallet and buys the whole offer; the buyer pays the exact purchase price to the locked landlord address and the NFT moves Safe → buyer atomically. If `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, purchase shows a not-configured state. |
+| Marketplace `/offers` | Anonymised cards for minted, whole offers only — an approved offer that is still **mint pending is not listed** until its mint receipt is verified (its detail page stays reachable and shows a Mint pending alert). Purchase connects a real Reown/AppKit wallet; one dialog waits for the successful USDC approval receipt before purchasing the whole offer. Pending transactions expose Check status, not resend. An empty active contract address shows not configured. |
 | Portfolio `/portfolio` | Property name leads. The offer token id, accrued rent per token, and current owner remain visible. The current NFT owner calls **Claim rent** (`claimRent`); non-owners are rejected. Transferring the NFT moves claim rights with it. |
-| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement, inside a **Pay with stablecoin** section. Rent is deposited via `depositRent(tokenId, opaquePaymentId, amount)` — exact monthly amount. Pending → confirmed on chain. No demo outcomes. A later month cannot be paid while an earlier month on the same offer is open. A muted, non-actionable **Bank payment · Coming soon** (Sentoo) teaser sits at the foot of the active pay card. If the contract env is empty, the pay action shows a not-configured state. |
-| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. Minting is automatic from the background sweep (no manual **Mint now** button). Fee buildup lives here. |
+| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement, inside a **Pay with stablecoin** section. One Pay rent dialog waits for the successful approval receipt before `depositRent(tokenId, opaquePaymentId, amount)`. Pending exposes Check status. A later month cannot be paid while an earlier month is open. QR/copy controls are informational; Sentoo is Coming soon. |
+| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. The active contract address comes from `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`. Reset seeds a fresh book; the env address stays active so approved offers mint again. |
 | Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. **Merkado Pay** and **Merkado Direct** are enabled. Old `/account/payouts` and `/payouts` open My Offers. |
 
 Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
@@ -161,7 +162,8 @@ filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 - Admin Payment network shows **Base Sepolia**. Base Mainnet
   stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Pay labels
   update. Reset keeps the selected test network.
-- Admin Reset the book asks to confirm, then restores the seeded book.
+- Admin Reset the book asks to confirm, restores the seeded book, and keeps
+  the selected test network and env contract address active.
 - With `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty, purchase and pay actions
   show a quiet **not configured** state and never fake a transaction.
 
@@ -224,8 +226,8 @@ they are written only by server-side verification.
 
 - Not live on merkado.cw
 - Not a loan, yield product, fund, or public offering
-- Not a deployed or activated NFT contract: `MerkadoRentOfferV1` is not on
-  Base Sepolia yet
+- Not an activated NFT flow: a Base Sepolia test deployment exists for
+  local/staging verification, but hosted activation remains blocked
 - Not authorised for third-party subscribe until M.1.2 and M.1.4 are closed
   in writing
 - Not a public token market or secondary market. Merkado mints the offer NFT,

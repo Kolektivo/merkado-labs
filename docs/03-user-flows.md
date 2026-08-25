@@ -23,8 +23,8 @@ in XCG. Payment network and Reset live in **Admin**. Stage 0 legal
 questions stay open in documentation; they are not shown on customer
 Home. **Reset the book** seeds a fresh demo book (canonical offers as
 `funding`, empty on-chain state) and starts a **new chain-store epoch**; it
-does **not** roll back the chain — pairing a fresh contract redeploy with the
-env address update is a separate approved operational step.
+does **not** roll back the chain — the env contract address stays active so
+approved offers mint again on the same deployment.
 
 ## 3. Landlord (Merkado Direct)
 
@@ -114,10 +114,11 @@ env address update is a separate approved operational step.
    expanded **Pay with stablecoin** panel: the QR, **copy address**, and
    **copy amount** controls are **informational only** (receiving address,
    USDC amount, payment reference for display) and never submit a payment.
-The live actions — **Connect** then a single **Pay rent** action — sit
+   The live actions — **Connect** then a single **Pay rent** action — sit
     inside that same stablecoin section. **Pay rent** opens one dialog that
-    runs Approve USDC → `depositRent` → server verification, with a **Check
-    status** action for a pending transaction (never a blind re-send).
+    runs Approve USDC → waits for the successful approval receipt →
+    `depositRent` → server verification, with a **Check status** action for a
+    pending transaction (never a blind re-send).
     **Continue with Sentoo** returns as a collapsed panel with a **Coming
     soon** badge.
 3. The renter deposits rent by calling `depositRent(tokenId,
@@ -149,15 +150,15 @@ two walkthrough options **Enrique** and **Luuk**. Approval remains independent
 from the person who submitted the request. After approval, operators execute
 the prepared `mintOffer` calldata from the backend mint key, and the server
 verifies the mint receipt on Base Sepolia (requires the contract to be
-deployed and the env address set).
+deployed and `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` set).
 
 Admin shows **one consistent mint state derived from verified facts only**:
 a broadcast-but-unverified mint reads **Mint in progress**, never **Minted**.
 After **Reset the book**, MRA-001 and MRA-010 return as fresh `funding`
-offers with **no on-chain facts**, and a **new chain-store epoch** starts so
+offers with **no on-chain facts** and a **new chain-store epoch** starts so
 old on-chain facts are never reused. Reset does **not** roll back the chain;
-pairing it with a fresh Base Sepolia contract redeploy and env address update
-is a separate approved operational step.
+the env contract address stays active so approved offers mint again on the
+same deployment.
 
 Customer-facing status wording (Under review → Listed → Sold → Paid plus
 Denied / Expired / Closed) stays on customer surfaces; **Mint pending,

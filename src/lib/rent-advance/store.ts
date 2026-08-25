@@ -113,9 +113,8 @@ export async function saveBook(book: DemoBook): Promise<DemoBook> {
 export async function resetBook(): Promise<DemoBook> {
   await assertDemoUnlocked();
   // Start a new chain-store epoch so old on-chain facts are never reused.
-  // Reset does NOT roll back the chain: old contract state is abandoned, and
-  // pairing this with a fresh Base Sepolia contract redeploy + env address
-  // update remains a separate approved operational gate.
+  // Reset does NOT roll back the chain; the env contract address keeps
+  // working so approved offers mint again on the same deployment.
   try {
     await newEpoch(`reset ${new Date().toISOString()}`);
   } catch {

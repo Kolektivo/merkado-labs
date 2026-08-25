@@ -18,7 +18,7 @@
 | Listing scrapers / pipeline / Terra | merkado-cw |
 | Production Auth / merkado.cw storefront | merkado-cw |
 | OpenAI enrichment | not used in Labs |
-| Deployed `MerkadoRentOfferV1` | **Not deployed.** Contract deployment is a separate gate. |
+| Hosted/approved `MerkadoRentOfferV1` activation | **Not activated.** A Base Sepolia test deployment exists for local/staging verification; approved deployment/activation remains a separate gate. |
 | Vercel production deploy | not authorised from this repo |
 
 ## Configuration
@@ -27,7 +27,7 @@ Surfaces show a quiet **not configured** state until the contract address is set
 
 | Name | Value / if empty |
 |---|---|
-| `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` | First-run default Base Sepolia address. The **active address is a variable** stored in the demo book (`cryptoConfig.offerNftContract`) and updated in **Admin** after each redeploy; the stored value wins, env is the fallback. Empty everywhere → surfaces show not-configured. |
+| `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` | The single source of truth for the Base Sepolia contract address, used every time. Empty → surfaces show not-configured. |
 | `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` | Defaults to the verified Safe `0xfC6ec9718d89d4935594E7DB78399913071FcDc4` |
 | `MERKADO_RPC_URL` | Server-only. Default `https://sepolia.base.org` |
 | `NEXT_PUBLIC_MERKADO_PAY_URL` | Apps card uses `/pay` |
@@ -65,7 +65,8 @@ Open a new tab only when the app URL value is an absolute external URL.
 decision: ADR-0008 (supersedes ADR-0006 / ADR-0007 where they conflict).
 
 Status on 2026-08-21: the flow is implemented locally behind configuration.
-It is **not deployed, not activated, and not merged**. The earlier mock
+It has a Base Sepolia test deployment for local/staging verification but is
+**not activated or merged**. The earlier mock
 layer — `PAYMENT_RAIL_MODE`, the mock provider, the demo wallet, the demo
 outcome menu, and demo `0xDEMO…` hashes — is removed. There is no draft
 PR #19 / #20 / #22 framing anymore; those drafts are superseded by this
@@ -137,7 +138,7 @@ only when mainnet is enabled.
 | Settlement money | **USDC**, 1:1 with USD. `$1,800.00` rent = `1,800.00 USDC` = `1800000000` atomic. |
 | Contract | `MerkadoRentOfferV1`, non-upgradeable ERC-721, pooled USDC rent per token id |
 | Backend mint key | server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`). Mints offer NFTs. `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` is a legacy display label, not the minter. |
-| Contract env | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — empty until deployment; empty shows not-configured |
+| Contract address | `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is the single source of truth, used every time. Empty shows not-configured. |
 | RPC env | Server-only `MERKADO_RPC_URL`, default `https://sepolia.base.org` |
 | Listing offer | **One transferable NFT per listing**, minted by the backend mint key. No expiry. |
 | Landlord payout | The buyer pays the **exact purchase price directly to the locked landlord payout address**. No landlord claim, no funding record, no separate payout Safe. |
@@ -213,9 +214,10 @@ In the expanded **Pay with stablecoin** panel, the QR and the **copy
 address** / **copy amount** controls are **informational only** — they
 display the receiving address, USDC amount, and payment reference and never
 submit a payment. **Continue with Sentoo** is a collapsed panel with a
-**Coming soon** badge. The live **Connect**, **Approve USDC**, and **Pay
-rent** actions sit inside that same stablecoin section; `depositRent` is the
-only valid payment path.
+**Coming soon** badge. The live **Connect** and **Pay rent** actions sit inside
+that same stablecoin section. **Pay rent** waits for a successful Approve USDC
+receipt before calling `depositRent`; the deposit is the only valid payment
+path.
 
 Do **not** treat the first click as a confirmed chain receipt. Keep
 initiated / pending / confirmed distinct.
@@ -237,7 +239,7 @@ No landlord wallet. Merkado does the on-chain work.
 |---|---|---|
 | Choose payout | Create Offer → Payout | Lock the landlord payout address before submission |
 | Request offer | Create Offer | No wallet for the landlord. After Admin approval, **your system** mints the NFT from the backend mint key |
-| List | Admin approval | Mint via Safe. No expiry. Reject purchase if the contract env is empty (not-configured state) |
+| List | Admin approval | Mint via Safe. No expiry. Reject purchase if the active contract address is empty (not-configured state) |
 | Sale | Whole-offer purchase | Buyer pays the exact purchase price to the locked landlord address; NFT Safe → buyer atomic. Fee already included |
 | See payout | My Offers / offer detail | Show Waiting / Processing / Paid. No landlord claim button. Explorer link only if a **real** tx hash exists |
 | Record collection | Admin offer → Record collection | Off-chain fallback. Does not pay the landlord again |
@@ -272,9 +274,9 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 ### Decisions you still own
 
-1. **Deployment.** Deploy and verify `MerkadoRentOfferV1` on Base Sepolia,
-   then set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`. Apply the chain store
-   migration. Send test USDC only after approval.
+1. **Deployment.** Deploy and verify the approved `MerkadoRentOfferV1` on Base
+   Sepolia, then set `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`. Apply the chain
+   store migration. Send test USDC only after approval.
 2. **Mint signing.** The backend mint key signs each `mintOffer` directly (no Safe transaction). Confirm funding/rotation of `MERKADO_MINTER_PRIVATE_KEY`.
    (Safe Transaction Service, a relayer, or another approved design). It
    must not reduce the landlord below the purchase price shown.
@@ -306,8 +308,8 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 ### Done when
 
-- `MerkadoRentOfferV1` is deployed and verified on **Base Sepolia** and the
-  env address is set.
+- `MerkadoRentOfferV1` is deployed and verified on **Base Sepolia** and
+   `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is set.
 - The backend mint key mints one offer NFT per approved listing.
 - A connected holder buys a whole offer (pays the landlord address; NFT
   Safe → buyer atomic) on **Base Sepolia**.

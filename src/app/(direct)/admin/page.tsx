@@ -28,7 +28,6 @@ import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
-import { ContractAddressForm } from "./contract-address-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
@@ -174,12 +173,11 @@ export default async function AdminPage() {
               value={book.cryptoConfig?.offerNftContract ?? ""}
               tip={
                 configured
-                  ? "The deployed Merkado Rent Offer contract. Mint and purchases happen here."
-                  : "Not configured yet. Set it below or via NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS to activate live flows."
+                  ? "The deployed Merkado Rent Offer contract, from NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS. Mint and purchases happen here."
+                  : "Not configured. Set NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS to activate live flows."
               }
             />
           </div>
-          <ContractAddressForm current={book.cryptoConfig?.offerNftContract ?? null} />
         </CardContent>
       </Card>
 

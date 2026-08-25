@@ -114,7 +114,7 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
       <MintControl
         configured={configured}
         tokenId={onchain.tokenId}
-        contractAddress={onchain.contractAddress}
+        contractAddress={onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null}
         mintTxHash={onchain.mintTxHash}
         purchased={onchain.purchased}
         minterAddress={minterAddress}

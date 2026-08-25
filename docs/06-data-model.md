@@ -183,9 +183,10 @@ explorer, backend mint key, contract address). Older
 `optimism` and OP Sepolia books rematch to **Base Sepolia**. **Reset**
 seeds the fresh demo book (**MRA-001** + **MRA-010** as `funding` offers with
 **empty on-chain state**) and starts a **new chain-store epoch** so old
-on-chain facts are never reused. Reset does **NOT** roll back the chain; old
-contract state is abandoned. Pairing it operationally with a fresh Base
-Sepolia contract redeploy + env address update is a separate approved gate.
+on-chain facts are never reused. Reset does **NOT** roll back the chain; the
+env contract address stays active so approved offers mint again on the same
+deployment. `cryptoConfig.offerNftContract` always resolves
+`NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`, the single source of truth.
 Reset keeps the selected payment network. The chain store tables
 (`ra_chain_*`, `ra_rent_*`) are a separate
 reviewed migration that is **not yet applied**; the JSON book remains the

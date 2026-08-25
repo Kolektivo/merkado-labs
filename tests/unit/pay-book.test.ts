@@ -177,6 +177,27 @@ test("selected testnet and later mainnet facts stay catalog-owned", () => {
   assert.equal(opMainnet.chainId, OP_MAINNET_CHAIN_ID);
 });
 
+test("the env contract address is used every time, even after Reset clears it", () => {
+  const previous = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS;
+  process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS =
+    "0x1111111111111111111111111111111111111111";
+  try {
+    assert.equal(
+      cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY, { offerNftContract: null })
+        .offerNftContract?.toLowerCase(),
+      "0x1111111111111111111111111111111111111111",
+    );
+    assert.equal(
+      cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY, { offerNftContract: "0x9999999999999999999999999999999999999999" })
+        .offerNftContract?.toLowerCase(),
+      "0x1111111111111111111111111111111111111111",
+    );
+  } finally {
+    if (previous == null) delete process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS;
+    else process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS = previous;
+  }
+});
+
 test("short names do not persist as mainnet", () => {
   assert.equal(parsePayNetworkKey("base"), null);
   assert.equal(parsePayNetworkKey("op"), null);

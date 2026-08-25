@@ -6,6 +6,11 @@ import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
+  settledApproveThenSendState,
+  type ApproveThenSendOutcome,
+  type ApproveThenSendStep,
+} from "@/lib/pay/approve-then-send-state";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,12 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export type ApproveThenSendOutcome =
-  | { status: "confirmed" }
-  | { status: "pending"; reason?: string }
-  | { status: "error"; message: string };
-
-type Step = "idle" | "approve" | "send" | "verify" | "done";
+export type { ApproveThenSendOutcome } from "@/lib/pay/approve-then-send-state";
 
 /**
  * Single-action wallet flow: when the action needs an ERC-20 approval, the
@@ -53,7 +53,7 @@ export function ApproveThenSendDialog({
   runCheckStatus: () => Promise<ApproveThenSendOutcome>;
   onConfirmed: () => void;
 }) {
-  const [step, setStep] = useState<Step>("idle");
+  const [step, setStep] = useState<ApproveThenSendStep>("idle");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingReason, setPendingReason] = useState<string | null>(null);
@@ -68,20 +68,14 @@ export function ApproveThenSendDialog({
   }
 
   function finish(outcome: ApproveThenSendOutcome) {
+    const next = settledApproveThenSendState(outcome);
+    setStep(next.step);
+    setSubmitted(next.submitted);
+    setError(next.error);
+    setPendingReason(next.pendingReason);
     if (outcome.status === "confirmed") {
-      setStep("done");
-      setPendingReason(null);
       onConfirmed();
-      return;
     }
-    if (outcome.status === "pending") {
-      setPendingReason(outcome.reason ?? null);
-      setSubmitted(true);
-      return;
-    }
-    setError(outcome.message);
-    setSubmitted(false);
-    setStep("idle");
   }
 
   async function start() {

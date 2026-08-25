@@ -31,7 +31,8 @@ event/log (mint, purchase, transfer, deposit, claim) and rejects
 self-transfers, wrong amounts, wrong network, and duplicate confirmations.
 Tests must also cover: the display-only 60-day window (offer stays
 purchasable after the date, no Expired status derives from it), Reset
-starting a new chain-store epoch (old on-chain facts are never reused),
+starting a new chain-store epoch (old on-chain facts are never reused), the approval receipt completing before
+purchase/deposit begins, pending outcomes exposing only **Check status**,
 informational-only Pay QR / copy controls (they never submit a payment;
 `depositRent` is the only path), customer statuses (Paid = proceeds card
 only; the offer stays Sold), **Save draft** persistence, and Admin
@@ -70,7 +71,7 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
    purchase price to the locked landlord address and moves the NFT Safe →
    buyer atomically. Cards carry the display-only **"Available until [date] ·
    60-day listing window"** text — the offer stays purchasable after the date
-   and no Expired status derives from it. Empty contract env shows a
+   and no Expired status derives from it. Empty active contract address shows a
    not-configured state.
 8. Portfolio: Position ID; offer token id; accrued rent per token; the
    current NFT owner can `claimRent`; non-owners are rejected.
@@ -220,11 +221,11 @@ it felt wrong.
 - Open **Admin**. **Reset the book** seeds a fresh demo book (**MRA-001** and
   **MRA-010** as `funding` offers with **empty on-chain state**) and starts a
   **new chain-store epoch** so old on-chain facts are never reused. The
-  payment network you selected stays. On-chain state is **not** rolled back
-  by Reset — old contract state is abandoned. Pairing Reset operationally
-  with a fresh Base Sepolia contract redeploy + env address update is a
-  separate approved gate; deployed contracts and their balances keep their
-  chain state until then.
+  payment network you selected and the env contract address stay active.
+  On-chain state is **not** rolled back by Reset — approved offers mint again
+  on the same deployment. Pairing Reset operationally with a fresh Base
+  Sepolia contract redeploy + env address update is a separate approved gate;
+  deployed contracts and their balances keep their chain state until then.
 
 ### What you are judging
 

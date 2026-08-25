@@ -70,8 +70,9 @@ function revalidate() {
  */
 export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   const book = await loadBookForJob();
-  // Mint on the active contract address: the stored (variable) address in the
-  // demo book wins, with the env value as the first-run default.
+  // The env contract address is the single source of truth and is used every
+  // time. Reset keeps it working so approved offers mint again on the same
+  // deployment.
   const contractAddress =
     normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
   const offer = book.offers.find((row) => row.reference === reference);
