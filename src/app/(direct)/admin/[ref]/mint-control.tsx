@@ -1,17 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { autoMintAction } from "@/lib/rent-advance/actions";
 import { truncateHash } from "@/lib/rent-advance/ids";
 
 export function MintControl({
-  reference,
   configured,
   tokenId,
   contractAddress,
@@ -19,7 +13,6 @@ export function MintControl({
   purchased,
   minterAddress,
 }: {
-  reference: string;
   configured: boolean;
   tokenId: number | null;
   contractAddress: string | null;
@@ -27,41 +20,11 @@ export function MintControl({
   purchased: boolean;
   minterAddress: string | null;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
   const state = purchased
     ? "purchased"
     : tokenId != null && mintTxHash
       ? "minted"
       : "not_minted";
-
-  function run(action: () => Promise<unknown>) {
-    setError(null);
-    setMessage(null);
-    startTransition(async () => {
-      try {
-        const result = await action();
-        if (result && typeof result === "object" && "status" in result) {
-          const status = (result as { status?: string }).status;
-          if (status === "submitted") {
-            setMessage("Mint transaction broadcast. Waiting for confirmation…");
-          } else if (status === "pending") {
-            setMessage("Mint is pending on chain. It confirms once the receipt is verified.");
-          } else if (status === "confirmed") {
-            setMessage("Offer NFT minted and verified on Base Sepolia.");
-          }
-        } else {
-          setMessage("Done.");
-        }
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "The action failed.");
-      }
-    });
-  }
 
   return (
     <Card>
@@ -90,18 +53,6 @@ export function MintControl({
           </Alert>
         ) : null}
 
-        {error ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not complete</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
-        {message ? (
-          <Alert>
-            <AlertDescription>{message}</AlertDescription>
-          </Alert>
-        ) : null}
-
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <p className="text-sm font-medium">Contract</p>
@@ -116,24 +67,6 @@ export function MintControl({
             </p>
           </div>
         </div>
-
-        {state === "not_minted" ? (
-          <div className="rounded-xl border p-4">
-            <p className="text-sm font-medium">Mint automatically</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              The backend broadcasts mintOffer from the server mint key and
-              verifies the receipt. No Safe execution or manual hash entry.
-            </p>
-            <Button
-              type="button"
-              className="mt-3"
-              disabled={pending || !configured}
-              onClick={() => run(() => autoMintAction(reference))}
-            >
-              {pending ? "Minting…" : "Mint now"}
-            </Button>
-          </div>
-        ) : null}
 
         {mintTxHash && contractAddress ? (
           <p className="text-xs text-muted-foreground">

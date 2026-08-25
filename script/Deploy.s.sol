@@ -8,15 +8,16 @@ import {MerkadoRentOfferV1} from "../contracts/MerkadoRentOfferV1.sol";
 /// @notice Testnet-only deployment script for MerkadoRentOfferV1 on Base Sepolia.
 /// @dev    Pass the explicit constructor arguments on the CLI:
 ///         forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL --broadcast \
-///           --sig "run(address,address)" $USDC $COMPANY_SAFE
-///         No secrets are hardcoded. Verify the USDC and Company Safe addresses
-///         before broadcasting. This is NOT a mainnet deployment script.
+///           --sig "run(address,address)" $USDC $MINTER
+///         No secrets are hardcoded. Verify the USDC and Minter addresses
+///         before broadcasting. The minter is the EOA behind MERKADO_MINTER_PRIVATE_KEY. This is NOT a mainnet deployment script.
 contract Deploy is Script {
     /// @param usdc_ Circle native USDC address on the target testnet.
-    /// @param companySafe_ Company Safe address that will mint offers.
-    function run(address usdc_, address companySafe_) public {
+    /// @param minter_ The address allowed to mint offers. In this demo it is the EOA
+///              backing MERKADO_MINTER_PRIVATE_KEY (not a Safe).
+    function run(address usdc_, address minter_) public {
         vm.startBroadcast();
-        new MerkadoRentOfferV1(usdc_, companySafe_);
+        new MerkadoRentOfferV1(usdc_, minter_);
         vm.stopBroadcast();
     }
 }

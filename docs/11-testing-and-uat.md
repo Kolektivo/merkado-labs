@@ -40,7 +40,7 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
    page.
 2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
    Portfolio, plus Pay, Account, and Admin at the bottom.
-3. My Offers lists the two seeded offers (**MRA-001** and **MRA-010**);
+3. My Offers is empty until you create an offer via Create Offer;
    draft/unsold rows are not counted as cash already advanced.
 4. Simulator: Listing Score and Payer Score sliders; market rent in XCG;
    Property Score; 3 months disabled; 9/12 simulation-only; Use this quote
@@ -49,16 +49,18 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 6. Offer detail: landlord sees review / listed / sold / paid, the locked
    payout destination, and no listing expiry; no holder or monthly
    collection detail. Operations controls are only in Admin.
-7. Marketplace: no tenant name or address; server rejects fractional
-   purchases; a whole-offer purchase pays the exact purchase price to the
-   locked landlord address and moves the NFT Safe → buyer atomically.
-   Empty contract env shows a not-configured state.
+7. Marketplace: no tenant name or address; **mint-pending offers are not
+   listed** (their detail page stays reachable with a Mint pending alert);
+   server rejects fractional purchases; a whole-offer purchase pays the exact
+   purchase price to the locked landlord address and moves the NFT Safe →
+   buyer atomically. Empty contract env shows a not-configured state.
 8. Portfolio: Position ID; offer token id; accrued rent per token; the
    current NFT owner can `claimRent`; non-owners are rejected.
 9. Pay: seeded request **XCG 3,222.00** / **1,800.00 USDC** on the selected
    network (**Base Sepolia** after Reset); `depositRent(tokenId,
    opaquePaymentId, amount)`; visible pending then success; invalid id is a
-   safe not-found.
+   safe not-found. The active card shows a muted, non-actionable **Bank
+   payment · Coming soon** (Sentoo) teaser.
 10. One confirmed deposit appears once in Pay history, My Payments, offer
     collections, and holder claimable rent. Refresh does not duplicate.
 11. Apps cards have working internal fallbacks and accessible new-tab
@@ -82,8 +84,8 @@ it felt wrong.
    Base Sepolia contract and `MERKADO_RPC_URL` points at
    `https://sepolia.base.org`.
 2. Open **Admin** at the bottom of the left nav. Click **Reset the book** and
-   confirm **Yes, reset**. Both seeded offers (**MRA-001** and **MRA-010**)
-   start as approved listings awaiting the Safe mint.
+   confirm **Yes, reset**. The book is empty — create an offer via Create Offer,
+   approve it in Admin, and the backend mints it automatically.
 3. Fund test wallets with Base Sepolia ETH (gas) and test USDC from
    [faucet.circle.com](https://faucet.circle.com).
 
@@ -140,8 +142,8 @@ it felt wrong.
 - Confirm in the wallet. You should see pending, then **Rent paid** only
   after the server verifies the deposit event.
 - Deposit the same month again: the second attempt must be rejected
-  (already paid). A wrong amount must be rejected. A sixth installment is
-  the maximum; a seventh is rejected.
+  (already paid). A wrong amount and a duplicate payment id must be rejected;
+  unique payment ids keep working (the contract has no deposit cap).
 - A later month (for example November) says to pay the earlier month first.
 - You never see a fee, holder name, or distribution figure.
 - Refresh the success page. The payment is still there once.
@@ -183,9 +185,9 @@ it felt wrong.
 
 ### 9. Reset
 
-- Open **Admin**. **Reset the book** restores the two seeded offers
-  (**MRA-001** and the cheap Punda studio), payments, and distributions.
-  The payment network you selected stays. On-chain state is **not** rolled
+- Open **Admin**. **Reset the book** restores the empty book (no offers). You
+  create and mint offers yourself. The payment network you selected stays. On-chain
+  state is **not** rolled
   back by Reset — Reset restores the Labs book only; deployed contracts and
   their balances keep their chain state.
 

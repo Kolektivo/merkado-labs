@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
 import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, purchaseOffer } from "@/lib/pay/wallet-adapter";
-import { verifyPurchaseAction } from "@/lib/rent-advance/actions";
+import {
+  attachSubmittedPurchaseTxAction,
+  checkPendingPurchaseAction,
+  verifyPurchaseAction,
+} from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
 
 function wait(ms: number) {
@@ -27,6 +31,7 @@ export function SubscribeForm({
   minted,
   configured,
   tokenId,
+  pendingRecovery,
 }: {
   reference: string;
   remainingCents: number;
@@ -35,6 +40,7 @@ export function SubscribeForm({
   minted: boolean;
   configured: boolean;
   tokenId: number | null;
+  pendingRecovery: boolean;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
@@ -69,6 +75,11 @@ export function SubscribeForm({
     startTransition(async () => {
       try {
         const { hash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0));
+        await attachSubmittedPurchaseTxAction(
+          reference,
+          hash,
+          wallet.address ?? "0x0000000000000000000000000000000000000000",
+        );
         let result = await verifyPurchaseAction(
           reference,
           hash,
@@ -100,6 +111,35 @@ export function SubscribeForm({
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Purchase failed.");
+      } finally {
+        setBusy(false);
+      }
+    });
+  }
+
+
+  async function handleCheckStatus() {
+    setError(null);
+    setBusy(true);
+    startTransition(async () => {
+      try {
+        const result = await checkPendingPurchaseAction(reference);
+        if (result.status === "confirmed") {
+          try {
+            window.sessionStorage.setItem(
+              `merkado:success:purchase:${reference}`,
+              formatXcg(remainingCents),
+            );
+          } catch {
+            // optional dialog detail
+          }
+          router.push(`/portfolio/${reference}?success=purchase`);
+          router.refresh();
+        } else {
+          setError(result.reason ?? "The purchase is still pending on chain.");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not check the purchase status.");
       } finally {
         setBusy(false);
       }
@@ -140,7 +180,7 @@ export function SubscribeForm({
         {formatXcg(remainingCents)}
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        100% of the offer NFT · no fractional purchase
+        100% ownership · no fractional purchase
       </p>
 
       {!minted ? (
@@ -181,6 +221,17 @@ export function SubscribeForm({
                 {busy ? "Purchasing…" : `Purchase whole offer · ${formatXcg(remainingCents)}`}
               </Button>
             </div>
+          ) : null}
+          {pendingRecovery ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              disabled={busy}
+              onClick={handleCheckStatus}
+            >
+              {busy ? "Checking…" : "Check purchase status"}
+            </Button>
           ) : null}
         </div>
       )}

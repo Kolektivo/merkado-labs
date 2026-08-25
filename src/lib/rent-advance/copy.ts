@@ -188,6 +188,8 @@ type PayCopyEntry = {
   approveUsdc: string;
   payByWalletTitle: string;
   payByWalletBody: string;
+  payByStablecoinTitle: string;
+  bankPaymentComingSoon: string;
   approved: string;
   notMinted: string;
   notConfiguredTitle: string;
@@ -253,6 +255,8 @@ const EN: PayCopyEntry = {
   payByWalletTitle: "Pay with your wallet",
   payByWalletBody:
     "Connect a wallet on Base Sepolia, approve the exact USDC amount, then pay the rent.",
+  payByStablecoinTitle: "Pay with stablecoin",
+  bankPaymentComingSoon: "Bank payment · Coming soon",
   approved: "USDC approved",
   notMinted: "This listing is not minted yet. It becomes payable once the offer NFT exists.",
   notConfiguredTitle: "Pay is not configured yet",
@@ -320,6 +324,8 @@ const NL: PayCopyEntry = {
   payByWalletTitle: "Betaal met je wallet",
   payByWalletBody:
     "Verbind een wallet op Base Sepolia, keur het exacte USDC-bedrag goed en betaal dan de huur.",
+  payByStablecoinTitle: "Betaal met stablecoin",
+  bankPaymentComingSoon: "Bankbetaling · Binnenkort",
   approved: "USDC goedgekeurd",
   notMinted: "Deze listing is nog niet gemunt. Hij wordt betaalbaar zodra de offer NFT bestaat.",
   notConfiguredTitle: "Betalen is nog niet geconfigureerd",
@@ -386,6 +392,8 @@ const PAP: PayCopyEntry = {
   payByWalletTitle: "Paga ku bo wallet",
   payByWalletBody:
     "Konektá un wallet na Base Sepolia, aproba e montante eksakto di USDC i paga e huur.",
+  payByStablecoinTitle: "Paga ku stablecoin",
+  bankPaymentComingSoon: "Pago di banko · Pronto",
   approved: "USDC aprobá",
   notMinted: "E listing aki no ta mint ainda. E ta bira pagable ora e offer NFT existí.",
   notConfiguredTitle: "Pago no ta konfigurá ainda",

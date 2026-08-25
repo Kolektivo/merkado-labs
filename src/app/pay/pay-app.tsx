@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { UsdcMark } from "@/components/usdc-mark";
+import { SentooMark } from "@/components/sentoo-mark";
 import { WalletConnection } from "@/components/wallet-connection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, depositRent } from "@/lib/pay/wallet-adapter";
 import {
+  attachSubmittedTxAction,
+  checkPendingPaymentAction,
   createRentPaymentAttemptAction,
   verifyRentPaymentAction,
 } from "@/lib/rent-advance/actions";
@@ -99,6 +102,7 @@ export function PayApp({
   configured,
   minted,
   tokenId,
+  pendingRecovery,
 }: {
   paymentRequestId: string;
   periodLabel: string;
@@ -116,6 +120,7 @@ export function PayApp({
   configured: boolean;
   minted: boolean;
   tokenId: number | null;
+  pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
   const copy = useMemo(() => payerCopy[locale], [locale]);
@@ -170,6 +175,11 @@ export function PayApp({
         paymentId,
         amountAtomic,
       });
+      await attachSubmittedTxAction(
+        paymentRequestId,
+        hash,
+        wallet.address ?? "0x0000000000000000000000000000000000000000",
+      );
       setWalletUi("pending");
       let result = await verifyRentPaymentAction(
         paymentRequestId,
@@ -201,6 +211,25 @@ export function PayApp({
       }
       setWalletUi(err instanceof Error && /reverted/i.test(err.message) ? "reverted" : "failed");
       setError(err instanceof Error ? err.message : copy.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCheckStatus() {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await checkPendingPaymentAction(paymentRequestId);
+      if (result.status === "confirmed") {
+        setWalletUi("confirmed");
+        router.refresh();
+      } else {
+        setWalletUi("pending");
+        setError(result.reason ?? copy.awaiting);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not check the payment status.");
     } finally {
       setBusy(false);
     }
@@ -311,62 +340,83 @@ export function PayApp({
 
               <p className="text-sm">{copy.due} {dueDateLabel}</p>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="text-muted-foreground">{copy.reference}</span>
-                  <span className="font-medium">{paymentReference}</span>
+              <div className="mt-2 space-y-4 rounded-xl bg-muted/40 p-4">
+                <h3 className="text-sm font-semibold text-surface-dark">
+                  {copy.payByStablecoinTitle}
+                </h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">{copy.reference}</span>
+                    <span className="font-medium">{paymentReference}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      {copy.network}
+                      <HelpTip label={copy.network}>{copy.networkTip}</HelpTip>
+                    </span>
+                    <span className="font-medium">{networkLabel || copy.networkUnset}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{copy.payByWalletBody}</p>
                 </div>
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    {copy.network}
-                    <HelpTip label={copy.network}>{copy.networkTip}</HelpTip>
-                  </span>
-                  <span className="font-medium">{networkLabel || copy.networkUnset}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{copy.payByWalletBody}</p>
-              </div>
 
-              <WalletConnection onConnectedChange={setConnected} />
+                <WalletConnection onConnectedChange={setConnected} />
 
-              {connected && onBaseSepolia ? (
-                <div className="space-y-2">
+                {connected && onBaseSepolia ? (
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      className="min-h-11 w-full"
+                      variant="outline"
+                      disabled={busy || approved}
+                      onClick={() => void handleApprove()}
+                    >
+                      {approved ? copy.approved : copy.approveUsdc}
+                    </Button>
+                    <Button
+                      type="button"
+                      className="min-h-11 w-full"
+                      disabled={!approved || inFlight}
+                      onClick={() => void handlePay()}
+                    >
+                      {walletUi === "pending"
+                        ? copy.awaiting
+                        : copy.confirmPay}
+                    </Button>
+                  </div>
+                ) : null}
+
+                {walletUi === "pending" ? (
+                  <Alert>
+                    <AlertTitle>{copy.pending}</AlertTitle>
+                    <AlertDescription>{copy.awaiting}</AlertDescription>
+                  </Alert>
+                ) : null}
+
+                {pendingRecovery ? (
                   <Button
                     type="button"
-                    className="min-h-11 w-full"
                     variant="outline"
-                    disabled={busy || approved}
-                    onClick={() => void handleApprove()}
-                  >
-                    {approved ? copy.approved : copy.approveUsdc}
-                  </Button>
-                  <Button
-                    type="button"
                     className="min-h-11 w-full"
-                    disabled={!approved || inFlight}
-                    onClick={() => void handlePay()}
+                    disabled={busy}
+                    onClick={() => void handleCheckStatus()}
                   >
-                    {walletUi === "pending"
-                      ? copy.awaiting
-                      : copy.confirmPay}
+                    {busy ? "Checking…" : "Check payment status"}
                   </Button>
-                </div>
-              ) : null}
+                ) : null}
 
-              {walletUi === "pending" ? (
-                <Alert>
-                  <AlertTitle>{copy.pending}</AlertTitle>
-                  <AlertDescription>{copy.awaiting}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertTitle>
-                    {walletUi === "reverted" ? copy.reverted : copy.failed}
-                  </AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
+                {error ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>
+                      {walletUi === "reverted" ? copy.reverted : copy.failed}
+                    </AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
+                <SentooMark />
+                <span>{copy.bankPaymentComingSoon}</span>
+              </div>
             </CardContent>
           </Card>
         )}

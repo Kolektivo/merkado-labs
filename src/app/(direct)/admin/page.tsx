@@ -20,9 +20,9 @@ import {
 import { isTestnetConfig, mainnetSelectionAllowed } from "@/lib/pay/networks";
 import {
   sortOffersForLandlordList,
-  statusLabel,
   statusTone,
   mintStateLabel,
+  displayStatusLabel,
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
@@ -38,7 +38,6 @@ export default async function AdminPage() {
   const minterAddress = merkadoMinterAddressOrNull();
   const offers = sortOffersForLandlordList(book.offers);
   const review = offers.filter((offer) => offer.status === "under_review");
-  const funding = offers.filter((offer) => offer.status === "funding");
 
   return (
     <div className="space-y-6">
@@ -74,22 +73,6 @@ export default async function AdminPage() {
         </Card>
       ) : null}
 
-      {funding.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Approved · awaiting mint</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            {funding.map((offer) => (
-              <p key={offer.reference}>
-                {offer.reference} · {offer.property.summary} ·{" "}
-                <Money cents={offer.offeringCents - offer.fundedCents} /> remaining
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
-
       <div className="overflow-x-auto rounded-xl border bg-card">
         <Table className="min-w-[840px]">
           <TableHeader>
@@ -117,7 +100,10 @@ export default async function AdminPage() {
                   </TableCell>
                   <TableCell>
                     <StatusBadge tone={statusTone(offer.status)}>
-                      {statusLabel(offer.status)}
+                      {displayStatusLabel(
+                        offer.status,
+                        onchain.tokenId != null && Boolean(onchain.mintTxHash),
+                      )}
                     </StatusBadge>
                   </TableCell>
                   <TableCell>

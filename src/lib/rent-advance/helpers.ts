@@ -165,6 +165,18 @@ export function effectiveOfferStatus(
   return offer.status;
 }
 
+
+/** True when an approved offer still needs minting (not broadcast, or broadcast
+ *  but not yet verified to 5-block depth). */
+export function isPendingMintOffer(offer: {
+  status: OfferStatus;
+  onchain?: Offer["onchain"];
+}): boolean {
+  if (offer.status !== "funding") return false;
+  const onchain = mergeOnchain(offer.onchain);
+  return onchain.mintTxHash == null || onchain.tokenId == null;
+}
+
 export function canSubscribe(
   status: OfferStatus,
   offeringCents: number,
@@ -229,6 +241,17 @@ export function statusLabel(status: OfferStatus): string {
   }
 }
 
+/**
+ * Mint-aware display label. A `funding` offer stays "Mint pending" only until
+ * its offer NFT is minted; once minted it reads "Listed" (matching the
+ * Marketplace card), even though `offer.status` is still `funding`. The status
+ * only moves to `live`/`collecting` on purchase.
+ */
+export function displayStatusLabel(status: OfferStatus, minted: boolean): string {
+  if (status === "funding") return minted ? "Listed" : "Mint pending";
+  return statusLabel(status);
+}
+
 export function mintStateLabel(state: MintState): string {
   switch (state) {
     case "not_minted":
@@ -263,6 +286,10 @@ export function canRecordCollection(status: OfferStatus): boolean {
 
 export function isMarketplaceStatus(status: OfferStatus): boolean {
   return status !== "draft" && status !== "under_review" && status !== "denied";
+}
+
+export function marketplaceOfferFilter(offer: Offer): boolean {
+  return isMarketplaceStatus(offer.status) && !isPendingMintOffer(offer);
 }
 
 export function canShowContribute(
@@ -310,6 +337,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     tokenId: onchain.tokenId,
     purchased: onchain.purchased,
+    pendingPurchase: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
   };
 }
 

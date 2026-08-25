@@ -13,9 +13,9 @@ import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
   coverSrcFor,
+  displayStatusLabel,
   formatDayMonthYear,
   remainingOfferingCents,
-  statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
@@ -77,7 +77,7 @@ export default async function BuyerOfferPage({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge tone={statusTone(offer.status)}>
-                {statusLabel(offer.status)}
+                {displayStatusLabel(offer.status, offer.minted)}
               </StatusBadge>
               <span className="text-xs tracking-wide text-grey-800">
                 {offer.reference}
@@ -111,10 +111,11 @@ export default async function BuyerOfferPage({
               minted={offer.minted}
               configured={configured}
               tokenId={offer.tokenId}
+              pendingRecovery={offer.pendingPurchase}
             />
           ) : (
             <ClosedOfferCard
-              status={statusLabel(offer.status)}
+              status={displayStatusLabel(offer.status, offer.minted)}
               offeringCents={offer.offeringCents}
             />
           )}

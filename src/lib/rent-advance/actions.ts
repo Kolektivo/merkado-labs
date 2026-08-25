@@ -11,6 +11,11 @@ import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { independentApproverById } from "@/lib/rent-advance/actors";
 import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
 import {
+  AutoMintResult,
+  mintOfferFor,
+  runPendingMintSweep,
+} from "@/lib/rent-advance/mint-sweep-run";
+import {
   buildScheduledReceivables,
   canRecordCollection,
 } from "@/lib/rent-advance/helpers";
@@ -21,7 +26,6 @@ import {
   normalizePayoutAddress,
   payoutAddressLocked,
   purchasePriceAtomicFor,
-  rentInstallmentAtomicFor,
 } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
@@ -44,7 +48,7 @@ import {
   assertMerkadoConfigured,
   merkadoContractAddress,
 } from "@/lib/onchain/config";
-import { offerKey, opaquePaymentId } from "@/lib/onchain/ids";
+import { opaquePaymentId } from "@/lib/onchain/ids";
 import {
   ensureActiveEpoch,
   markOfferPurchased,
@@ -52,27 +56,14 @@ import {
   recordChainEvent,
   recordClaimVerification,
   recordDepositVerification,
-  recordOffer,
 } from "@/lib/onchain/chain-store";
 import {
-  createPublicClient,
-  createWalletClient,
-  decodeEventLog,
-  http,
-} from "viem";
-import { waitForTransactionReceipt } from "viem/actions";
-import { baseSepolia } from "viem/chains";
-import {
-  verifyOfferMinted,
   verifyOfferPurchased,
   verifyRentClaimed,
   verifyRentDeposit,
   MERKADO_CONFIRMATION_BLOCKS,
   confirmationsReady,
 } from "@/lib/onchain/verify";
-import { MERKADO_OFFER_ABI } from "@/lib/onchain/abi";
-import { merkadoMinterAccount } from "@/lib/onchain/minter";
-import { merkadoRpcUrl } from "@/lib/onchain/config";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 
 function refresh() {
@@ -96,11 +87,6 @@ function assertPayoutReady(offer: Offer) {
       "Add a Base Sepolia payout address before submitting. Girasol bank payout is coming soon.",
     );
   }
-}
-
-function blockNumberValue(value: bigint | number | null | undefined): number | null {
-  if (value == null) return null;
-  return Number(value);
 }
 
 export async function resetDemoAction() {
@@ -246,241 +232,16 @@ export async function submitOfferForReviewAction(reference: string) {
 }
 
 /** Prepare a mint: generate the opaque offer key and store expected terms. Throws when not configured. */
-export type AutoMintResult = {
-  status: "submitted" | "pending" | "confirmed";
-  txHash?: string;
-  tokenId?: number;
-  reason?: string;
-};
-
-/**
- * Automatically mints the offer NFT from the server-held minter key right
- * after Admin approval. Idempotent: a retry resumes an already-broadcast
- * mint and only records the verified OfferMinted event once.
- */
-async function mintOfferFor(reference: string): Promise<AutoMintResult> {
-  assertMerkadoConfigured();
-  const contractAddress = merkadoContractAddress();
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  if (offer.status !== "funding") {
-    throw new Error("Only an approved offer can be minted.");
-  }
-  const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId != null && onchain.mintTxHash) {
-    return { status: "confirmed", txHash: onchain.mintTxHash, tokenId: onchain.tokenId };
-  }
-  const payoutAddress = payoutAddressLocked(offer);
-  if (!payoutAddress) {
-    throw new Error("Add a payout address before minting.");
-  }
-  const purchasePrice = purchasePriceAtomicFor(offer);
-  const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
-  const epoch = await ensureActiveEpoch();
-  const key =
-    onchain.offerKey ??
-    offerKey({
-      chainId: MERKADO_CHAIN_ID,
-      contractAddress,
-      internalId: offer.reference,
-    });
-
-  // Broadcast once with the server mint key.
-  let txHash = onchain.mintTxHash;
-  if (!txHash) {
-    const account = merkadoMinterAccount();
-    const walletClient = createWalletClient({
-      account,
-      chain: baseSepolia,
-      transport: http(merkadoRpcUrl()),
-    });
-    txHash = await walletClient.writeContract({
-      address: contractAddress as `0x${string}`,
-      abi: MERKADO_OFFER_ABI,
-      functionName: "mintOffer",
-      args: [
-        key as `0x${string}`,
-        payoutAddress as `0x${string}`,
-        purchasePrice,
-        rentInstallmentAmount,
-      ],
-    });
-    await updateOffer(reference, (current) => ({
-      ...current,
-      nextAction: "Mint broadcast · verifying on chain",
-      onchain: {
-        ...mergeOnchain(current.onchain),
-        offerKey: key,
-        contractAddress,
-        epochId: epoch.id,
-        mintTxHash: txHash,
-      },
-      events: [
-        {
-          id: `ev-${reference}-mint-broadcast-${Date.now()}`,
-          at: new Date().toISOString(),
-          title: "Mint broadcast",
-          detail: "The backend submitted mintOffer from the server mint key.",
-          actor: "System",
-        },
-        ...current.events,
-      ],
-    }));
-  }
-
-  // Wait for the receipt, then decode the minted token id.
-  const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http(merkadoRpcUrl()),
-  });
-  const receipt = await waitForTransactionReceipt(publicClient, {
-    hash: txHash as `0x${string}`,
-    timeout: 90_000,
-  }).catch(() => null);
-  if (!receipt || receipt.status !== "success") {
-    return { status: "pending", txHash, reason: "Waiting for the mint transaction on chain." };
-  }
-
-  let mintedTokenId: bigint | null = onchain.tokenId != null ? BigInt(onchain.tokenId) : null;
-  if (mintedTokenId == null) {
-    for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
-      try {
-        const decoded = decodeEventLog({
-          abi: MERKADO_OFFER_ABI,
-          data: log.data,
-          topics: log.topics,
-        });
-        if (decoded.eventName === "OfferMinted") {
-          mintedTokenId = decoded.args.tokenId as bigint;
-          break;
-        }
-      } catch {
-        // Not one of our events; skip.
-      }
-    }
-  }
-  if (mintedTokenId == null) {
-    return { status: "pending", txHash, reason: "OfferMinted event not found yet." };
-  }
-
-  const result = await verifyOfferMinted(txHash, {
-    contractAddress,
-    tokenId: mintedTokenId,
-    offerKey: key,
-    payoutAddress,
-    purchasePrice,
-    rentInstallmentAmount,
-  });
-  if (result.status === "pending") {
-    return { status: "pending", txHash, tokenId: Number(mintedTokenId), reason: result.reason };
-  }
-  if (!result.verified) {
-    throw new Error(result.reason ?? "The mint receipt could not be verified.");
-  }
-  const depthPending = confirmationDepthPending(result);
-  if (depthPending) {
-    return { status: "pending", txHash, tokenId: Number(mintedTokenId), reason: depthPending };
-  }
-
-  await recordOffer({
-    offerKey: key,
-    chainId: MERKADO_CHAIN_ID,
-    contractAddress,
-    tokenId: mintedTokenId,
-    payoutAddress,
-    purchasePrice,
-    rentInstallmentAmount,
-    mintTxHash: txHash,
-    mintBlockNumber: blockNumberValue(result.blockNumber),
-    epochId: epoch.id,
-  });
-  const logIndex = result.logIndex;
-  if (logIndex != null && result.blockNumber != null) {
-    await recordChainEvent({
-      epochId: epoch.id,
-      chainId: MERKADO_CHAIN_ID,
-      contractAddress,
-      txHash,
-      logIndex,
-      blockNumber: Number(result.blockNumber),
-      blockHash: result.blockHash ?? "",
-      eventName: "OfferMinted",
-      eventArgs: { tokenId: mintedTokenId.toString(), offerKey: key },
-    });
-  }
-  await updateOffer(reference, (current) => ({
-    ...current,
-    status: "funding",
-    nextAction: "Minted · open on Marketplace",
-    onchain: {
-      ...mergeOnchain(current.onchain),
-      tokenId: Number(mintedTokenId),
-      offerKey: key,
-      contractAddress,
-      epochId: epoch.id,
-      mintTxHash: txHash,
-      mintBlockNumber: result.blockNumber ?? null,
-      payoutAddress,
-    },
-    events: [
-      {
-        id: `ev-${reference}-mint-${Date.now()}`,
-        at: new Date().toISOString(),
-        title: "Offer minted",
-        detail: `Offer NFT minted by the backend. Token ${mintedTokenId.toString()} is now purchasable on Marketplace.`,
-        actor: "System",
-      },
-      ...current.events,
-    ],
-  }));
-  refresh();
-  return { status: "confirmed", txHash, tokenId: Number(mintedTokenId) };
-}
-
+export type { AutoMintResult, PendingMintResult } from "@/lib/rent-advance/mint-sweep-run";
 
 export async function autoMintAction(reference: string): Promise<AutoMintResult> {
   return mintOfferFor(reference);
 }
 
-export type PendingMintResult = {
-  reference: string;
-  status: AutoMintResult["status"];
-  txHash?: string;
-  reason?: string;
-};
-
-/** Mints every approved offer that has not been minted yet. Idempotent. */
-export async function sweepPendingMintsAction(): Promise<{
-  minted: number;
-  results: PendingMintResult[];
-}> {
-  assertMerkadoConfigured();
-  const book = await loadBook();
-  const pending = book.offers.filter(
-    (offer) => offer.status === "funding" && !mergeOnchain(offer.onchain).mintTxHash,
-  );
-  const results: PendingMintResult[] = [];
-  for (const offer of pending) {
-    try {
-      const result = await mintOfferFor(offer.reference);
-      results.push({
-        reference: offer.reference,
-        status: result.status,
-        txHash: result.txHash,
-        reason: result.reason,
-      });
-    } catch (err) {
-      results.push({
-        reference: offer.reference,
-        status: "pending",
-        reason: err instanceof Error ? err.message : "The mint could not be completed.",
-      });
-    }
-  }
-  refresh();
-  return { minted: results.filter((r) => r.status === "confirmed").length, results };
+/** Mints every approved offer that still needs minting (idempotent). */
+export async function sweepPendingMintsAction() {
+  assertDemoUnlocked();
+  return runPendingMintSweep();
 }
 
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */
@@ -536,6 +297,48 @@ type RentDepositVerifiedResult = {
   reason?: string;
 };
 
+/** Persist the submitted deposit tx so a pending payment can be re-verified later. */
+export async function attachSubmittedTxAction(
+  paymentRequestId: string,
+  txHash: string,
+  payerAddress: string,
+) {
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request) throw new Error("Payment request not found.");
+  await saveBook({
+    ...book,
+    paymentRequests: (book.paymentRequests ?? []).map((row) =>
+      row.paymentRequestId === paymentRequestId
+        ? { ...row, submittedTxHash: txHash, submittedPayer: payerAddress }
+        : row,
+    ),
+  });
+}
+
+/** Re-verify a previously submitted deposit using the persisted hash. */
+export async function checkPendingPaymentAction(
+  paymentRequestId: string,
+): Promise<RentDepositVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request) throw new Error("Payment request not found.");
+  if (request.status === "confirmed") return { status: "confirmed" };
+  if (!request.submittedTxHash || !request.submittedPayer) {
+    return { status: "pending", reason: "No submitted transaction was recorded yet." };
+  }
+  return verifyRentPaymentAction(
+    paymentRequestId,
+    request.submittedTxHash,
+    request.submittedPayer,
+  );
+}
+
 /** Verify a rent deposit receipt and update the book exactly once. */
 export async function verifyRentPaymentAction(
   paymentRequestId: string,
@@ -583,7 +386,7 @@ export async function verifyRentPaymentAction(
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
   }
-  const verification = await recordDepositVerification({
+  await recordDepositVerification({
     chainId: MERKADO_CHAIN_ID,
     txHash,
     logIndex,
@@ -611,19 +414,19 @@ export async function verifyRentPaymentAction(
       amount: expectedAmount.toString(),
     },
   });
-  if (verification.recorded) {
-    const facts: VerifiedRentDepositFacts = {
-      tokenId: onchain.tokenId,
-      opaquePaymentId: opaque,
-      payerAddress,
-      amountAtomic: expectedAmount,
-      txHash,
-      blockNumber: result.blockNumber,
-    };
-    await saveBook(
-      applyVerifiedRentDeposit(book, paymentRequestId, facts, new Date().toISOString()),
-    );
-  }
+  // Apply the book even when the verification row already exists (a prior
+  // write may have succeeded before the book save). The helper is idempotent.
+  const facts: VerifiedRentDepositFacts = {
+    tokenId: onchain.tokenId,
+    opaquePaymentId: opaque,
+    payerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentDeposit(book, paymentRequestId, facts, new Date().toISOString()),
+  );
   refresh();
   return { status: "confirmed" };
 }
@@ -632,6 +435,45 @@ type PurchaseVerifiedResult = {
   status: "pending" | "confirmed";
   reason?: string;
 };
+
+/** Persist the submitted purchase tx so a pending purchase can be re-verified later. */
+export async function attachSubmittedPurchaseTxAction(
+  reference: string,
+  txHash: string,
+  buyerAddress: string,
+) {
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedPurchaseTxHash: txHash,
+      submittedPurchaseBuyer: buyerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted purchase using the persisted hash. */
+export async function checkPendingPurchaseAction(
+  reference: string,
+): Promise<PurchaseVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchased) return { status: "confirmed", reason: "Already purchased" };
+  if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
+    return { status: "pending", reason: "No submitted purchase transaction was recorded yet." };
+  }
+  return verifyPurchaseAction(
+    reference,
+    onchain.submittedPurchaseTxHash,
+    onchain.submittedPurchaseBuyer,
+  );
+}
 
 /** Verify a whole-offer purchase receipt and update the book exactly once. */
 export async function verifyPurchaseAction(
@@ -761,7 +603,7 @@ export async function verifyRentClaimAction(
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
   }
-  const verification = await recordClaimVerification({
+  await recordClaimVerification({
     chainId: MERKADO_CHAIN_ID,
     txHash,
     logIndex,
@@ -787,20 +629,60 @@ export async function verifyRentClaimAction(
       amount: expectedAmount.toString(),
     },
   });
-  if (verification.recorded) {
-    const facts: VerifiedRentClaimFacts = {
-      tokenId: onchain.tokenId,
-      ownerAddress,
-      amountAtomic: expectedAmount,
-      txHash,
-      blockNumber: result.blockNumber,
-    };
-    await saveBook(
-      applyVerifiedRentClaim(book, reference, facts, new Date().toISOString()),
-    );
-  }
+  const facts: VerifiedRentClaimFacts = {
+    tokenId: onchain.tokenId,
+    ownerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentClaim(book, reference, facts, new Date().toISOString()),
+  );
   refresh();
   return { status: "confirmed" };
+}
+
+
+/** Persist the submitted claim tx so a pending claim can be re-verified later. */
+export async function attachSubmittedClaimTxAction(
+  reference: string,
+  txHash: string,
+  ownerAddress: string,
+) {
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedClaimTxHash: txHash,
+      submittedClaimOwner: ownerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted claim using the persisted hash. */
+export async function checkPendingClaimAction(
+  reference: string,
+): Promise<RentClaimVerifiedResult> {
+  assertMerkadoConfigured();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
+    return { status: "confirmed" };
+  }
+  if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
+    return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
+  }
+  return verifyRentClaimAction(
+    reference,
+    onchain.submittedClaimTxHash,
+    onchain.submittedClaimOwner,
+  );
 }
 
 export async function submitNewOfferAction(offer: Offer) {

@@ -175,6 +175,12 @@ export type OnchainOfferState = {
   claimableRentCents: number;
   /** Pooled USDC rent already claimed by the current owner, in USD cents. */
   claimedRentCents: number;
+  /** Submitted claim tx hash + owner, persisted so a pending claim can be re-verified. */
+  submittedClaimTxHash?: string | null;
+  submittedClaimOwner?: string | null;
+  /** Submitted purchase tx hash + buyer, persisted so a pending purchase can be re-verified. */
+  submittedPurchaseTxHash?: string | null;
+  submittedPurchaseBuyer?: string | null;
 };
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";
@@ -236,6 +242,10 @@ export type PaymentRequest = {
   txHash: string | null;
   /** Opaque bytes32 on-chain payment id created for the rent deposit attempt. */
   opaquePaymentId?: string | null;
+  /** Submitted on-chain deposit tx hash, persisted so a pending payment can be re-verified after a refresh. */
+  submittedTxHash?: string | null;
+  /** The payer (msg.sender) of the submitted deposit, needed to re-verify on resume. */
+  submittedPayer?: string | null;
 };
 
 export type LedgerTransaction = {
@@ -448,6 +458,8 @@ export type BuyerOfferCard = {
   minted: boolean;
   tokenId: number | null;
   purchased: boolean;
+  /** True when a purchase was submitted but not yet verified (recovery). */
+  pendingPurchase: boolean;
 };
 
 export type PurchaserOfferDetail = BuyerOfferCard & {

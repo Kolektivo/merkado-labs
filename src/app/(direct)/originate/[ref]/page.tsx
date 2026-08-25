@@ -24,12 +24,12 @@ import {
   effectiveOfferStatus,
   rentToMarket,
   offerDisplayName,
-  statusLabel,
+  displayStatusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
-import { proceedsPresentation } from "@/lib/rent-advance/custody";
+import { mergeOnchain, proceedsPresentation } from "@/lib/rent-advance/custody";
 import { getOffer } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,7 @@ export default async function OfferOpsPage({
   const proceeds = proceedsPresentation(offer);
   const effectiveStatus = effectiveOfferStatus(offer);
   const showProceedsCard = offer.status !== "draft";
+  const minted = mergeOnchain(offer.onchain).tokenId != null;
   const lifecycleEvents = offer.events.filter((event) =>
     /offer request|approved|denied|offer created|listed|offer sold|whole offer|sale amount|status set/i.test(
       event.title,
@@ -72,7 +73,7 @@ export default async function OfferOpsPage({
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge tone={statusTone(effectiveStatus)}>
-              {statusLabel(effectiveStatus)}
+              {displayStatusLabel(effectiveStatus, minted)}
             </StatusBadge>
             {effectiveStatus === "funding" ||
             effectiveStatus === "live" ||
@@ -109,7 +110,7 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {statusLabel(effectiveStatus)}
+            {displayStatusLabel(effectiveStatus, minted)}
           </CardContent>
         </Card>
         <Card>
