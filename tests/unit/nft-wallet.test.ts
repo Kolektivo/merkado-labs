@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decodeFunctionData, type EIP1193Provider } from "viem";
+import { decodeFunctionData, pad, toHex, type EIP1193Provider } from "viem";
 
 import type { MerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
@@ -34,9 +34,12 @@ type RequestRecord = { method: string; params?: unknown };
 function fakeProvider(opts: {
   chainId?: string;
   receiptStatus?: "0x0" | "0x1";
+  claimOwner?: `0x${string}`;
+  claimableAmount?: bigint;
   failRequest?: { method: string; error: unknown };
 } = {}): { provider: EIP1193Provider; requests: RequestRecord[] } {
   const requests: RequestRecord[] = [];
+  let ethCallCount = 0;
   const provider = {
     request: async ({ method, params }: { method: string; params?: unknown }) => {
       requests.push({ method, params });
@@ -64,6 +67,11 @@ function fakeProvider(opts: {
           return "0x0";
         case "eth_getTransactionReceipt":
           return { status: opts.receiptStatus ?? "0x1", transactionHash: TX_HASH };
+        case "eth_call":
+          ethCallCount += 1;
+          return ethCallCount === 1
+            ? pad((opts.claimOwner ?? FROM) as `0x${string}`)
+            : toHex(opts.claimableAmount ?? AMOUNT_100_USDC, { size: 32 });
         default:
           throw new Error(`Unhandled request method: ${method}`);
       }
@@ -237,7 +245,7 @@ test("depositRent encodes depositRent(tokenId, paymentId, amountAtomic)", async 
   assert.equal(decoded.args[2], AMOUNT_100_USDC);
 });
 
-test("claimRent encodes claimRent(tokenId)", async () => {
+test("claimRent preflights ownership and claimable rent before encoding claimRent", async () => {
   const tokenId = BigInt(3);
   const { provider, requests } = fakeProvider();
   const result = await claimRent(makeWallet({ provider }), tokenId);
@@ -251,6 +259,26 @@ test("claimRent encodes claimRent(tokenId)", async () => {
   const decoded = decodeFunctionData({ abi: MERKADO_ABI, data: tx.data });
   assert.equal(decoded.functionName, "claimRent");
   assert.equal(decoded.args[0], tokenId);
+});
+
+test("claimRent rejects a wallet that is not the current holder", async () => {
+  const { provider, requests } = fakeProvider({
+    claimOwner: "0x4444444444444444444444444444444444444444",
+  });
+  await assert.rejects(
+    claimRent(makeWallet({ provider }), BigInt(3)),
+    /not the current holder/,
+  );
+  assert.equal(requests.some((row) => row.method === "eth_sendTransaction"), false);
+});
+
+test("claimRent rejects when the contract has no claimable rent", async () => {
+  const { provider, requests } = fakeProvider({ claimableAmount: BigInt(0) });
+  await assert.rejects(
+    claimRent(makeWallet({ provider }), BigInt(3)),
+    /no rent available to claim/,
+  );
+  assert.equal(requests.some((row) => row.method === "eth_sendTransaction"), false);
 });
 
 test("a wallet-rejected transaction surfaces a friendly user-safe error", async () => {

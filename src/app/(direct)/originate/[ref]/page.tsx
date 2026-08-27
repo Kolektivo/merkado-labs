@@ -59,6 +59,11 @@ export default async function OfferOpsPage({
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
   const proceeds = proceedsPresentation(offer);
   const effectiveStatus = effectiveOfferStatus(offer);
+  const sold =
+    proceeds.purchased ||
+    proceeds.landlordPaid ||
+    effectiveStatus === "live" ||
+    effectiveStatus === "collecting";
   const showProceedsCard = offer.status !== "draft";
   const expiresAt = listingExpiresAt(offer.publishedAt);
   const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
@@ -123,15 +128,13 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {effectiveStatus === "live" || effectiveStatus === "collecting"
+            {sold
               ? "Offer sold"
               : effectiveStatus === "funding"
                 ? "Open on Marketplace"
                 : "Not on the marketplace"}
             {expiresLabel &&
-            (effectiveStatus === "funding" ||
-              effectiveStatus === "live" ||
-              effectiveStatus === "collecting") ? (
+            !sold && effectiveStatus === "funding" ? (
               <span className="mt-1 block text-sm font-normal text-muted-foreground">
                 Available until {expiresLabel} · 60-day listing window
               </span>

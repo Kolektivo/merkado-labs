@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  useAppKit,
   useAppKitAccount,
   useAppKitNetwork,
   useAppKitProvider,
@@ -10,7 +9,7 @@ import {
 } from "@reown/appkit/react";
 import type { EIP1193Provider } from "viem";
 
-import { isReownConfigured } from "@/lib/pay/reown-config";
+import { isReownConfigured, openReownModal } from "@/lib/pay/reown-config";
 
 export type MerkadoWallet = {
   /** The active EIP-1193 provider (Reown wallet or window.ethereum). */
@@ -157,7 +156,6 @@ function useInjectedWallet(): Omit<
 export function useMerkadoWallet(): MerkadoWallet {
   const reownEnabled = isReownConfigured();
   const injected = useInjectedWallet();
-  const { open } = useAppKit();
   const { address: reownAddress, isConnected: reownConnected } = useAppKitAccount();
   const { chainId: reownChain } = useAppKitNetwork();
   const { walletProvider } = useAppKitProvider("eip155");
@@ -185,7 +183,7 @@ export function useMerkadoWallet(): MerkadoWallet {
     connect: async () => {
       setConnecting(true);
       try {
-        open();
+        openReownModal();
       } finally {
         setConnecting(false);
       }

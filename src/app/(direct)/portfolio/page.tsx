@@ -117,11 +117,11 @@ export default async function PortfolioPage() {
           </TableHeader>
           <TableBody>
             {positions.map((position) => (
-              <TableRow key={position.positionId}>
+              <TableRow key={position.positionId} className="relative">
                 <TableCell className="font-medium">
                   <Link
                     href={`/portfolio/${position.reference}`}
-                    className="hover:underline"
+                    className="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     {position.summary}
                   </Link>

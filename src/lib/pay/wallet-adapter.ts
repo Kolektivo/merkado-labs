@@ -1,4 +1,4 @@
-import { createWalletClient, custom, type EIP1193Provider } from "viem";
+import { createPublicClient, createWalletClient, custom, type EIP1193Provider } from "viem";
 import { baseSepolia } from "viem/chains";
 
 import type { MerkadoWallet } from "@/hooks/use-merkado-wallet";
@@ -38,6 +38,20 @@ export const MERKADO_ABI = [
     stateMutability: "nonpayable",
     inputs: [{ name: "tokenId", type: "uint256" }],
     outputs: [],
+  },
+  {
+    name: "ownerOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    name: "claimableRent",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 
@@ -135,6 +149,10 @@ function walletContext(wallet: MerkadoWallet) {
     from: wallet.address,
     client: createWalletClient({
       account: wallet.address,
+      chain: baseSepolia,
+      transport: custom(provider),
+    }),
+    publicClient: createPublicClient({
       chain: baseSepolia,
       transport: custom(provider),
     }),
@@ -274,10 +292,29 @@ export async function claimRent(
   contractAddress?: string | null,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
-  const { client, from } = walletContext(wallet);
+  const { client, publicClient, from } = walletContext(wallet);
   try {
+    const address = resolveMerkadoContractAddress(contractAddress);
+    const currentOwner = await publicClient.readContract({
+      address,
+      abi: MERKADO_ABI,
+      functionName: "ownerOf",
+      args: [tokenId],
+    });
+    if (currentOwner.toLowerCase() !== from.toLowerCase()) {
+      throw userSafeError("This wallet is not the current holder of this offer.");
+    }
+    const claimable = await publicClient.readContract({
+      address,
+      abi: MERKADO_ABI,
+      functionName: "claimableRent",
+      args: [tokenId],
+    });
+    if (claimable === BigInt(0)) {
+      throw userSafeError("There is no rent available to claim on Base Sepolia.");
+    }
     const hash = await client.writeContract({
-      address: resolveMerkadoContractAddress(contractAddress),
+      address,
       abi: MERKADO_ABI,
       functionName: "claimRent",
       args: [tokenId],

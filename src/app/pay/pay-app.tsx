@@ -33,6 +33,8 @@ import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
 
 import { usePayerLocale } from "./payer-locale";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type HistoryRow = {
   paymentRequestId: string;
@@ -167,18 +169,45 @@ function PaymentMethodPanel({
 }
 
 function SentooPreview() {
+  const [accountHolder, setAccountHolder] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Bank payment through Sentoo is coming soon. Your rent and lease stay
-        the same.
+        Visual preview only. Details stay in this browser field and are never
+        saved or sent. Use fictional information.
       </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="sentoo-account-holder">Account holder</Label>
+          <Input
+            id="sentoo-account-holder"
+            autoComplete="off"
+            value={accountHolder}
+            onChange={(event) => setAccountHolder(event.target.value)}
+            placeholder="Demo Renter"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="sentoo-bank-account">Bank account</Label>
+          <Input
+            id="sentoo-bank-account"
+            autoComplete="off"
+            value={bankAccount}
+            onChange={(event) => setBankAccount(event.target.value)}
+            placeholder="DEMO-0000"
+          />
+        </div>
+      </div>
       <Button type="button" className="min-h-11 w-full" disabled>
         Sentoo payments coming soon
       </Button>
     </div>
   );
 }
+
+
 
 function historyStatusLabel(
   status: PaymentRequestStatus,

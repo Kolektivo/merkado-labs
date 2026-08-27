@@ -7,7 +7,6 @@ import {
   Copy,
   ExternalLink,
   LogOut,
-  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -198,25 +197,9 @@ export function WalletConnection({
           </PopoverContent>
         </Popover>
       ) : (
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className={cn(
-            "flex items-center gap-3 rounded-xl border bg-card px-3",
-            compact ? "py-1.5 text-xs" : "py-2.5 text-sm",
-          )}
-        >
-          <span
-            className={cn(
-              "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
-              "bg-muted text-muted-foreground",
-            )}
-            aria-hidden
-          >
-            <X className="size-3" />
-          </span>
-          <span className="min-w-0 flex-1 font-medium">{statusText}</span>
-        </div>
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {statusText}
+        </p>
       )}
 
       {error ? (
