@@ -232,13 +232,14 @@ export default async function OriginatePage({
                     <TableRow
                       key={offer.reference}
                       className={cn(
+                        "relative",
                         proceeds.minted && !proceeds.purchased && "bg-primary/5",
                       )}
                     >
                       <TableCell className="font-medium">
                         <Link
                           href={`/originate/${offer.reference}`}
-                          className="hover:underline"
+                          className="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                         >
                           {offer.reference}
                         </Link>
