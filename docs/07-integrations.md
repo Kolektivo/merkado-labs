@@ -174,11 +174,13 @@ MRA-001 locked Pay request:
 
 ### Pending-transaction recovery
 
-When a purchase, rent deposit, or claim is broadcast, the submitted tx hash is
+When a purchase or rent deposit is broadcast, the submitted tx hash is
 persisted server-side (on the payment request / offer). If the client poll is
-interrupted before 5 confirmations, the Pay / Marketplace / Portfolio page shows a
-**Check status** button that re-verifies the stored hash; a background cron
-(`/api/cron/mint`, protected by `CRON_SECRET`) resumes minted-but-unverified offers.
+interrupted before 5 confirmations, the Pay / Marketplace page shows a
+**Check status** button that re-verifies the stored hash. Portfolio keeps claim
+recovery server-side without exposing a separate status button for the demo. A
+background cron (`/api/cron/mint`, protected by `CRON_SECRET`) resumes
+minted-but-unverified offers.
 
 ### Verification rules
 

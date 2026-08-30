@@ -128,7 +128,6 @@ export default async function PortfolioDetailPage({
               amountCents={pendingCents}
               configured={configured}
               contractAddress={contractAddress}
-              pendingRecovery={Boolean(onchain.submittedClaimTxHash)}
             />
           </CardContent>
         </Card>

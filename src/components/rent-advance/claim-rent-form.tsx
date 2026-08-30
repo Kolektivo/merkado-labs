@@ -13,7 +13,6 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { claimRent } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedClaimTxAction,
-  checkPendingClaimAction,
   verifyRentClaimAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
@@ -30,14 +29,12 @@ export function ClaimRentForm({
   amountCents,
   configured,
   contractAddress,
-  pendingRecovery,
 }: {
   reference: string;
   tokenId: number | null;
   amountCents: number;
   configured: boolean;
   contractAddress: string | null;
-  pendingRecovery: boolean;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
@@ -97,35 +94,6 @@ export function ClaimRentForm({
     });
   }
 
-
-  async function handleCheckStatus() {
-    setError(null);
-    startTransition(async () => {
-      setClaiming(true);
-      try {
-        const result = await checkPendingClaimAction(reference);
-        if (result.status === "confirmed") {
-          try {
-            window.sessionStorage.setItem(
-              `merkado:success:rent:${reference}`,
-              formatXcg(amountCents),
-            );
-          } catch {
-            // optional dialog detail
-          }
-          router.push(`/portfolio/${reference}?success=rent`);
-          router.refresh();
-        } else {
-          setError(result.reason ?? "The claim is still being verified.");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not check the claim status.");
-      } finally {
-        setClaiming(false);
-      }
-    });
-  }
-
   return (
     <div className="space-y-3">
       {error ? (
@@ -171,17 +139,6 @@ export function ClaimRentForm({
               onClick={handleClaim}
             >
               {claiming ? "Claiming…" : "Claim rent"}
-            </Button>
-          ) : null}
-          {pendingRecovery ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 w-full px-4 md:w-auto"
-              disabled={pending || claiming}
-              onClick={handleCheckStatus}
-            >
-              {claiming ? "Checking…" : "Check claim status"}
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">
