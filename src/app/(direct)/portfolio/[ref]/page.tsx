@@ -183,10 +183,17 @@ export default async function PortfolioDetailPage({
                 <TableHead>Due</TableHead>
                 <TableHead>Collected</TableHead>
                 <TableHead>Distribution</TableHead>
+                <TableHead>Payment transaction</TableHead>
+                <TableHead>Claim transaction</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {position.receivables.map((row) => {
+                const payment = book.paymentRequests?.find(
+                  (item) =>
+                    item.offerReference === position.reference &&
+                    item.receivableN === row.n,
+                );
                 const distribution = distributions.find((item) =>
                   item.collectionId.endsWith(`-${row.n}`) ||
                   item.distributionId.endsWith(`-${row.n}`),
@@ -217,14 +224,21 @@ export default async function PortfolioDetailPage({
                                 ? "Claimed"
                                 : distribution.status}
                           </p>
-                          {distribution.txHash ? (
-                            <CopyValue
-                              value={distribution.txHash}
-                              label="distribution reference"
-                              truncate
-                            />
-                          ) : null}
                         </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {payment?.txHash ? (
+                        <CopyValue value={payment.txHash} label="payment transaction" />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {distribution?.status === "claimed" && distribution.txHash ? (
+                        <CopyValue value={distribution.txHash} label="claim transaction" />
                       ) : (
                         "—"
                       )}
