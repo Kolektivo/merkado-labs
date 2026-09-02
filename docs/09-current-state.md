@@ -1,7 +1,7 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses — approved, in progress)
+**Last updated:** September 2, 2026 (interim wallet identity)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
@@ -35,6 +35,16 @@ outcome menu, demo hashes) is removed.
 > Check-status state, and restoring the env address as the single source of
 > truth. The branch remains **NOT merged or
 > live**; implementation-audit findings in `10` still block activation.
+
+> **Interim wallet identity (2026-09-02) — implemented locally, not merged:**
+> branch `feat/wallet-identity-interim` adds wallet-first identity for the Labs
+> walkthrough. A Base Sepolia wallet signs a short-lived challenge and receives
+> an HTTP-only session. Reset records the signing wallet as the seed owner;
+> My Offers, Portfolio, Pay, draft, purchase, claim, and interactive operations
+> mutations verify the session server-side. Portfolio reads live `ownerOf` when
+> the contract is configured, so NFT transfers change the visible owner. The
+> challenge migration is reviewed but not applied, and `WALLET_SESSION_SECRET`
+> is not present in the repository.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**

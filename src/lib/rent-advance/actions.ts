@@ -63,6 +63,10 @@ import {
   confirmationsReady,
 } from "@/lib/onchain/verify";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import {
+  requireWalletIdentity,
+  walletAddressMatches,
+} from "@/lib/wallet/identity";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -87,8 +91,17 @@ function assertPayoutReady(offer: Offer) {
   }
 }
 
+async function requireWalletActor(address?: string | null): Promise<string> {
+  const identity = await requireWalletIdentity();
+  if (!address || !walletAddressMatches(identity.address, address)) {
+    throw new Error("The connected wallet does not match this action.");
+  }
+  return identity.address;
+}
+
 export async function resetDemoAction() {
-  await resetBook();
+  const identity = await requireWalletIdentity();
+  await resetBook(identity.address);
   // Seed the fresh approved offers on the env deployment immediately, so the
   // tokens are minted even if the Admin page is closed before the sweep/cron
   // would otherwise run. Idempotent: already-minted offers are skipped.
@@ -97,6 +110,7 @@ export async function resetDemoAction() {
 }
 
 export async function setPayNetworkAction(networkKey: string) {
+  await requireWalletIdentity();
   const key = parseExactPayNetworkKey(networkKey);
   if (!key || !isSelectablePayNetwork(key) || !canPersistPayNetwork(key)) {
     throw new Error("That payment network is not available.");
@@ -108,6 +122,7 @@ export async function setPayNetworkAction(networkKey: string) {
 }
 
 export async function setOfferStatusAction(reference: string, status: OfferStatus) {
+  await requireWalletIdentity();
   if (status === "funding") {
     throw new Error("Use independent approval to move an offer into mint pending.");
   }
@@ -129,6 +144,7 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
 }
 
 export async function approveOfferAction(reference: string, actorId: string) {
+  await requireWalletIdentity();
   const approver = independentApproverById(actorId);
   if (!approver) {
     throw new Error("Select Enrique or Luuk as the independent approver.");
@@ -162,6 +178,7 @@ export async function approveOfferAction(reference: string, actorId: string) {
 }
 
 export async function savePayoutAddressAction(address: string) {
+  await requireWalletIdentity();
   const book = await loadBook();
   await saveBook(applyPayoutAddress(book, normalizePayoutAddress(address)));
   refresh();
@@ -171,6 +188,7 @@ export async function recordCollectionAction(
   reference: string,
   receivableN: number,
 ) {
+  await requireWalletIdentity();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -190,6 +208,7 @@ export async function recordCollectionAction(
 }
 
 export async function closeChecklistItemAction(id: string, evidence: string) {
+  await requireWalletIdentity();
   const book = await loadBook();
   book.checklist = book.checklist.map((item) =>
     item.id === id ? { ...item, state: "closed", evidence } : item,
@@ -199,9 +218,16 @@ export async function closeChecklistItemAction(id: string, evidence: string) {
 }
 
 export async function submitOfferForReviewAction(reference: string) {
+  const identity = await requireWalletIdentity();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  if (
+    !offer.createdByWalletAddress ||
+    !walletAddressMatches(offer.createdByWalletAddress, identity.address)
+  ) {
+    throw new Error("This offer belongs to a different wallet.");
+  }
   if (offer.status !== "draft") {
     throw new Error("Only a draft can be submitted for review.");
   }
@@ -237,22 +263,30 @@ export async function submitOfferForReviewAction(reference: string) {
 export type { AutoMintResult, PendingMintResult } from "@/lib/rent-advance/mint-sweep-run";
 
 export async function autoMintAction(reference: string): Promise<AutoMintResult> {
+  await requireWalletIdentity();
   return mintOfferFor(reference);
 }
 
 /** Mints every approved offer that still needs minting (idempotent). */
 export async function sweepPendingMintsAction() {
   assertDemoUnlocked();
+  await requireWalletIdentity();
   return runPendingMintSweep();
 }
 
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */
 export async function createRentPaymentAttemptAction(paymentRequestId: string) {
+  const identity = await requireWalletIdentity();
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
-  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+  if (
+    !request ||
+    request.accountId !== RENTER_ACCOUNT_ID ||
+    !request.renterWalletAddress ||
+    !walletAddressMatches(request.renterWalletAddress, identity.address)
+  ) {
     throw new Error("Payment request not found.");
   }
   const offer = book.offers.find((row) => row.reference === request.offerReference);
@@ -304,11 +338,21 @@ export async function attachSubmittedTxAction(
   txHash: string,
   payerAddress: string,
 ) {
+  await requireWalletActor(payerAddress);
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
   if (!request) throw new Error("Payment request not found.");
+  if (request.submittedTxHash && request.submittedTxHash !== txHash) {
+    throw new Error("A payment transaction is already pending for this request.");
+  }
+  if (
+    !request.renterWalletAddress ||
+    !walletAddressMatches(request.renterWalletAddress, payerAddress)
+  ) {
+    throw new Error("This payment is assigned to a different wallet.");
+  }
   await saveBook({
     ...book,
     paymentRequests: (book.paymentRequests ?? []).map((row) =>
@@ -323,15 +367,20 @@ export async function attachSubmittedTxAction(
 export async function checkPendingPaymentAction(
   paymentRequestId: string,
 ): Promise<RentDepositVerifiedResult> {
+  const identity = await requireWalletIdentity();
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
   if (!request) throw new Error("Payment request not found.");
+  if (!request.renterWalletAddress || !walletAddressMatches(request.renterWalletAddress, identity.address)) {
+    throw new Error("This payment is assigned to a different wallet.");
+  }
   if (request.status === "confirmed") return { status: "confirmed" };
   if (!request.submittedTxHash || !request.submittedPayer) {
     return { status: "pending", reason: "No submitted transaction was recorded yet." };
   }
+  await requireWalletActor(request.submittedPayer);
   return verifyRentPaymentAction(
     paymentRequestId,
     request.submittedTxHash,
@@ -345,11 +394,17 @@ export async function verifyRentPaymentAction(
   txHash: string,
   payerAddress: string,
 ): Promise<RentDepositVerifiedResult> {
+  await requireWalletActor(payerAddress);
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
-  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+  if (
+    !request ||
+    request.accountId !== RENTER_ACCOUNT_ID ||
+    !request.renterWalletAddress ||
+    !walletAddressMatches(request.renterWalletAddress, payerAddress)
+  ) {
     throw new Error("Payment request not found.");
   }
   const offer = book.offers.find((row) => row.reference === request.offerReference);
@@ -441,9 +496,19 @@ export async function attachSubmittedPurchaseTxAction(
   txHash: string,
   buyerAddress: string,
 ) {
+  await requireWalletActor(buyerAddress);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  if (
+    offer.onchain?.submittedPurchaseBuyer &&
+    !walletAddressMatches(offer.onchain.submittedPurchaseBuyer, buyerAddress)
+  ) {
+    throw new Error("A purchase is already pending for a different wallet.");
+  }
+  if (offer.onchain?.submittedPurchaseTxHash && offer.onchain.submittedPurchaseTxHash !== txHash) {
+    throw new Error("A purchase transaction is already pending for this offer.");
+  }
   await updateOffer(reference, (current) => ({
     ...current,
     onchain: {
@@ -458,14 +523,20 @@ export async function attachSubmittedPurchaseTxAction(
 export async function checkPendingPurchaseAction(
   reference: string,
 ): Promise<PurchaseVerifiedResult> {
+  const identity = await requireWalletIdentity();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchased && onchain.purchaserAddress &&
+      !walletAddressMatches(onchain.purchaserAddress, identity.address)) {
+    throw new Error("This offer belongs to a different wallet.");
+  }
   if (onchain.purchased) return { status: "confirmed", reason: "Already purchased" };
   if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
     return { status: "pending", reason: "No submitted purchase transaction was recorded yet." };
   }
+  await requireWalletActor(onchain.submittedPurchaseBuyer);
   return verifyPurchaseAction(
     reference,
     onchain.submittedPurchaseTxHash,
@@ -479,6 +550,7 @@ export async function verifyPurchaseAction(
   txHash: string,
   buyerAddress: string,
 ): Promise<PurchaseVerifiedResult> {
+  await requireWalletActor(buyerAddress);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -564,10 +636,15 @@ export async function verifyRentClaimAction(
   txHash: string,
   ownerAddress: string,
 ): Promise<RentClaimVerifiedResult> {
+  const identity = await requireWalletIdentity();
+  await requireWalletActor(ownerAddress);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchaserAddress && !walletAddressMatches(onchain.purchaserAddress, identity.address)) {
+    throw new Error("This position belongs to a different wallet.");
+  }
   if (onchain.tokenId == null || !onchain.contractAddress) {
     throw new Error("This listing is not ready for payment yet.");
   }
@@ -646,9 +723,20 @@ export async function attachSubmittedClaimTxAction(
   txHash: string,
   ownerAddress: string,
 ) {
+  await requireWalletActor(ownerAddress);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  const existingOnchain = mergeOnchain(offer.onchain);
+  if (existingOnchain.submittedClaimTxHash && existingOnchain.submittedClaimTxHash !== txHash) {
+    throw new Error("A claim transaction is already pending for this offer.");
+  }
+  if (
+    offer.onchain?.submittedClaimOwner &&
+    !walletAddressMatches(offer.onchain.submittedClaimOwner, ownerAddress)
+  ) {
+    throw new Error("A claim is already pending for a different wallet.");
+  }
   await updateOffer(reference, (current) => ({
     ...current,
     onchain: {
@@ -663,16 +751,21 @@ export async function attachSubmittedClaimTxAction(
 export async function checkPendingClaimAction(
   reference: string,
 ): Promise<RentClaimVerifiedResult> {
+  const identity = await requireWalletIdentity();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchaserAddress && !walletAddressMatches(onchain.purchaserAddress, identity.address)) {
+    throw new Error("This position belongs to a different wallet.");
+  }
   if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
     return { status: "confirmed" };
   }
   if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
     return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
   }
+  await requireWalletActor(onchain.submittedClaimOwner);
   return verifyRentClaimAction(
     reference,
     onchain.submittedClaimTxHash,
@@ -681,6 +774,7 @@ export async function checkPendingClaimAction(
 }
 
 export async function submitNewOfferAction(offer: Offer) {
+  const identity = await requireWalletIdentity();
   offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
@@ -700,6 +794,7 @@ export async function submitNewOfferAction(offer: Offer) {
   const book = await loadBook();
   const toSave: Offer = {
     ...offer,
+    createdByWalletAddress: identity.address,
     monthlyRentCents: priced.monthlyRentCents,
     months: priced.months,
     feeRate: priced.feeRate,
@@ -737,6 +832,10 @@ export async function submitNewOfferAction(offer: Offer) {
     ],
   };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index !== -1 && book.offers[index].createdByWalletAddress &&
+      !walletAddressMatches(book.offers[index].createdByWalletAddress, identity.address)) {
+    throw new Error("This offer belongs to a different wallet.");
+  }
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
   if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {
@@ -747,6 +846,7 @@ export async function submitNewOfferAction(offer: Offer) {
 }
 
 export async function saveDraftOfferAction(offer: Offer) {
+  const identity = await requireWalletIdentity();
   offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
@@ -758,8 +858,17 @@ export async function saveDraftOfferAction(offer: Offer) {
   // incomplete or above the cap. Submission re-prices and blocks later.
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
-  const toSave = { ...offer, status: "draft" as const, onchain: mergeOnchain(undefined) };
+  const toSave = {
+    ...offer,
+    createdByWalletAddress: identity.address,
+    status: "draft" as const,
+    onchain: mergeOnchain(undefined),
+  };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index !== -1 && book.offers[index].createdByWalletAddress &&
+      !walletAddressMatches(book.offers[index].createdByWalletAddress, identity.address)) {
+    throw new Error("This offer belongs to a different wallet.");
+  }
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
   if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {

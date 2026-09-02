@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
-import { WalletConnection } from "@/components/wallet-connection";
+import { WalletIdentity } from "@/components/wallet-identity";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
+import { useWalletIdentity } from "@/hooks/use-wallet-identity";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { claimRent } from "@/lib/pay/wallet-adapter";
 import {
@@ -37,11 +37,12 @@ export function ClaimRentForm({
   contractAddress: string | null;
 }) {
   const router = useRouter();
-  const wallet = useMerkadoWallet();
+  const walletIdentity = useWalletIdentity();
+  const wallet = walletIdentity.wallet;
   const [pending, startTransition] = useTransition();
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+  const connected = Boolean(walletIdentity.identity);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
   const canClaim =
     configured && tokenId != null && connected && onBaseSepolia && !claiming;
@@ -130,7 +131,7 @@ export function ClaimRentForm({
         </Alert>
       ) : (
         <>
-          <WalletConnection onConnectedChange={setConnected} />
+           <WalletIdentity />
           {canClaim ? (
             <Button
               type="button"

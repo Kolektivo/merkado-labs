@@ -10,11 +10,13 @@ import {
   openPaymentRequests,
   paymentStatusLabel,
 } from "@/lib/rent-advance/helpers";
-import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
 import { loadBook } from "@/lib/rent-advance/store";
 import { NOT_CONFIGURED } from "@/lib/rent-advance/copy";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
+import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
+import { paymentRequestsForWallet } from "@/lib/rent-advance/store";
+import { WalletIdentity } from "@/components/wallet-identity";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Merkado Pay" };
@@ -28,12 +30,13 @@ function tone(status: PaymentRequestStatus) {
 }
 
 export default async function PayIndexPage() {
-  const book = await loadBook();
+  const [book, identity] = await Promise.all([loadBook(), getCurrentWalletIdentity()]);
   const configured = Boolean(book.cryptoConfig?.offerNftContract);
-  const requests = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
-    .slice()
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const requests = identity
+    ? paymentRequestsForWallet(book, identity.address)
+        .slice()
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    : [];
   const open = openPaymentRequests(requests);
   const next = open[0] ?? null;
 
@@ -45,6 +48,12 @@ export default async function PayIndexPage() {
           Pay the same rent. Amounts are shown in XCG. Settlement is USDC.
         </p>
       </div>
+      {!identity ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Sign in with your wallet to view your payment requests.</p>
+          <WalletIdentity />
+        </div>
+      ) : null}
 
       {!configured ? (
         <Alert variant="destructive">

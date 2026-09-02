@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 2, 2026 (interim wallet identity)
 
 ## Automated
 
@@ -18,6 +18,12 @@ npm run build
 Unit tests import the real application modules. They must fail if pricing,
 Property Score, payment book, app-link, host-gate, chain-verification, or
 contract-helper behaviour changes incorrectly.
+
+Wallet identity tests cover challenge binding, signature verification, expiry,
+single-use challenges, and tamper-resistant session cookies. The interim wallet
+flow also requires manual verification that Reset is performed by the connected
+wallet, wallet-scoped pages reject another wallet, and Portfolio follows the
+live NFT owner after a transfer.
 
 Pricing tests must reproduce MRA-001 locked figures and the 24% block.
 Property Score tests must cover band boundaries, clamping, invalid market

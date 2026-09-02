@@ -93,14 +93,31 @@ export type RentClaimedExpected = {
   chainId?: number | null;
 };
 
-export function confirmationsFor(blockNumber: bigint, currentBlock: bigint): bigint {
-  return currentBlock - blockNumber + BigInt(1);
-}
-
 const publicClient = createPublicClient({
   chain: baseSepolia,
   transport: http(merkadoRpcUrl()),
 });
+
+export function confirmationsFor(blockNumber: bigint, currentBlock: bigint): bigint {
+  return currentBlock - blockNumber + BigInt(1);
+}
+
+/** Read the current ERC-721 owner for server-side Portfolio scoping. */
+export async function readCurrentOfferOwner(
+  contractAddress: string,
+  tokenId: number,
+): Promise<string | null> {
+  try {
+    return await publicClient.readContract({
+      address: contractAddress as `0x${string}`,
+      abi: MERKADO_OFFER_ABI,
+      functionName: "ownerOf",
+      args: [BigInt(tokenId)],
+    });
+  } catch {
+    return null;
+  }
+}
 
 function sameAddress(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();

@@ -27,6 +27,7 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
+import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +48,9 @@ export default async function PortfolioDetailPage({
   searchParams: Promise<{ success?: string }>;
 }) {
   const [{ ref }, query] = await Promise.all([params, searchParams]);
+  const identity = await getCurrentWalletIdentity();
   const [position, book] = await Promise.all([
-    getPortfolioPosition(ref),
+    getPortfolioPosition(ref, identity?.address),
     loadBook(),
   ]);
   if (!position) notFound();
