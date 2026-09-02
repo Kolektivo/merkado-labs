@@ -43,7 +43,10 @@ async function signChallenge(
   }
 }
 
-export function useWalletIdentity(): IdentityState & {
+export function useWalletIdentity(
+  onSessionInvalidated?: () => void,
+  refreshKey?: string,
+): IdentityState & {
   wallet: ReturnType<typeof useMerkadoWallet>;
   signIn: () => Promise<boolean>;
   signOut: () => Promise<void>;
@@ -62,7 +65,7 @@ export function useWalletIdentity(): IdentityState & {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const signOut = useCallback(async () => {
     await signOutWalletAction();
@@ -79,8 +82,9 @@ export function useWalletIdentity(): IdentityState & {
     invalidating.current = true;
     void signOut().finally(() => {
       invalidating.current = false;
+      onSessionInvalidated?.();
     });
-  }, [state.identity, wallet.isConnected, wallet.address, wallet.chainId, signOut]);
+  }, [state.identity, wallet.isConnected, wallet.address, wallet.chainId, signOut, onSessionInvalidated]);
 
   const signIn = useCallback(async () => {
     setState((current) => ({ ...current, signing: true, error: null }));
