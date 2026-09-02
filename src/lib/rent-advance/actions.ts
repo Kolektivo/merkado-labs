@@ -760,10 +760,10 @@ export async function checkPendingClaimAction(
   if (onchain.purchaserAddress && !walletAddressMatches(onchain.purchaserAddress, identity.address)) {
     throw new Error("This position belongs to a different wallet.");
   }
-  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
-    return { status: "confirmed" };
-  }
   if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
+    if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
+      return { status: "confirmed" };
+    }
     return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
   }
   await requireWalletActor(onchain.submittedClaimOwner);

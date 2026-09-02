@@ -13,6 +13,7 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { claimRent } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedClaimTxAction,
+  checkPendingClaimAction,
   verifyRentClaimAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
@@ -29,12 +30,14 @@ export function ClaimRentForm({
   amountCents,
   configured,
   contractAddress,
+  pendingRecovery = false,
 }: {
   reference: string;
   tokenId: number | null;
   amountCents: number;
   configured: boolean;
   contractAddress: string | null;
+  pendingRecovery?: boolean;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
@@ -42,6 +45,7 @@ export function ClaimRentForm({
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [checking, setChecking] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
   const canClaim =
     configured && tokenId != null && connected && onBaseSepolia && !claiming;
@@ -94,6 +98,25 @@ export function ClaimRentForm({
     });
   }
 
+  function handleCheckStatus() {
+    setError(null);
+    setChecking(true);
+    startTransition(async () => {
+      try {
+        const result = await checkPendingClaimAction(reference);
+        if (result.status !== "confirmed") {
+          setError(result.reason ?? "The claim is still being verified.");
+          return;
+        }
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not check the claim status.");
+      } finally {
+        setChecking(false);
+      }
+    });
+  }
+
   return (
     <div className="space-y-3">
       {error ? (
@@ -102,6 +125,7 @@ export function ClaimRentForm({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+      {!pendingRecovery ? (
       <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
         <div>
           <p className="text-sm text-muted-foreground">Rent ready</p>
@@ -114,6 +138,7 @@ export function ClaimRentForm({
           holder, not the landlord.
         </HelpTip>
       </div>
+      ) : null}
       {!configured ? (
         <Alert variant="destructive">
           <AlertTitle>Claims are not configured yet</AlertTitle>
@@ -128,6 +153,25 @@ export function ClaimRentForm({
             This listing has no rent to claim yet.
           </AlertDescription>
         </Alert>
+      ) : pendingRecovery ? (
+        <>
+          <Alert>
+            <AlertTitle>Claim transaction submitted</AlertTitle>
+            <AlertDescription>
+              The claim was sent to Base Sepolia. Check its status to finish
+              updating Portfolio. Do not submit another claim.
+            </AlertDescription>
+          </Alert>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 w-full md:w-auto"
+            disabled={checking}
+            onClick={handleCheckStatus}
+          >
+            {checking ? "Checking…" : "Check claim status"}
+          </Button>
+        </>
       ) : (
         <>
           <WalletConnection onConnectedChange={setConnected} />

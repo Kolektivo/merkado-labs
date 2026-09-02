@@ -70,6 +70,7 @@ export default async function PortfolioDetailPage({
       ? await readCurrentOfferClaimable(contractAddress!, onchain.tokenId)
       : null;
   const onchainPosition = configured && onchain.tokenId != null;
+  const submittedClaim = Boolean(onchain.submittedClaimTxHash);
   const pendingCents = onchainPosition
     ? liveClaimableAtomic == null
       ? null
@@ -147,6 +148,22 @@ export default async function PortfolioDetailPage({
               amountCents={pendingCents}
               configured={configured}
               contractAddress={contractAddress}
+            />
+          </CardContent>
+        </Card>
+      ) : submittedClaim ? (
+        <Card className="ring-primary/30 shadow-md">
+          <CardHeader>
+            <CardTitle>Claim submitted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ClaimRentForm
+              reference={position.reference}
+              tokenId={onchain.tokenId}
+              amountCents={bookPendingCents}
+              configured={configured}
+              contractAddress={contractAddress}
+              pendingRecovery
             />
           </CardContent>
         </Card>
@@ -231,14 +248,22 @@ export default async function PortfolioDetailPage({
                     </TableCell>
                     <TableCell>
                       {payment?.txHash ? (
-                        <CopyValue value={payment.txHash} label="payment transaction" />
+                              <CopyValue
+                                value={payment.txHash}
+                                label="payment transaction"
+                                truncate
+                              />
                       ) : (
                         "—"
                       )}
                     </TableCell>
                     <TableCell>
                       {distribution?.status === "claimed" && distribution.txHash ? (
-                        <CopyValue value={distribution.txHash} label="claim transaction" />
+                        <CopyValue
+                          value={distribution.txHash}
+                          label="claim transaction"
+                          truncate
+                        />
                       ) : (
                         "—"
                       )}
