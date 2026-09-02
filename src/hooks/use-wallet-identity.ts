@@ -55,6 +55,7 @@ export function useWalletIdentity(
   const [state, setState] = useState<IdentityState>({ identity: null, loading: true, signing: false, error: null });
   const invalidating = useRef(false);
   const hasObservedWallet = useRef(false);
+  const signInAfterConnect = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -86,14 +87,8 @@ export function useWalletIdentity(
     });
   }, [state.identity, wallet.isConnected, wallet.address, wallet.chainId, signOut, onSessionInvalidated]);
 
-  const signIn = useCallback(async () => {
-    setState((current) => ({ ...current, signing: true, error: null }));
+  const completeSignIn = useCallback(async () => {
     try {
-      if (!wallet.isConnected) {
-        await wallet.connect();
-        setState((current) => ({ ...current, signing: false }));
-        return false;
-      }
       if (!wallet.address || !wallet.provider) throw new Error("Connect a wallet first, then try again.");
       await ensureBaseSepolia(wallet, true);
       const challenge = await requestWalletChallengeAction(wallet.address);
@@ -108,6 +103,28 @@ export function useWalletIdentity(
       return false;
     }
   }, [wallet]);
+
+  useEffect(() => {
+    if (!signInAfterConnect.current || !wallet.isConnected) return;
+    signInAfterConnect.current = false;
+    void completeSignIn();
+  }, [wallet.isConnected, wallet.address, wallet.provider, completeSignIn]);
+
+  const signIn = useCallback(async () => {
+    setState((current) => ({ ...current, signing: true, error: null }));
+    try {
+      if (!wallet.isConnected) {
+        signInAfterConnect.current = true;
+        await wallet.connect();
+        return false;
+      }
+      return completeSignIn();
+    } catch (error) {
+      signInAfterConnect.current = false;
+      setState((current) => ({ ...current, signing: false, error: error instanceof Error ? error.message : "Wallet identity could not be completed." }));
+      return false;
+    }
+  }, [completeSignIn, wallet]);
 
   return { ...state, wallet, signIn, signOut };
 }
