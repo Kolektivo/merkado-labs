@@ -16,7 +16,7 @@ export async function isAdminWallet(address: string | null | undefined) {
   const { data, error } = await createLabsAdminClient()
     .from("ra_admin_wallets")
     .select("wallet_address")
-    .eq("wallet_address", address.toLowerCase())
+    .ilike("wallet_address", address)
     .eq("active", true)
     .maybeSingle();
 
