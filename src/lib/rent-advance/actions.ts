@@ -783,6 +783,9 @@ export async function submitNewOfferAction(offer: Offer) {
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
+  if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+    throw new Error("Enter a valid checksummed 0x wallet address for the rent payer.");
+  }
   assertPayoutReady(offer);
   const priced = priceOrBlock({
     monthlyRentCents: offer.monthlyRentCents,
@@ -796,6 +799,7 @@ export async function submitNewOfferAction(offer: Offer) {
   const toSave: Offer = {
     ...offer,
     createdByWalletAddress: identity.address,
+    renterWalletAddress: normalizePayoutAddress(offer.renterWalletAddress ?? ""),
     monthlyRentCents: priced.monthlyRentCents,
     months: priced.months,
     feeRate: priced.feeRate,

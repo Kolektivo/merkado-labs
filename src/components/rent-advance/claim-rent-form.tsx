@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
@@ -45,7 +45,6 @@ export function ClaimRentForm({
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const [checking, setChecking] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
   const canClaim =
     configured && tokenId != null && connected && onBaseSepolia && !claiming;
@@ -98,24 +97,36 @@ export function ClaimRentForm({
     });
   }
 
-  function handleCheckStatus() {
-    setError(null);
-    setChecking(true);
-    startTransition(async () => {
+  useEffect(() => {
+    if (!pendingRecovery) return;
+    let cancelled = false;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled) return;
       try {
         const result = await checkPendingClaimAction(reference);
-        if (result.status !== "confirmed") {
-          setError(result.reason ?? "The claim is still being verified.");
+        if (result.status === "confirmed") {
+          router.refresh();
           return;
         }
-        router.refresh();
+        if (!cancelled && attempts < 14) {
+          attempts += 1;
+          window.setTimeout(poll, 4000);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not check the claim status.");
-      } finally {
-        setChecking(false);
+        if (!cancelled && attempts < 14) {
+          attempts += 1;
+          window.setTimeout(poll, 4000);
+        } else if (!cancelled) {
+          setError(err instanceof Error ? err.message : "The claim is still being verified.");
+        }
       }
-    });
-  }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingRecovery, reference, router]);
 
   return (
     <div className="space-y-3">
@@ -158,19 +169,10 @@ export function ClaimRentForm({
           <Alert>
             <AlertTitle>Claim transaction submitted</AlertTitle>
             <AlertDescription>
-              The claim was sent to Base Sepolia. Check its status to finish
-              updating Portfolio. Do not submit another claim.
+              The claim was sent to Base Sepolia. Portfolio will update when the
+              verified result is available. Do not submit another claim.
             </AlertDescription>
           </Alert>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full md:w-auto"
-            disabled={checking}
-            onClick={handleCheckStatus}
-          >
-            {checking ? "Checking…" : "Check claim status"}
-          </Button>
         </>
       ) : (
         <>

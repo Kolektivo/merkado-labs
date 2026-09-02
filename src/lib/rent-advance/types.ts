@@ -409,6 +409,8 @@ export type Offer = {
   onchain?: OnchainOfferState;
   /** Wallet identity that created or owns the landlord workflow. */
   createdByWalletAddress?: string | null;
+  /** Wallet designated to pay rent for this offer. */
+  renterWalletAddress?: string | null;
 };
 
 export type OpenQuestion = {

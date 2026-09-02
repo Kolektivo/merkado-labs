@@ -277,6 +277,7 @@ function makeOffer(input: {
       relatedPartyNote: input.relatedPartyNote ?? undefined,
     },
     tenant: input.payer,
+    renterWalletAddress: null,
     purchaserName: "Merkado Receivables I B.V.",
     servicerName: "EcoLabs B.V.",
     collectionAgent: "Property Management B.V.",

@@ -43,9 +43,10 @@ approved offers mint again on the same deployment.
    loads the XCG 1.79 monthly rent / about XCG 10 purchase quote.
 3. **Use this quote** — eligible six-month quotes under the 24% cap carry
    non-sensitive values into Create Offer.
-4. **Create Offer** — seven steps including a cover photo and **Payout**, then
-   **Submit request**. The landlord chooses the payout destination before
-   submission. No landlord wallet is needed. An explicit **Save draft** button
+4. **Create Offer** — seven steps including a cover photo, the designated rent
+   payer wallet, and **Payout**, then **Submit request**. The landlord chooses
+   the payout destination and rent payer wallet before submission. No landlord
+   wallet is needed. An explicit **Save draft** button
    persists the in-progress wizard (e.g. MRA-011) into **My Offers → Draft**;
    drafts are landlord-only and have no chain or payment state. 9/12 and
    cap-breached quotes cannot be submitted.

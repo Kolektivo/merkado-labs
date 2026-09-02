@@ -388,6 +388,20 @@ test("a verified purchase mints payment requests and marks the landlord paid onc
   assert.equal(again?.onchain?.purchaseTxHash, TX_PURCHASE);
 });
 
+test("a designated renter wallet receives the offer payment requests", () => {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  offer.renterWalletAddress = PAYER;
+
+  const purchased = buyOffer(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const request = (purchased.paymentRequests ?? []).find(
+    (row) => row.offerReference === CHEAP_OFFER_REFERENCE,
+  );
+  assert.ok(request);
+  assert.equal(request.renterWalletAddress, PAYER);
+});
+
 test("confirming the same deposit cannot duplicate collection or distribution", () => {
   const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
   const first = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");

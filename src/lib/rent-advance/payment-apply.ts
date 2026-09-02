@@ -215,6 +215,7 @@ function paymentRequestForReceivable(
   offer: Offer,
   n: number,
   receivingAddress: string | null,
+  renterWalletAddress: string | null,
 ): PaymentRequest | null {
   const receivable = offer.receivables.find((row) => row.n === n);
   if (!receivable) return null;
@@ -243,7 +244,7 @@ function paymentRequestForReceivable(
     transactionId: confirmed ? paymentTxIdFor(paymentRequestId) : null,
     txHash: null,
     opaquePaymentId: null,
-    renterWalletAddress: null,
+    renterWalletAddress,
   };
 }
 
@@ -287,6 +288,7 @@ export function normalizeBook(raw: unknown): DemoBook {
     .map((offer) => ({
       ...offer,
       createdByWalletAddress: offer.createdByWalletAddress ?? null,
+      renterWalletAddress: offer.renterWalletAddress ?? null,
       onchain: mergeOnchain(offer.onchain),
     }));
   const seedAccounts = (book.accounts?.length ? book.accounts : defaultAccounts()).map(
@@ -303,6 +305,7 @@ export function normalizeBook(raw: unknown): DemoBook {
         offer,
         receivable.n,
         rentReceivingAddressFor(offer, cryptoConfig),
+        offer.renterWalletAddress ?? book.seedOwnerWalletAddress ?? null,
       );
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
@@ -321,11 +324,15 @@ export function normalizeBook(raw: unknown): DemoBook {
               txHash: acceptedLiveTxHash(previous.txHash),
                opaquePaymentId: previous.opaquePaymentId ?? null,
                renterWalletAddress:
-                 previous.renterWalletAddress ?? book.seedOwnerWalletAddress ?? null,
+                 previous.renterWalletAddress ??
+                 offer.renterWalletAddress ??
+                 book.seedOwnerWalletAddress ??
+                 null,
              }
           : {
               ...next,
-              renterWalletAddress: book.seedOwnerWalletAddress ?? null,
+               renterWalletAddress:
+                 offer.renterWalletAddress ?? book.seedOwnerWalletAddress ?? null,
             },
       );
     }
