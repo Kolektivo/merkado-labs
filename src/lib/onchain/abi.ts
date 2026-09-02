@@ -19,7 +19,7 @@ export const MERKADO_OFFER_ABI = parseAbi([
   // views
   "function ownerOf(uint256 tokenId) view returns (address)",
   "function offers(uint256) returns (bytes32, address, uint256, uint256, bool)",
-  "function claimableRent(uint256) returns (uint256)",
+  "function claimableRent(uint256) view returns (uint256)",
   "function totalRentLiability() returns (uint256)",
   "function usedPaymentIds(bytes32) returns (bool)",
   "function usdc() returns (address)",

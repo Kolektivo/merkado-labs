@@ -119,6 +119,23 @@ export async function readCurrentOfferOwner(
   }
 }
 
+/** Read the live claimable USDC balance for a token. */
+export async function readCurrentOfferClaimable(
+  contractAddress: string,
+  tokenId: number,
+): Promise<bigint | null> {
+  try {
+    return await publicClient.readContract({
+      address: contractAddress as `0x${string}`,
+      abi: MERKADO_OFFER_ABI,
+      functionName: "claimableRent",
+      args: [BigInt(tokenId)],
+    });
+  } catch {
+    return null;
+  }
+}
+
 function sameAddress(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
