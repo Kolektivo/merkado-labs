@@ -2,6 +2,13 @@ import "server-only";
 
 const LABS_PROJECT_REF = "ewoxmzznkavapcxdporm";
 const LABS_URL = `https://${LABS_PROJECT_REF}.supabase.co`;
+const WAVE6_FORK_PROJECT_REF = "ajbeqiwgpttpmzpqxepl";
+const WAVE6_FORK_URL = `https://${WAVE6_FORK_PROJECT_REF}.supabase.co`;
+
+const ALLOWED_PROJECTS = [
+  { ref: LABS_PROJECT_REF, url: LABS_URL },
+  { ref: WAVE6_FORK_PROJECT_REF, url: WAVE6_FORK_URL },
+] as const;
 
 export class DashboardConfigurationError extends Error {
   constructor(message: string) {
@@ -41,9 +48,10 @@ export function getSupabaseConfig() {
     );
   }
 
-  if (url !== LABS_URL) {
+  const project = ALLOWED_PROJECTS.find((candidate) => candidate.url === url);
+  if (!project) {
     throw new DashboardConfigurationError(
-      `Refusing Supabase access: the URL must target merkado-labs project ${LABS_PROJECT_REF}.`,
+      `Refusing Supabase access: URL is not an approved Labs project.`,
     );
   }
 
@@ -59,7 +67,13 @@ export function getSupabaseConfig() {
     );
   }
 
-  return { url, publishableKey };
+  return { url, publishableKey, projectRef: project.ref };
 }
 
-export { LABS_PROJECT_REF, LABS_URL };
+export {
+  ALLOWED_PROJECTS,
+  LABS_PROJECT_REF,
+  LABS_URL,
+  WAVE6_FORK_PROJECT_REF,
+  WAVE6_FORK_URL,
+};

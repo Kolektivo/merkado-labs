@@ -73,7 +73,8 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
   deployment, the chain store migration, test USDC, Safe transactions,
   hosted activation, and merging require explicit approval. Base Mainnet,
   real funds, and production stay blocked.
-- Allowed Supabase target only: Labs project reference `ewoxmzznkavapcxdporm`.
+- Allowed Supabase targets only: Labs project reference `ewoxmzznkavapcxdporm`
+  and isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
 - Production project reference `jkrfyvukhhsapoivntms` is forbidden.
 - Never access or copy production data, users, schemas, secrets, or config.
 - Never run destructive SQL without explicit approval.
