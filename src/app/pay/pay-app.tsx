@@ -11,12 +11,12 @@ import { HelpTip } from "@/components/help-tip";
 import { StatusBadge } from "@/components/status-badge";
 import { UsdcMark } from "@/components/usdc-mark";
 import { SentooMark } from "@/components/sentoo-mark";
-import { WalletIdentity } from "@/components/wallet-identity";
+import { WalletConnection } from "@/components/wallet-connection";
 import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useWalletIdentity } from "@/hooks/use-wallet-identity";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, depositRent } from "@/lib/pay/wallet-adapter";
 import {
@@ -290,8 +290,7 @@ export function PayApp({
   const { locale } = usePayerLocale();
   const copy = useMemo(() => payerCopy[locale], [locale]);
   const router = useRouter();
-  const walletIdentity = useWalletIdentity();
-  const wallet = walletIdentity.wallet;
+  const wallet = useMerkadoWallet();
   const [walletUi, setWalletUi] = useState<WalletUi>(
     status === "confirmed"
       ? "confirmed"
@@ -301,7 +300,7 @@ export function PayApp({
           ? "pending"
           : "disconnected",
   );
-  const connected = Boolean(walletIdentity.identity);
+  const [connected, setConnected] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -573,7 +572,7 @@ export function PayApp({
                       </div>
                     </div>
 
-          <WalletIdentity />
+                    <WalletConnection onConnectedChange={setConnected} />
 
                     {connected && onBaseSepolia ? (
                       <Button

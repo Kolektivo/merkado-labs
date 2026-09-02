@@ -16,7 +16,6 @@ import {
 import { statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { listPortfolioPositions } from "@/lib/rent-advance/store";
 import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
-import { WalletIdentity } from "@/components/wallet-identity";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Portfolio" };
@@ -32,12 +31,6 @@ export default async function PortfolioPage() {
         title="Portfolio"
         description="Positions you purchased, and later rent that arrives when the renter pays."
       />
-      {!identity ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Sign in with your wallet to view your Portfolio.</p>
-          <WalletIdentity />
-        </div>
-      ) : null}
       <SummaryStrip
         items={[
           {

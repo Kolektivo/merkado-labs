@@ -38,7 +38,6 @@ import { offersForWallet } from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 import { cn } from "@/lib/utils";
-import { WalletIdentity } from "@/components/wallet-identity";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "My Offers" };
@@ -135,15 +134,6 @@ export default async function OriginatePage({
           </div>
         }
       />
-      {!identity ? (
-        <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
-            <p className="text-sm text-muted-foreground">Sign in with your wallet to view your offers.</p>
-            <WalletIdentity />
-          </CardContent>
-        </Card>
-      ) : null}
-
       <details
         open={status !== "all"}
         className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10"

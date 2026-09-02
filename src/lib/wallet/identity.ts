@@ -1,15 +1,18 @@
 import "server-only";
 
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { getAddress, bytesToHex, verifyMessage, type Hex } from "viem";
 
 import { createLabsAdminClient } from "@/lib/supabase/admin";
+import {
+  createSignedWalletSession,
+  readSignedWalletSession,
+  WALLET_SESSION_COOKIE,
+} from "@/lib/wallet/session-cookie";
 
-export const WALLET_SESSION_COOKIE = "merkado_wallet_session";
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 const CHALLENGE_TTL_SECONDS = 5 * 60;
-const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 type ChallengeRow = {
   address: string;
@@ -160,37 +163,20 @@ export async function verifyWalletChallenge(input: {
   return { address, domain, chainId: BASE_SEPOLIA_CHAIN_ID };
 }
 
-function sessionSecret(): string {
-  const secret = process.env.WALLET_SESSION_SECRET?.trim();
-  if (!secret || secret.length < 32) {
-    throw new Error("WALLET_SESSION_SECRET must be at least 32 characters.");
-  }
-  return secret;
-}
-
-function signSession(payload: string): string {
-  return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
-}
-
 export function createWalletSessionCookie(
   identity: WalletIdentity,
   now = new Date(),
 ): WalletSessionCookie {
-  const payload = Buffer.from(JSON.stringify({
-    address: normalizedAddress(identity.address).toLowerCase(),
-    domain: normalizedDomain(identity.domain),
-    chainId: BASE_SEPOLIA_CHAIN_ID,
-    exp: Math.floor(now.getTime() / 1000) + SESSION_TTL_SECONDS,
-  })).toString("base64url");
+  const session = createSignedWalletSession(identity.address, identity.domain, now);
   return {
     name: WALLET_SESSION_COOKIE,
-    value: `${payload}.${signSession(payload)}`,
+    value: session.value,
     options: {
       httpOnly: true,
       secure: process.env.VERCEL === "1" || process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: SESSION_TTL_SECONDS,
+      maxAge: session.maxAge,
     },
   };
 }
@@ -200,18 +186,9 @@ export function readWalletSessionCookie(
   expectedDomain: string,
   now = new Date(),
 ): WalletIdentity | null {
-  if (!value) return null;
-  const [payload, signature] = value.split(".");
-  if (!payload || !signature) return null;
-  const expected = signSession(payload);
-  const left = Buffer.from(signature);
-  const right = Buffer.from(expected);
-  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
+  const parsed = readSignedWalletSession(value, expectedDomain, now);
+  if (!parsed) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
-      address: string; domain: string; chainId: number; exp: number;
-    };
-    if (parsed.domain !== normalizedDomain(expectedDomain) || parsed.chainId !== BASE_SEPOLIA_CHAIN_ID || parsed.exp <= Math.floor(now.getTime() / 1000)) return null;
     return { address: normalizedAddress(parsed.address), domain: parsed.domain, chainId: BASE_SEPOLIA_CHAIN_ID };
   } catch {
     return null;
@@ -222,7 +199,11 @@ export async function getCurrentWalletIdentity(): Promise<WalletIdentity | null>
   const host = (await headers()).get("host")?.trim();
   if (!host) return null;
   const value = (await cookies()).get(WALLET_SESSION_COOKIE)?.value;
-  return readWalletSessionCookie(value, host);
+  try {
+    return readWalletSessionCookie(value, host);
+  } catch {
+    return null;
+  }
 }
 
 export async function requireWalletIdentity(): Promise<WalletIdentity> {

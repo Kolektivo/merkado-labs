@@ -45,7 +45,7 @@ async function signChallenge(
 
 export function useWalletIdentity(): IdentityState & {
   wallet: ReturnType<typeof useMerkadoWallet>;
-  signIn: () => Promise<void>;
+  signIn: () => Promise<boolean>;
   signOut: () => Promise<void>;
 } {
   const wallet = useMerkadoWallet();
@@ -88,7 +88,7 @@ export function useWalletIdentity(): IdentityState & {
       if (!wallet.isConnected) {
         await wallet.connect();
         setState((current) => ({ ...current, signing: false }));
-        return;
+        return false;
       }
       if (!wallet.address || !wallet.provider) throw new Error("Connect a wallet first, then try again.");
       await ensureBaseSepolia(wallet, true);
@@ -98,8 +98,10 @@ export function useWalletIdentity(): IdentityState & {
       const verified = await verifyWalletChallengeAction({ address: wallet.address, nonce: challenge.data.nonce, signature });
       if (!verified.ok) throw new Error(verified.error);
       setState({ identity: verified.data, loading: false, signing: false, error: null });
+      return true;
     } catch (error) {
       setState((current) => ({ ...current, signing: false, error: error instanceof Error ? error.message : "Wallet identity could not be completed." }));
+      return false;
     }
   }, [wallet]);
 

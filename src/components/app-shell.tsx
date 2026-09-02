@@ -49,7 +49,6 @@ import {
 } from "@/components/ui/sidebar";
 import { resolveCrumbs, type BreadcrumbCrumb } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
-import { WalletIdentity } from "@/components/wallet-identity";
 
 type NavItem = {
   href: string;
@@ -251,7 +250,6 @@ function SiteHeader({
       <div className="min-w-0 flex-1 overflow-hidden">
         <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
       </div>
-      <WalletIdentity className="hidden sm:block" />
       <DashboardNotifications items={notifications} />
     </header>
   );

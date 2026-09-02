@@ -4,7 +4,6 @@ import { NewOfferWizard } from "./new-offer-wizard";
 import { PageHeader } from "@/components/page-header";
 import { seedOfferTemplate } from "@/lib/rent-advance/actions";
 import { applyQuoteCarry, parseQuoteCarry } from "@/lib/rent-advance/quote-carry";
-import { WalletIdentity } from "@/components/wallet-identity";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Create offer" };
@@ -29,7 +28,6 @@ export default async function NewOfferPage({
             : `Start a new offer — ${initial.reference} is the next reference. Add a photo, check the figures, then request review. Sign in with your wallet to save or submit.`
         }
       />
-      <WalletIdentity />
       <NewOfferWizard initial={initial} startStep={carry ? 5 : 1} />
     </div>
   );

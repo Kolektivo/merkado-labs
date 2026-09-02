@@ -16,7 +16,6 @@ import { NOT_CONFIGURED } from "@/lib/rent-advance/copy";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 import { paymentRequestsForWallet } from "@/lib/rent-advance/store";
-import { WalletIdentity } from "@/components/wallet-identity";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Merkado Pay" };
@@ -48,13 +47,6 @@ export default async function PayIndexPage() {
           Pay the same rent. Amounts are shown in XCG. Settlement is USDC.
         </p>
       </div>
-      {!identity ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Sign in with your wallet to view your payment requests.</p>
-          <WalletIdentity />
-        </div>
-      ) : null}
-
       {!configured ? (
         <Alert variant="destructive">
           <AlertTitle>{NOT_CONFIGURED.title}</AlertTitle>

@@ -8,9 +8,9 @@ import {
   createWalletSessionCookie,
   readWalletSessionCookie,
   verifyWalletChallenge,
-  WALLET_SESSION_COOKIE,
   type WalletIdentity,
 } from "@/lib/wallet/identity";
+import { WALLET_SESSION_COOKIE } from "@/lib/wallet/session-cookie";
 
 export type WalletActionResult<T> =
   | { ok: true; data: T }

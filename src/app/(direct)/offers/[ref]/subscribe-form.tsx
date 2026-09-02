@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { WalletIdentity } from "@/components/wallet-identity";
+import { WalletConnection } from "@/components/wallet-connection";
 import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useWalletIdentity } from "@/hooks/use-wallet-identity";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, purchaseOffer } from "@/lib/pay/wallet-adapter";
 import {
@@ -50,13 +50,12 @@ export function SubscribeForm({
   pendingRecovery: boolean;
 }) {
   const router = useRouter();
-  const walletIdentity = useWalletIdentity();
-  const wallet = walletIdentity.wallet;
+  const wallet = useMerkadoWallet();
   const startTransition = useTransition()[1];
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const connected = Boolean(walletIdentity.identity);
+  const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
 
   const closed = remainingCents <= 0;
@@ -199,7 +198,7 @@ export function SubscribeForm({
         </Alert>
       ) : (
         <div className="mt-6 space-y-3">
-           <WalletIdentity />
+          <WalletConnection onConnectedChange={setConnected} />
           {connected && onBaseSepolia ? (
             <Button
               type="button"

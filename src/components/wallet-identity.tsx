@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWalletIdentity } from "@/hooks/use-wallet-identity";
 import { truncateHash } from "@/lib/rent-advance/ids";
 
-export function WalletIdentity({ className }: { className?: string }) {
+export function WalletIdentity({ className, nextPath = "/" }: { className?: string; nextPath?: string }) {
   const router = useRouter();
   const identity = useWalletIdentity();
   const address = identity.identity?.address;
@@ -34,9 +34,12 @@ export function WalletIdentity({ className }: { className?: string }) {
       ) : (
         <Button
           type="button"
-          onClick={() => {
-            void identity.signIn().then(() => router.refresh());
-          }}
+           onClick={() => {
+             void identity.signIn().then((signedIn) => {
+               if (signedIn) router.push(nextPath);
+               else router.refresh();
+             });
+           }}
           disabled={identity.signing || identity.loading}
         >
           {identity.signing
