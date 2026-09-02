@@ -1,10 +1,9 @@
 import { formatDayMonthYear, isUpcomingPaymentRequest } from "@/lib/rent-advance/helpers";
+import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
 import { loadBook } from "@/lib/rent-advance/store";
-import { paymentRequestsForWallet } from "@/lib/rent-advance/store";
 import { toPublicCryptoConfig } from "@/lib/pay/networks";
-import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -18,19 +17,20 @@ export default async function PayRequestPage({
   params: Promise<{ paymentRequestId: string }>;
 }) {
   const { paymentRequestId } = await params;
-  const [book, identity] = await Promise.all([loadBook(), getCurrentWalletIdentity()]);
-  const requests = identity ? paymentRequestsForWallet(book, identity.address) : [];
+  const book = await loadBook();
+  const renterAccountId = book.ownerAccountId ?? RENTER_ACCOUNT_ID;
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
-  if (!identity || !request || !requests.some((row) => row.paymentRequestId === request.paymentRequestId)) {
+  if (!request || request.accountId !== renterAccountId) {
     return <PayNotFound />;
   }
 
   const offer = book.offers.find((row) => row.reference === request.offerReference);
   const onchain = mergeOnchain(offer?.onchain);
   const earlier = earlierOpenPaymentRequest(book, request.paymentRequestId);
-  const history = requests
+  const history = (book.paymentRequests ?? [])
+    .filter((row) => row.accountId === renterAccountId)
     .map((row) => ({
       paymentRequestId: row.paymentRequestId,
       offerReference: row.offerReference,

@@ -6,12 +6,59 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/browser-client";
 
 import { unlockDemoAction, type UnlockDemoState } from "./actions";
 
-const initialState: UnlockDemoState = {};
+const ENTER_ERROR_MESSAGES: Record<string, string> = {
+  auth_failed: "We couldn't complete that sign in. Please try again.",
+  sign_in_cancelled: "Sign in was cancelled. Please try again.",
+  sign_in_incomplete: "We couldn't finish signing you in. Please try again.",
+  verification_link_invalid:
+    "That verification link is invalid or has expired. Request a new one.",
+};
 
-export function EnterForm({ nextPath }: { nextPath: string }) {
+function GoogleIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <path
+        d="M20.0008 12.1777C20.0008 11.5219 19.9463 11.0432 19.8285 10.5469H12.1641V13.5072H16.6629C16.5722 14.2429 16.0824 15.3509 14.994 16.0954L14.9787 16.1945L17.4021 18.029L17.57 18.0454C19.1119 16.6538 20.0008 14.6063 20.0008 12.1777Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12.1636 19.9776C14.3677 19.9776 16.218 19.2684 17.5695 18.0453L14.9935 16.0953C14.3042 16.5651 13.379 16.893 12.1636 16.893C10.0049 16.893 8.17273 15.5015 7.51961 13.5781L7.42387 13.5861L4.90405 15.4917L4.87109 15.5812C6.21348 18.1871 8.97086 19.9776 12.1636 19.9776Z"
+        fill="#34A853"
+      />
+      <path
+        d="M7.51924 13.5763C7.34691 13.08 7.24717 12.5481 7.24717 11.9986C7.24717 11.449 7.34691 10.9172 7.51017 10.4209L7.50561 10.3152L4.9542 8.37891L4.87073 8.41771C4.31746 9.49907 4 10.7134 4 11.9986C4 13.2838 4.31746 14.4981 4.87073 15.5794L7.51924 13.5763Z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12.1636 7.10791C13.6965 7.10791 14.7305 7.75494 15.3201 8.29565L17.6239 6.09749C16.209 4.81229 14.3677 4.02344 12.1636 4.02344C8.97086 4.02344 6.21348 5.81385 4.87109 8.4197L7.51054 10.4229C8.17273 8.4995 10.0049 7.10791 12.1636 7.10791Z"
+        fill="#EB4335"
+      />
+    </svg>
+  );
+}
+
+function buildCallbackUrl(nextPath: string): string {
+  const url = new URL("/auth/callback", window.location.origin);
+  if (nextPath && nextPath !== "/") {
+    url.searchParams.set("next", nextPath);
+  }
+  return url.toString();
+}
+
+function LegacyPasswordForm({ nextPath }: { nextPath: string }) {
+  const initialState: UnlockDemoState = {};
   const [state, formAction, pending] = useActionState(
     unlockDemoAction,
     initialState,
@@ -20,7 +67,11 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
   const errorId = useId();
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" aria-busy={pending}>
+    <form
+      action={formAction}
+      className="flex flex-col gap-4"
+      aria-busy={pending}
+    >
       <input type="hidden" name="next" value={nextPath} />
       <div className="flex flex-col gap-2">
         <Label htmlFor="demo-password">Shared password</Label>
@@ -64,12 +115,189 @@ export function EnterForm({ nextPath }: { nextPath: string }) {
             Checking…
           </>
         ) : (
-          "Continue"
+          "Continue with password"
         )}
       </Button>
-      <p className="text-xs text-muted-foreground">
-        Not a Merkado account · not live on merkado.cw
-      </p>
     </form>
+  );
+}
+
+export function EnterForm({
+  nextPath,
+  authAvailable,
+  legacyPasswordAvailable,
+  initialError,
+  initialEmail,
+}: {
+  nextPath: string;
+  authAvailable: boolean;
+  legacyPasswordAvailable: boolean;
+  initialError: string | null;
+  initialEmail: string | null;
+}) {
+  const [email, setEmail] = useState(initialEmail?.trim() ?? "");
+  const [error, setError] = useState(
+    initialError ? (ENTER_ERROR_MESSAGES[initialError] ?? "") : "",
+  );
+  const [linkSent, setLinkSent] = useState(false);
+  const [pending, setPending] = useState<"" | "google" | "otp">("");
+  const [showPassword, setShowPassword] = useState(false);
+  const errorId = useId();
+
+  const isBusy = pending !== "";
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setPending("google");
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: buildCallbackUrl(nextPath),
+        },
+      });
+
+      if (signInError) {
+        setError("We couldn't continue with Google. Please try again.");
+        setPending("");
+      }
+    } catch {
+      setError("We couldn't continue with Google. Please try again.");
+      setPending("");
+    }
+  };
+
+  const handleMagicLinkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setError("Enter a valid email address.");
+      return;
+    }
+
+    setError("");
+    setLinkSent(false);
+    setPending("otp");
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: buildCallbackUrl(nextPath),
+        },
+      });
+
+      if (signInError) {
+        setError("We couldn't send that sign-in link. Please try again.");
+        setPending("");
+        return;
+      }
+
+      setLinkSent(true);
+      setPending("");
+    } catch {
+      setError("We couldn't send that sign-in link. Please try again.");
+      setPending("");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {authAvailable ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            disabled={isBusy}
+            onClick={() => void handleGoogleSignIn()}
+          >
+            {pending === "google" ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Continue with Google
+          </Button>
+
+          <div className="flex items-center gap-4" aria-hidden="true">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <form
+            onSubmit={(event) => void handleMagicLinkSubmit(event)}
+            className="flex flex-col gap-4"
+            aria-busy={pending === "otp"}
+          >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="enter-email">Email</Label>
+              <Input
+                id="enter-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? errorId : undefined}
+              />
+            </div>
+            {error ? (
+              <p id={errorId} role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+            {linkSent ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                Check your email for the sign-in link.
+              </p>
+            ) : null}
+            <Button type="submit" disabled={isBusy} className="w-full">
+              {pending === "otp" ? (
+                <>
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                  Sending…
+                </>
+              ) : (
+                "Email me a sign-in link"
+              )}
+            </Button>
+          </form>
+
+          <p className="text-xs text-muted-foreground">
+            Not a Merkado account · not live on merkado.cw
+          </p>
+
+          {legacyPasswordAvailable ? (
+            <div className="flex flex-col gap-3 border-t pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                aria-expanded={showPassword}
+                onClick={() => setShowPassword((current) => !current)}
+              >
+                {showPassword ? "Hide host password" : "Use host password"}
+              </Button>
+              {showPassword ? <LegacyPasswordForm nextPath={nextPath} /> : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <LegacyPasswordForm nextPath={nextPath} />
+          <p className="text-xs text-muted-foreground">
+            Not a Merkado account · not live on merkado.cw
+          </p>
+        </>
+      )}
+    </div>
   );
 }

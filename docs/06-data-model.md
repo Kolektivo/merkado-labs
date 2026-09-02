@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (account-owned state, wallet linking, pending-attempt binding, epoch semantics)
 
 ## 1. Money
 
@@ -79,6 +79,26 @@ deposit. `Offer.payout` stores the selected method and the locked landlord
 set to the minted NFT token id. There is no listing expiry; the 60-day window
 shown on Marketplace and My Offers is **display-only** and never enforced.
 
+### Account ownership and wallet linking
+
+Each authenticated account (Supabase Auth user id) owns an isolated demo
+book. `ra_demo_state` is keyed by the composite `(id, account_id)` with
+`id='live'`; a partial unique index enforces exactly one live row per
+account. The legacy shared row (`id='live'`, `account_id NULL`) is left in
+place and ignored by the account-scoped code paths. The renter identity is
+per-account: `book.ownerAccountId` (falling back to the legacy
+`RENTER_ACCOUNT_ID`) scopes Pay and payment requests to the signed-in
+account's book.
+
+`ra_link_challenges` holds server-issued, one-time wallet-linking
+challenges: `nonce` (unique), `domain`, `chain_id`, `issued_at`,
+`expires_at` (5 minutes), `consumed_at`, `statement`. `ra_account_wallets`
+holds the account's linked wallets with `linked_at`, `replaced_at`, and
+`revoked_at`; the partial unique index enforces **at most one active**
+(non-replaced, non-revoked) wallet per account. Both tables are applied in
+Labs through the reviewed `20260831000000_labs_accounts_and_wallets.sql`
+migration.
+
 ### Contract state machine (`MerkadoRentOfferV1`)
 
 The ERC-721 token is the offer. Per `tokenId`:
@@ -121,6 +141,18 @@ and the only claimant.
 
 All tables have RLS on and no `anon` / `authenticated` grants. They are
 written only by server-side verification, never by browser code.
+
+Epoch and pending-binding semantics:
+
+- **Exactly one active epoch.** A new epoch first deactivates every prior
+  active row, then inserts the new one, so a stale active epoch is never
+  picked up. Reset starts a new epoch and old on-chain facts are never
+  reused; Reset does **not** roll back the chain.
+- **Pending transaction binding.** A submitted purchase / deposit / claim
+  hash is bound to the account + offer/payment request + token + chain +
+  contract + epoch + hash and persisted compare-and-set (first valid
+  submission wins). The payer / buyer / owner recorded is derived from
+  verified chain facts, never a client-supplied address.
 
 Product rules for landlord sale proceeds:
 
@@ -190,6 +222,8 @@ env contract address stays active so approved offers mint again on the same
 deployment. `cryptoConfig.offerNftContract` always resolves
 `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS`, the single source of truth.
 Reset keeps the selected payment network. The chain store tables
-(`ra_chain_*`, `ra_rent_*`) are a separate
-reviewed migration that is **not yet applied**; the JSON book remains the
-product state until then.
+(`ra_chain_*`, `ra_rent_*`) and the account/wallet tables
+(`ra_account_wallets`, `ra_link_challenges`, and `account_id` on
+`ra_demo_state`) live in **unapplied** reviewed migrations
+(`20260821120000`, `20260831000000`); the JSON book remains the
+product state until they are applied with approval.

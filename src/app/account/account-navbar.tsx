@@ -1,18 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import type { AuthProfile } from "@/lib/auth/profile";
+import { signOutAction } from "@/lib/auth/sign-out";
 import { MerkadoLogo } from "@/components/merkado/merkado-logo";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 
 import {
   AccountAppLaunchLinks,
   DisabledControl,
   disabledAccountMenuItemClassName,
   disabledCreateListingClassName,
-  disabledMobileLogoutClassName,
   disabledMobileRowClassName,
-  disabledLogoutClassName,
   disabledNavTextClassName,
   liveAccountMenuItemClassName,
   liveMobileRowClassName,
@@ -119,11 +121,28 @@ function CloseIcon() {
   );
 }
 
-export function AccountNavbar() {
+export function AccountNavbar({ profile }: { profile: AuthProfile }) {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const accountMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const router = useRouter();
+  const wallet = useMerkadoWallet();
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      wallet.disconnect();
+      await signOutAction();
+    } catch {
+      setSigningOut(false);
+      return;
+    }
+    router.push("/enter");
+    router.refresh();
+  }
 
   useEffect(() => {
     if (!isAccountMenuOpen) {
@@ -210,6 +229,18 @@ export function AccountNavbar() {
                   role="menu"
                   className="absolute top-full right-0 z-50 mt-1 max-h-[calc(100vh-5rem)] w-[220px] overflow-y-auto rounded-[12px] border border-grey-200 bg-surface p-1 shadow-[0_24px_80px_rgba(0,0,0,0.12)]"
                 >
+                  {profile.email || profile.name ? (
+                    <div className="border-b border-grey-100 px-3 py-2">
+                      <p className="truncate text-[13px] font-semibold leading-4 text-surface-dark">
+                        {profile.name ?? "Signed in"}
+                      </p>
+                      {profile.email ? (
+                        <p className="mt-0.5 truncate text-xs leading-4 text-grey-650">
+                          {profile.email}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <p className={`${accountMenuSectionLabelClassName} pt-1`}>Marketplace</p>
                   <DisabledControl className={disabledAccountMenuItemClassName}>
                     <MyListingsIcon />
@@ -234,10 +265,15 @@ export function AccountNavbar() {
                     <AccountSettingsIcon />
                     Account Settings
                   </DisabledControl>
-                  <DisabledControl className={disabledLogoutClassName}>
+                  <button
+                    type="button"
+                    disabled={signingOut}
+                    onClick={() => void handleSignOut()}
+                    className="flex h-10 w-full cursor-pointer items-center gap-[10px] rounded-[10px] px-3 text-left text-[13px] font-semibold leading-[16px] text-[#D93A39] transition-colors hover:bg-[#D93A39]/5 disabled:cursor-wait disabled:opacity-60"
+                  >
                     <LogoutIcon />
-                    Log out
-                  </DisabledControl>
+                    {signingOut ? "Signing out…" : "Log out"}
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -341,10 +377,15 @@ export function AccountNavbar() {
                 </div>
 
                 <div className="mt-auto">
-                  <DisabledControl className={disabledMobileLogoutClassName}>
+                  <button
+                    type="button"
+                    disabled={signingOut}
+                    onClick={() => void handleSignOut()}
+                    className="flex h-[44px] w-full cursor-pointer items-center gap-[8px] rounded-[10px] px-[14px] text-left text-[15px] font-semibold leading-4 text-[#D93A39] transition-colors hover:bg-[#D93A39]/5 disabled:cursor-wait disabled:opacity-60"
+                  >
                     <LogoutIcon />
-                    <span>Log out</span>
-                  </DisabledControl>
+                    {signingOut ? "Signing out…" : "Log out"}
+                  </button>
                 </div>
               </div>
             </div>

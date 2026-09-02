@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
-import { WalletConnection } from "@/components/wallet-connection";
+import { WalletLinkPanel } from "@/components/wallet-link-panel";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { claimRent } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedClaimTxAction,
-  checkPendingClaimAction,
   verifyRentClaimAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
@@ -30,24 +29,28 @@ export function ClaimRentForm({
   amountCents,
   configured,
   contractAddress,
-  pendingRecovery = false,
+  linkedWalletAddress,
 }: {
   reference: string;
   tokenId: number | null;
   amountCents: number;
   configured: boolean;
   contractAddress: string | null;
-  pendingRecovery?: boolean;
+  linkedWalletAddress: string | null;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
   const [pending, startTransition] = useTransition();
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
+  const connected = wallet.isConnected && Boolean(wallet.address);
+  const linkedMatches =
+    linkedWalletAddress != null &&
+    wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
+  const walletReady = connected && linkedMatches && onBaseSepolia;
   const canClaim =
-    configured && tokenId != null && connected && onBaseSepolia && !claiming;
+    configured && tokenId != null && walletReady && !claiming;
 
   function handleClaim() {
     setError(null);
@@ -97,37 +100,6 @@ export function ClaimRentForm({
     });
   }
 
-  useEffect(() => {
-    if (!pendingRecovery) return;
-    let cancelled = false;
-    let attempts = 0;
-    const poll = async () => {
-      if (cancelled) return;
-      try {
-        const result = await checkPendingClaimAction(reference);
-        if (result.status === "confirmed") {
-          router.refresh();
-          return;
-        }
-        if (!cancelled && attempts < 14) {
-          attempts += 1;
-          window.setTimeout(poll, 4000);
-        }
-      } catch (err) {
-        if (!cancelled && attempts < 14) {
-          attempts += 1;
-          window.setTimeout(poll, 4000);
-        } else if (!cancelled) {
-          setError(err instanceof Error ? err.message : "The claim is still being verified.");
-        }
-      }
-    };
-    void poll();
-    return () => {
-      cancelled = true;
-    };
-  }, [pendingRecovery, reference, router]);
-
   return (
     <div className="space-y-3">
       {error ? (
@@ -136,7 +108,6 @@ export function ClaimRentForm({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {!pendingRecovery ? (
       <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
         <div>
           <p className="text-sm text-muted-foreground">Rent ready</p>
@@ -149,7 +120,6 @@ export function ClaimRentForm({
           holder, not the landlord.
         </HelpTip>
       </div>
-      ) : null}
       {!configured ? (
         <Alert variant="destructive">
           <AlertTitle>Claims are not configured yet</AlertTitle>
@@ -164,19 +134,9 @@ export function ClaimRentForm({
             This listing has no rent to claim yet.
           </AlertDescription>
         </Alert>
-      ) : pendingRecovery ? (
-        <>
-          <Alert>
-            <AlertTitle>Claim transaction submitted</AlertTitle>
-            <AlertDescription>
-              The claim was sent to Base Sepolia. Portfolio will update when the
-              verified result is available. Do not submit another claim.
-            </AlertDescription>
-          </Alert>
-        </>
       ) : (
         <>
-          <WalletConnection onConnectedChange={setConnected} />
+          <WalletLinkPanel initialLinkedAddress={linkedWalletAddress} />
           {canClaim ? (
             <Button
               type="button"
@@ -188,7 +148,8 @@ export function ClaimRentForm({
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            The current holder claims rent that was paid for this listing.
+            The current holder claims rent that was paid for this listing,
+            using the linked wallet.
           </p>
         </>
       )}

@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** September 2, 2026 (interim wallet identity)
+**Last updated:** September 1, 2026 (Labs Auth/account/wallet implementation — not activated)
 
 ## Local dashboard
 
@@ -22,11 +22,11 @@ Required env (Labs project `ewoxmzznkavapcxdporm` only):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
+- `ADMIN_EMAILS` (server-only comma-separated Labs Admin allowlist)
+- `NEXT_PUBLIC_SITE_URL` (approved Auth callback origin)
 
 Optional:
 
-- `WALLET_SESSION_SECRET` — server-only, at least 32 random characters for the
-  interim wallet identity session
 - `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty)
 - `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — the single source of truth for the
   Base Sepolia contract address, used every time. Empty → surfaces show a
@@ -35,17 +35,17 @@ Optional:
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
-### Interim wallet identity
+Supabase Auth is configured in the Labs project only, with Google OAuth and
+email magic links. Approved callback origins include local `http://localhost:3000`
+and the Labs hosted URL. When `LABS_DEMO_PASSWORD` is set, it is required
+before sign-in; protected hosted routes then require the authenticated session.
 
-The wallet identity challenge migration is reviewed in
-`supabase/migrations/20260902120000_wallet_identity_challenges.sql` but is not
-applied automatically. Apply **only that migration** to the approved Labs fork
-`ajbeqiwgpttpmzpqxepl`, after setting `SUPABASE_DB_PASSWORD` privately. Do not
-run a broad `supabase db push` while the separately gated NFT chain-store
-migration is pending. Never use the production project reference.
-
-Generate and set `WALLET_SESSION_SECRET` in the local/server environment; do not
-commit it.
+The reviewed account/wallet migration
+`20260831000000_labs_accounts_and_wallets.sql` is applied to Labs. The remote
+Labs database contains the chain-store tables, but local migration history does
+not record `20260821120000` as applied. Reconcile that history before relying
+on or changing the chain store. Do not apply any other migration without
+explicit approval.
 
 ## Vercel (Labs demo host)
 

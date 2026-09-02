@@ -50,9 +50,9 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 
 ## Critical flows (engineering)
 
-1. Home shows Merkado Direct entry points. No Merkado login. Reset lives
-   in Admin. After deploy, the hosted URL first shows the shared password
-   page.
+1. Home shows Merkado Direct entry points. Hosted access first requires the
+   deployment pass, then Google or email magic-link sign-in. Reset lives in
+   Admin.
 2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
    Portfolio, plus Pay, Account, and Admin at the bottom.
 3. My Offers is empty until you create an offer via Create Offer;
@@ -97,6 +97,16 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
     extra comparison figures. Status pills stay limited to **Under review →
     Listed → Sold → Paid** plus **Denied / Expired / Closed**; no mint / NFT
     / contract wording appears on customer surfaces.
+13. Two authenticated accounts have isolated books. A draft, payment request,
+    offer, wallet link, or Portfolio position from Account A is not visible to
+    Account B. A copied foreign URL returns a safe not-found response.
+14. The same authenticated account can create an offer, buy an offer with its
+    linked wallet, pay rent, and claim rent. Wallet connection alone does not
+    link the wallet; replayed or expired link signatures are rejected.
+15. Non-admin accounts cannot open Admin or invoke Reset. Admin Reset keeps
+    the current confirmation UX, resets all account books, starts one active
+    epoch, preserves network/contract configuration, and does not roll back
+    Base Sepolia.
 
 ## Manual Base Sepolia E2E (run once the flow is deployed and activated)
 

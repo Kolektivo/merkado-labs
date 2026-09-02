@@ -1,13 +1,14 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** September 2, 2026 (interim wallet identity)
+**Last updated:** September 1, 2026 (Labs Auth/account/wallet implementation — not merged or activated)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
 the working **Merkado Direct + Merkado Pay** Buildathon demo. The Next.js app
-lives at the repository root. There is no Merkado login. The hosted URL
-uses a shared host password.
+lives at the repository root. Labs now has an Auth implementation behind
+configuration; it is not production Merkado authentication. The hosted URL
+retains the deployment gate before sign-in.
 
 This demo is **not** live on merkado.cw. There is no public offering.
 Direct operations show **XCG** at **1.79 to the dollar**. Pay settles in USDC
@@ -17,8 +18,10 @@ stays later.
 The Base Sepolia NFT flow (ADR-0008) is **implemented locally behind
 configuration — NOT activated, NOT merged**. A Base Sepolia test deployment
 exists for local/staging verification, but hosted activation is not approved.
-The chain store migration is not applied, no project-authorized test-USDC or
-Safe transaction has been executed, and no PR has been merged. The mock
+The remote Labs database contains the chain-store tables, but local migration
+history does not record `20260821120000` as applied; reconcile that history
+before relying on or changing the chain store. No project-authorized test-USDC
+or Safe transaction has been executed, and no PR has been merged. The mock
 payment/wallet layer (`PAYMENT_RAIL_MODE`, mock provider, demo wallet, demo
 outcome menu, demo hashes) is removed.
 
@@ -36,20 +39,15 @@ outcome menu, demo hashes) is removed.
 > truth. The branch remains **NOT merged or
 > live**; implementation-audit findings in `10` still block activation.
 
-> **Interim wallet identity (2026-09-02) — implemented locally, not merged:**
-> branch `feat/wallet-identity-interim` adds wallet-first identity for the Labs
-> walkthrough. A Base Sepolia wallet signs a short-lived challenge and receives
-> an HTTP-only session. Reset records the signing wallet as the seed owner;
-> My Offers, Portfolio, Pay, draft, purchase, claim, and interactive operations
-> mutations verify the session server-side. Portfolio reads live `ownerOf` when
-> the contract is configured, so NFT transfers change the visible owner. The
-> challenge migration is reviewed but not applied, and `WALLET_SESSION_SECRET`
-> is not present in the repository.
-
-> **Admin wallet allowlist (2026-09-02) — implemented locally, not applied:**
-> Admin pages, navigation, and mutations now require the signed wallet session
-> to match an active row in `ra_admin_wallets`. The reviewed migration is
-> intentionally unapplied and the table has no default wallets.
+> **Note (2026-09-01) — implemented locally but NOT yet live:** the approved
+> Supabase Auth flow (Google OAuth and email magic links), account-owned demo
+> books, one linked wallet per account, `ADMIN_EMAILS` Admin authorization,
+> and the same-account create → buy → pay → claim path are implemented on the
+> working branch behind configuration. The account/wallet migration is applied
+> to Labs. The remote chain-store tables exist, but their local migration
+> history is not reconciled; this work is not
+> merged, hosted, or activated. Global Admin Reset remains the current reset
+> operation and does not roll back Base Sepolia.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**
@@ -78,7 +76,7 @@ Merkado login. Operations live on **Admin**. Hosted production fails closed at
 | Enter `/enter` | Compact shadcn card: Merkado Labs, Shared password, show/hide, Continue. Not a Merkado account. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
 | Home `/` | Product home headed **Rent paid forward**. Offer updates stay in the header bell and nav counts only. Two featured Marketplace cards remain. |
 | My Offers `/originate` | A table focuses on Under review, Listed, Sold, and Paid. Draft/unfunded rows are not counted. There is no landlord claim action and no listing expiry. |
-| Create offer `/originate/new` | Seven-step wizard with cover photo, a designated rent payer wallet, and Payout before Review. The landlord locks both addresses before submission. No landlord wallet is needed. Only six months can be submitted. |
+| Create offer `/originate/new` | Seven-step wizard with cover photo and Payout before Review. The landlord locks a payout destination before submission. No landlord wallet. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
 | Offer detail `/originate/MRA-*` | Property name first. A Landlord proceeds card shows Waiting, Processing, Failed, or Paid. Paid is final when the sale completes (buyer pays the locked landlord address). Listed offers stay purchasable (no expiry). |
 | Marketplace `/offers` | Anonymised cards for minted, whole offers only — an approved offer that is still **mint pending is not listed** until its mint receipt is verified (its detail page stays reachable and shows a Mint pending alert). Purchase connects a real Reown/AppKit wallet; one dialog waits for the successful USDC approval receipt before purchasing the whole offer. Pending transactions expose Check status, not resend. An empty active contract address shows not configured. |

@@ -1,16 +1,18 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (authenticated Labs accounts, linked wallet, ADMIN_EMAILS admin, account-owned books)
 
 ## 1. Hosted access
 
-On the hosted URL, the first screen is a shared-password door (`/enter`).
-It is a Merkado-branded private walkthrough, not a Merkado account. After
-the correct password, the visitor continues to the requested page
-(Home by default). Local `npm run dev` skips this door unless
-`LABS_DEMO_PASSWORD` is set. Hosted production stays locked if that
-password is missing.
+On the hosted URL, the first screen is a sign-in door (`/enter`) that is a
+Merkado-branded private walkthrough, not a Merkado account and not live on
+merkado.cw. **Supabase Auth** is the primary identity: **Continue with
+Google** or **Email me a sign-in link**. The legacy **host password**
+  (`LABS_DEMO_PASSWORD`) remains as a deployment gate before sign-in. Hosted
+  users must pass the gate and authenticate; hosted production fails closed at
+  `/enter`. Local `npm run dev` skips the deployment gate unless
+  `LABS_DEMO_PASSWORD` is set.
 
 ## 2. Home
 
@@ -28,7 +30,8 @@ approved offers mint again on the same deployment.
 
 ## 3. Landlord (Merkado Direct)
 
-1. **My Offers** — the two-offer demo book appears as a table (compact rows on
+1. **My Offers** — the signed-in account's demo book appears as a table
+   (compact rows on
    a phone). Each row shows the sale amount, status, and one **Next** step.
    Next steps are **Listed for 60 days** for a listed offer and **Sale amount
    paid automatically** once sold. Listed offers also carry the
@@ -79,12 +82,15 @@ approved offers mint again on the same deployment.
 
 ## 4. Holder (Merkado Direct)
 
-1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
+1. Marketplace shows anonymised cards from the signed-in account's own book
+   in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
    term, whole-offer price, and the display-only
    **"Available until [date] · 60-day listing window"** text (never
-   enforced). A holder connects a real wallet (injected
-   EIP-1193, e.g. WalletConnect/Privy) and buys 100% of the offer. The
+   enforced). A holder signs in, connects a real wallet (injected
+   EIP-1193, e.g. WalletConnect/Privy) and **links it** to the account by
+   signing a one-time, account/domain/chain/nonce-bound challenge — then
+   buys 100% of the offer. The
    buyer pays the exact purchase price **directly to the locked landlord
    payout address**; the NFT moves minter → buyer atomically in the
    same transaction. The cheap Punda studio (MRA-010) is the small
@@ -104,8 +110,10 @@ approved offers mint again on the same deployment.
 
 ## 5. Renter (Merkado Pay)
 
-1. `/pay` opens the seeded current payment request. `/pay/[id]` is the
-   canonical deep link. Invalid IDs show a friendly not-found. A later
+1. `/pay` opens the signed-in account's current payment request. `/pay/[id]`
+   is the
+   canonical deep link. Invalid IDs — and IDs that belong to another
+   account's book — show a friendly not-found that leaks nothing. A later
    month cannot be paid while an earlier month on the same deal is still
    open — the page sends the renter back to the next payment.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
@@ -131,22 +139,31 @@ approved offers mint again on the same deployment.
 4. Notice that rent and lease are unchanged. Pay is English-only.
 5. No fee, purchase price, holder identity, or distribution economics.
 
-## 6. Merkado account (Labs mock)
+## 6. Merkado account (Labs demo auth)
 
 1. `/account` opens Apps (or redirects there) inside merkado-cw account
    chrome. Other account and marketplace links are visibly disabled.
    Admin is hidden. Apps has its own sidebar group, above Account. Merkado
-   Pay and Merkado Direct are clickable.
+   Pay and Merkado Direct are clickable. The shell profile comes from the
+   signed-in account (Google metadata) with **Luuk Weber** as the demo
+   fallback.
 2. Apps lists Merkado Pay and Merkado Direct. Internal Labs routes are
    used unless an external URL is configured. Merkado Pay opens the
-   payment link. Payment history sits on that same Pay page.
+   payment link. Payment history sits on that same Pay page. The Apps
+   **Wallet** panel links one wallet to the account (Connect then Link
+   via the signed challenge) or unlinks it.
 3. Old `/account/payouts` and `/payouts` redirect to My Offers.
    Old `/account/settings` and `/account/payments` redirect into Account
    Apps or Pay.
+4. The Direct header user menu shows the signed-in profile and **Sign
+   out**, which disconnects the wallet and ends the Supabase session.
 
 ## 7. Admin approval
 
-Submitted offers are approved in **Admin**. The approver selector contains the
+**Admin** is an operations page at the bottom of the left nav, shown only
+for emails on the server-side `ADMIN_EMAILS` allowlist and enforced on every
+Admin server action (fail closed when the allowlist is set). Submitted
+offers are approved there. The approver selector contains the
 two walkthrough options **Enrique** and **Luuk**. Approval remains independent
 from the person who submitted the request. After approval, operators execute
 the prepared `mintOffer` calldata from the backend mint key, and the server
@@ -183,3 +200,7 @@ chain store tables.
 - Purchaser never contacts the payer.
 - Payer never sees the purchaser.
 - Landlord never sees holder wallet details beyond the public token owner.
+- Account books are isolated: a payment request, offer, or portfolio link
+  from another account's book shows a friendly not-found and leaks nothing.
+- A copied `/pay/…` link opened in another account or a signed-out browser
+  never reveals the payment request or payer data.

@@ -433,6 +433,8 @@ export type DemoBook = {
   checklist: ChecklistItem[];
   openQuestions: OpenQuestion[];
   assignedTenancies: string[];
+  /** Server-set owning account id. Never set by the client; defaults to null. */
+  ownerAccountId?: string | null;
   cryptoConfig?: CryptoConfig;
   accounts?: DemoAccount[];
   paymentRequests?: PaymentRequest[];
