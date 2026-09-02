@@ -46,6 +46,11 @@ outcome menu, demo hashes) is removed.
 > challenge migration is reviewed but not applied, and `WALLET_SESSION_SECRET`
 > is not present in the repository.
 
+> **Admin wallet allowlist (2026-09-02) — implemented locally, not applied:**
+> Admin pages, navigation, and mutations now require the signed wallet session
+> to match an active row in `ra_admin_wallets`. The reviewed migration is
+> intentionally unapplied and the table has no default wallets.
+
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**
 is the raw underwriting input. **Property Score** is a derived presentation

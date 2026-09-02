@@ -67,6 +67,7 @@ import {
   requireWalletIdentity,
   walletAddressMatches,
 } from "@/lib/wallet/identity";
+import { requireAdminWallet } from "@/lib/wallet/admin";
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -100,7 +101,7 @@ async function requireWalletActor(address?: string | null): Promise<string> {
 }
 
 export async function resetDemoAction() {
-  const identity = await requireWalletIdentity();
+  const identity = await requireAdminWallet();
   await resetBook(identity.address);
   // Seed the fresh approved offers on the env deployment immediately, so the
   // tokens are minted even if the Admin page is closed before the sweep/cron
@@ -110,7 +111,7 @@ export async function resetDemoAction() {
 }
 
 export async function setPayNetworkAction(networkKey: string) {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   const key = parseExactPayNetworkKey(networkKey);
   if (!key || !isSelectablePayNetwork(key) || !canPersistPayNetwork(key)) {
     throw new Error("That payment network is not available.");
@@ -122,7 +123,7 @@ export async function setPayNetworkAction(networkKey: string) {
 }
 
 export async function setOfferStatusAction(reference: string, status: OfferStatus) {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   if (status === "funding") {
     throw new Error("Use independent approval to move an offer into mint pending.");
   }
@@ -144,7 +145,7 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
 }
 
 export async function approveOfferAction(reference: string, actorId: string) {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   const approver = independentApproverById(actorId);
   if (!approver) {
     throw new Error("Select Enrique or Luuk as the independent approver.");
@@ -188,7 +189,7 @@ export async function recordCollectionAction(
   reference: string,
   receivableN: number,
 ) {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -208,7 +209,7 @@ export async function recordCollectionAction(
 }
 
 export async function closeChecklistItemAction(id: string, evidence: string) {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   const book = await loadBook();
   book.checklist = book.checklist.map((item) =>
     item.id === id ? { ...item, state: "closed", evidence } : item,
@@ -263,14 +264,14 @@ export async function submitOfferForReviewAction(reference: string) {
 export type { AutoMintResult, PendingMintResult } from "@/lib/rent-advance/mint-sweep-run";
 
 export async function autoMintAction(reference: string): Promise<AutoMintResult> {
-  await requireWalletIdentity();
+  await requireAdminWallet();
   return mintOfferFor(reference);
 }
 
 /** Mints every approved offer that still needs minting (idempotent). */
 export async function sweepPendingMintsAction() {
   assertDemoUnlocked();
-  await requireWalletIdentity();
+  await requireAdminWallet();
   return runPendingMintSweep();
 }
 

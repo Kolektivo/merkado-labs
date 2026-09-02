@@ -136,8 +136,10 @@ function NavLinks({
 
 function AppSidebar({
   notifications,
+  isAdmin,
 }: {
   notifications: DashboardNotification[];
+  isAdmin: boolean;
 }) {
   const pathname = usePathname() ?? "";
   const counts = useNavNotificationCounts(notifications);
@@ -185,26 +187,28 @@ function AppSidebar({
           </SidebarGroup>
         </nav>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActivePath(pathname, "/admin")}
-              tooltip="Admin"
-              className="min-h-9"
-            >
-              <Link
-                href="/admin"
-                aria-current={isActivePath(pathname, "/admin") ? "page" : undefined}
+      {isAdmin ? (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActivePath(pathname, "/admin")}
+                tooltip="Admin"
+                className="min-h-9"
               >
-                <Shield />
-                <span>Admin</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+                <Link
+                  href="/admin"
+                  aria-current={isActivePath(pathname, "/admin") ? "page" : undefined}
+                >
+                  <Shield />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      ) : null}
       <SidebarRail />
     </Sidebar>
   );
@@ -260,13 +264,15 @@ function SiteHeader({
 export function AppShell({
   children,
   notifications,
+  isAdmin,
 }: {
   children: React.ReactNode;
   notifications: DashboardNotification[];
+  isAdmin: boolean;
 }) {
   return (
     <SidebarProvider>
-      <AppSidebar notifications={notifications} />
+      <AppSidebar notifications={notifications} isAdmin={isAdmin} />
       <SidebarInset className="min-w-0">
         <SiteHeader notifications={notifications} />
         <div className="flex min-w-0 flex-1 flex-col">

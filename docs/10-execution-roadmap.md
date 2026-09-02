@@ -12,6 +12,11 @@
   scoping when configured. Before review, apply the reviewed migration to the
   approved Labs fork and set a local/server-only `WALLET_SESSION_SECRET`.
 
+- **Admin wallet allowlist:** Admin pages, navigation, and mutations now
+  require a signed wallet session plus an active row in `ra_admin_wallets`.
+  The reviewed migration is not yet applied and the table is empty by
+  default; add only Product Lead-approved wallet addresses before use.
+
 - **In progress (branch `wave6-main-ui-restore`):** the approved Wave 6 UI and
   copy are implemented. The approval-receipt race and pending Check-status
   state are fixed and covered by automated tests; the contract address again
