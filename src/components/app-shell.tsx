@@ -47,6 +47,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { WalletConnection } from "@/components/wallet-connection";
 import { resolveCrumbs, type BreadcrumbCrumb } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
 
@@ -250,6 +251,7 @@ function SiteHeader({
       <div className="min-w-0 flex-1 overflow-hidden">
         <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
       </div>
+      <WalletConnection className="hidden w-44 shrink-0 sm:block" compact />
       <DashboardNotifications items={notifications} />
     </header>
   );
