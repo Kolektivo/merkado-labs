@@ -27,7 +27,8 @@ import type {
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { newEpoch } from "@/lib/onchain/chain-store";
-import { readCurrentOfferOwner } from "@/lib/onchain/verify";
+import { readCurrentOfferClaimable, readCurrentOfferOwner } from "@/lib/onchain/verify";
+import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
 import { walletAddressMatches } from "@/lib/wallet/identity";
 
 const STATE_ID = "live";
@@ -228,7 +229,26 @@ export async function listPortfolioPositions(walletAddress?: string): Promise<{
       : walletAddressMatches(onchain?.purchaserAddress ?? "", walletAddress);
     if (owns) funded.push(offer);
   }
-  const positions = funded.map((offer) => toPortfolioPosition(offer, book));
+  const positions = await Promise.all(
+    funded.map(async (offer) => {
+      const position = toPortfolioPosition(offer, book);
+      const onchain = offer.onchain;
+      const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+      if (!configuredContract || onchain?.tokenId == null || !onchain.contractAddress) {
+        return position;
+      }
+      const liveClaimable = await readCurrentOfferClaimable(
+        onchain.contractAddress,
+        onchain.tokenId,
+      );
+      return liveClaimable == null
+        ? position
+        : {
+            ...position,
+            pendingDistributionCents: usdCentsFromUsdcAtomic(liveClaimable),
+          };
+    }),
+  );
   return {
     positions,
     contributed: positions.reduce((sum, row) => sum + row.fundedCents, 0),
