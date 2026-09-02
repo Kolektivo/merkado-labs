@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (Labs Auth/account/wallet implementation — not activated)
 
 ## Local dashboard
 
@@ -22,6 +22,8 @@ Required env (Labs project `ewoxmzznkavapcxdporm` only):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY` (server only)
+- `ADMIN_EMAILS` (server-only comma-separated Labs Admin allowlist)
+- `NEXT_PUBLIC_SITE_URL` (approved Auth callback origin)
 
 Optional:
 
@@ -32,6 +34,18 @@ Optional:
 - `MERKADO_MINTER_PRIVATE_KEY` — server-only Base Sepolia key the backend uses to mint offer NFTs
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
+
+Supabase Auth is configured in the Labs project only, with Google OAuth and
+email magic links. Approved callback origins include local `http://localhost:3000`
+and the Labs hosted URL. When `LABS_DEMO_PASSWORD` is set, it is required
+before sign-in; protected hosted routes then require the authenticated session.
+
+The reviewed account/wallet migration
+`20260831000000_labs_accounts_and_wallets.sql` is applied to Labs. The remote
+Labs database contains the chain-store tables, but local migration history does
+not record `20260821120000` as applied. Reconcile that history before relying
+on or changing the chain store. Do not apply any other migration without
+explicit approval.
 
 ## Vercel (Labs demo host)
 

@@ -30,8 +30,9 @@ function tone(status: PaymentRequestStatus) {
 export default async function PayIndexPage() {
   const book = await loadBook();
   const configured = Boolean(book.cryptoConfig?.offerNftContract);
+  const renterAccountId = book.ownerAccountId ?? RENTER_ACCOUNT_ID;
   const requests = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
+    .filter((row) => row.accountId === renterAccountId)
     .slice()
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const open = openPaymentRequests(requests);

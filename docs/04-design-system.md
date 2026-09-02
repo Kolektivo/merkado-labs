@@ -1,19 +1,20 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (auth sign-in card, user menu, wallet link panel, admin-only nav)
 
 ## 1. Scope
 
 This document covers the Labs Next.js demo at the repository root.
 Production merkado.cw visual language stays in merkado-cw. The Labs
-**account mock** now mirrors merkado-cw navbar, footer, and account
-sidebar chrome visually. Do not copy AccountLayout data loading, auth,
+**account shell** mirrors merkado-cw navbar, footer, and account
+sidebar chrome visually and shows the signed-in Labs demo account profile.
+Do not copy AccountLayout data loading, auth,
 profiles, or Listing Score implementation. Marketplace, listing, and billing
 controls are visibly disabled, including **Account Settings**. There is
 no Payouts item in account chrome. Admin is not shown.
 Only Merkado Pay and Merkado Direct are live apps. Payment history lives on
-the Pay page.
+the Pay page. Customer copy never calls the sign-in a Merkado account.
 
 ## 2. Stack (verified)
 
@@ -23,7 +24,7 @@ the Pay page.
 | Styling | Tailwind CSS v4 + CSS variables in `src/app/globals.css` |
 | Components | shadcn/ui (`radix-nova`, `neutral`, Lucide) — one library only |
 | Fonts | Geist Sans + Geist Mono on Direct ops; Inter on `.theme-merkado` surfaces |
-| Chrome | Compact shadcn card at `/enter`; `AppShell` sidebar for Direct, with a header notifications bell and nav counts on My Offers / Portfolio; payment-link shell for Pay; account shell for the Labs account mock |
+| Chrome | Compact shadcn auth card at `/enter`; `AppShell` sidebar for Direct, with a header notifications bell, user menu, and nav counts on My Offers / Portfolio; payment-link shell for Pay; account shell for the Labs demo account |
 
 ## 3. Tokens
 
@@ -88,9 +89,21 @@ outside this scoped layer.
   title. **Rent paid forward**, **My Offers**, and similar titles stand on
   their own. Field labels, status badges, nav groups, and the logo are not
   eyebrows.
-- The hosted password door (`/enter`) is a compact shadcn card: title,
-  one line of copy, **Shared password**, and **Continue**. No logo, pill,
+- The hosted sign-in door (`/enter`) is a compact shadcn card: title,
+  one line of copy, **Continue with Google**, **Email me a sign-in link**,
+  and the legacy **host password** as a collapsed fallback. A quiet line
+  reads **Not a Merkado account · not live on merkado.cw**. No logo, pill,
   or prototype alert.
+- The Direct header user menu shows the signed-in profile (avatar, name,
+  email) and **Sign out**, which disconnects the wallet and ends the
+  session. A signed-out shell shows a **Sign in** link to `/enter`.
+- The Apps **Wallet** panel on `/account/apps` connects a wallet and links
+  it to the account by a signed challenge; it shows the linked address,
+  **Link wallet** / **Link this wallet instead**, **Unlink wallet**, and a
+  clear rejection alert (cancelled, wrong network, expired link, wrong
+  account).
+- Admin nav appears only for allowlisted `ADMIN_EMAILS` users, at the
+  bottom of the left nav; everyone else never sees it.
 - When `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, Purchase and Pay
   show a quiet **not configured** state instead of a fake transaction.
 - Customer scores: show **Property quality**, **Payment history**, and
@@ -117,9 +130,9 @@ outside this scoped layer.
 ## 5. Accessibility
 
 Skip link to `#main-content`, `aria-current` on nav, focus-visible rings,
-`prefers-reduced-motion` in `globals.css`. The password door uses the
-default shadcn field, a show/hide control, and a full-width continue
-action. Pay is mobile-first (~390px).
+`prefers-reduced-motion` in `globals.css`. The sign-in door uses the
+default shadcn field, a show/hide password control, and full-width actions.
+Pay is mobile-first (~390px).
 The amount, due badge, wallet actions, and
 payment history stay visible. Extra explainers stay in tooltips. Pay is
 English-only.

@@ -216,6 +216,42 @@ class MockMutationResult {
   }
 }
 
+/** Minimal update filter used by newEpoch to deactivate prior active epochs. */
+class MockUpdateBuilder {
+  private filters: Record<string, unknown> = {};
+
+  constructor(
+    private q: MockQueryBuilder,
+    private row: MockRow,
+  ) {}
+
+  eq(col: string, value: unknown) {
+    this.filters[col] = value;
+    return this;
+  }
+
+  then<TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: { data: MockRow[] | null; error: { code: string; message: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
+  }
+
+  private execute(): {
+    data: MockRow[] | null;
+    error: { code: string; message: string } | null;
+  } {
+    const table = this.q.store[this.q.table];
+    const updated: MockRow[] = [];
+    for (const existing of table.rows) {
+      if (!Object.entries(this.filters).every(([k, v]) => existing[k] === v)) continue;
+      Object.assign(existing, this.row);
+      updated.push({ ...existing });
+    }
+    return { data: updated, error: null };
+  }
+}
+
 class MockQueryBuilder {
   private filters: Record<string, unknown> = {};
   private projection: string[] | null = null;
@@ -249,6 +285,10 @@ class MockQueryBuilder {
 
   insert(row: MockRow) {
     return new MockMutation(this, "insert", row);
+  }
+
+  update(row: MockRow) {
+    return new MockUpdateBuilder(this, row);
   }
 
   upsert(row: MockRow, opts?: { onConflict?: string; ignoreDuplicates?: boolean }) {

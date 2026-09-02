@@ -21,6 +21,8 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
+import { getLinkedWalletForAccount } from "@/lib/rent-advance/accounts";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 import { SubscribeForm } from "./subscribe-form";
 
@@ -43,6 +45,10 @@ export default async function BuyerOfferPage({
   const { ref } = await params;
   const offer = await getPurchaserOffer(ref);
   if (!offer) notFound();
+
+  const user = await getOptionalUser();
+  const linked = user ? await getLinkedWalletForAccount(user.id) : null;
+  const linkedWalletAddress = linked?.walletAddress ?? null;
 
   const remaining = remainingOfferingCents(offer);
   const expiresAt = listingExpiresAt(offer.publishedAt);
@@ -116,6 +122,7 @@ export default async function BuyerOfferPage({
               tokenId={offer.tokenId}
               contractAddress={offer.contractAddress}
               pendingRecovery={offer.pendingPurchase}
+              linkedWalletAddress={linkedWalletAddress}
             />
           ) : (
             <ClosedOfferCard

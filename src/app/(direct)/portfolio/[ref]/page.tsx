@@ -26,7 +26,9 @@ import {
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
+import { getLinkedWalletForAccount } from "@/lib/rent-advance/accounts";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,9 @@ export default async function PortfolioDetailPage({
     loadBook(),
   ]);
   if (!position) notFound();
+  const user = await getOptionalUser();
+  const linked = user ? await getLinkedWalletForAccount(user.id) : null;
+  const linkedWalletAddress = linked?.walletAddress ?? null;
   const offer = book.offers.find((row) => row.reference === position.reference);
   const onchain = mergeOnchain(offer?.onchain);
   const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
@@ -128,6 +133,7 @@ export default async function PortfolioDetailPage({
               amountCents={pendingCents}
               configured={configured}
               contractAddress={contractAddress}
+              linkedWalletAddress={linkedWalletAddress}
             />
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { HelpTip } from "@/components/help-tip";
-import { WalletConnection } from "@/components/wallet-connection";
+import { WalletLinkPanel } from "@/components/wallet-link-panel";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -29,22 +29,28 @@ export function ClaimRentForm({
   amountCents,
   configured,
   contractAddress,
+  linkedWalletAddress,
 }: {
   reference: string;
   tokenId: number | null;
   amountCents: number;
   configured: boolean;
   contractAddress: string | null;
+  linkedWalletAddress: string | null;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
   const [pending, startTransition] = useTransition();
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
+  const connected = wallet.isConnected && Boolean(wallet.address);
+  const linkedMatches =
+    linkedWalletAddress != null &&
+    wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
+  const walletReady = connected && linkedMatches && onBaseSepolia;
   const canClaim =
-    configured && tokenId != null && connected && onBaseSepolia && !claiming;
+    configured && tokenId != null && walletReady && !claiming;
 
   function handleClaim() {
     setError(null);
@@ -130,7 +136,7 @@ export function ClaimRentForm({
         </Alert>
       ) : (
         <>
-          <WalletConnection onConnectedChange={setConnected} />
+          <WalletLinkPanel initialLinkedAddress={linkedWalletAddress} />
           {canClaim ? (
             <Button
               type="button"
@@ -142,7 +148,8 @@ export function ClaimRentForm({
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            The current holder claims rent that was paid for this listing.
+            The current holder claims rent that was paid for this listing,
+            using the linked wallet.
           </p>
         </>
       )}
