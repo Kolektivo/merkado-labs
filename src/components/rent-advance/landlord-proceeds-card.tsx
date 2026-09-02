@@ -3,6 +3,7 @@
 import { CheckCircle2, Clock3, LockKeyhole } from "lucide-react";
 
 import { HelpTip } from "@/components/help-tip";
+import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -113,6 +114,17 @@ export function LandlordProceedsCard({
                 </HelpTip>
               </p>
             ) : null}
+            {presentation.purchaseTxHash ? (
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="text-sm font-medium">Sale transaction</p>
+                <CopyValue
+                  value={presentation.purchaseTxHash}
+                  label="sale transaction"
+                  truncate
+                  className="mt-1 max-w-full"
+                />
+              </div>
+            ) : null}
           </>
         )}
 
@@ -131,7 +143,8 @@ export function LandlordProceedsCard({
           <Alert className="py-2">
             <AlertDescription>
               Verified from the sale payment. The sale amount went to the
-              payout address above.
+              payout address above as USDC. It does not appear as a renter
+              payment in Merkado Pay.
             </AlertDescription>
           </Alert>
         ) : null}
