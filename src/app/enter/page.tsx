@@ -37,7 +37,7 @@ export default async function EnterPage({
                 ? "Enter the shared password to open the demo."
                 : !unlocked
                   ? "This walkthrough is locked until the host sets the shared password."
-                  : "Sign in with your wallet to open the demo."}
+                  : "Connect your wallet to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -46,7 +46,7 @@ export default async function EnterPage({
             ) : unlocked ? (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Your wallet identity keeps this private walkthrough scoped to you.
+                  Connect a wallet to continue to the walkthrough.
                 </p>
                 <WalletIdentity nextPath={safeReturnPath(params.next)} />
               </div>
