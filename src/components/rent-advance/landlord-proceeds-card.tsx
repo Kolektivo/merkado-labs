@@ -143,8 +143,7 @@ export function LandlordProceedsCard({
           <Alert className="py-2">
             <AlertDescription>
               Verified from the sale payment. The sale amount went to the
-              payout address above as USDC. It does not appear as a renter
-              payment in Merkado Pay.
+              payout address above.
             </AlertDescription>
           </Alert>
         ) : null}
