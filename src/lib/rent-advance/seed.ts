@@ -185,6 +185,7 @@ function makeProperty(
     cadastralReference: null,
     mortgagePresent: false,
     mortgagee: null,
+    coverImageSrc: null,
     photoLabels: ["cover · exterior", "living", "kitchen", "yard"],
     ...partial,
   };
