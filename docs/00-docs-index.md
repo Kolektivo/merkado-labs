@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (Supabase Auth identity, account-owned state, linked wallet, ADMIN_EMAILS admin)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -11,6 +11,7 @@ and `docs/decisions/ADR-0002-private-local-evidence.md`.
 **Buildathon pivot:** `docs/decisions/ADR-0005-buildathon-direct-pay-demo.md`.
 **Base Sepolia NFT flow:** `docs/decisions/ADR-0008-base-sepolia-nft-rent-offer.md`
 (supersedes ADR-0006 / ADR-0007 where they conflict).
+**Auth / accounts / wallet linking:** `docs/decisions/ADR-0009-auth-accounts-wallet-linking.md`.
 **Product naming:** **Merkado Direct** is the umbrella app (My Offers, Create
 Offer, Simulator, Marketplace, Portfolio). **Merkado Pay** is the renter
 payment-link. **Admin** is the operations page at the bottom of the left nav.
@@ -27,9 +28,38 @@ series/legal wording may remain. “Merkado Premium” is retired.
   rent through the `MerkadoRentOfferV1` contract.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
-- **Merkado account (Labs mock)** = demo renter account (**Luuk Weber**)
-  with Apps. Merkado Pay and Merkado Direct are the enabled apps. Not
-  production auth.
+- **Merkado account (Labs demo auth)** = a **Supabase Auth** identity
+  (Google OAuth or email magic link) that owns an isolated demo book.
+  Auth identity is separate from wallet authorization. Each account can
+  walk create → buy → pay → claim in its own book. Not production auth.
+- **Labs demo sign-in (`/enter`)** = Supabase Auth primary entry: **Continue
+  with Google** or **Email me a sign-in link**, plus the legacy **host
+  password** as a deployment-gate fallback. Not a Merkado account and not
+  live on merkado.cw. Hosted production requires the deployment gate and an
+  authenticated session; it fails closed at `/enter`.
+- **Linked wallet** = one active wallet per account, linked by signing a
+  one-time, account/domain/chain/nonce-bound challenge
+  (`ra_link_challenges` → `ra_account_wallets`). Connection alone never
+  links; at most one active wallet per account. Marketplace purchases and
+  Portfolio `claimRent` use the linked wallet.
+- **ADMIN_EMAILS admin** = server-side comma-separated allowlist. Admin is
+  enforced on Admin pages and on every Admin server action. Missing or empty
+  configuration fails closed. Admin nav appears only for allowlisted emails.
+- **Account-owned demo state** = each authenticated account's book is keyed
+  `ra_demo_state id='live' + account_id=<auth user id>`. The legacy shared
+  `NULL` row is ignored by the account-scoped code paths.
+- **Global Reset (Admin)** = preserves the current Reset UX and the mint
+  sweep, and starts a **new chain-store epoch** (prior active epochs are
+  deactivated atomically). Old Base Sepolia transactions stay tied to their
+  original account / contract / epoch and cannot mutate fresh reset state.
+  Reset does **not** roll back the chain.
+- **Pending transaction recovery** = a submitted purchase / deposit / claim
+  tx hash is bound to account + offer/payment request + token + chain +
+  contract + epoch; compare-and-set (first valid submission wins); the sender
+  is derived from verified chain facts, never a client-supplied address;
+  **Check status** re-verifies, never blind re-sends. Mint recovery pins to
+  the offer's original contract at broadcast; the env address is used only
+  for new broadcasts.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
 - **Digital Participation Right (DPR)** = instrument name. The instrument
   is now a **transferable offer NFT** (`MerkadoRentOfferV1`, ERC-721) on
@@ -96,7 +126,7 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Execution roadmap | `10-execution-roadmap.md` |
 | Testing and Product Lead UAT | `11-testing-and-uat.md` |
 | Deployment and local ops | `12-deployment-runbook.md` |
-| Decision records | `decisions/` (Base Sepolia NFT flow: ADR-0008; prior: ADR-0006, ADR-0007) |
+| Decision records | `decisions/` (Base Sepolia NFT flow: ADR-0008; auth/accounts/wallet linking: ADR-0009; prior: ADR-0006, ADR-0007) |
 | AI prompts | `ai/` |
 | Private local material | `private/` (gitignored) |
 
@@ -110,11 +140,12 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically. Display-only "Available until [date] · 60-day listing window" — never enforced |
 | Portfolio | [LABS] Seeded positions plus purchases; current NFT owner claims rent (`claimRent`) |
 | Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC. QR / copy controls informational only; depositRent is the only payment path |
-| Merkado account mock | [LABS] Buildathon scope; fictional only |
-| Admin | [LABS] Bottom of left nav — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
+| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (Google + email magic link). Each account owns an isolated demo book; one linked wallet per account; same account can create → buy → pay → claim. Not activated or merged |
+| Admin | [LABS] Bottom of left nav, gated by `ADMIN_EMAILS` allowlist — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
+| Account-owned state + wallet linking (ADR-0009) | [LABS] Implemented behind config; `ra_demo_state id='live' + account_id`, `ra_account_wallets`, `ra_link_challenges` in an **unapplied** migration. Not live |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; migration not applied; hosted flow not activated or merged |
+| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; migrations not applied; hosted flow not activated or merged |
 | Real wallet / Safe / mainnet | Base Mainnet, real funds, production, and deployment gates stay blocked. See `09`, `10`, `12` |
 
 ## Reading order

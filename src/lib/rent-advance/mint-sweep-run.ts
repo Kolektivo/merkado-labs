@@ -29,8 +29,14 @@ import {
   purchasePriceAtomicFor,
   rentInstallmentAtomicFor,
 } from "@/lib/rent-advance/custody";
-import { isPendingMintOffer } from "@/lib/rent-advance/helpers";
-import { loadBookForJob, updateOfferForJob } from "@/lib/rent-advance/store";
+import {
+  isPendingMintOffer,
+} from "@/lib/rent-advance/helpers";
+import {
+  listAccountRows,
+  loadBookForJob,
+  updateOfferForJob,
+} from "@/lib/rent-advance/store";
 
 export type AutoMintResult = {
   status: "submitted" | "pending" | "confirmed";
@@ -67,14 +73,16 @@ function revalidate() {
  * Mints a single approved offer from the server mint key. Idempotent: a retry
  * resumes an already-broadcast mint, and a reverted receipt clears the stored
  * hash so the next call broadcasts a fresh transaction.
+ *
+ * Mint recovery is pinned to the offer's original contract address and epoch
+ * captured at broadcast time; the env address is used only for NEW broadcasts.
+ * The optional accountId scopes the operation to one account's book.
  */
-export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
-  const book = await loadBookForJob();
-  // The env contract address is the single source of truth and is used every
-  // time. Reset keeps it working so approved offers mint again on the same
-  // deployment.
-  const contractAddress =
-    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
+export async function mintOfferFor(
+  reference: string,
+  accountId?: string | null,
+): Promise<AutoMintResult> {
+  const book = await loadBookForJob(accountId ?? null);
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   if (offer.status !== "funding") {
@@ -84,13 +92,19 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
   if (onchain.tokenId != null && onchain.mintTxHash) {
     return { status: "confirmed", txHash: onchain.mintTxHash, tokenId: onchain.tokenId };
   }
+  // A broadcast pins the contract it was sent to; a fresh broadcast resolves
+  // the env contract address (the single source of truth).
+  const contractAddress =
+    normalizeContractAddress(onchain.contractAddress) ??
+    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ??
+    merkadoContractAddress();
   const payoutAddress = payoutAddressLocked(offer);
   if (!payoutAddress) {
     throw new Error("Add a payout address before minting.");
   }
   const purchasePrice = purchasePriceAtomicFor(offer);
   const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
-  const epoch = await ensureActiveEpoch();
+  const epochId = onchain.epochId ?? (await ensureActiveEpoch()).id;
   // A fresh random key avoids the contract's usedOfferKeys collision if the
   // demo book is ever reset; the key is persisted with the broadcast.
   const key = onchain.offerKey ?? randomOfferKey();
@@ -114,27 +128,31 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
         rentInstallmentAmount,
       ],
     });
-    await updateOfferForJob(reference, (current) => ({
-      ...current,
-      nextAction: "Listing being prepared",
-      onchain: {
-        ...mergeOnchain(current.onchain),
-        offerKey: key,
-        contractAddress,
-        epochId: epoch.id,
-        mintTxHash: txHash,
-      },
-      events: [
-        {
-          id: `ev-${reference}-mint-broadcast-${Date.now()}`,
-          at: new Date().toISOString(),
-          title: "Listing being prepared",
-          detail: "Merkado is preparing this offer for Marketplace.",
-          actor: "System",
+    await updateOfferForJob(
+      reference,
+      (current) => ({
+        ...current,
+        nextAction: "Listing being prepared",
+        onchain: {
+          ...mergeOnchain(current.onchain),
+          offerKey: key,
+          contractAddress,
+          epochId,
+          mintTxHash: txHash,
         },
-        ...current.events,
-      ],
-    }));
+        events: [
+          {
+            id: `ev-${reference}-mint-broadcast-${Date.now()}`,
+            at: new Date().toISOString(),
+            title: "Listing being prepared",
+            detail: "Merkado is preparing this offer for Marketplace.",
+            actor: "System",
+          },
+          ...current.events,
+        ],
+      }),
+      accountId ?? null,
+    );
   }
 
   const publicClient = createPublicClient({
@@ -149,21 +167,25 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
     return { status: "pending", txHash, reason: "Waiting for the mint transaction on chain." };
   }
   if (receipt.status !== "success") {
-    await updateOfferForJob(reference, (current) => ({
-      ...current,
-      nextAction: "Listing needs attention",
-      onchain: { ...mergeOnchain(current.onchain), mintTxHash: null },
-      events: [
-        {
-          id: `ev-${reference}-mint-reverted-${Date.now()}`,
-          at: new Date().toISOString(),
-          title: "Could not prepare the listing",
-          detail: "We could not prepare this listing yet. It will retry automatically.",
-          actor: "System",
-        },
-        ...current.events,
-      ],
-    }));
+    await updateOfferForJob(
+      reference,
+      (current) => ({
+        ...current,
+        nextAction: "Listing needs attention",
+        onchain: { ...mergeOnchain(current.onchain), mintTxHash: null },
+        events: [
+          {
+            id: `ev-${reference}-mint-reverted-${Date.now()}`,
+            at: new Date().toISOString(),
+            title: "Could not prepare the listing",
+            detail: "We could not prepare this listing yet. It will retry automatically.",
+            actor: "System",
+          },
+          ...current.events,
+        ],
+      }),
+      accountId ?? null,
+    );
     return { status: "pending", txHash, reason: "The mint transaction reverted. Press Mint now to retry." };
   }
 
@@ -219,12 +241,12 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
     rentInstallmentAmount,
     mintTxHash: txHash,
     mintBlockNumber: blockNumberValue(result.blockNumber),
-    epochId: epoch.id,
+    epochId,
   });
   const logIndex = result.logIndex;
   if (logIndex != null && result.blockNumber != null) {
     await recordChainEvent({
-      epochId: epoch.id,
+      epochId,
       chainId: MERKADO_CHAIN_ID,
       contractAddress,
       txHash,
@@ -235,31 +257,35 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
       eventArgs: { tokenId: mintedTokenId.toString(), offerKey: key },
     });
   }
-  await updateOfferForJob(reference, (current) => ({
-    ...current,
-    status: "funding",
-    nextAction: "Listed · available for 60 days",
-    onchain: {
-      ...mergeOnchain(current.onchain),
-      tokenId: Number(mintedTokenId),
-      offerKey: key,
-      contractAddress,
-      epochId: epoch.id,
-      mintTxHash: txHash,
-      mintBlockNumber: result.blockNumber ?? null,
-      payoutAddress,
-    },
-    events: [
-      {
-        id: `ev-${reference}-mint-${Date.now()}`,
-        at: new Date().toISOString(),
-        title: "Listing ready",
-        detail: "This offer is now listed on Marketplace.",
-        actor: "System",
+  await updateOfferForJob(
+    reference,
+    (current) => ({
+      ...current,
+      status: "funding",
+      nextAction: "Listed · available for 60 days",
+      onchain: {
+        ...mergeOnchain(current.onchain),
+        tokenId: Number(mintedTokenId),
+        offerKey: key,
+        contractAddress,
+        epochId,
+        mintTxHash: txHash,
+        mintBlockNumber: result.blockNumber ?? null,
+        payoutAddress,
       },
-      ...current.events,
-    ],
-  }));
+      events: [
+        {
+          id: `ev-${reference}-mint-${Date.now()}`,
+          at: new Date().toISOString(),
+          title: "Listing ready",
+          detail: "This offer is now listed on Marketplace.",
+          actor: "System",
+        },
+        ...current.events,
+      ],
+    }),
+    accountId ?? null,
+  );
   revalidate();
   return { status: "confirmed", txHash, tokenId: Number(mintedTokenId) };
 }
@@ -267,29 +293,38 @@ export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
 /**
  * Mints every approved offer that still needs minting (including ones that
  * were broadcast but not yet verified). Safe to run from a scheduled job.
+ * With no accountId it sweeps every account's book so each account's offers
+ * are minted exactly once; an optional accountId scopes the sweep to that
+ * account. The legacy shared (null-account) book is intentionally not swept:
+ * it is ignored by the account-scoped code paths.
  */
-export async function runPendingMintSweep(): Promise<{
+export async function runPendingMintSweep(
+  accountId?: string | null,
+): Promise<{
   minted: number;
   results: PendingMintResult[];
 }> {
-  const book = await loadBookForJob();
-  const pending = book.offers.filter(isPendingMintOffer);
+  const scopes = accountId != null ? [accountId] : await listAccountRows();
   const results: PendingMintResult[] = [];
-  for (const offer of pending) {
-    try {
-      const result = await mintOfferFor(offer.reference);
-      results.push({
-        reference: offer.reference,
-        status: result.status,
-        txHash: result.txHash,
-        reason: result.reason,
-      });
-    } catch (err) {
-      results.push({
-        reference: offer.reference,
-        status: "pending",
-        reason: err instanceof Error ? err.message : "The mint could not be completed.",
-      });
+  for (const scope of scopes) {
+    const book = await loadBookForJob(scope);
+    const pending = book.offers.filter(isPendingMintOffer);
+    for (const offer of pending) {
+      try {
+        const result = await mintOfferFor(offer.reference, scope);
+        results.push({
+          reference: offer.reference,
+          status: result.status,
+          txHash: result.txHash,
+          reason: result.reason,
+        });
+      } catch (err) {
+        results.push({
+          reference: offer.reference,
+          status: "pending",
+          reason: err instanceof Error ? err.message : "The mint could not be completed.",
+        });
+      }
     }
   }
   revalidate();

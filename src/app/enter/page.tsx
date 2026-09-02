@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import {
   Card,
   CardContent,
@@ -6,23 +8,48 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDemoGateState, safeReturnPath } from "@/lib/demo-gate";
-import { redirectEnterIfNotNeeded } from "@/lib/demo-gate-server";
+import { isDemoUnlocked } from "@/lib/demo-gate-server";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 import { EnterForm } from "./enter-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Enter" };
 
+async function getEnterAuthState(): Promise<{
+  available: boolean;
+  authenticated: boolean;
+}> {
+  try {
+    const user = await getOptionalUser();
+    return { available: true, authenticated: Boolean(user) };
+  } catch {
+    return { available: false, authenticated: false };
+  }
+}
+
 export default async function EnterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; email?: string }>;
 }) {
-  const [params] = await Promise.all([
+  const [params, authState, state, gateUnlocked] = await Promise.all([
     searchParams,
-    redirectEnterIfNotNeeded(),
+    getEnterAuthState(),
+    Promise.resolve(getDemoGateState()),
+    isDemoUnlocked(),
   ]);
-  const state = getDemoGateState();
+  const nextPath = safeReturnPath(params.next);
+
+  if (authState.authenticated) {
+    redirect(nextPath || "/");
+  }
+
+  const error = typeof params.error === "string" ? params.error : null;
+  const email = typeof params.email === "string" ? params.email : null;
+  const deploymentGatePassed = !state.active || gateUnlocked;
+  const authAvailable = authState.available && deploymentGatePassed;
+  const showLegacyPassword = state.configured && !gateUnlocked;
 
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
@@ -31,14 +58,22 @@ export default async function EnterPage({
           <CardHeader>
             <CardTitle>Merkado Labs</CardTitle>
             <CardDescription>
-              {state.configured
-                ? "Enter the shared password to open the demo."
-                : "This walkthrough is locked until the host sets the shared password."}
+              {authAvailable
+                ? "Sign in to open the demo walkthrough."
+                : showLegacyPassword
+                  ? "Enter the shared password to open the demo."
+                  : "This walkthrough is locked until the host sets the shared password."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {state.configured ? (
-              <EnterForm nextPath={safeReturnPath(params.next)} />
+            {authAvailable || showLegacyPassword ? (
+              <EnterForm
+                nextPath={nextPath}
+                authAvailable={authAvailable}
+                legacyPasswordAvailable={showLegacyPassword}
+                initialError={error}
+                initialEmail={email}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Ask the host if you need access.

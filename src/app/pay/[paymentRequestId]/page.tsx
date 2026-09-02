@@ -18,10 +18,11 @@ export default async function PayRequestPage({
 }) {
   const { paymentRequestId } = await params;
   const book = await loadBook();
+  const renterAccountId = book.ownerAccountId ?? RENTER_ACCOUNT_ID;
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
   );
-  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+  if (!request || request.accountId !== renterAccountId) {
     return <PayNotFound />;
   }
 
@@ -29,7 +30,7 @@ export default async function PayRequestPage({
   const onchain = mergeOnchain(offer?.onchain);
   const earlier = earlierOpenPaymentRequest(book, request.paymentRequestId);
   const history = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
+    .filter((row) => row.accountId === renterAccountId)
     .map((row) => ({
       paymentRequestId: row.paymentRequestId,
       offerReference: row.offerReference,

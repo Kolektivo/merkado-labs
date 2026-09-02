@@ -1,15 +1,16 @@
 # 07 - Integrations
 
 **Purpose:** What this Labs demo connects to, and the crypto architecture handoff.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses; ADR-0008)
+**Last updated:** September 1, 2026 (Supabase Auth identity, wallet linking; ADR-0008 / ADR-0009)
 
 ## Live
 
 | System | Use |
 |---|---|
 | Labs Supabase `ewoxmzznkavapcxdporm` | Demo book, chain store, RLS, service-role server access |
+| Supabase Auth (same Labs project) | Primary Labs identity: **Google OAuth** + **email magic links**. Auth identity is separate from wallet authorization. |
 | Base Sepolia (`sepolia.base.org`) | Read-only RPC for the server to read receipts and events |
-| Injected wallet (EIP-1193) | Holder purchase and `claimRent`; renter `depositRent` (WalletConnect / Privy later) |
+| Injected wallet (EIP-1193) | Holder purchase and `claimRent`; renter `depositRent`; signs the wallet-linking challenge (WalletConnect / Privy later) |
 
 ## Not in this repo
 

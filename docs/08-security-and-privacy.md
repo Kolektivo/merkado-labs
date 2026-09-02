@@ -60,16 +60,15 @@ Never:
 
 ## 3. Demo access
 
-- There is no Merkado login and no admin cookie.
-- After this change is deployed with `LABS_DEMO_PASSWORD` set on Vercel
-  Production, the hosted demo uses a shared host password. Visitors see
-  `/enter` until that password is entered. This is not a customer
-  account. Do not use the paid Vercel password add-on. The live URL is
-  still open until that deploy.
+- Labs uses Supabase Auth with Google OAuth and email magic links. This is a
+  Labs demo identity, not production Merkado authentication.
+- `LABS_DEMO_PASSWORD` is a deployment gate before sign-in. When configured,
+  hosted users must pass the gate and authenticate before protected routes
+  open. Do not use the paid Vercel password add-on.
 - Local `npm run dev` stays open unless `LABS_DEMO_PASSWORD` is set.
 - Hosted production stays locked if that password is missing.
-- The Merkado account mock is fictional Labs UI. It does not reuse
-  production auth or profile queries.
+- Each authenticated user owns an isolated Labs demo book. The app uses the
+  Labs Supabase project only and does not reuse production profiles or data.
 - Reset the book is in Admin so a walkthrough can restore the seeded book.
 
 ## 4. Authorization and RLS

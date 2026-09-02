@@ -1,14 +1,15 @@
 # 02 - Scope and Decisions
 
 **Purpose:** Current Labs MVP scope, resolved decisions, and open gates.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (authenticated Labs accounts, account-owned state, linked wallet, ADMIN_EMAILS admin)
 
 ## 1. MVP goal
 
 Ship a coherent **Merkado Direct + Merkado Pay** Buildathon demo in this
 repository, seeded from **MRA-001**, using the existing Labs dashboard stack
-and Labs Supabase only. One shared fictional demo book so a Pay confirmation
-appears in My Payments, My Offers, and Portfolio.
+and Labs Supabase only. Each authenticated Labs account owns an isolated
+demo book (Supabase Auth identity), so a Pay confirmation appears in that
+account's My Payments, My Offers, and Portfolio.
 
 Property scrapers, Browse, enrichment, and pipeline work are **out of this
 repo**. They live on merkado-cw.
@@ -22,9 +23,10 @@ repo**. They live on merkado-cw.
 | P0 | Simulator | Sliders, market rent, Property Score, 9/12 simulation-only, Use this quote. Amounts in XCG |
 | P0 | My Offers | Draft/unfunded totals excluded; sale + collection/claim status |
 | P0 | Merkado Pay | Live USDC rent deposit on **Base Sepolia** via `depositRent` (Base Mainnet later); exact monthly amount, opaque payment id; English-only; no demo outcomes |
-| P0 | Shared state | One confirmed deposit updates request, receivable, collection, claim once |
+| P0 | Shared state | One confirmed deposit updates request, receivable, collection, claim once, within the payer's own account book |
 | P0 | Portfolio | Pre-seeded positions; Position ID; current NFT owner claims rent (`claimRent`) |
-| P0 | Account mock | Apps launcher. Marketplace chrome stays visually disabled. Only Merkado Pay and Merkado Direct are live apps. |
+| P0 | Labs sign-in / accounts | **Supabase Auth** primary identity: **Continue with Google** or **Email me a sign-in link**. Each account owns an isolated demo book; one **linked wallet** per account. Not production auth. |
+| P0 | Per-account Marketplace | Marketplace lists anonymised offer projections from the signed-in account's own book; any wallet buys the whole offer using the linked wallet. |
 | P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
 | P1 | NFT contract | One non-upgradeable ERC-721 (`MerkadoRentOfferV1`); pooled USDC rent per tokenId; backend mint key mints; transferable; whole-offer purchase pays landlord directly |
 | P1 | Labs schema | RLS on; service-role only; no production project; chain store tables in a reviewed migration |
@@ -40,7 +42,8 @@ repo**. They live on merkado-cw.
 - Contract deployment, applying new migrations, sending test USDC, Safe
   transactions, hosted activation, or merging this PR (separate gates)
 - Base Mainnet, real funds, or production activation
-- Production authentication or shared merkado.cw account
+- Production authentication or shared merkado.cw account (Labs demo auth
+  with Google / email magic links is in scope; it is not production auth)
 - Real email or reminder scheduling
 - Property series (enum reserved, not built)
 - Scrapers, Terra, What Fits Me, public listing browse
@@ -92,8 +95,15 @@ repo**. They live on merkado-cw.
 | Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
 | Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
-| Demo account identity | Labs account and seeded renter are **Luuk Weber**, with the Product Lead–supplied avatar. |
-| Hosted demo access | Shared host password in the app (`LABS_DEMO_PASSWORD`). Not a Merkado account and not the paid Vercel password add-on. Local stays open unless that env is set. Hosted production stays locked if the password is missing. |
+| Auth identity | **Supabase Auth** is the primary Labs identity: **Continue with Google** or **Email me a sign-in link**. Auth identity is separate from wallet authorization. The account shell profile comes from the signed-in user (Google metadata or the seeded **Luuk Weber** fallback). Not production auth. |
+| Account-owned state | Each authenticated account owns an isolated demo book keyed `ra_demo_state id='live' + account_id=<auth user id>`. The legacy shared `NULL` row is left in place and ignored by the account-scoped code paths. One account walks create → buy → pay → claim in its own book. |
+| Linked wallet | One active wallet per account. Connection alone never links: the wallet must sign a one-time challenge bound to account + domain + chain + nonce (`ra_link_challenges` → `ra_account_wallets`), 5-minute expiry, consumed atomically, at most one active row. Marketplace purchases and Portfolio `claimRent` use the linked wallet. |
+| Per-account Marketplace | Marketplace lists anonymised offer projections from the signed-in account's own book. Any wallet buys the whole offer using the linked wallet; the buyer pays the exact purchase price to the locked landlord payout address and the NFT moves Safe → buyer atomically. |
+| Admin access | Server-side `ADMIN_EMAILS` comma-separated allowlist. Admin is enforced on Admin pages and every Admin server action and fails closed when the allowlist is set. Admin nav appears only for allowlisted emails. |
+| Global Reset | Admin **Reset** keeps the current Reset UX and the mint sweep, seeds a fresh demo book, and starts a **new chain-store epoch** (prior active epochs deactivated atomically). Old Base Sepolia transactions stay tied to their original account / contract / epoch and cannot mutate fresh reset state. Reset does **NOT** roll back the chain; the env contract address stays active so approved offers mint again. |
+| Pending transaction binding | A submitted purchase / deposit / claim tx hash is bound to account + offer/payment request + token + chain + contract + epoch + hash, compare-and-set (first valid submission wins). Verification derives the sender from verified chain facts, never a client-supplied address. **Check status** re-verifies the stored hash, never blind re-sends. Mint recovery pins to the offer's original contract at broadcast; the env address is used only for new broadcasts. |
+| Deployment gate | `LABS_DEMO_PASSWORD` is a deployment guard only, not an account and not the paid Vercel password add-on. When configured, hosted users must pass it before Auth sign-in; protected routes require both the valid gate and an authenticated Supabase session. Local stays open unless that env is set. |
+| Migration state | Account/wallet migration `20260831000000_labs_accounts_and_wallets.sql` is applied to Labs. The remote Labs database contains the chain-store tables, but local migration history does not record `20260821120000` as applied; reconcile that history before relying on or changing the chain store. |
 
 ## 5. Open questions (must stay visible)
 

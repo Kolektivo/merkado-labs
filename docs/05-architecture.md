@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 1, 2026 (Supabase Auth, account-owned store, linked wallet, ADMIN_EMAILS admin)
 
 ## 1. Surfaces
 
@@ -19,31 +19,58 @@ publish listings.
 Customer-facing surfaces:
 
 - `/` Labs demo hub
+- `/enter` sign-in door (Supabase Auth: Google + email magic link; legacy host password fallback)
+- `/auth/callback` and `/auth/complete` Supabase Auth PKCE / magic-link completion
 - `/originate*` Merkado Direct operations (My Offers, Create Offer, Simulator)
-- `/admin*` operations (approval, collections, reset)
+- `/admin*` operations (approval, collections, reset) — ADMIN_EMAILS allowlist only
 - `/offers*` Marketplace
 - `/portfolio*` Portfolio
 - `/pay` and `/pay/[paymentRequestId]` Merkado Pay. `/pay/payments` redirects to `/pay`.
-- `/account` → `/account/apps` fictional account mock (Apps launcher) inside
+- `/account` → `/account/apps` account shell (Apps launcher) inside
   merkado-cw navbar / sidebar / footer chrome. Other account links are
   disabled. `/account/payouts` and `/payouts` redirect to My Offers.
 
 ## 2. Dashboard
 
-- Server components load one demo book from Labs Supabase (`ra_demo_state`)
-  with a seed fallback and `normalizeBook()` for older JSON.
+- Server components load the signed-in account's demo book from Labs
+  Supabase (`ra_demo_state id='live' + account_id`) with a seed fallback and
+  `normalizeBook()` for older JSON. The legacy shared `NULL` row is left in
+  place and ignored by the account-scoped paths.
+- Identity is **Supabase Auth** (Google OAuth + email magic links). Server
+  components and server actions resolve the user through `@supabase/ssr`
+  (`src/lib/supabase/server-client.ts`); browser code uses a matching
+  browser client. An optional **stay signed in** cookie preference controls
+  session cookie persistence. `requireUser()` redirects to `/enter`;
+  `requireAdminUser()` also enforces the `ADMIN_EMAILS` allowlist.
+- Admin is a server-side `ADMIN_EMAILS` allowlist, enforced on Admin pages
+  and every Admin server action (fail closed when set). The Admin nav item
+  renders only for allowlisted emails.
 - Mutations are server actions (record collection, dual-control release,
   submit for review, whole-offer purchase, holder claim, confirm rent
-  deposit, reset).
-- There is no Merkado login. After deploy, the hosted demo asks for a
-  shared host password at `/enter`. Reset the book sits in Admin. **Reset**
+  deposit, reset). Marketplace purchases and Portfolio `claimRent` use the
+  account's **linked wallet** (`src/lib/wallet-link/*`): connection alone
+  never links — the wallet signs a server-issued, account/domain/chain/nonce
+  bound challenge stored in `ra_link_challenges`, consumed atomically, with
+  at most one active row in `ra_account_wallets`.
+- Pending transaction recovery: a submitted purchase / deposit / claim hash
+  is bound to the account + offer/payment request + token + chain + contract
+  + epoch (compare-and-set, first valid submission wins). Verification
+  derives the sender from verified chain facts, never a client-supplied
+  address; **Check status** re-verifies the stored hash, never blind
+  re-sends. Mint recovery pins to the offer's original contract at
+  broadcast; the env address is used only for new broadcasts.
+- The hosted edge gate (`src/proxy.ts`) fails closed: `/enter` (Supabase
+  Auth sign-in) is reachable; an authenticated Supabase session or a valid
+  legacy `LABS_DEMO_PASSWORD` gate cookie may pass, hosted production
+  otherwise redirects to `/enter`. Reset the book sits in Admin. **Reset**
   seeds a fresh demo book (canonical offers as `funding`, empty on-chain
-  state) and starts a **new chain-store epoch** so old on-chain facts are
-  never reused. It does **not** roll back the chain; the env contract address
-  stays active so approved offers mint again on the same deployment.
+  state) and starts a **new chain-store epoch** (prior active epochs
+  deactivated atomically) so old on-chain facts are never reused. It does
+  **not** roll back the chain; the env contract address stays active so
+  approved offers mint again on the same deployment.
 - Pay uses a payment-link shell (`src/app/pay/layout.tsx`). Account uses
-  its own Labs mock shell. Direct operations use the sidebar shell
-  (`src/app/(direct)/layout.tsx`). The three shells are separate layouts
+  its own Labs shell. Direct operations use the sidebar shell
+  (`src/app/(direct)/layout.tsx`). The shells are separate layouts
   so the first paint does not swap chrome.
 
 ## 3. Pricing and scores
@@ -61,9 +88,19 @@ Direct presentation and filtering only. Never feed it back into the engine.
 Labs project `ewoxmzznkavapcxdporm` only. RLS on. `anon` / `authenticated`
 have no grants. Service-role is server-only.
 
-The persisted Labs book is one JSON row in `ra_demo_state`. A trigger on that
+The persisted Labs book is one JSON row in `ra_demo_state`, keyed
+`id='live' + account_id=<auth user id>` so each authenticated account owns
+an isolated book. A trigger on that
 payload rejects same-person releases. Purchaser pages load an anonymised
 card, not the full payer file.
+
+Wallet linking adds two tables from
+`20260831000000_labs_accounts_and_wallets.sql`: `ra_link_challenges`
+(server-issued one-time challenges) and `ra_account_wallets` (at most one
+active wallet per account). That migration is applied to Labs. The remote
+Labs database also contains the chain-store tables, but local migration
+history does not record `20260821120000` as applied; reconcile that history
+before relying on or changing the chain store.
 
 Structured `ra_*` tables exist with RLS on for a later normalised store.
 The Base Sepolia flow adds chain store tables — `ra_chain_epochs`,
@@ -102,6 +139,17 @@ are the on-chain evidence record; the JSON book is the product state.
   expected event/log, records it in the chain store tables, and writes the
   book once. Explorer links render only for a real 64-hex transaction hash
   on an official catalog explorer.
+- **Pending-transaction recovery.** A submitted purchase / deposit / claim
+  tx hash is bound to the account + offer/payment request + token + chain +
+  contract + epoch and persisted compare-and-set (first valid submission
+  wins). Verification derives the sender from verified chain facts, never a
+  client-supplied address; **Check status** re-verifies the stored hash,
+  never blind re-sends. Mint recovery pins to the offer's original contract
+  at broadcast; the env address is used only for new broadcasts.
+- **Chain-store epochs.** Exactly one active epoch exists after any write:
+  a new epoch first deactivates every prior active row, then inserts the new
+  one, so a stale active epoch is never picked up. Reset starts a new epoch
+  so old on-chain facts are never reused.
 - **Pay QR (informational).** The QR, **copy address**, and **copy amount**
   controls in the expanded **Pay with stablecoin** panel display the
   receiving address, USDC amount, and payment reference only. They never
@@ -112,9 +160,10 @@ are the on-chain evidence record; the JSON book is the product state.
 - **Configuration.** `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty until
   deployment; empty shows a not-configured state. Server-only
   `MERKADO_RPC_URL` defaults to `https://sepolia.base.org`.
-- **Not activated.** Contract deployment, applying the migration, test
-  USDC, Safe transactions, hosted activation, and merging the PR are
-  separate gates. Base Mainnet stays off.
+- **Not activated.** Contract deployment, applying the new migrations
+  (chain store `20260821120000` and accounts/wallets
+  `20260831000000`), test USDC, Safe transactions, hosted activation, and
+  merging the PR are separate gates. Base Mainnet stays off.
 
 ## 6. Future home
 

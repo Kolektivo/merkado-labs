@@ -1,13 +1,14 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses — approved, in progress)
+**Last updated:** September 1, 2026 (Labs Auth/account/wallet implementation — not merged or activated)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
 the working **Merkado Direct + Merkado Pay** Buildathon demo. The Next.js app
-lives at the repository root. There is no Merkado login. The hosted URL
-uses a shared host password.
+lives at the repository root. Labs now has an Auth implementation behind
+configuration; it is not production Merkado authentication. The hosted URL
+retains the deployment gate before sign-in.
 
 This demo is **not** live on merkado.cw. There is no public offering.
 Direct operations show **XCG** at **1.79 to the dollar**. Pay settles in USDC
@@ -17,8 +18,10 @@ stays later.
 The Base Sepolia NFT flow (ADR-0008) is **implemented locally behind
 configuration — NOT activated, NOT merged**. A Base Sepolia test deployment
 exists for local/staging verification, but hosted activation is not approved.
-The chain store migration is not applied, no project-authorized test-USDC or
-Safe transaction has been executed, and no PR has been merged. The mock
+The remote Labs database contains the chain-store tables, but local migration
+history does not record `20260821120000` as applied; reconcile that history
+before relying on or changing the chain store. No project-authorized test-USDC
+or Safe transaction has been executed, and no PR has been merged. The mock
 payment/wallet layer (`PAYMENT_RAIL_MODE`, mock provider, demo wallet, demo
 outcome menu, demo hashes) is removed.
 
@@ -35,6 +38,16 @@ outcome menu, demo hashes) is removed.
 > Check-status state, and restoring the env address as the single source of
 > truth. The branch remains **NOT merged or
 > live**; implementation-audit findings in `10` still block activation.
+
+> **Note (2026-09-01) — implemented locally but NOT yet live:** the approved
+> Supabase Auth flow (Google OAuth and email magic links), account-owned demo
+> books, one linked wallet per account, `ADMIN_EMAILS` Admin authorization,
+> and the same-account create → buy → pay → claim path are implemented on the
+> working branch behind configuration. The account/wallet migration is applied
+> to Labs. The remote chain-store tables exist, but their local migration
+> history is not reconciled; this work is not
+> merged, hosted, or activated. Global Admin Reset remains the current reset
+> operation and does not roll back Base Sepolia.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
 Passport** is listing history on a property page. This demo's **Listing Score**

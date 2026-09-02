@@ -208,6 +208,14 @@ export async function ensureActiveEpoch(): Promise<ChainEpochRow> {
 
 export async function newEpoch(label: string): Promise<ChainEpochRow> {
   const supabase = createLabsAdminClient();
+  // Deactivate every prior active epoch first, then insert the new row, so
+  // exactly one active epoch exists after the write. Ordering matters: a
+  // stale active epoch must never be picked up as the current one.
+  const { error: deactivateError } = await supabase
+    .from("ra_chain_epochs")
+    .update({ active: false })
+    .eq("active", true);
+  if (deactivateError) throw deactivateError;
   const { data, error } = await supabase
     .from("ra_chain_epochs")
     .insert({ label })

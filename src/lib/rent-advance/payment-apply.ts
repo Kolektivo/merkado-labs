@@ -129,8 +129,8 @@ function ensureOfferIds(offer: Offer): Offer {
   };
 }
 
-function renterAccountIdFor(): string {
-  return RENTER_ACCOUNT_ID;
+function renterAccountIdFor(accountId?: string | null): string {
+  return accountId ?? RENTER_ACCOUNT_ID;
 }
 
 function shouldMintPaymentRequests(offer: Offer): boolean {
@@ -215,6 +215,7 @@ function paymentRequestForReceivable(
   offer: Offer,
   n: number,
   receivingAddress: string | null,
+  renterAccount?: string | null,
 ): PaymentRequest | null {
   const receivable = offer.receivables.find((row) => row.n === n);
   if (!receivable) return null;
@@ -225,7 +226,7 @@ function paymentRequestForReceivable(
   const confirmed = receivable.status === "received";
   return {
     paymentRequestId,
-    accountId: renterAccountIdFor(),
+    accountId: renterAccountIdFor(renterAccount),
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     propertyId: offer.property.id,
@@ -277,8 +278,12 @@ function positionForOffer(offer: Offer): PositionRecord | null {
   };
 }
 
-export function normalizeBook(raw: unknown): DemoBook {
+export function normalizeBook(
+  raw: unknown,
+  opts?: { bookAccountId?: string | null },
+): DemoBook {
   const book = (raw ?? {}) as DemoBook;
+  const accountId = opts?.bookAccountId ?? book.ownerAccountId ?? null;
   const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
   const offers = (book.offers ?? [])
     .map(ensureOfferIds)
@@ -297,6 +302,7 @@ export function normalizeBook(raw: unknown): DemoBook {
         offer,
         receivable.n,
         rentReceivingAddressFor(offer, cryptoConfig),
+        accountId,
       );
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
@@ -407,6 +413,7 @@ export function normalizeBook(raw: unknown): DemoBook {
 
   return {
     ...book,
+    ownerAccountId: accountId,
     offers,
     actors: ACTORS,
     checklist: book.checklist ?? [],
@@ -732,9 +739,13 @@ const OPEN_PAYMENT_STATUSES = new Set([
   "overdue",
 ]);
 
-export function currentRenterPaymentRequest(book: DemoBook): PaymentRequest | null {
+export function currentRenterPaymentRequest(
+  book: DemoBook,
+  accountId?: string | null,
+): PaymentRequest | null {
+  const renterAccount = accountId ?? book.ownerAccountId ?? RENTER_ACCOUNT_ID;
   const requests = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
+    .filter((row) => row.accountId === renterAccount)
     .slice()
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   return requests.find((row) => OPEN_PAYMENT_STATUSES.has(row.status)) ?? null;
