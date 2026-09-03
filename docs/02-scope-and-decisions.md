@@ -61,6 +61,7 @@ repo**. They live on merkado-cw.
 | Landlord money | The buyer pays the exact purchase price **directly to the locked landlord payout address**; the NFT moves minter → buyer atomically in the same transaction. No landlord claim button, no funding record, no separate payout Safe. The fee is already included and must not look like a second deduction. |
 | Holder claims | Rent stays in the pooled contract until the current NFT owner calls `claimRent(tokenId)` in Portfolio. Only the current owner can claim. NFT transfers move claim rights with the token. |
 | Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)` with the exact monthly amount. The app schedules the six-month term; the contract imposes no deposit cap. Rent is not paid to the landlord a second time. |
+| Rent payer wallet | Create Offer requires a valid checksummed wallet address in the Renter step. Generated Pay requests are assigned to that wallet; it is separate from the landlord payout address. |
 | Opaque payment id | Unique per deposit, binds a deposit to a payment request. No memo guessing needed. |
 | Currency | Stored as USD integer cents; UI shows XCG at 1.79; USDC integer atomic units (6 decimals) stay 1:1 with USD |
 | Approved origination term | 6 months only; 9/12 simulation-only; 3 months disabled |

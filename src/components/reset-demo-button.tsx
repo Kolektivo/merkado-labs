@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { resetDemoAction } from "@/lib/rent-advance/actions";
 import { clearStoredNotifications } from "@/lib/rent-advance/notification-read-state";
+import { useWalletIdentity } from "@/hooks/use-wallet-identity";
 
 export function ResetDemoButton() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export function ResetDemoButton() {
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const walletIdentity = useWalletIdentity();
 
   if (confirming) {
     return (
@@ -25,9 +27,13 @@ export function ResetDemoButton() {
           variant="outline"
           size="sm"
           disabled={pending}
-          onClick={() => {
-            setDone(false);
-            startTransition(async () => {
+            onClick={() => {
+              setDone(false);
+              if (!walletIdentity.identity) {
+                void walletIdentity.signIn();
+                return;
+              }
+              startTransition(async () => {
               try {
                 setError(null);
                 await resetDemoAction();

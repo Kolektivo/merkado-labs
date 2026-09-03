@@ -27,12 +27,23 @@ import type {
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { newEpoch } from "@/lib/onchain/chain-store";
+import { readCurrentOfferClaimable, readCurrentOfferOwner } from "@/lib/onchain/verify";
+import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
+import { walletAddressMatches } from "@/lib/wallet/identity";
 
 const STATE_ID = "live";
 
 /** A fresh book seeded with the canonical demo offers (MRA-001 + MRA-010). */
-function cloneBook(): DemoBook {
-  return structuredClone(getSeedBook());
+function cloneBook(seedOwnerWalletAddress?: string): DemoBook {
+  const seed = structuredClone(getSeedBook());
+  seed.seedOwnerWalletAddress = seedOwnerWalletAddress ?? null;
+  if (seedOwnerWalletAddress) {
+    seed.offers = seed.offers.map((offer) => ({
+      ...offer,
+      createdByWalletAddress: seedOwnerWalletAddress,
+    }));
+  }
+  return seed;
 }
 
 export async function loadBook(): Promise<DemoBook> {
@@ -110,7 +121,7 @@ export async function saveBook(book: DemoBook): Promise<DemoBook> {
   return normalized;
 }
 
-export async function resetBook(): Promise<DemoBook> {
+export async function resetBook(seedOwnerWalletAddress: string): Promise<DemoBook> {
   await assertDemoUnlocked();
   // Start a new chain-store epoch so old on-chain facts are never reused.
   // Reset does NOT roll back the chain; the env contract address keeps
@@ -120,7 +131,7 @@ export async function resetBook(): Promise<DemoBook> {
   } catch {
     // The chain-store tables are not applied yet; keep a book-only reset.
   }
-  const seed = cloneBook();
+  const seed = cloneBook(seedOwnerWalletAddress);
   try {
     const supabase = createLabsAdminClient();
     const { data } = await supabase
@@ -136,6 +147,46 @@ export async function resetBook(): Promise<DemoBook> {
     // Keep the seed network if the current book cannot be read.
   }
   return saveBook(seed);
+}
+
+export function walletOwnsOffer(offer: Offer, walletAddress: string): boolean {
+  return Boolean(
+    offer.createdByWalletAddress &&
+      walletAddressMatches(offer.createdByWalletAddress, walletAddress),
+  );
+}
+
+export function walletOwnsPaymentRequest(
+  request: NonNullable<DemoBook["paymentRequests"]>[number],
+  walletAddress: string,
+): boolean {
+  return Boolean(
+    request.renterWalletAddress &&
+      walletAddressMatches(request.renterWalletAddress, walletAddress),
+  );
+}
+
+export function walletOwnsPosition(
+  position: NonNullable<DemoBook["positions"]>[number],
+  walletAddress: string,
+): boolean {
+  return Boolean(
+    position.holderWalletAddress &&
+      walletAddressMatches(position.holderWalletAddress, walletAddress),
+  );
+}
+
+export function offersForWallet(book: DemoBook, walletAddress: string): Offer[] {
+  return book.offers.filter((offer) => walletOwnsOffer(offer, walletAddress));
+}
+
+export function paymentRequestsForWallet(
+  book: DemoBook,
+  walletAddress: string,
+) {
+  return (book.paymentRequests ?? []).filter((request) =>
+    walletOwnsPaymentRequest(request, walletAddress),
+  );
 }
 
 export async function getOffer(reference: string): Promise<Offer | null> {
@@ -156,7 +207,7 @@ export async function getPurchaserOffer(
   return toPurchaserOffer(offer);
 }
 
-export async function listPortfolioPositions(): Promise<{
+export async function listPortfolioPositions(walletAddress?: string): Promise<{
   positions: PortfolioPosition[];
   contributed: number;
   received: number;
@@ -164,8 +215,40 @@ export async function listPortfolioPositions(): Promise<{
   active: number;
 }> {
   const book = await loadBook();
-  const funded = book.offers.filter((offer) => offer.fundedCents > 0);
-  const positions = funded.map((offer) => toPortfolioPosition(offer, book));
+  const funded = [] as Offer[];
+  for (const offer of book.offers) {
+    if (!offer.fundedCents || !walletAddress) continue;
+    const onchain = offer.onchain;
+    const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+    const liveOwner =
+      configuredContract && onchain?.tokenId != null && onchain.contractAddress
+        ? await readCurrentOfferOwner(onchain.contractAddress, onchain.tokenId)
+        : null;
+    const owns = configuredContract && onchain?.tokenId != null && onchain.contractAddress
+      ? Boolean(liveOwner && walletAddressMatches(liveOwner, walletAddress))
+      : walletAddressMatches(onchain?.purchaserAddress ?? "", walletAddress);
+    if (owns) funded.push(offer);
+  }
+  const positions = await Promise.all(
+    funded.map(async (offer) => {
+      const position = toPortfolioPosition(offer, book);
+      const onchain = offer.onchain;
+      const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+      if (!configuredContract || onchain?.tokenId == null || !onchain.contractAddress) {
+        return position;
+      }
+      const liveClaimable = await readCurrentOfferClaimable(
+        onchain.contractAddress,
+        onchain.tokenId,
+      );
+      return liveClaimable == null
+        ? position
+        : {
+            ...position,
+            pendingDistributionCents: usdCentsFromUsdcAtomic(liveClaimable),
+          };
+    }),
+  );
   return {
     positions,
     contributed: positions.reduce((sum, row) => sum + row.fundedCents, 0),
@@ -179,10 +262,28 @@ export async function listPortfolioPositions(): Promise<{
 
 export async function getPortfolioPosition(
   reference: string,
+  walletAddress?: string,
 ): Promise<PortfolioPositionDetail | null> {
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer || offer.fundedCents <= 0) return null;
+  const onchain = offer?.onchain;
+  const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+  const liveOwner =
+    configuredContract && onchain?.tokenId != null && onchain.contractAddress
+      ? await readCurrentOfferOwner(onchain.contractAddress, onchain.tokenId)
+      : null;
+  if (
+    !offer ||
+    offer.fundedCents <= 0 ||
+    !walletAddress ||
+    !(
+      configuredContract && onchain?.tokenId != null && onchain.contractAddress
+        ? Boolean(liveOwner && walletAddressMatches(liveOwner, walletAddress))
+        : walletAddressMatches(onchain?.purchaserAddress ?? "", walletAddress)
+    )
+  ) {
+    return null;
+  }
   return toPortfolioPositionDetail(offer, book);
 }
 

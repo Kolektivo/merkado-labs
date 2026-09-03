@@ -27,6 +27,9 @@ import {
 } from "@/lib/rent-advance/helpers";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
+import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
+import { readCurrentOfferClaimable } from "@/lib/onchain/verify";
+import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +50,9 @@ export default async function PortfolioDetailPage({
   searchParams: Promise<{ success?: string }>;
 }) {
   const [{ ref }, query] = await Promise.all([params, searchParams]);
+  const identity = await getCurrentWalletIdentity();
   const [position, book] = await Promise.all([
-    getPortfolioPosition(ref),
+    getPortfolioPosition(ref, identity?.address),
     loadBook(),
   ]);
   if (!position) notFound();
@@ -60,7 +64,18 @@ export default async function PortfolioDetailPage({
     (row) => row.offerReference === position.reference,
   );
   const pendingCollect = distributions.filter((row) => row.status === "claimable");
-  const pendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
+  const bookPendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
+  const liveClaimableAtomic =
+    configured && onchain.tokenId != null
+      ? await readCurrentOfferClaimable(contractAddress!, onchain.tokenId)
+      : null;
+  const onchainPosition = configured && onchain.tokenId != null;
+  const submittedClaim = Boolean(onchain.submittedClaimTxHash);
+  const pendingCents = onchainPosition
+    ? liveClaimableAtomic == null
+      ? null
+      : usdCentsFromUsdcAtomic(liveClaimableAtomic)
+    : bookPendingCents;
 
   return (
     <ThemeMerkado className="space-y-6">
@@ -106,9 +121,14 @@ export default async function PortfolioDetailPage({
             label: "Collected",
             value: <Money cents={position.collectedCents} compact />,
           },
-          {
+           {
             label: "Ready to claim",
-            value: <Money cents={position.pendingDistributionCents} compact />,
+            value:
+              pendingCents == null ? (
+                <span className="text-sm">Not verified</span>
+              ) : (
+                <Money cents={pendingCents} compact />
+              ),
           },
           {
             label: "Claimed",
@@ -116,7 +136,7 @@ export default async function PortfolioDetailPage({
           },
         ]}
       />
-      {pendingCents > 0 ? (
+      {pendingCents != null && pendingCents > 0 ? (
         <Card className="ring-primary/30 shadow-md">
           <CardHeader>
             <CardTitle>Rent ready to claim</CardTitle>
@@ -129,6 +149,32 @@ export default async function PortfolioDetailPage({
               configured={configured}
               contractAddress={contractAddress}
             />
+          </CardContent>
+        </Card>
+      ) : submittedClaim && bookPendingCents > 0 ? (
+        <Card className="ring-primary/30 shadow-md">
+          <CardHeader>
+            <CardTitle>Claim submitted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ClaimRentForm
+              reference={position.reference}
+              tokenId={onchain.tokenId}
+              amountCents={bookPendingCents}
+              configured={configured}
+              contractAddress={contractAddress}
+              pendingRecovery
+            />
+          </CardContent>
+        </Card>
+      ) : pendingCents == null && bookPendingCents > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rent ready to claim</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            The current Base Sepolia rent balance could not be verified. Refresh
+            this page before trying to claim.
           </CardContent>
         </Card>
       ) : position.distributedCents > 0 ? (
@@ -154,10 +200,17 @@ export default async function PortfolioDetailPage({
                 <TableHead>Due</TableHead>
                 <TableHead>Collected</TableHead>
                 <TableHead>Distribution</TableHead>
+                <TableHead>Payment transaction</TableHead>
+                <TableHead>Claim transaction</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {position.receivables.map((row) => {
+                const payment = book.paymentRequests?.find(
+                  (item) =>
+                    item.offerReference === position.reference &&
+                    item.receivableN === row.n,
+                );
                 const distribution = distributions.find((item) =>
                   item.collectionId.endsWith(`-${row.n}`) ||
                   item.distributionId.endsWith(`-${row.n}`),
@@ -188,14 +241,29 @@ export default async function PortfolioDetailPage({
                                 ? "Claimed"
                                 : distribution.status}
                           </p>
-                          {distribution.txHash ? (
-                            <CopyValue
-                              value={distribution.txHash}
-                              label="distribution reference"
-                              truncate
-                            />
-                          ) : null}
                         </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {payment?.txHash ? (
+                              <CopyValue
+                                value={payment.txHash}
+                                label="payment transaction"
+                                truncate
+                              />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {distribution?.status === "claimed" && distribution.txHash ? (
+                        <CopyValue
+                          value={distribution.txHash}
+                          label="claim transaction"
+                          truncate
+                        />
                       ) : (
                         "—"
                       )}

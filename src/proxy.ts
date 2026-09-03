@@ -8,6 +8,7 @@ import {
   isValidGateCookie,
   shouldAllowUngatedPath,
 } from "@/lib/demo-gate";
+import { readSignedWalletSession } from "@/lib/wallet/session-cookie";
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -20,7 +21,21 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isValidGateCookie(request.cookies.get(DEMO_GATE_COOKIE)?.value, state.password)) {
+  let walletSession = false;
+  try {
+    walletSession = Boolean(
+      readSignedWalletSession(
+        request.cookies.get("merkado_wallet_session")?.value,
+        request.headers.get("host") ?? "",
+      ),
+    );
+  } catch {
+    walletSession = false;
+  }
+  const demoUnlocked =
+    !state.active ||
+    isValidGateCookie(request.cookies.get(DEMO_GATE_COOKIE)?.value, state.password);
+  if (demoUnlocked && walletSession) {
     return NextResponse.next();
   }
 

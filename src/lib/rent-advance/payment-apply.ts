@@ -215,6 +215,7 @@ function paymentRequestForReceivable(
   offer: Offer,
   n: number,
   receivingAddress: string | null,
+  renterWalletAddress: string | null,
 ): PaymentRequest | null {
   const receivable = offer.receivables.find((row) => row.n === n);
   if (!receivable) return null;
@@ -243,6 +244,7 @@ function paymentRequestForReceivable(
     transactionId: confirmed ? paymentTxIdFor(paymentRequestId) : null,
     txHash: null,
     opaquePaymentId: null,
+    renterWalletAddress,
   };
 }
 
@@ -274,6 +276,7 @@ function positionForOffer(offer: Offer): PositionRecord | null {
     holderId: offer.holders[0]?.holderId ?? "act-purchaser",
     settlementTransactionId: null,
     externalTokenId: onchain.tokenId != null ? String(onchain.tokenId) : null,
+    holderWalletAddress: onchain.purchaserAddress ?? null,
   };
 }
 
@@ -282,7 +285,12 @@ export function normalizeBook(raw: unknown): DemoBook {
   const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
   const offers = (book.offers ?? [])
     .map(ensureOfferIds)
-    .map((offer) => ({ ...offer, onchain: mergeOnchain(offer.onchain) }));
+    .map((offer) => ({
+      ...offer,
+      createdByWalletAddress: offer.createdByWalletAddress ?? null,
+      renterWalletAddress: offer.renterWalletAddress ?? null,
+      onchain: mergeOnchain(offer.onchain),
+    }));
   const seedAccounts = (book.accounts?.length ? book.accounts : defaultAccounts()).map(
     withPayoutDefaults,
   );
@@ -297,6 +305,7 @@ export function normalizeBook(raw: unknown): DemoBook {
         offer,
         receivable.n,
         rentReceivingAddressFor(offer, cryptoConfig),
+        offer.renterWalletAddress ?? book.seedOwnerWalletAddress ?? null,
       );
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
@@ -313,9 +322,18 @@ export function normalizeBook(raw: unknown): DemoBook {
               confirmedAt: previous.confirmedAt ?? next.confirmedAt,
               transactionId: previous.transactionId ?? next.transactionId,
               txHash: acceptedLiveTxHash(previous.txHash),
-              opaquePaymentId: previous.opaquePaymentId ?? null,
-            }
-          : next,
+               opaquePaymentId: previous.opaquePaymentId ?? null,
+               renterWalletAddress:
+                 previous.renterWalletAddress ??
+                 offer.renterWalletAddress ??
+                 book.seedOwnerWalletAddress ??
+                 null,
+             }
+          : {
+              ...next,
+               renterWalletAddress:
+                 offer.renterWalletAddress ?? book.seedOwnerWalletAddress ?? null,
+            },
       );
     }
   }
@@ -393,6 +411,8 @@ export function normalizeBook(raw: unknown): DemoBook {
             ...existing,
             settlementTransactionId: null,
             externalTokenId: row.externalTokenId ?? existing.externalTokenId,
+            holderWalletAddress:
+              row.holderWalletAddress ?? existing.holderWalletAddress ?? null,
           }
         : row;
     });
@@ -418,6 +438,7 @@ export function normalizeBook(raw: unknown): DemoBook {
     ledgerTransactions,
     distributions,
     positions,
+    seedOwnerWalletAddress: book.seedOwnerWalletAddress ?? null,
   };
 }
 
@@ -623,6 +644,8 @@ export function applyVerifiedRentClaim(
     ...onchain,
     claimableRentCents: Math.max(0, onchain.claimableRentCents - claimedCents),
     claimedRentCents: onchain.claimedRentCents + claimedCents,
+    submittedClaimTxHash: null,
+    submittedClaimOwner: null,
   };
 
   const holder = offer.holders[0];

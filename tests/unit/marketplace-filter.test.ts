@@ -49,7 +49,7 @@ test("a funding offer that is minted is included in the Marketplace", () => {
   assert.equal(marketplaceOfferFilter(offer), true);
 });
 
-test("a sold offer is included even without a mint receipt", () => {
+test("a sold offer is excluded from the Marketplace", () => {
   const offer = seedOffer();
   offer.status = "live";
   offer.onchain = {
@@ -59,7 +59,7 @@ test("a sold offer is included even without a mint receipt", () => {
     purchased: true,
     purchaseTxHash: TX_PURCHASE,
   };
-  assert.equal(marketplaceOfferFilter(offer), true);
+  assert.equal(marketplaceOfferFilter(offer), false);
 });
 
 test("getPurchaserOffer still resolves the mint-pending offer detail", () => {

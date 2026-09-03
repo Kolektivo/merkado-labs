@@ -3,6 +3,10 @@ import { offerDisplayName } from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
 import type { DemoBook } from "@/lib/rent-advance/types";
 
+function sameWallet(left: string, right: string): boolean {
+  return Boolean(left && right && left.toLowerCase() === right.toLowerCase());
+}
+
 export type DashboardNotificationKind = "offer_update" | "rent_claim";
 
 export type DashboardNotification = {
@@ -35,10 +39,18 @@ export function navNotificationCounts(
 
 export function dashboardNotifications(
   book: DemoBook,
+  walletAddress?: string | null,
 ): DashboardNotification[] {
+  if (walletAddress === null) return [];
   const items: DashboardNotification[] = [];
 
   for (const offer of book.offers) {
+    if (
+      walletAddress &&
+      !sameWallet(offer.createdByWalletAddress ?? "", walletAddress)
+    ) {
+      continue;
+    }
     const onchain = mergeOnchain(offer.onchain);
     const state = mintState(offer);
     if (state === "purchased" && onchain.landlordPaid) {
@@ -95,6 +107,12 @@ export function dashboardNotifications(
 
   for (const [reference, amountCents] of claimableByOffer) {
     const offer = book.offers.find((row) => row.reference === reference);
+    if (
+      walletAddress &&
+      !sameWallet(offer?.onchain?.purchaserAddress ?? "", walletAddress)
+    ) {
+      continue;
+    }
     items.push({
       id: `rent:${reference}`,
       kind: "rent_claim",

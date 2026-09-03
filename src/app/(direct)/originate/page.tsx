@@ -34,7 +34,9 @@ import {
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { loadBook } from "@/lib/rent-advance/store";
+import { offersForWallet } from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
+import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -95,19 +97,22 @@ export default async function OriginatePage({
 }) {
   const params = await searchParams;
   const status = parseStatus(params.status);
-  const book = await loadBook();
-  const totals = bookTotals(book);
-  const attention = attentionItems(book);
+  const [book, identity] = await Promise.all([loadBook(), getCurrentWalletIdentity()]);
+  const scopedBook = identity
+    ? { ...book, offers: offersForWallet(book, identity.address) }
+    : { ...book, offers: [] };
+  const totals = bookTotals(scopedBook);
+  const attention = attentionItems(scopedBook);
   const filtered =
     status === "all"
-      ? book.offers
+      ? scopedBook.offers
       : status === "live"
-        ? book.offers.filter(
+        ? scopedBook.offers.filter(
             (offer) =>
               effectiveOfferStatus(offer) === "collecting" ||
               effectiveOfferStatus(offer) === "live",
           )
-        : book.offers.filter((offer) => effectiveOfferStatus(offer) === status);
+        : scopedBook.offers.filter((offer) => effectiveOfferStatus(offer) === status);
   const offers = sortOffersForLandlordList(filtered);
 
   return (
@@ -129,7 +134,6 @@ export default async function OriginatePage({
           </div>
         }
       />
-
       <details
         open={status !== "all"}
         className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10"

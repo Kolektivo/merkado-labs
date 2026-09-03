@@ -15,13 +15,15 @@ import {
 } from "@/components/ui/table";
 import { statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { listPortfolioPositions } from "@/lib/rent-advance/store";
+import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Portfolio" };
 
 export default async function PortfolioPage() {
+  const identity = await getCurrentWalletIdentity();
   const { positions, contributed, received, expectedRemaining, active } =
-    await listPortfolioPositions();
+    await listPortfolioPositions(identity?.address);
 
   return (
     <ThemeMerkado className="space-y-6">

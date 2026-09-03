@@ -3,6 +3,7 @@
 import { CheckCircle2, Clock3, LockKeyhole } from "lucide-react";
 
 import { HelpTip } from "@/components/help-tip";
+import { CopyValue } from "@/components/copy-value";
 import { Money } from "@/components/money-display";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -112,6 +113,17 @@ export function LandlordProceedsCard({
                   will not be deducted again.
                 </HelpTip>
               </p>
+            ) : null}
+            {presentation.purchaseTxHash ? (
+              <div className="rounded-xl bg-muted/60 p-3">
+                <p className="text-sm font-medium">Sale transaction</p>
+                <CopyValue
+                  value={presentation.purchaseTxHash}
+                  label="sale transaction"
+                  truncate
+                  className="mt-1 max-w-full"
+                />
+              </div>
             ) : null}
           </>
         )}

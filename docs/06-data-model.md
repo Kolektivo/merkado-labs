@@ -73,7 +73,9 @@ Stable demo IDs include `accountId`, `offerId`, `propertyId`, `receivableId`,
 `transactionId`, optional `txHash`, and `safeAccountId`. On the Base Sepolia
 flow, an offer has an **offer token id** and an **opaque payment id** per rent
 deposit. `Offer.payout` stores the selected method and the locked landlord
-payout destination; the buyer pays that address directly. `externalTokenId` is
+  payout destination; the buyer pays that address directly. The offer also
+  stores the designated rent payer wallet used by generated payment requests.
+  `externalTokenId` is
 set to the minted NFT token id. There is no listing expiry; the 60-day window
 shown on Marketplace and My Offers is **display-only** and never enforced.
 

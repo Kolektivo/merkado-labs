@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 2, 2026 (interim wallet identity)
 
 ## Local dashboard
 
@@ -25,6 +25,8 @@ Required env (Labs project `ewoxmzznkavapcxdporm` only):
 
 Optional:
 
+- `WALLET_SESSION_SECRET` — server-only, at least 32 random characters for the
+  interim wallet identity session
 - `NEXT_PUBLIC_PAY_NETWORK` (`base-sepolia` if empty)
 - `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` — the single source of truth for the
   Base Sepolia contract address, used every time. Empty → surfaces show a
@@ -32,6 +34,18 @@ Optional:
 - `MERKADO_MINTER_PRIVATE_KEY` — server-only Base Sepolia key the backend uses to mint offer NFTs
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
+
+### Interim wallet identity
+
+The wallet identity challenge migration is reviewed in
+`supabase/migrations/20260902120000_wallet_identity_challenges.sql` but is not
+applied automatically. Apply **only that migration** to the approved Labs fork
+`ajbeqiwgpttpmzpqxepl`, after setting `SUPABASE_DB_PASSWORD` privately. Do not
+run a broad `supabase db push` while the separately gated NFT chain-store
+migration is pending. Never use the production project reference.
+
+Generate and set `WALLET_SESSION_SECRET` in the local/server environment; do not
+commit it.
 
 ## Vercel (Labs demo host)
 

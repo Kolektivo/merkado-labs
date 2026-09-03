@@ -6,7 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDemoGateState, safeReturnPath } from "@/lib/demo-gate";
-import { redirectEnterIfNotNeeded } from "@/lib/demo-gate-server";
+import { isDemoUnlocked, redirectEnterIfNotNeeded } from "@/lib/demo-gate-server";
+import { WalletIdentity } from "@/components/wallet-identity";
 
 import { EnterForm } from "./enter-form";
 
@@ -23,6 +24,7 @@ export default async function EnterPage({
     redirectEnterIfNotNeeded(),
   ]);
   const state = getDemoGateState();
+  const unlocked = await isDemoUnlocked();
 
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
@@ -31,14 +33,23 @@ export default async function EnterPage({
           <CardHeader>
             <CardTitle>Merkado Labs</CardTitle>
             <CardDescription>
-              {state.configured
+              {!unlocked && state.configured
                 ? "Enter the shared password to open the demo."
-                : "This walkthrough is locked until the host sets the shared password."}
+                : !unlocked
+                  ? "This walkthrough is locked until the host sets the shared password."
+                  : "Connect your wallet to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {state.configured ? (
+            {!unlocked && state.configured ? (
               <EnterForm nextPath={safeReturnPath(params.next)} />
+            ) : unlocked ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Connect a wallet to continue to the walkthrough.
+                </p>
+                <WalletIdentity nextPath={safeReturnPath(params.next)} />
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Ask the host if you need access.

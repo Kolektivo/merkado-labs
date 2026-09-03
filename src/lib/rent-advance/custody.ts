@@ -169,6 +169,7 @@ export type ProceedsPresentation = {
   /** True when a purchase was submitted but not yet verified (Processing). */
   processing: boolean;
   payoutAddress: string | null;
+  purchaseTxHash: string | null;
   purchasePriceCents: number;
   feeCents: number;
 };
@@ -181,6 +182,7 @@ export function proceedsPresentation(offer: Offer): ProceedsPresentation {
     landlordPaid: onchain.landlordPaid,
     processing: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
     payoutAddress: payoutAddressLocked(offer),
+    purchaseTxHash: onchain.purchaseTxHash,
     purchasePriceCents: offer.purchasePriceCents,
     feeCents: offer.feeCents,
   };

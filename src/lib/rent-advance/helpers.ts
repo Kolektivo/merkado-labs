@@ -369,7 +369,13 @@ export function isMarketplaceStatus(status: OfferStatus): boolean {
 }
 
 export function marketplaceOfferFilter(offer: Offer): boolean {
-  return isMarketplaceStatus(offer.status) && !isPendingMintOffer(offer);
+  const onchain = mergeOnchain(offer.onchain);
+  return (
+    ["funding", "live", "collecting"].includes(offer.status) &&
+    !isPendingMintOffer(offer) &&
+    !onchain.purchased &&
+    remainingOfferingCents(offer) > 0
+  );
 }
 
 export function canShowContribute(

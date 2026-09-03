@@ -1,9 +1,21 @@
 # 10 - Execution Roadmap
 
 **Purpose:** Approved remaining work only.
-**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
+**Last updated:** September 2, 2026 (interim wallet identity)
 
 ## Now
+
+- **Interim wallet identity (branch `feat/wallet-identity-interim`):** wallet
+  challenge signing and an HTTP-only session scope the shared Labs walkthrough
+  without coupling it to the later Supabase Auth migration. Reset binds the
+  fresh seed to the signing wallet; live NFT ownership is used for Portfolio
+  scoping when configured. Before review, apply the reviewed migration to the
+  approved Labs fork and set a local/server-only `WALLET_SESSION_SECRET`.
+
+- **Admin wallet allowlist:** Admin pages, navigation, and mutations now
+  require a signed wallet session plus an active row in `ra_admin_wallets`.
+  The reviewed migration is not yet applied and the table is empty by
+  default; add only Product Lead-approved wallet addresses before use.
 
 - **In progress (branch `wave6-main-ui-restore`):** the approved Wave 6 UI and
   copy are implemented. The approval-receipt race and pending Check-status

@@ -163,6 +163,9 @@ export function NewOfferWizard({
     if (currentStep === 2) {
       if (!offer.tenant.fullName.trim()) return "Add the renter’s full name.";
       if (!offer.tenant.initials.trim()) return "Add the renter’s initials.";
+      if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+        return "Add the renter’s checksummed 0x wallet address.";
+      }
     }
     if (currentStep === 3) {
       if (offer.monthlyRentCents <= 0) return "Enter a monthly rent above zero.";
@@ -480,6 +483,26 @@ export function NewOfferWizard({
                 information. Demo records may be visible to other reviewers.
               </AlertDescription>
             </Alert>
+            <Field
+              id="renter-wallet"
+              label="Rent payer wallet"
+              hint="This wallet will receive the payment link and pay rent on Base Sepolia."
+              tip="The renter connects this wallet on Merkado Pay. It is separate from the landlord payout wallet."
+            >
+              <Input
+                id="renter-wallet"
+                placeholder="0x..."
+                spellCheck={false}
+                autoCapitalize="none"
+                value={offer.renterWalletAddress ?? ""}
+                onChange={(event) =>
+                  patch((current) => ({
+                    ...current,
+                    renterWalletAddress: event.target.value,
+                  }))
+                }
+              />
+            </Field>
             <Field
               id="full-name"
               label="Full name"
@@ -960,6 +983,12 @@ export function NewOfferWizard({
                   {offer.payout.method === "crypto"
                     ? offer.payout.cryptoAddress
                     : "Girasol bank payout preview · Coming soon (cannot submit)"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                <p className="font-medium">Rent payer wallet</p>
+                <p className="mt-1 break-all text-muted-foreground">
+                  {offer.renterWalletAddress}
                 </p>
               </div>
               <label className="flex items-start gap-2 text-sm">

@@ -8,6 +8,7 @@ export type QuoteCarry = {
   listingScore: number;
   payerScore: number;
   months: number;
+  renterWalletAddress: string | null;
 };
 
 function one(params: Record<string, string | string[] | undefined>, key: string) {
@@ -35,6 +36,7 @@ export function parseQuoteCarry(
   const listingScore = listingRaw === "" ? 89 : Number(listingRaw);
   const payerScore = payerRaw === "" ? 95 : Number(payerRaw);
   const months = Number(one(params, "months") || "6");
+  const renterWallet = one(params, "renterWallet");
   if (!Number.isFinite(rentCents) || rentCents <= 0) return null;
   return {
     quote: true,
@@ -47,6 +49,9 @@ export function parseQuoteCarry(
       ? Math.min(100, Math.max(0, payerScore))
       : 95,
     months: Number.isFinite(months) ? months : 6,
+    renterWalletAddress: /^0x[0-9a-fA-F]{40}$/.test(renterWallet)
+      ? renterWallet
+      : null,
   };
 }
 
@@ -64,6 +69,7 @@ export function applyQuoteCarry(offer: Offer, carry: QuoteCarry): Offer {
       ...offer.tenant,
       scores: { ...offer.tenant.scores, total: carry.payerScore },
     },
+    renterWalletAddress: carry.renterWalletAddress ?? offer.renterWalletAddress ?? null,
     receivables: buildScheduledReceivables(
       offer.reference,
       carry.rentCents,
@@ -78,6 +84,7 @@ export function quoteHref(input: {
   listing: number;
   payer: number;
   months: number;
+  renterWalletAddress?: string | null;
 }) {
   const params = new URLSearchParams({
     quote: "1",
@@ -86,6 +93,9 @@ export function quoteHref(input: {
     listing: String(input.listing),
     payer: String(input.payer),
     months: String(input.months),
+    ...(input.renterWalletAddress
+      ? { renterWallet: input.renterWalletAddress }
+      : {}),
   });
   return `/originate/new?${params.toString()}`;
 }

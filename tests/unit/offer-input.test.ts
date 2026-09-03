@@ -27,3 +27,16 @@ test("offer input strips undeclared root and nested bank fields", () => {
   assert.equal("bankDetails" in sanitized.payout, false);
   assert.equal("bankDetails" in sanitized.tenant, false);
 });
+
+test("offer input preserves an uploaded cover image", () => {
+  const input = structuredClone(getSeedBook().offers[0]) as unknown as Record<
+    string,
+    unknown
+  >;
+  const property = input.property as Record<string, unknown>;
+  property.coverImageSrc = "data:image/jpeg;base64,uploaded-cover";
+
+  const sanitized = sanitizeOfferInput(input);
+
+  assert.equal(sanitized.property.coverImageSrc, "data:image/jpeg;base64,uploaded-cover");
+});

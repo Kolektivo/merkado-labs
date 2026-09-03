@@ -246,6 +246,8 @@ export type PaymentRequest = {
   submittedTxHash?: string | null;
   /** The payer (msg.sender) of the submitted deposit, needed to re-verify on resume. */
   submittedPayer?: string | null;
+  /** Wallet identity assigned to this renter request in the interim flow. */
+  renterWalletAddress?: string | null;
 };
 
 export type LedgerTransaction = {
@@ -287,6 +289,8 @@ export type PositionRecord = {
   holderId: string;
   settlementTransactionId: string | null;
   externalTokenId: string | null;
+  /** Verified current holder wallet when known. */
+  holderWalletAddress?: string | null;
 };
 
 export type Receivable = {
@@ -403,6 +407,10 @@ export type Offer = {
   agency: string;
   /** Verified on-chain NFT facts. Nulls until a verified mint event exists. */
   onchain?: OnchainOfferState;
+  /** Wallet identity that created or owns the landlord workflow. */
+  createdByWalletAddress?: string | null;
+  /** Wallet designated to pay rent for this offer. */
+  renterWalletAddress?: string | null;
 };
 
 export type OpenQuestion = {
@@ -431,6 +439,8 @@ export type DemoBook = {
   ledgerTransactions?: LedgerTransaction[];
   distributions?: DistributionRecord[];
   positions?: PositionRecord[];
+  /** Wallet that triggered the most recent Reset for this demo epoch. */
+  seedOwnerWalletAddress?: string | null;
 };
 
 export type BuyerOfferCard = {
