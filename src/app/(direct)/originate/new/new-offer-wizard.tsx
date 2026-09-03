@@ -987,7 +987,7 @@ export function NewOfferWizard({
               </div>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
                 <p className="font-medium">Rent payer wallet</p>
-                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                <p className="mt-1 break-all text-muted-foreground">
                   {offer.renterWalletAddress}
                 </p>
               </div>

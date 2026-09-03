@@ -644,6 +644,8 @@ export function applyVerifiedRentClaim(
     ...onchain,
     claimableRentCents: Math.max(0, onchain.claimableRentCents - claimedCents),
     claimedRentCents: onchain.claimedRentCents + claimedCents,
+    submittedClaimTxHash: null,
+    submittedClaimOwner: null,
   };
 
   const holder = offer.holders[0];

@@ -151,7 +151,7 @@ export default async function PortfolioDetailPage({
             />
           </CardContent>
         </Card>
-      ) : submittedClaim ? (
+      ) : submittedClaim && bookPendingCents > 0 ? (
         <Card className="ring-primary/30 shadow-md">
           <CardHeader>
             <CardTitle>Claim submitted</CardTitle>

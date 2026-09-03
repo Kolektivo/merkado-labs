@@ -21,6 +21,7 @@ import {
 import { quoteHref } from "@/lib/rent-advance/quote-carry";
 import { priceQuote, type Quote } from "@/lib/rent-advance/pricing";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import {
   bandLabel,
   compositeScore,
@@ -32,6 +33,7 @@ const MRA001 = { rent: 180000, market: 300000, listing: 89, payer: 95 };
 const CHEAP = { rent: 100, market: 200, listing: 89, payer: 95 };
 
 export function GetNowSimulator() {
+  const wallet = useMerkadoWallet();
   const [rentXcg, setRentXcg] = useState(usdCentsToXcgInput(MRA001.rent));
   const [marketXcg, setMarketXcg] = useState(usdCentsToXcgInput(MRA001.market));
   const [listingScore, setListingScore] = useState(MRA001.listing);
@@ -209,6 +211,7 @@ export function GetNowSimulator() {
                     listing: listingScore,
                     payer: payerScore,
                     months,
+                    renterWalletAddress: wallet.address,
                   })}
                 >
                   Use this quote

@@ -266,13 +266,23 @@ test("confirmed rent stays claimable until the owner claims it", () => {
     amountAtomic: BigInt(1_800_000_000),
     txHash: TX_CLAIM,
   };
-  const claimed = applyVerifiedRentClaim(paid, CANONICAL_REFERENCE, facts, "2026-09-28T12:05:00.000Z");
+  const pendingClaim = structuredClone(paid);
+  const pendingOffer = pendingClaim.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(pendingOffer);
+  pendingOffer.onchain = {
+    ...mergeOnchain(pendingOffer.onchain),
+    submittedClaimTxHash: TX_CLAIM,
+    submittedClaimOwner: BUYER,
+  };
+  const claimed = applyVerifiedRentClaim(pendingClaim, CANONICAL_REFERENCE, facts, "2026-09-28T12:05:00.000Z");
   const done = claimed.distributions?.find((row) => row.collectionId === collectionId);
   assert.equal(done?.status, "claimed");
   const offer = claimed.offers.find((row) => row.reference === CANONICAL_REFERENCE);
   assert.equal(offer?.onchain?.claimableRentCents, 0);
   assert.equal(offer?.onchain?.claimedRentCents, 180000);
   assert.equal(offer?.holders[0]?.receivedCents, 180000);
+  assert.equal(offer?.onchain?.submittedClaimTxHash, null);
+  assert.equal(offer?.onchain?.submittedClaimOwner, null);
 
   const repeat = applyVerifiedRentClaim(claimed, CANONICAL_REFERENCE, facts, "2026-09-28T12:06:00.000Z");
   const afterRepeat = repeat.offers.find((row) => row.reference === CANONICAL_REFERENCE);
