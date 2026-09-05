@@ -18,11 +18,12 @@ import {
 } from "@/lib/supabase/remember-session";
 
 const LABS_URL = "https://ewoxmzznkavapcxdporm.supabase.co";
+const WAVE6_FORK_URL = "https://ajbeqiwgpttpmzpqxepl.supabase.co";
 
 function hasSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
-  return Boolean(url && url === LABS_URL && key);
+  return Boolean(url && (url === LABS_URL || url === WAVE6_FORK_URL) && key);
 }
 
 function clearSupabaseAuthCookies(request: NextRequest, response: NextResponse) {

@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** September 2, 2026 (interim wallet identity)
+**Last updated:** September 5, 2026 (Supabase Auth and account-owned wallet linking)
 
 ## Automated
 
@@ -19,11 +19,11 @@ Unit tests import the real application modules. They must fail if pricing,
 Property Score, payment book, app-link, host-gate, chain-verification, or
 contract-helper behaviour changes incorrectly.
 
-Wallet identity tests cover challenge binding, signature verification, expiry,
-single-use challenges, and tamper-resistant session cookies. The interim wallet
-flow also requires manual verification that Reset is performed by the connected
-wallet, wallet-scoped pages reject another wallet, and Portfolio follows the
-live NFT owner after a transfer.
+Wallet-link tests cover challenge binding, signature verification, expiry, and
+single-use challenges. Supabase Auth and account ownership require manual
+verification that two signed-in accounts remain isolated, wallet linking is
+available only in Account, and purchase, Pay, and claim actions redirect an
+unlinked connected wallet to Account before any transaction starts.
 
 Pricing tests must reproduce MRA-001 locked figures and the 24% block.
 Property Score tests must cover band boundaries, clamping, invalid market

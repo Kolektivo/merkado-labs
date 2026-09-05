@@ -17,6 +17,7 @@ import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 import { MintControl } from "./mint-control";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
+import { requireAdminUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function generateMetadata({
 }
 
 export default async function AdminOfferPage({ params }: { params: Params }) {
+  await requireAdminUser();
   const { ref } = await params;
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();

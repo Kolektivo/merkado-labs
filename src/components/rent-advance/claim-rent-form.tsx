@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { HelpTip } from "@/components/help-tip";
-import { WalletLinkPanel } from "@/components/wallet-link-panel";
+import { WalletConnection } from "@/components/wallet-connection";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { claimRent } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedClaimTxAction,
+  checkPendingClaimAction,
   verifyRentClaimAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
@@ -29,6 +31,7 @@ export function ClaimRentForm({
   amountCents,
   configured,
   contractAddress,
+  pendingRecovery = false,
   linkedWalletAddress,
 }: {
   reference: string;
@@ -36,6 +39,7 @@ export function ClaimRentForm({
   amountCents: number;
   configured: boolean;
   contractAddress: string | null;
+  pendingRecovery?: boolean;
   linkedWalletAddress: string | null;
 }) {
   const router = useRouter();
@@ -43,21 +47,18 @@ export function ClaimRentForm({
   const [pending, startTransition] = useTransition();
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
-  const connected = wallet.isConnected && Boolean(wallet.address);
-  const linkedMatches =
+  const connectedMatchesLinked =
+    connected &&
     linkedWalletAddress != null &&
     wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
-  const walletReady = connected && linkedMatches && onBaseSepolia;
+  const walletReady = connectedMatchesLinked && onBaseSepolia;
   const canClaim =
     configured && tokenId != null && walletReady && !claiming;
 
   function handleClaim() {
     setError(null);
-    if (!walletReady) {
-      setError("Link this wallet to your account before claiming rent.");
-      return;
-    }
     startTransition(async () => {
       setClaiming(true);
       try {
@@ -104,6 +105,37 @@ export function ClaimRentForm({
     });
   }
 
+  useEffect(() => {
+    if (!pendingRecovery) return;
+    let cancelled = false;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const result = await checkPendingClaimAction(reference);
+        if (result.status === "confirmed") {
+          router.refresh();
+          return;
+        }
+        if (!cancelled && attempts < 14) {
+          attempts += 1;
+          window.setTimeout(poll, 4000);
+        }
+      } catch (err) {
+        if (!cancelled && attempts < 14) {
+          attempts += 1;
+          window.setTimeout(poll, 4000);
+        } else if (!cancelled) {
+          setError(err instanceof Error ? err.message : "The claim is still being verified.");
+        }
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingRecovery, reference, router]);
+
   return (
     <div className="space-y-3">
       {error ? (
@@ -112,18 +144,20 @@ export function ClaimRentForm({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Rent ready</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-primary">
-            <Money cents={amountCents} />
-          </p>
+      {!pendingRecovery ? (
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Rent ready</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-primary">
+              <Money cents={amountCents} />
+            </p>
+          </div>
+          <HelpTip label="claiming rent">
+            This is monthly rent the renter paid. It belongs to the current
+            holder, not the landlord.
+          </HelpTip>
         </div>
-        <HelpTip label="claiming rent">
-          This is monthly rent the renter paid. It belongs to the current
-          holder, not the landlord.
-        </HelpTip>
-      </div>
+      ) : null}
       {!configured ? (
         <Alert variant="destructive">
           <AlertTitle>Claims are not configured yet</AlertTitle>
@@ -138,9 +172,17 @@ export function ClaimRentForm({
             This listing has no rent to claim yet.
           </AlertDescription>
         </Alert>
+      ) : pendingRecovery ? (
+        <Alert>
+          <AlertTitle>Claim transaction submitted</AlertTitle>
+          <AlertDescription>
+            The claim was sent to Base Sepolia. Portfolio will update when the
+            verified result is available. Do not submit another claim.
+          </AlertDescription>
+        </Alert>
       ) : (
         <>
-          <WalletLinkPanel initialLinkedAddress={linkedWalletAddress} />
+          <WalletConnection onConnectedChange={setConnected} />
           {canClaim ? (
             <Button
               type="button"
@@ -151,9 +193,18 @@ export function ClaimRentForm({
               {claiming ? "Claiming…" : "Claim rent"}
             </Button>
           ) : null}
+          {connected && !connectedMatchesLinked ? (
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full px-4 md:w-auto"
+            >
+              <Link href="/account/apps">Link this wallet in Account</Link>
+            </Button>
+          ) : null}
           <p className="text-xs text-muted-foreground">
-            The current holder claims rent that was paid for this listing,
-            using the linked wallet.
+            The current holder claims rent that was paid for this listing.
           </p>
         </>
       )}

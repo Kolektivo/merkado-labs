@@ -1,6 +1,7 @@
 import "server-only";
 
 import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
 import {
   anonymizeOffer,
   isMarketplaceStatus,
@@ -27,6 +28,8 @@ import type {
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { newEpoch } from "@/lib/onchain/chain-store";
+import { readCurrentOfferClaimable } from "@/lib/onchain/verify";
+import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
 import { getAccountId } from "@/lib/rent-advance/accounts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -255,7 +258,26 @@ export async function listPortfolioPositions(): Promise<{
 }> {
   const book = await loadBook();
   const funded = book.offers.filter((offer) => offer.fundedCents > 0);
-  const positions = funded.map((offer) => toPortfolioPosition(offer, book));
+  const positions = await Promise.all(
+    funded.map(async (offer) => {
+      const position = toPortfolioPosition(offer, book);
+      const onchain = mergeOnchain(offer.onchain);
+      const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+      if (!configuredContract || onchain.tokenId == null || !onchain.contractAddress) {
+        return position;
+      }
+      const liveClaimable = await readCurrentOfferClaimable(
+        onchain.contractAddress,
+        onchain.tokenId,
+      );
+      return liveClaimable == null
+        ? position
+        : {
+            ...position,
+            pendingDistributionCents: usdCentsFromUsdcAtomic(liveClaimable),
+          };
+    }),
+  );
   return {
     positions,
     contributed: positions.reduce((sum, row) => sum + row.fundedCents, 0),
@@ -273,7 +295,22 @@ export async function getPortfolioPosition(
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer || offer.fundedCents <= 0) return null;
-  return toPortfolioPositionDetail(offer, book);
+  const position = toPortfolioPositionDetail(offer, book);
+  const onchain = mergeOnchain(offer.onchain);
+  const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+  if (!configuredContract || onchain.tokenId == null || !onchain.contractAddress) {
+    return position;
+  }
+  const liveClaimable = await readCurrentOfferClaimable(
+    onchain.contractAddress,
+    onchain.tokenId,
+  );
+  return liveClaimable == null
+    ? position
+    : {
+        ...position,
+        pendingDistributionCents: usdCentsFromUsdcAtomic(liveClaimable),
+      };
 }
 
 export async function updateOffer(
@@ -292,9 +329,8 @@ export async function updateOffer(
  * password gate. Only safe to call from a server-authorized job (e.g. the
  * CRON_SECRET-protected mint sweep). Never expose these to client code.
  *
- * They are account-agnostic by default (operate on the legacy shared book)
- * until Phase 3 rewires the sweep to iterate accounts via listAccountRows().
- * An optional accountId scopes the operation to that account.
+ * They are account-agnostic by default for the cron caller. An optional
+ * accountId scopes the operation to that account.
  */
 export async function loadBookForJob(
   accountId?: string | null,

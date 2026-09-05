@@ -101,7 +101,8 @@ outside this scoped layer.
   it to the account by a signed challenge; it shows the linked address,
   **Link wallet** / **Link this wallet instead**, **Unlink wallet**, and a
   clear rejection alert (cancelled, wrong network, expired link, wrong
-  account).
+  account). Purchase, Pay, and Portfolio claim surfaces only connect a wallet;
+  when it is not the account's linked wallet, their action leads to Account.
 - Admin nav appears only for allowlisted `ADMIN_EMAILS` users, at the
   bottom of the left nav; everyone else never sees it.
 - When `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, Purchase and Pay

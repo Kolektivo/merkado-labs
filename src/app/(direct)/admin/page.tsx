@@ -27,11 +27,13 @@ import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
+import { requireAdminUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
 
 export default async function AdminPage() {
+  await requireAdminUser();
   const book = await loadBook();
   const minterAddress = merkadoMinterAddressOrNull();
   const configured = Boolean(book.cryptoConfig?.offerNftContract);

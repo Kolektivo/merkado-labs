@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { WalletLinkPanel } from "@/components/wallet-link-panel";
+import { WalletConnection } from "@/components/wallet-connection";
 import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -57,22 +57,21 @@ export function SubscribeForm({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
-  const connected = wallet.isConnected && Boolean(wallet.address);
-  const linkedMatches =
+  const connectedMatchesLinked =
+    connected &&
     linkedWalletAddress != null &&
     wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
-  const walletReady = connected && linkedMatches && onBaseSepolia;
+  const walletReady = connectedMatchesLinked && onBaseSepolia;
 
   const closed = remainingCents <= 0;
 
   async function runApprove() {
-    if (!walletReady) throw new Error("Link this wallet to your account before purchasing.");
     await approveUsdc(wallet, BigInt(remainingCents * 10_000), contractAddress);
   }
 
   async function runSend() {
-    if (!walletReady) throw new Error("Link this wallet to your account before purchasing.");
     let hash: string | null = null;
     try {
       const { hash: txHash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0), contractAddress);
@@ -206,7 +205,7 @@ export function SubscribeForm({
         </Alert>
       ) : (
         <div className="mt-6 space-y-3">
-          <WalletLinkPanel initialLinkedAddress={linkedWalletAddress} />
+          <WalletConnection onConnectedChange={setConnected} />
           {walletReady ? (
             <Button
               type="button"
@@ -214,6 +213,11 @@ export function SubscribeForm({
               onClick={() => setDialogOpen(true)}
             >
               {`Purchase whole offer · ${formatXcg(remainingCents)}`}
+            </Button>
+          ) : null}
+          {connected && !connectedMatchesLinked ? (
+            <Button asChild type="button" variant="outline" className="h-11 w-full">
+              <Link href="/account/apps">Link this wallet in Account</Link>
             </Button>
           ) : null}
           {pendingRecovery ? (

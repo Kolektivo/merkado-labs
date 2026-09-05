@@ -90,7 +90,9 @@ approved offers mint again on the same deployment.
    enforced). A holder signs in, connects a real wallet (injected
    EIP-1193, e.g. WalletConnect/Privy) and **links it** to the account by
    signing a one-time, account/domain/chain/nonce-bound challenge — then
-   buys 100% of the offer. The
+   buys 100% of the offer. Wallet linking is managed only in Account; if the
+   connected wallet is not linked, the purchase action sends the holder to
+   Account before any transaction can start. The
    buyer pays the exact purchase price **directly to the locked landlord
    payout address**; the NFT moves minter → buyer atomically in the
    same transaction. The cheap Punda studio (MRA-010) is the small
@@ -123,8 +125,9 @@ approved offers mint again on the same deployment.
    expanded **Pay with stablecoin** panel: the QR, **copy address**, and
    **copy amount** controls are **informational only** (receiving address,
    USDC amount, payment reference for display) and never submit a payment.
-   The live actions — **Connect** then a single **Pay rent** action — sit
-    inside that same stablecoin section. **Pay rent** opens one dialog that
+    The live actions — **Connect** then a single **Pay rent** action — sit
+    inside that same stablecoin section. The wallet must be linked in Account
+    before **Pay rent** is available. **Pay rent** opens one dialog that
     runs Approve USDC → waits for the successful approval receipt →
     `depositRent` → server verification, with a **Check status** action for a
     pending transaction (never a blind re-send).
@@ -151,7 +154,9 @@ approved offers mint again on the same deployment.
    used unless an external URL is configured. Merkado Pay opens the
    payment link. Payment history sits on that same Pay page. The Apps
    **Wallet** panel links one wallet to the account (Connect then Link
-   via the signed challenge) or unlinks it.
+   via the signed challenge) or unlinks it. Purchase, Pay, and claim surfaces
+   do not expose wallet-link controls; an unlinked connected wallet is sent to
+   Account before an on-chain interaction can start.
 3. Old `/account/payouts` and `/payouts` redirect to My Offers.
    Old `/account/settings` and `/account/payments` redirect into Account
    Apps or Pay.
