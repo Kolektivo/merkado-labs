@@ -145,18 +145,18 @@ export function ClaimRentForm({
         </Alert>
       ) : null}
       {!pendingRecovery ? (
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Rent ready</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-primary">
-              <Money cents={amountCents} />
-            </p>
-          </div>
-          <HelpTip label="claiming rent">
-            This is monthly rent the renter paid. It belongs to the current
-            holder, not the landlord.
-          </HelpTip>
+      <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Rent ready</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-primary">
+            <Money cents={amountCents} />
+          </p>
         </div>
+        <HelpTip label="claiming rent">
+          This is monthly rent the renter paid. It belongs to the current
+          holder, not the landlord.
+        </HelpTip>
+      </div>
       ) : null}
       {!configured ? (
         <Alert variant="destructive">
@@ -173,13 +173,15 @@ export function ClaimRentForm({
           </AlertDescription>
         </Alert>
       ) : pendingRecovery ? (
-        <Alert>
-          <AlertTitle>Claim transaction submitted</AlertTitle>
-          <AlertDescription>
-            The claim was sent to Base Sepolia. Portfolio will update when the
-            verified result is available. Do not submit another claim.
-          </AlertDescription>
-        </Alert>
+        <>
+          <Alert>
+            <AlertTitle>Claim transaction submitted</AlertTitle>
+            <AlertDescription>
+              The claim was sent to Base Sepolia. Portfolio will update when the
+              verified result is available. Do not submit another claim.
+            </AlertDescription>
+          </Alert>
+        </>
       ) : (
         <>
           <WalletConnection onConnectedChange={setConnected} />
