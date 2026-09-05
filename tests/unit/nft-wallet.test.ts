@@ -36,6 +36,7 @@ function fakeProvider(opts: {
   receiptStatus?: "0x0" | "0x1";
   claimOwner?: `0x${string}`;
   claimableAmount?: bigint;
+  purchaseBalance?: bigint;
   failRequest?: { method: string; error: unknown };
 } = {}): { provider: EIP1193Provider; requests: RequestRecord[] } {
   const requests: RequestRecord[] = [];
@@ -69,9 +70,11 @@ function fakeProvider(opts: {
           return { status: opts.receiptStatus ?? "0x1", transactionHash: TX_HASH };
         case "eth_call":
           ethCallCount += 1;
-          return ethCallCount === 1
-            ? pad((opts.claimOwner ?? FROM) as `0x${string}`)
-            : toHex(opts.claimableAmount ?? AMOUNT_100_USDC, { size: 32 });
+          return opts.purchaseBalance != null
+            ? toHex(opts.purchaseBalance, { size: 32 })
+            : ethCallCount === 1
+              ? pad((opts.claimOwner ?? FROM) as `0x${string}`)
+              : toHex(opts.claimableAmount ?? AMOUNT_100_USDC, { size: 32 });
         default:
           throw new Error(`Unhandled request method: ${method}`);
       }
@@ -221,6 +224,15 @@ test("purchaseOffer encodes purchase(tokenId)", async () => {
   const decoded = decodeFunctionData({ abi: MERKADO_ABI, data: tx.data });
   assert.equal(decoded.functionName, "purchase");
   assert.equal(decoded.args[0], tokenId);
+});
+
+test("purchaseOffer rejects a wallet without enough USDC before sending", async () => {
+  const { provider, requests } = fakeProvider({ purchaseBalance: AMOUNT_100_USDC });
+  await assert.rejects(
+    purchaseOffer(makeWallet({ provider }), BigInt(1), undefined, AMOUNT_1800_USDC),
+    /does not have enough USDC/,
+  );
+  assert.equal(requests.some((row) => row.method === "eth_sendTransaction"), false);
 });
 
 test("depositRent encodes depositRent(tokenId, paymentId, amountAtomic)", async () => {

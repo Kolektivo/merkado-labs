@@ -57,6 +57,13 @@ export const MERKADO_ABI = [
 
 export const USDC_ABI = [
   {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
     name: "approve",
     type: "function",
     stateMutability: "nonpayable",
@@ -248,10 +255,24 @@ export async function purchaseOffer(
   wallet: MerkadoWallet,
   tokenId: bigint,
   contractAddress?: string | null,
+  purchasePriceAtomic?: bigint,
 ): Promise<MerkadoTxResult> {
   await ensureBaseSepolia(wallet);
-  const { client, from } = walletContext(wallet);
+  const { client, publicClient, from } = walletContext(wallet);
   try {
+    if (purchasePriceAtomic != null) {
+      const balance = await publicClient.readContract({
+        address: BASE_SEPOLIA_USDC_CONTRACT,
+        abi: USDC_ABI,
+        functionName: "balanceOf",
+        args: [from],
+      });
+      if (balance < purchasePriceAtomic) {
+        throw userSafeError(
+          "This wallet does not have enough USDC to purchase the whole offer. Fund the connected wallet and try again.",
+        );
+      }
+    }
     const hash = await client.writeContract({
       address: resolveMerkadoContractAddress(contractAddress),
       abi: MERKADO_ABI,

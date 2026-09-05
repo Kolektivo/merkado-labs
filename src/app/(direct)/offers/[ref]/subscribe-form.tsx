@@ -68,7 +68,12 @@ export function SubscribeForm({
   async function runSend() {
     let hash: string | null = null;
     try {
-      const { hash: txHash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0), contractAddress);
+      const { hash: txHash } = await purchaseOffer(
+        wallet,
+        BigInt(tokenId ?? 0),
+        contractAddress,
+        BigInt(remainingCents * 10_000),
+      );
       hash = txHash;
       await attachSubmittedPurchaseTxAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
       let result = await verifyPurchaseAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
