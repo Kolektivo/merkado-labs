@@ -35,13 +35,15 @@ Optional:
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
-Supabase Auth is configured in the Labs project only, with Google OAuth and
-email magic links. Approved callback origins include local `http://localhost:3000`
+Supabase Auth is configured in the Labs project only, with email magic links.
+Identity-only OAuth authorization is also supported. Approved callback origins include local `http://localhost:3000`
 and the Labs hosted URL. When `LABS_DEMO_PASSWORD` is set, it is required
 before sign-in; protected hosted routes then require the authenticated session.
 
 The reviewed account/wallet migration
-`20260831000000_labs_accounts_and_wallets.sql` is applied to Labs. The remote
+`20260831000000_labs_accounts_and_wallets.sql` and the follow-on atomic
+wallet-link migration `20260905130000_atomic_wallet_link.sql` are applied to
+the approved Labs branch. The remote
 Labs database contains the chain-store tables, but local migration history does
 not record `20260821120000` as applied. Reconcile that history before relying
 on or changing the chain store. Do not apply any other migration without

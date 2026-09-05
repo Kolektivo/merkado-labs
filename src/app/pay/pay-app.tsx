@@ -265,6 +265,7 @@ export function PayApp({
   minted,
   tokenId,
   contractAddress,
+  linkedWalletAddress,
   pendingRecovery,
 }: {
   paymentRequestId: string;
@@ -285,6 +286,7 @@ export function PayApp({
   minted: boolean;
   tokenId: number | null;
   contractAddress: string | null;
+  linkedWalletAddress: string | null;
   pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
@@ -310,16 +312,23 @@ export function PayApp({
   const overdue = status === "overdue";
   const expired = status === "expired";
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
+  const connectedMatchesLinked =
+    connected &&
+    linkedWalletAddress != null &&
+    wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
+  const walletReady = connectedMatchesLinked && onBaseSepolia;
 
   const blockedByEarlier = Boolean(earlierPeriodLabel) && !locked && !expired;
 
   const qrValue = `merkado-demo:pay?address=${encodeURIComponent(receivingAddress)}&amount=${encodeURIComponent(formatUsdcAtomicAmount(amountUsdcAtomic))}&reference=${encodeURIComponent(paymentReference)}`;
 
   async function runApprove() {
+    if (!walletReady) throw new Error("Link this wallet to your account before paying rent.");
     await approveUsdc(wallet, BigInt(amountUsdcAtomic), contractAddress);
   }
 
   async function runSend() {
+    if (!walletReady) throw new Error("Link this wallet to your account before paying rent.");
     let hash: string | null = null;
     try {
       const attempt = await createRentPaymentAttemptAction(paymentRequestId);
@@ -574,7 +583,7 @@ export function PayApp({
 
                     <WalletConnection onConnectedChange={setConnected} />
 
-                    {connected && onBaseSepolia ? (
+                    {walletReady ? (
                       <Button
                         type="button"
                         className="min-h-11 w-full"
@@ -582,6 +591,20 @@ export function PayApp({
                       >
                         {copy.confirmPay}
                       </Button>
+                    ) : null}
+
+                    {connected && !connectedMatchesLinked ? (
+                      <Alert>
+                        <AlertTitle>Link this wallet before paying</AlertTitle>
+                        <AlertDescription>
+                          Connect the wallet linked to this account before any
+                          payment can be submitted. Manage it in{" "}
+                          <Link href="/account/apps" className="underline">
+                            Account
+                          </Link>
+                          .
+                        </AlertDescription>
+                      </Alert>
                     ) : null}
 
                     {pendingRecovery ? (

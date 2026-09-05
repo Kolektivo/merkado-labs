@@ -12,42 +12,12 @@ import { unlockDemoAction, type UnlockDemoState } from "./actions";
 
 const ENTER_ERROR_MESSAGES: Record<string, string> = {
   auth_failed: "We couldn't complete that sign in. Please try again.",
+  auth_config: "Labs sign-in is not configured correctly yet. Check the Supabase publishable key.",
   sign_in_cancelled: "Sign in was cancelled. Please try again.",
   sign_in_incomplete: "We couldn't finish signing you in. Please try again.",
   verification_link_invalid:
     "That verification link is invalid or has expired. Request a new one.",
 };
-
-function GoogleIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path
-        d="M20.0008 12.1777C20.0008 11.5219 19.9463 11.0432 19.8285 10.5469H12.1641V13.5072H16.6629C16.5722 14.2429 16.0824 15.3509 14.994 16.0954L14.9787 16.1945L17.4021 18.029L17.57 18.0454C19.1119 16.6538 20.0008 14.6063 20.0008 12.1777Z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12.1636 19.9776C14.3677 19.9776 16.218 19.2684 17.5695 18.0453L14.9935 16.0953C14.3042 16.5651 13.379 16.893 12.1636 16.893C10.0049 16.893 8.17273 15.5015 7.51961 13.5781L7.42387 13.5861L4.90405 15.4917L4.87109 15.5812C6.21348 18.1871 8.97086 19.9776 12.1636 19.9776Z"
-        fill="#34A853"
-      />
-      <path
-        d="M7.51924 13.5763C7.34691 13.08 7.24717 12.5481 7.24717 11.9986C7.24717 11.449 7.34691 10.9172 7.51017 10.4209L7.50561 10.3152L4.9542 8.37891L4.87073 8.41771C4.31746 9.49907 4 10.7134 4 11.9986C4 13.2838 4.31746 14.4981 4.87073 15.5794L7.51924 13.5763Z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12.1636 7.10791C13.6965 7.10791 14.7305 7.75494 15.3201 8.29565L17.6239 6.09749C16.209 4.81229 14.3677 4.02344 12.1636 4.02344C8.97086 4.02344 6.21348 5.81385 4.87109 8.4197L7.51054 10.4229C8.17273 8.4995 10.0049 7.10791 12.1636 7.10791Z"
-        fill="#EB4335"
-      />
-    </svg>
-  );
-}
 
 function buildCallbackUrl(nextPath: string): string {
   const url = new URL("/auth/callback", window.location.origin);
@@ -140,33 +110,11 @@ export function EnterForm({
     initialError ? (ENTER_ERROR_MESSAGES[initialError] ?? "") : "",
   );
   const [linkSent, setLinkSent] = useState(false);
-  const [pending, setPending] = useState<"" | "google" | "otp">("");
+  const [pending, setPending] = useState<"" | "otp">("");
   const [showPassword, setShowPassword] = useState(false);
   const errorId = useId();
 
   const isBusy = pending !== "";
-
-  const handleGoogleSignIn = async () => {
-    setError("");
-    setPending("google");
-    try {
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: buildCallbackUrl(nextPath),
-        },
-      });
-
-      if (signInError) {
-        setError("We couldn't continue with Google. Please try again.");
-        setPending("");
-      }
-    } catch {
-      setError("We couldn't continue with Google. Please try again.");
-      setPending("");
-    }
-  };
 
   const handleMagicLinkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -207,27 +155,6 @@ export function EnterForm({
     <div className="flex flex-col gap-4">
       {authAvailable ? (
         <>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            disabled={isBusy}
-            onClick={() => void handleGoogleSignIn()}
-          >
-            {pending === "google" ? (
-              <Loader2 className="animate-spin" aria-hidden="true" />
-            ) : (
-              <GoogleIcon />
-            )}
-            Continue with Google
-          </Button>
-
-          <div className="flex items-center gap-4" aria-hidden="true">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
           <form
             onSubmit={(event) => void handleMagicLinkSubmit(event)}
             className="flex flex-col gap-4"

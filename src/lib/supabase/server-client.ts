@@ -4,7 +4,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import { isRecoverableAuthSessionError } from "@/lib/supabase/auth-errors";
+import {
+  isRecoverableAuthSessionError,
+  isSupabaseAuthConfigurationError,
+  SupabaseAuthConfigurationError,
+} from "@/lib/supabase/auth-errors";
 import {
   applyRememberSessionCookieOptions,
   isRememberSessionEnabled,
@@ -55,6 +59,10 @@ export const getOptionalUser = cache(async function getOptionalUser() {
 
   if (isRecoverableAuthSessionError(error)) {
     return null;
+  }
+
+  if (isSupabaseAuthConfigurationError(error)) {
+    throw new SupabaseAuthConfigurationError();
   }
 
   throw error;

@@ -8,7 +8,7 @@
 | System | Use |
 |---|---|
 | Labs Supabase `ewoxmzznkavapcxdporm` | Demo book, chain store, RLS, service-role server access |
-| Supabase Auth (same Labs project) | Primary Labs identity: **Google OAuth** + **email magic links**. Auth identity is separate from wallet authorization. |
+| Supabase Auth (same Labs project) | Primary Labs identity: **email magic links only**. Auth identity is separate from wallet authorization. Identity-only OAuth authorization is supported. |
 | Base Sepolia (`sepolia.base.org`) | Read-only RPC for the server to read receipts and events |
 | Injected wallet (EIP-1193) | Holder purchase and `claimRent`; renter `depositRent`; signs the wallet-linking challenge (WalletConnect / Privy later) |
 

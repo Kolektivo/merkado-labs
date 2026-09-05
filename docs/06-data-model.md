@@ -224,6 +224,7 @@ deployment. `cryptoConfig.offerNftContract` always resolves
 Reset keeps the selected payment network. The chain store tables
 (`ra_chain_*`, `ra_rent_*`) and the account/wallet tables
 (`ra_account_wallets`, `ra_link_challenges`, and `account_id` on
-`ra_demo_state`) live in **unapplied** reviewed migrations
-(`20260821120000`, `20260831000000`); the JSON book remains the
-product state until they are applied with approval.
+`ra_demo_state`) are represented by reviewed migrations. The account/wallet
+migration and atomic wallet-link follow-on are applied to the approved Labs
+branch; the chain-store migration remains subject to its separate approval.
+The JSON book remains the product state until the chain store is activated.

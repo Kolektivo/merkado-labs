@@ -40,7 +40,8 @@ outcome menu, demo hashes) is removed.
 > live**; implementation-audit findings in `10` still block activation.
 
 > **Note (2026-09-01) — implemented locally but NOT yet live:** the approved
-> Supabase Auth flow (Google OAuth and email magic links), account-owned demo
+> Supabase Auth flow (email magic links only, plus identity-only OAuth
+> authorization), account-owned demo
 > books, one linked wallet per account, `ADMIN_EMAILS` Admin authorization,
 > and the same-account create → buy → pay → claim path are implemented on the
 > working branch behind configuration. The account/wallet migration is applied

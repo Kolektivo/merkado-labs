@@ -20,22 +20,19 @@ export class WalletLinkError extends Error {
 
 /**
  * Resolve the domain a link challenge must be bound to.
- * NEXT_PUBLIC_SITE_URL wins when set (authoritative origin); otherwise the
- * request host header is used. Empty when neither is available.
+ * NEXT_PUBLIC_SITE_URL is the authoritative origin. The request host is kept
+ * as an input for call-site compatibility but is never trusted as a fallback.
  */
 export function expectedLinkDomain(
-  hostHeader?: string | null,
+  _hostHeader?: string | null,
   siteUrl?: string | null,
 ): string {
-  if (siteUrl?.trim()) {
-    try {
-      const host = new URL(siteUrl).host;
-      if (host) return host;
-    } catch {
-      // fall through to the host header
-    }
+  if (!siteUrl?.trim()) return "";
+  try {
+    return new URL(siteUrl).host;
+  } catch {
+    return "";
   }
-  return hostHeader?.trim() ?? "";
 }
 
 export type LinkChallengeView = {

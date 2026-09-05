@@ -57,6 +57,14 @@ function isMissingRelationError(error: unknown): boolean {
   return typeof message === "string" && message.includes("PGRST204");
 }
 
+function isMissingRpcError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === "PGRST202") return true;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" && message.includes("link_account_wallet");
+}
+
 async function requireAuthenticatedAccount(accountId: string): Promise<AuthUser> {
   const user = await requireUser();
   if (user.id !== accountId) {
@@ -139,8 +147,8 @@ export async function issueChallenge(
  * - the domain bound at issue time must match the request domain;
  * - the chain bound at issue time must match the configured chain;
  * - the signature must recover to the claimed wallet address;
- * - the nonce is consumed atomically (update where consumed_at is null), so
- *   replay of the same signature after a successful link is rejected;
+ * - the nonce is consumed atomically with wallet replacement and insertion,
+ *   so a failed database write cannot leave a consumed challenge without a link;
  * - at most one active wallet per account (the prior active row is replaced).
  */
 export async function verifyChallengeSignature(
@@ -216,57 +224,28 @@ export async function verifyChallengeSignature(
     message,
   });
 
-  // Atomic consume: only a challenge whose consumed_at is still null may be
-  // finalized. A concurrent or replay attempt sees zero affected rows.
-  let consumedRows: { id: string }[] | null = null;
   try {
-    const { data, error } = await supabase
-      .from("ra_link_challenges")
-      .update({ consumed_at: nowIso() })
-      .eq("nonce", row.nonce)
-      .eq("account_id", accountId)
-      .is("consumed_at", null)
-      .select("id");
+    const { error } = await supabase.rpc("link_account_wallet", {
+      p_account_id: accountId,
+      p_nonce: row.nonce,
+      p_wallet_address: walletAddress,
+      p_chain_id: expectedChainId,
+    });
     if (error) throw error;
-    consumedRows = (data as { id: string }[] | null) ?? [];
   } catch (error) {
-    if (isMissingRelationError(error)) {
+    if (isMissingRelationError(error) || isMissingRpcError(error)) {
       throw new WalletLinkError(
         "NOT_CONFIGURED",
         "Wallet linking is not configured yet.",
       );
     }
-    throw new WalletLinkError("LINK_FAILED", "Could not finalize the wallet link. Try again.");
-  }
-  if (!consumedRows || consumedRows.length === 0) {
-    throw new WalletLinkError("INVALID_OR_EXPIRED", "This link request was already used.");
-  }
-
-  // Replace any prior active wallet so at most one active row stays per
-  // account. The partial unique index enforces it as a second gate.
-  try {
-    const { error: replaceError } = await supabase
-      .from("ra_account_wallets")
-      .update({ replaced_at: nowIso() })
-      .eq("account_id", accountId)
-      .is("replaced_at", null)
-      .is("revoked_at", null);
-    if (replaceError) throw replaceError;
-
-    const { error: insertError } = await supabase
-      .from("ra_account_wallets")
-      .insert({
-        account_id: accountId,
-        wallet_address: walletAddress,
-        chain_id: expectedChainId,
-      });
-    if (insertError) throw insertError;
-  } catch (error) {
-    if (isMissingRelationError(error)) {
-      throw new WalletLinkError(
-        "NOT_CONFIGURED",
-        "Wallet linking is not configured yet.",
-      );
+    if (
+      error &&
+      typeof error === "object" &&
+      typeof (error as { message?: unknown }).message === "string" &&
+      (error as { message: string }).message.includes("already used")
+    ) {
+      throw new WalletLinkError("INVALID_OR_EXPIRED", "This link request was already used.");
     }
     throw new WalletLinkError("LINK_FAILED", "Could not finalize the wallet link. Try again.");
   }

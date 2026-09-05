@@ -25,7 +25,7 @@ repo**. They live on merkado-cw.
 | P0 | Merkado Pay | Live USDC rent deposit on **Base Sepolia** via `depositRent` (Base Mainnet later); exact monthly amount, opaque payment id; English-only; no demo outcomes |
 | P0 | Shared state | One confirmed deposit updates request, receivable, collection, claim once, within the payer's own account book |
 | P0 | Portfolio | Pre-seeded positions; Position ID; current NFT owner claims rent (`claimRent`) |
-| P0 | Labs sign-in / accounts | **Supabase Auth** primary identity: **Continue with Google** or **Email me a sign-in link**. Each account owns an isolated demo book; one **linked wallet** per account. Not production auth. |
+| P0 | Labs sign-in / accounts | **Supabase Auth** primary identity: **Email me a sign-in link** only. Each account owns an isolated demo book; one **linked wallet** per account. Identity-only OAuth authorization is supported. Not production auth. |
 | P0 | Per-account Marketplace | Marketplace lists anonymised offer projections from the signed-in account's own book; any wallet buys the whole offer using the linked wallet. |
 | P1 | Open gates | Stage 0 questions remain unresolved. They are documented, not shown on customer Home |
 | P1 | NFT contract | One non-upgradeable ERC-721 (`MerkadoRentOfferV1`); pooled USDC rent per tokenId; backend mint key mints; transferable; whole-offer purchase pays landlord directly |
@@ -43,7 +43,7 @@ repo**. They live on merkado-cw.
   transactions, hosted activation, or merging this PR (separate gates)
 - Base Mainnet, real funds, or production activation
 - Production authentication or shared merkado.cw account (Labs demo auth
-  with Google / email magic links is in scope; it is not production auth)
+  with email magic links is in scope; it is not production auth)
 - Real email or reminder scheduling
 - Property series (enum reserved, not built)
 - Scrapers, Terra, What Fits Me, public listing browse
@@ -96,7 +96,7 @@ repo**. They live on merkado-cw.
 | Supabase | Labs `ewoxmzznkavapcxdporm` only |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
 | Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
-| Auth identity | **Supabase Auth** is the primary Labs identity: **Continue with Google** or **Email me a sign-in link**. Auth identity is separate from wallet authorization. The account shell profile comes from the signed-in user (Google metadata or the seeded **Luuk Weber** fallback). Not production auth. |
+| Auth identity | **Supabase Auth** is the primary Labs identity: **Email me a sign-in link** only. Auth identity is separate from wallet authorization. The account shell profile comes from the signed-in user email or the seeded **Luuk Weber** fallback. Identity-only OAuth authorization is supported. Not production auth. |
 | Account-owned state | Each authenticated account owns an isolated demo book keyed `ra_demo_state id='live' + account_id=<auth user id>`. The legacy shared `NULL` row is left in place and ignored by the account-scoped code paths. One account walks create → buy → pay → claim in its own book. |
 | Linked wallet | One active wallet per account. Connection alone never links: the wallet must sign a one-time challenge bound to account + domain + chain + nonce (`ra_link_challenges` → `ra_account_wallets`), 5-minute expiry, consumed atomically, at most one active row. Marketplace purchases and Portfolio `claimRent` use the linked wallet. |
 | Per-account Marketplace | Marketplace lists anonymised offer projections from the signed-in account's own book. Any wallet buys the whole offer using the linked wallet; the buyer pays the exact purchase price to the locked landlord payout address and the NFT moves Safe → buyer atomically. |

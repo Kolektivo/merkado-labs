@@ -19,7 +19,7 @@ publish listings.
 Customer-facing surfaces:
 
 - `/` Labs demo hub
-- `/enter` sign-in door (Supabase Auth: Google + email magic link; legacy host password fallback)
+- `/enter` sign-in door (Supabase Auth email magic link; legacy host password fallback)
 - `/auth/callback` and `/auth/complete` Supabase Auth PKCE / magic-link completion
 - `/originate*` Merkado Direct operations (My Offers, Create Offer, Simulator)
 - `/admin*` operations (approval, collections, reset) — ADMIN_EMAILS allowlist only
@@ -36,7 +36,7 @@ Customer-facing surfaces:
   Supabase (`ra_demo_state id='live' + account_id`) with a seed fallback and
   `normalizeBook()` for older JSON. The legacy shared `NULL` row is left in
   place and ignored by the account-scoped paths.
-- Identity is **Supabase Auth** (Google OAuth + email magic links). Server
+- Identity is **Supabase Auth** (email magic links only). Server
   components and server actions resolve the user through `@supabase/ssr`
   (`src/lib/supabase/server-client.ts`); browser code uses a matching
   browser client. An optional **stay signed in** cookie preference controls

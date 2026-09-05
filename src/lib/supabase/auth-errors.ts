@@ -9,6 +9,26 @@ const RECOVERABLE_AUTH_ERROR_CODES = new Set([
 
 const AUTH_COOKIE_CLEAR_SKIP_CODES = new Set(["refresh_token_already_used"]);
 
+export class SupabaseAuthConfigurationError extends Error {
+  constructor() {
+    super("Supabase Auth is not configured for this project.");
+    this.name = "SupabaseAuthConfigurationError";
+  }
+}
+
+export function isSupabaseAuthConfigurationError(
+  error:
+    | {
+        code?: string;
+        message?: string;
+      }
+    | null
+    | undefined,
+): boolean {
+  const message = error?.message?.toLowerCase() ?? "";
+  return error?.code === "invalid_api_key" || message.includes("invalid api key");
+}
+
 export function isRecoverableAuthSessionError(
   error:
     | {

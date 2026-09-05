@@ -32,8 +32,7 @@ import {
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
 import { proceedsPresentation } from "@/lib/rent-advance/custody";
-import { getOffer, walletOwnsOffer } from "@/lib/rent-advance/store";
-import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
+import { getOffer } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +54,7 @@ export default async function OfferOpsPage({
 }) {
   const { ref } = await params;
   const offer = await getOffer(ref);
-  const identity = await getCurrentWalletIdentity();
-  if (!offer || !identity || !walletOwnsOffer(offer, identity.address)) notFound();
+  if (!offer) notFound();
 
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
   const proceeds = proceedsPresentation(offer);

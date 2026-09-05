@@ -54,6 +54,10 @@ export function ClaimRentForm({
 
   function handleClaim() {
     setError(null);
+    if (!walletReady) {
+      setError("Link this wallet to your account before claiming rent.");
+      return;
+    }
     startTransition(async () => {
       setClaiming(true);
       try {

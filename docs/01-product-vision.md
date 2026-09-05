@@ -28,7 +28,7 @@ locally behind configuration; a Base Sepolia test deployment exists for
 local/staging verification, but the hosted flow is **not activated or merged**.
 
 The walkthrough now runs under **authenticated Labs demo accounts**
-(Supabase Auth: Google OAuth or email magic link). Each account owns an
+(Supabase Auth: email magic link). Each account owns an
 isolated demo book and can walk the whole journey itself — create → buy →
 pay → claim. The shared host password is only a **deployment gate** (the
 hosted app fails closed at `/enter` until a sign-in completes); it is not
@@ -41,7 +41,7 @@ identity and not a Merkado account.
 | Landlord / operations | Merkado Direct | A clear Simulator quote, My Offers, and one upfront purchase amount |
 | Purchaser / holder | Merkado Direct | Anonymised offer facts, Portfolio IDs, and honest collection risk |
 | Payer / tenant | Merkado Pay | A payment link, same rent and lease, USDC rent deposit, no economics |
-| Buildathon / partners | Labs demo hub | A signed-in demo account (Google or email link), Direct, Pay, and Reset demo |
+| Buildathon / partners | Labs demo hub | A signed-in demo account (email link), Direct, Pay, and Reset demo |
 
 Do not prominently brand a separate “Merkado Rent Advance” product on
 customer screens. Internal series and legal wording may still say Rent
@@ -81,7 +81,7 @@ contract until the current NFT owner claims it.
 
 ## 5. Success for this phase
 
-- A visitor signs in (Google or email magic link) and walks Simulator →
+- A visitor signs in with an email magic link and walks Simulator →
   choose payout and request an offer → Admin
   approval → whole-offer Marketplace purchase (NFT Safe → buyer, buyer pays
   the landlord payout address) → renter USDC rent deposit on Base Sepolia →

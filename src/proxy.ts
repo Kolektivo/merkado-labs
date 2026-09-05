@@ -115,11 +115,10 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (hasAuthSession) {
-    return response;
-  }
-
-  if (isValidGateCookie(request.cookies.get(DEMO_GATE_COOKIE)?.value, state.password)) {
+  const gatePassed =
+    !state.active ||
+    isValidGateCookie(request.cookies.get(DEMO_GATE_COOKIE)?.value, state.password);
+  if (hasAuthSession && gatePassed) {
     return response;
   }
 

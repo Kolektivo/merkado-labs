@@ -3,6 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { passesAdminEmailGate } from "@/lib/auth/admin";
+import { SupabaseAuthConfigurationError } from "@/lib/supabase/auth-errors";
 import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export type AuthUser = {
@@ -15,7 +16,15 @@ export type AuthUser = {
 export { getOptionalUser };
 
 export async function requireUser(): Promise<AuthUser> {
-  const user = await getOptionalUser();
+  let user: Awaited<ReturnType<typeof getOptionalUser>>;
+  try {
+    user = await getOptionalUser();
+  } catch (error) {
+    if (error instanceof SupabaseAuthConfigurationError) {
+      redirect("/enter?error=auth_config");
+    }
+    throw error;
+  }
   if (!user) {
     redirect("/enter");
   }

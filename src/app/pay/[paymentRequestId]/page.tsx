@@ -4,6 +4,7 @@ import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
 import { loadBook } from "@/lib/rent-advance/store";
 import { toPublicCryptoConfig } from "@/lib/pay/networks";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -44,6 +45,7 @@ export default async function PayRequestPage({
   const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
   const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
   const configured = Boolean(contractAddress);
+  const linkedWalletAddress = await getActiveLinkedWallet(renterAccountId);
 
   return (
     <PayApp
@@ -64,7 +66,8 @@ export default async function PayRequestPage({
       configured={configured}
       minted={onchain.tokenId != null}
       tokenId={onchain.tokenId}
-      contractAddress={contractAddress}
+       contractAddress={contractAddress}
+       linkedWalletAddress={linkedWalletAddress}
       pendingRecovery={
         Boolean(request.submittedTxHash) &&
         (request.status === "pending" || request.status === "initiated" || request.status === "due")

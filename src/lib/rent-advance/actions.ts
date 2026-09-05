@@ -149,6 +149,16 @@ async function assertSenderMatchesLinkedWallet(
   return derivedSender;
 }
 
+async function assertAccountHasLinkedWallet(
+  accountId: string,
+  chainId: number,
+): Promise<void> {
+  const linked = await getLinkedWalletForAccount(accountId, chainId);
+  if (!linked) {
+    throw new Error("Link a wallet to this account before continuing.");
+  }
+}
+
 /** Compare-and-set guard: the first valid submitted hash wins; a conflicting
  *  unverified hash is rejected. A verified/confirmed state must be rejected by
  *  the caller before this runs. */
@@ -295,6 +305,9 @@ export async function submitOfferForReviewAction(reference: string) {
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
+  if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+    throw new Error("Enter a valid checksummed 0x wallet address for the rent payer.");
+  }
   assertPayoutReady(offer);
   priceOrBlock({
     monthlyRentCents: offer.monthlyRentCents,
@@ -338,6 +351,7 @@ export async function sweepPendingMintsAction() {
 /** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */
 export async function createRentPaymentAttemptAction(paymentRequestId: string) {
   const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -395,6 +409,7 @@ export async function attachSubmittedTxAction(
   payerAddress: string,
 ) {
   const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -564,7 +579,8 @@ export async function attachSubmittedPurchaseTxAction(
   txHash: string,
   buyerAddress: string,
 ) {
-  await requireUser();
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -812,7 +828,8 @@ export async function attachSubmittedClaimTxAction(
   txHash: string,
   ownerAddress: string,
 ) {
-  await requireUser();
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -864,6 +881,9 @@ export async function submitNewOfferAction(offer: Offer) {
   }
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
+  }
+  if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+    throw new Error("Enter a valid checksummed 0x wallet address for the rent payer.");
   }
   assertPayoutReady(offer);
   const priced = priceOrBlock({

@@ -67,10 +67,12 @@ export function SubscribeForm({
   const closed = remainingCents <= 0;
 
   async function runApprove() {
+    if (!walletReady) throw new Error("Link this wallet to your account before purchasing.");
     await approveUsdc(wallet, BigInt(remainingCents * 10_000), contractAddress);
   }
 
   async function runSend() {
+    if (!walletReady) throw new Error("Link this wallet to your account before purchasing.");
     let hash: string | null = null;
     try {
       const { hash: txHash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0), contractAddress);

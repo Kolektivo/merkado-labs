@@ -62,12 +62,12 @@ test("chainLabelFor resolves Base Sepolia by chain id", () => {
   assert.equal(chainLabelFor(999), "Chain 999");
 });
 
-test("expectedLinkDomain prefers the configured site URL host", () => {
+test("expectedLinkDomain requires the configured site URL host", () => {
   assert.equal(
     expectedLinkDomain("localhost:3000", "https://merkado-labs.vercel.app/"),
     "merkado-labs.vercel.app",
   );
-  assert.equal(expectedLinkDomain("localhost:3000", null), "localhost:3000");
+  assert.equal(expectedLinkDomain("localhost:3000", null), "");
   assert.equal(expectedLinkDomain(null, "not-a-url"), "");
   assert.equal(expectedLinkDomain("", ""), "");
 });

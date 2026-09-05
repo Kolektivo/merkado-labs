@@ -7,8 +7,8 @@
 
 On the hosted URL, the first screen is a sign-in door (`/enter`) that is a
 Merkado-branded private walkthrough, not a Merkado account and not live on
-merkado.cw. **Supabase Auth** is the primary identity: **Continue with
-Google** or **Email me a sign-in link**. The legacy **host password**
+merkado.cw. **Supabase Auth** is the primary identity: **Email me a sign-in
+link**. The legacy **host password**
   (`LABS_DEMO_PASSWORD`) remains as a deployment gate before sign-in. Hosted
   users must pass the gate and authenticate; hosted production fails closed at
   `/enter`. Local `npm run dev` skips the deployment gate unless
@@ -145,7 +145,7 @@ approved offers mint again on the same deployment.
    chrome. Other account and marketplace links are visibly disabled.
    Admin is hidden. Apps has its own sidebar group, above Account. Merkado
    Pay and Merkado Direct are clickable. The shell profile comes from the
-   signed-in account (Google metadata) with **Luuk Weber** as the demo
+   signed-in account email with **Luuk Weber** as the demo
    fallback.
 2. Apps lists Merkado Pay and Merkado Direct. Internal Labs routes are
    used unless an external URL is configured. Merkado Pay opens the

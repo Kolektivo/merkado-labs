@@ -12,7 +12,8 @@ The production `merkado-cw` application uses Supabase Auth with the
 
 ## Decision
 
-Merkado Labs uses Supabase Auth with Google OAuth and email magic links. Each
+Merkado Labs uses Supabase Auth with email magic links only. Identity-only OAuth
+authorization is supported separately. Each
 authenticated user owns an isolated demo book keyed by `auth.users.id`.
 
 Each account may have one active linked wallet. Linking requires a short-lived,

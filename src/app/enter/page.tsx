@@ -40,14 +40,14 @@ export default async function EnterPage({
     isDemoUnlocked(),
   ]);
   const nextPath = safeReturnPath(params.next);
+  const deploymentGatePassed = !state.active || gateUnlocked;
 
-  if (authState.authenticated) {
+  if (authState.authenticated && deploymentGatePassed) {
     redirect(nextPath || "/");
   }
 
   const error = typeof params.error === "string" ? params.error : null;
   const email = typeof params.email === "string" ? params.email : null;
-  const deploymentGatePassed = !state.active || gateUnlocked;
   const authAvailable = authState.available && deploymentGatePassed;
   const showLegacyPassword = state.configured && !gateUnlocked;
 
@@ -60,6 +60,8 @@ export default async function EnterPage({
             <CardDescription>
               {authAvailable
                 ? "Sign in to open the demo walkthrough."
+                : !authState.available
+                  ? "Labs sign-in is temporarily unavailable. Check the Supabase publishable key."
                 : showLegacyPassword
                   ? "Enter the shared password to open the demo."
                   : "This walkthrough is locked until the host sets the shared password."}

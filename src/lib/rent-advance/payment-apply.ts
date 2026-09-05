@@ -238,6 +238,7 @@ function paymentRequestForReceivable(
     amountUsdcAtomic: usdcAtomicFromUsdCents(receivable.amountCents),
     paymentReference: `${offer.reference}-${String(n).padStart(2, "0")}`,
     receivingAddress: receivingAddress ?? "",
+    renterWalletAddress: offer.renterWalletAddress ?? null,
     status: confirmed ? "confirmed" : receivable.status === "missed" ? "overdue" : "due",
     initiatedAt: null,
     confirmedAt: confirmed ? receivable.dueDate : null,
@@ -320,6 +321,8 @@ export function normalizeBook(
               transactionId: previous.transactionId ?? next.transactionId,
               txHash: acceptedLiveTxHash(previous.txHash),
               opaquePaymentId: previous.opaquePaymentId ?? null,
+              renterWalletAddress:
+                next.renterWalletAddress ?? previous.renterWalletAddress ?? null,
             }
           : next,
       );
@@ -630,6 +633,8 @@ export function applyVerifiedRentClaim(
     ...onchain,
     claimableRentCents: Math.max(0, onchain.claimableRentCents - claimedCents),
     claimedRentCents: onchain.claimedRentCents + claimedCents,
+    submittedClaimTxHash: null,
+    submittedClaimOwner: null,
   };
 
   const holder = offer.holders[0];

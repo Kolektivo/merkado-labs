@@ -29,11 +29,11 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
 - **Merkado account (Labs demo auth)** = a **Supabase Auth** identity
-  (Google OAuth or email magic link) that owns an isolated demo book.
+  (email magic link) that owns an isolated demo book.
   Auth identity is separate from wallet authorization. Each account can
   walk create → buy → pay → claim in its own book. Not production auth.
-- **Labs demo sign-in (`/enter`)** = Supabase Auth primary entry: **Continue
-  with Google** or **Email me a sign-in link**, plus the legacy **host
+- **Labs demo sign-in (`/enter`)** = Supabase Auth primary entry: **Email me a
+  sign-in link**, plus the legacy **host
   password** as a deployment-gate fallback. Not a Merkado account and not
   live on merkado.cw. Hosted production requires the deployment gate and an
   authenticated session; it fails closed at `/enter`.
@@ -140,9 +140,9 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically. Display-only "Available until [date] · 60-day listing window" — never enforced |
 | Portfolio | [LABS] Seeded positions plus purchases; current NFT owner claims rent (`claimRent`) |
 | Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC. QR / copy controls informational only; depositRent is the only payment path |
-| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (Google + email magic link). Each account owns an isolated demo book; one linked wallet per account; same account can create → buy → pay → claim. Not activated or merged |
+| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (email magic link only). Each account owns an isolated demo book; one linked wallet per account; same account can create → buy → pay → claim. Identity-only OAuth authorization is supported. Not activated or merged |
 | Admin | [LABS] Bottom of left nav, gated by `ADMIN_EMAILS` allowlist — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
-| Account-owned state + wallet linking (ADR-0009) | [LABS] Implemented behind config; `ra_demo_state id='live' + account_id`, `ra_account_wallets`, `ra_link_challenges` in an **unapplied** migration. Not live |
+| Account-owned state + wallet linking (ADR-0009) | [LABS] Implemented behind config; account-owned state and wallet linking are applied to the approved Labs branch. Not live |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
 | Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; migrations not applied; hosted flow not activated or merged |

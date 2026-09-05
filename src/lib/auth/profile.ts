@@ -5,9 +5,9 @@ export type AuthProfile = {
 };
 
 /**
- * Presentational profile for the real authenticated user. Google OAuth stores
- * `full_name` / `name` and `avatar_url` / `picture` in user_metadata. The
- * fictional "Luuk Weber" seed remains a separate fallback where used.
+ * Presentational profile for the real authenticated user. Identity providers
+ * may store `full_name` / `name` and `avatar_url` / `picture` in user_metadata.
+ * The fictional "Luuk Weber" seed remains a separate fallback where used.
  */
 export function profileFromUser(
   user: {
