@@ -1,9 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-
 import { requireAdminUser, requireUser } from "@/lib/auth/session";
 import {
   canPersistPayNetwork,
@@ -31,9 +28,6 @@ import {
   payoutAddressLocked,
   purchasePriceAtomicFor,
 } from "@/lib/rent-advance/custody";
-import {
-  isExplorableTxHash,
-} from "@/lib/rent-advance/ids";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
 import {
   applyOpsCollection,
@@ -54,10 +48,7 @@ import {
   updateOffer,
 } from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
-import {
-  MERKADO_CHAIN_ID,
-  merkadoRpcUrl,
-} from "@/lib/onchain/config";
+import { MERKADO_CHAIN_ID } from "@/lib/onchain/config";
 import { opaquePaymentId } from "@/lib/onchain/ids";
 import {
   ensureActiveEpoch,
@@ -80,11 +71,6 @@ function refresh() {
   revalidatePath("/", "layout");
 }
 
-const txPublicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(merkadoRpcUrl()),
-});
-
 /** The book is only confirmed after the approved on-chain confirmation depth. */
 function confirmationDepthPending(result: {
   confirmations?: bigint | null;
@@ -104,49 +90,20 @@ function assertPayoutReady(offer: Offer) {
   }
 }
 
-/**
- * The authoritative transaction sender from a verified receipt. For
- * depositRent, claimRent, and purchase the caller (msg.sender) is the payer /
- * owner / buyer emitted in the event, so the receipt sender is a chain fact
- * and is never taken from the client. Returns null only when the receipt is
- * not yet indexed.
- */
-async function deriveTxSender(txHash: string): Promise<string | null> {
-  try {
-    const receipt = await txPublicClient.getTransactionReceipt({
-      hash: txHash as `0x${string}`,
-    });
-    return receipt.from ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Rejects when the account has a linked wallet (Phase 4 integration point)
- * that does not match the sender derived from the chain receipt. When no
- * linked wallet exists, account-level binding is the only enforcement until
- * the wallet-linking service lands. Returns the chain-derived sender, which is
- * the authoritative value recorded for payer / buyer / owner.
- */
-async function assertSenderMatchesLinkedWallet(
+async function assertLinkedWalletMatches(
   accountId: string,
   chainId: number,
-  derivedSender: string | null,
-): Promise<string> {
-  if (!derivedSender) {
-    throw new Error("The transaction sender could not be verified yet.");
-  }
+  address: string,
+): Promise<void> {
   const linked = await getLinkedWalletForAccount(accountId, chainId);
   if (!linked) {
     throw new Error("Link a wallet to this account before continuing.");
   }
-  if (derivedSender.toLowerCase() !== linked.walletAddress.toLowerCase()) {
+  if (address.toLowerCase() !== linked.walletAddress.toLowerCase()) {
     throw new Error(
-      "The sender of this transaction does not match the wallet linked to this account.",
+      "The connected wallet does not match the wallet linked to this account.",
     );
   }
-  return derivedSender;
 }
 
 async function assertAccountHasLinkedWallet(
@@ -156,23 +113,6 @@ async function assertAccountHasLinkedWallet(
   const linked = await getLinkedWalletForAccount(accountId, chainId);
   if (!linked) {
     throw new Error("Link a wallet to this account before continuing.");
-  }
-}
-
-/** Compare-and-set guard: the first valid submitted hash wins; a conflicting
- *  unverified hash is rejected. A verified/confirmed state must be rejected by
- *  the caller before this runs. */
-function pendingHashAllowed(
-  currentHash: string | null | undefined,
-  incomingHash: string,
-): void {
-  if (!isExplorableTxHash(incomingHash)) {
-    throw new Error("A transaction hash must be a 0x-prefixed 64-hex value.");
-  }
-  if (currentHash && currentHash !== incomingHash) {
-    throw new Error(
-      "A different transaction was already recorded for this request.",
-    );
   }
 }
 
@@ -417,16 +357,10 @@ export async function attachSubmittedTxAction(
   if (!request || request.accountId !== accountId) {
     throw new Error("Payment request not found.");
   }
-  if (request.status === "confirmed") {
-    throw new Error("This payment is already confirmed and cannot be replaced.");
+  if (request.submittedTxHash && request.submittedTxHash !== txHash) {
+    throw new Error("A payment transaction is already pending for this request.");
   }
-  const offer = book.offers.find((row) => row.reference === request.offerReference);
-  if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This listing is not ready for payment yet.");
-  }
-  pendingHashAllowed(request.submittedTxHash, txHash);
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, payerAddress);
   await saveBook({
     ...book,
     paymentRequests: (book.paymentRequests ?? []).map((row) =>
@@ -453,6 +387,11 @@ export async function checkPendingPaymentAction(
   if (!request.submittedTxHash || !request.submittedPayer) {
     return { status: "pending", reason: "No submitted transaction was recorded yet." };
   }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    request.submittedPayer,
+  );
   return verifyRentPaymentAction(
     paymentRequestId,
     request.submittedTxHash,
@@ -467,9 +406,6 @@ export async function verifyRentPaymentAction(
   payerAddress: string,
 ): Promise<RentDepositVerifiedResult> {
   const { id: accountId } = await requireUser();
-  if (!isExplorableTxHash(txHash)) {
-    throw new Error("A transaction hash must be a 0x-prefixed 64-hex value.");
-  }
   const book = await loadBook();
   const request = book.paymentRequests?.find(
     (row) => row.paymentRequestId === paymentRequestId,
@@ -477,10 +413,7 @@ export async function verifyRentPaymentAction(
   if (!request || request.accountId !== accountId) {
     throw new Error("Payment request not found.");
   }
-  if (request.status === "confirmed") return { status: "confirmed" };
-  if (request.submittedTxHash && request.submittedTxHash !== txHash) {
-    throw new Error("A different transaction was already recorded for this request.");
-  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, payerAddress);
   const offer = book.offers.find((row) => row.reference === request.offerReference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
@@ -492,15 +425,11 @@ export async function verifyRentPaymentAction(
     throw new Error("Start the payment first to create the on-chain payment id.");
   }
   const expectedAmount = BigInt(request.amountUsdcAtomic);
-  // The payer is derived from the verified receipt sender, never trusted from
-  // the client. The client-supplied address is only a fallback while the
-  // receipt is still pending.
-  const derivedSender = await deriveTxSender(txHash);
   const result = await verifyRentDeposit(txHash, {
     contractAddress: onchain.contractAddress,
     tokenId: BigInt(onchain.tokenId),
     paymentId: opaque,
-    payer: derivedSender ?? payerAddress,
+    payer: payerAddress,
     amount: expectedAmount,
   });
   if (result.status === "pending") {
@@ -513,12 +442,7 @@ export async function verifyRentPaymentAction(
   if (depthPending) {
     return { status: "pending", reason: depthPending };
   }
-  const payer = await assertSenderMatchesLinkedWallet(
-    accountId,
-    MERKADO_CHAIN_ID,
-    derivedSender,
-  );
-  const epochId = onchain.epochId ?? (await ensureActiveEpoch()).id;
+  const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
@@ -531,12 +455,12 @@ export async function verifyRentPaymentAction(
     tokenId: onchain.tokenId,
     opaquePaymentId: opaque,
     amount: expectedAmount,
-    payerAddress: payer,
+    payerAddress,
     paymentRequestId,
-    epochId,
+    epochId: epoch.id,
   });
   await recordChainEvent({
-    epochId,
+    epochId: epoch.id,
     chainId: MERKADO_CHAIN_ID,
     contractAddress: onchain.contractAddress,
     txHash,
@@ -547,7 +471,7 @@ export async function verifyRentPaymentAction(
     eventArgs: {
       tokenId: String(onchain.tokenId),
       paymentId: opaque,
-      payer,
+      payer: payerAddress,
       amount: expectedAmount.toString(),
     },
   });
@@ -556,7 +480,7 @@ export async function verifyRentPaymentAction(
   const facts: VerifiedRentDepositFacts = {
     tokenId: onchain.tokenId,
     opaquePaymentId: opaque,
-    payerAddress: payer,
+    payerAddress,
     amountAtomic: expectedAmount,
     txHash,
     blockNumber: result.blockNumber,
@@ -585,13 +509,16 @@ export async function attachSubmittedPurchaseTxAction(
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This offer is not available yet.");
+  if (
+    onchain.submittedPurchaseBuyer &&
+    onchain.submittedPurchaseBuyer.toLowerCase() !== buyerAddress.toLowerCase()
+  ) {
+    throw new Error("A purchase is already pending for a different wallet.");
   }
-  if (onchain.purchased) {
-    throw new Error("This offer is already purchased and cannot be replaced.");
+  if (onchain.submittedPurchaseTxHash && onchain.submittedPurchaseTxHash !== txHash) {
+    throw new Error("A purchase transaction is already pending for this offer.");
   }
-  pendingHashAllowed(onchain.submittedPurchaseTxHash, txHash);
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
   await updateOffer(reference, (current) => ({
     ...current,
     onchain: {
@@ -606,7 +533,7 @@ export async function attachSubmittedPurchaseTxAction(
 export async function checkPendingPurchaseAction(
   reference: string,
 ): Promise<PurchaseVerifiedResult> {
-  await requireUser();
+  const { id: accountId } = await requireUser();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -615,6 +542,11 @@ export async function checkPendingPurchaseAction(
   if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
     return { status: "pending", reason: "No submitted purchase transaction was recorded yet." };
   }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    onchain.submittedPurchaseBuyer,
+  );
   return verifyPurchaseAction(
     reference,
     onchain.submittedPurchaseTxHash,
@@ -629,9 +561,6 @@ export async function verifyPurchaseAction(
   buyerAddress: string,
 ): Promise<PurchaseVerifiedResult> {
   const { id: accountId } = await requireUser();
-  if (!isExplorableTxHash(txHash)) {
-    throw new Error("A transaction hash must be a 0x-prefixed 64-hex value.");
-  }
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -642,21 +571,16 @@ export async function verifyPurchaseAction(
   if (onchain.purchased) {
     return { status: "confirmed", reason: "Already purchased" };
   }
-  if (onchain.submittedPurchaseTxHash && onchain.submittedPurchaseTxHash !== txHash) {
-    throw new Error("A different transaction was already recorded for this offer.");
-  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
   const payoutAddress = payoutAddressLocked(offer);
   if (!payoutAddress) {
     throw new Error("This offer has no locked payout address.");
   }
   const purchasePrice = purchasePriceAtomicFor(offer);
-  // The buyer is derived from the verified receipt sender, never trusted from
-  // the client. The client-supplied address is only a fallback while pending.
-  const derivedSender = await deriveTxSender(txHash);
   const result = await verifyOfferPurchased(txHash, {
     contractAddress: onchain.contractAddress,
     tokenId: BigInt(onchain.tokenId),
-    buyer: derivedSender ?? buyerAddress,
+    buyer: buyerAddress,
     payoutAddress,
     purchasePrice,
   });
@@ -670,12 +594,7 @@ export async function verifyPurchaseAction(
   if (depthPending) {
     return { status: "pending", reason: depthPending };
   }
-  const buyer = await assertSenderMatchesLinkedWallet(
-    accountId,
-    MERKADO_CHAIN_ID,
-    derivedSender,
-  );
-  const epochId = onchain.epochId ?? (await ensureActiveEpoch()).id;
+  const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
@@ -686,10 +605,10 @@ export async function verifyPurchaseAction(
     tokenId: onchain.tokenId,
     purchaseTxHash: txHash,
     purchaseBlockNumber: Number(result.blockNumber),
-    purchaserAddress: buyer,
+    purchaserAddress: buyerAddress,
   });
   await recordChainEvent({
-    epochId,
+    epochId: epoch.id,
     chainId: MERKADO_CHAIN_ID,
     contractAddress: onchain.contractAddress,
     txHash,
@@ -699,14 +618,14 @@ export async function verifyPurchaseAction(
     eventName: "OfferPurchased",
     eventArgs: {
       tokenId: String(onchain.tokenId),
-      buyer,
+      buyer: buyerAddress,
       payoutAddress,
       purchasePrice: purchasePrice.toString(),
     },
   });
   const facts: VerifiedPurchaseFacts = {
     tokenId: onchain.tokenId,
-    purchaserAddress: buyer,
+    purchaserAddress: buyerAddress,
     txHash,
     blockNumber: result.blockNumber,
     payoutAddress,
@@ -729,9 +648,6 @@ export async function verifyRentClaimAction(
   ownerAddress: string,
 ): Promise<RentClaimVerifiedResult> {
   const { id: accountId } = await requireUser();
-  if (!isExplorableTxHash(txHash)) {
-    throw new Error("A transaction hash must be a 0x-prefixed 64-hex value.");
-  }
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
@@ -739,12 +655,7 @@ export async function verifyRentClaimAction(
   if (onchain.tokenId == null || !onchain.contractAddress) {
     throw new Error("This listing is not ready for payment yet.");
   }
-  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
-    return { status: "confirmed" };
-  }
-  if (onchain.submittedClaimTxHash && onchain.submittedClaimTxHash !== txHash) {
-    throw new Error("A different transaction was already recorded for this claim.");
-  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, ownerAddress);
   const claimableCents = (book.distributions ?? [])
     .filter((row) => row.offerReference === reference && row.status === "claimable")
     .reduce((sum, row) => sum + row.amountCents, 0);
@@ -752,13 +663,10 @@ export async function verifyRentClaimAction(
     throw new Error("There is no rent waiting to be claimed from this listing.");
   }
   const expectedAmount = BigInt(usdcAtomicFromUsdCents(claimableCents));
-  // The owner is derived from the verified receipt sender, never trusted from
-  // the client. The client-supplied address is only a fallback while pending.
-  const derivedSender = await deriveTxSender(txHash);
   const result = await verifyRentClaimed(txHash, {
     contractAddress: onchain.contractAddress,
     tokenId: BigInt(onchain.tokenId),
-    owner: derivedSender ?? ownerAddress,
+    owner: ownerAddress,
     amount: expectedAmount,
   });
   if (result.status === "pending") {
@@ -771,12 +679,7 @@ export async function verifyRentClaimAction(
   if (depthPending) {
     return { status: "pending", reason: depthPending };
   }
-  const owner = await assertSenderMatchesLinkedWallet(
-    accountId,
-    MERKADO_CHAIN_ID,
-    derivedSender,
-  );
-  const epochId = onchain.epochId ?? (await ensureActiveEpoch()).id;
+  const epoch = await ensureActiveEpoch();
   const logIndex = result.logIndex;
   if (logIndex == null || result.blockNumber == null) {
     return { status: "pending", reason: "Receipt details are not indexed yet." };
@@ -788,12 +691,12 @@ export async function verifyRentClaimAction(
     blockNumber: Number(result.blockNumber),
     contractAddress: onchain.contractAddress,
     tokenId: onchain.tokenId,
-    ownerAddress: owner,
+    ownerAddress,
     amount: expectedAmount,
-    epochId,
+    epochId: epoch.id,
   });
   await recordChainEvent({
-    epochId,
+    epochId: epoch.id,
     chainId: MERKADO_CHAIN_ID,
     contractAddress: onchain.contractAddress,
     txHash,
@@ -803,13 +706,13 @@ export async function verifyRentClaimAction(
     eventName: "RentClaimed",
     eventArgs: {
       tokenId: String(onchain.tokenId),
-      owner,
+      owner: ownerAddress,
       amount: expectedAmount.toString(),
     },
   });
   const facts: VerifiedRentClaimFacts = {
     tokenId: onchain.tokenId,
-    ownerAddress: owner,
+    ownerAddress,
     amountAtomic: expectedAmount,
     txHash,
     blockNumber: result.blockNumber,
@@ -833,14 +736,20 @@ export async function attachSubmittedClaimTxAction(
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This listing is not ready for payment yet.");
+  const existingOnchain = mergeOnchain(offer.onchain);
+  if (
+    existingOnchain.submittedClaimTxHash &&
+    existingOnchain.submittedClaimTxHash !== txHash
+  ) {
+    throw new Error("A claim transaction is already pending for this offer.");
   }
-  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
-    throw new Error("This claim is already confirmed and cannot be replaced.");
+  if (
+    existingOnchain.submittedClaimOwner &&
+    existingOnchain.submittedClaimOwner.toLowerCase() !== ownerAddress.toLowerCase()
+  ) {
+    throw new Error("A claim is already pending for a different wallet.");
   }
-  pendingHashAllowed(onchain.submittedClaimTxHash, txHash);
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, ownerAddress);
   await updateOffer(reference, (current) => ({
     ...current,
     onchain: {
@@ -855,17 +764,22 @@ export async function attachSubmittedClaimTxAction(
 export async function checkPendingClaimAction(
   reference: string,
 ): Promise<RentClaimVerifiedResult> {
-  await requireUser();
+  const { id: accountId } = await requireUser();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   const onchain = mergeOnchain(offer.onchain);
-  if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
-    return { status: "confirmed" };
-  }
   if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
+    if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
+      return { status: "confirmed" };
+    }
     return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
   }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    onchain.submittedClaimOwner,
+  );
   return verifyRentClaimAction(
     reference,
     onchain.submittedClaimTxHash,

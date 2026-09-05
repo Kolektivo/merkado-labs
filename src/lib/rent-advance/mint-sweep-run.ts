@@ -73,9 +73,6 @@ function revalidate() {
  * Mints a single approved offer from the server mint key. Idempotent: a retry
  * resumes an already-broadcast mint, and a reverted receipt clears the stored
  * hash so the next call broadcasts a fresh transaction.
- *
- * Mint recovery is pinned to the offer's original contract address and epoch
- * captured at broadcast time; the env address is used only for NEW broadcasts.
  * The optional accountId scopes the operation to one account's book.
  */
 export async function mintOfferFor(
@@ -92,19 +89,15 @@ export async function mintOfferFor(
   if (onchain.tokenId != null && onchain.mintTxHash) {
     return { status: "confirmed", txHash: onchain.mintTxHash, tokenId: onchain.tokenId };
   }
-  // A broadcast pins the contract it was sent to; a fresh broadcast resolves
-  // the env contract address (the single source of truth).
   const contractAddress =
-    normalizeContractAddress(onchain.contractAddress) ??
-    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ??
-    merkadoContractAddress();
+    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
   const payoutAddress = payoutAddressLocked(offer);
   if (!payoutAddress) {
     throw new Error("Add a payout address before minting.");
   }
   const purchasePrice = purchasePriceAtomicFor(offer);
   const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
-  const epochId = onchain.epochId ?? (await ensureActiveEpoch()).id;
+  const epoch = await ensureActiveEpoch();
   // A fresh random key avoids the contract's usedOfferKeys collision if the
   // demo book is ever reset; the key is persisted with the broadcast.
   const key = onchain.offerKey ?? randomOfferKey();
@@ -137,7 +130,7 @@ export async function mintOfferFor(
           ...mergeOnchain(current.onchain),
           offerKey: key,
           contractAddress,
-          epochId,
+          epochId: epoch.id,
           mintTxHash: txHash,
         },
         events: [
@@ -241,12 +234,12 @@ export async function mintOfferFor(
     rentInstallmentAmount,
     mintTxHash: txHash,
     mintBlockNumber: blockNumberValue(result.blockNumber),
-    epochId,
+    epochId: epoch.id,
   });
   const logIndex = result.logIndex;
   if (logIndex != null && result.blockNumber != null) {
     await recordChainEvent({
-      epochId,
+      epochId: epoch.id,
       chainId: MERKADO_CHAIN_ID,
       contractAddress,
       txHash,
@@ -268,7 +261,7 @@ export async function mintOfferFor(
         tokenId: Number(mintedTokenId),
         offerKey: key,
         contractAddress,
-        epochId,
+        epochId: epoch.id,
         mintTxHash: txHash,
         mintBlockNumber: result.blockNumber ?? null,
         payoutAddress,
