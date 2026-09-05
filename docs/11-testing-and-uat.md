@@ -38,7 +38,7 @@ self-transfers, wrong amounts, wrong network, and duplicate confirmations.
 Tests must also cover: the display-only 60-day window (offer stays
 purchasable after the date, no Expired status derives from it), Reset
 starting a new chain-store epoch (old on-chain facts are never reused), the approval receipt completing before
-purchase/deposit begins, pending outcomes exposing only **Check status**,
+ purchase/deposit begins, pending outcomes exposing no manual status-check or resend button,
 informational-only Pay QR / copy controls (they never submit a payment;
 `depositRent` is the only path), customer statuses (Paid = proceeds card
 only; the offer stays Sold), **Save draft** persistence, and Admin

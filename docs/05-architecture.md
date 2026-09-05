@@ -54,11 +54,9 @@ Customer-facing surfaces:
   at most one active row in `ra_account_wallets`.
 - Pending transaction recovery: a submitted purchase / deposit / claim hash
   is bound to the account + offer/payment request + token + chain + contract
-  + epoch (compare-and-set, first valid submission wins). Verification
-  derives the sender from verified chain facts, never a client-supplied
-  address; **Check status** re-verifies the stored hash, never blind
-  re-sends. Mint recovery pins to the offer's original contract at
-  broadcast; the env address is used only for new broadcasts.
+  + epoch (compare-and-set, first valid submission wins). The connected linked
+  wallet is checked before the existing server receipt verification. Pending UI
+  states do not offer a manual status-check or resend button.
 - The hosted edge gate (`src/proxy.ts`) fails closed: `/enter` (Supabase
   Auth sign-in) is reachable; an authenticated Supabase session or a valid
   legacy `LABS_DEMO_PASSWORD` gate cookie may pass, hosted production
@@ -142,10 +140,9 @@ are the on-chain evidence record; the JSON book is the product state.
 - **Pending-transaction recovery.** A submitted purchase / deposit / claim
   tx hash is bound to the account + offer/payment request + token + chain +
   contract + epoch and persisted compare-and-set (first valid submission
-  wins). Verification derives the sender from verified chain facts, never a
-  client-supplied address; **Check status** re-verifies the stored hash,
-  never blind re-sends. Mint recovery pins to the offer's original contract
-  at broadcast; the env address is used only for new broadcasts.
+  wins). The connected linked wallet is checked before the existing server
+  receipt verification. Pending UI states do not offer a manual status-check
+  or resend button.
 - **Chain-store epochs.** Exactly one active epoch exists after any write:
   a new epoch first deactivates every prior active row, then inserts the new
   one, so a stale active epoch is never picked up. Reset starts a new epoch

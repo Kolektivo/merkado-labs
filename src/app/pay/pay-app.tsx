@@ -21,7 +21,6 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, depositRent } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedTxAction,
-  checkPendingPaymentAction,
   createRentPaymentAttemptAction,
   verifyRentPaymentAction,
 } from "@/lib/rent-advance/actions";
@@ -266,7 +265,6 @@ export function PayApp({
   tokenId,
   contractAddress,
   linkedWalletAddress,
-  pendingRecovery,
 }: {
   paymentRequestId: string;
   periodLabel: string;
@@ -287,7 +285,6 @@ export function PayApp({
   tokenId: number | null;
   contractAddress: string | null;
   linkedWalletAddress: string | null;
-  pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
   const copy = useMemo(() => payerCopy[locale], [locale]);
@@ -304,8 +301,6 @@ export function PayApp({
   );
   const [connected, setConnected] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [paymentRail, setPaymentRail] = useState<"stablecoin" | "sentoo">("stablecoin");
 
   const locked = status === "confirmed" || walletUi === "confirmed";
@@ -386,37 +381,9 @@ export function PayApp({
     }
   }
 
-  async function runCheckStatus() {
-    const result = await checkPendingPaymentAction(paymentRequestId);
-    if (result.status === "confirmed") return { status: "confirmed" as const };
-    return {
-      status: "pending" as const,
-      reason: result.reason ?? copy.awaiting,
-    };
-  }
-
   function onConfirmed() {
     setWalletUi("confirmed");
     router.refresh();
-  }
-
-  async function handleCheckStatus() {
-    setError(null);
-    setBusy(true);
-    try {
-      const result = await checkPendingPaymentAction(paymentRequestId);
-      if (result.status === "confirmed") {
-        setWalletUi("confirmed");
-        router.refresh();
-      } else {
-        setWalletUi("pending");
-        setError(result.reason ?? copy.awaiting);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not check the payment status.");
-    } finally {
-      setBusy(false);
-    }
   }
 
   const statusLabel = historyStatusLabel(
@@ -607,26 +574,7 @@ export function PayApp({
                       </Alert>
                     ) : null}
 
-                    {pendingRecovery ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-h-11 w-full"
-                        disabled={busy}
-                        onClick={() => void handleCheckStatus()}
-                      >
-                        {busy ? "Checking…" : "Check payment status"}
-                      </Button>
-                    ) : null}
 
-                    {error ? (
-                      <Alert variant="destructive">
-                        <AlertTitle>
-                          {walletUi === "reverted" ? copy.reverted : copy.failed}
-                        </AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    ) : null}
                   </div>
                 </PaymentMethodPanel>
 
@@ -710,7 +658,6 @@ export function PayApp({
         }
         runApprove={runApprove}
         runSend={runSend}
-        runCheckStatus={runCheckStatus}
         onConfirmed={onConfirmed}
       />
     </div>

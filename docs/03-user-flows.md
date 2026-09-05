@@ -129,8 +129,8 @@ approved offers mint again on the same deployment.
     inside that same stablecoin section. The wallet must be linked in Account
     before **Pay rent** is available. **Pay rent** opens one dialog that
     runs Approve USDC → waits for the successful approval receipt →
-    `depositRent` → server verification, with a **Check status** action for a
-    pending transaction (never a blind re-send).
+     `depositRent` → server verification. A pending transaction remains
+     submitted without a manual status-check or resend button.
     **Continue with Sentoo** returns as a collapsed panel with a **Coming
     soon** badge.
 3. The renter deposits rent by calling `depositRent(tokenId,

@@ -23,8 +23,8 @@ export type { ApproveThenSendOutcome } from "@/lib/pay/approve-then-send-state";
 /**
  * Single-action wallet flow: when the action needs an ERC-20 approval, the
  * dialog first sends the approval, then the main transaction, then waits for
- * server verification. Pending transactions surface a Check status action
- * instead of a blind retry, so a broadcast can never be sent twice.
+ * server verification. Pending transactions remain submitted and are not
+ * offered a second send from this dialog.
  */
 export function ApproveThenSendDialog({
   open,
@@ -37,7 +37,6 @@ export function ApproveThenSendDialog({
   summary,
   runApprove,
   runSend,
-  runCheckStatus,
   onConfirmed,
 }: {
   open: boolean;
@@ -50,7 +49,6 @@ export function ApproveThenSendDialog({
   summary: ReactNode;
   runApprove: () => Promise<void>;
   runSend: () => Promise<ApproveThenSendOutcome>;
-  runCheckStatus: () => Promise<ApproveThenSendOutcome>;
   onConfirmed: () => void;
 }) {
   const [step, setStep] = useState<ApproveThenSendStep>("idle");
@@ -99,19 +97,6 @@ export function ApproveThenSendDialog({
     }
   }
 
-  async function checkStatus() {
-    setError(null);
-    setPendingReason(null);
-    setSubmitted(false);
-    setStep("verify");
-    try {
-      finish(await runCheckStatus());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not check the status.");
-      setSubmitted(true);
-    }
-  }
-
   const busyLabel =
     step === "approve"
       ? "Approving USDC…"
@@ -154,15 +139,7 @@ export function ApproveThenSendDialog({
               <Loader2 className="animate-spin" aria-hidden />
               {busyLabel}
             </Button>
-          ) : submitted && step === "verify" ? (
-            <Button
-              type="button"
-              className="min-h-11 w-full"
-              onClick={() => void checkStatus()}
-            >
-              Check status
-            </Button>
-          ) : (
+          ) : submitted && step === "verify" ? null : (
             <Button
               type="button"
               className="min-h-11 w-full"

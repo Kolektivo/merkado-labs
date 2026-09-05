@@ -68,10 +68,6 @@ export default async function PayRequestPage({
       tokenId={onchain.tokenId}
        contractAddress={contractAddress}
        linkedWalletAddress={linkedWalletAddress}
-      pendingRecovery={
-        Boolean(request.submittedTxHash) &&
-        (request.status === "pending" || request.status === "initiated" || request.status === "due")
-      }
-    />
+     />
   );
 }

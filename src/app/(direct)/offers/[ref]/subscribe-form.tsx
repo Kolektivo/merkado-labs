@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -13,7 +13,6 @@ import { BASE_SEPOLIA_CHAIN_ID } from "@/lib/pay/networks";
 import { approveUsdc, purchaseOffer } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedPurchaseTxAction,
-  checkPendingPurchaseAction,
   verifyPurchaseAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
@@ -36,7 +35,6 @@ export function SubscribeForm({
   configured,
   tokenId,
   contractAddress,
-  pendingRecovery,
   linkedWalletAddress,
 }: {
   reference: string;
@@ -48,15 +46,11 @@ export function SubscribeForm({
   configured: boolean;
   tokenId: number | null;
   contractAddress: string | null;
-  pendingRecovery: boolean;
   linkedWalletAddress: string | null;
 }) {
   const router = useRouter();
   const wallet = useMerkadoWallet();
-  const startTransition = useTransition()[1];
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
   const [connected, setConnected] = useState(false);
   const onBaseSepolia = wallet.chainId === BASE_SEPOLIA_CHAIN_ID;
   const connectedMatchesLinked =
@@ -105,15 +99,6 @@ export function SubscribeForm({
     }
   }
 
-  async function runCheckStatus() {
-    const result = await checkPendingPurchaseAction(reference);
-    if (result.status === "confirmed") return { status: "confirmed" as const };
-    return {
-      status: "pending" as const,
-      reason: result.reason ?? "The purchase is still being verified.",
-    };
-  }
-
   function onConfirmed() {
     try {
       window.sessionStorage.setItem(
@@ -125,25 +110,6 @@ export function SubscribeForm({
     }
     router.push(`/portfolio/${reference}?success=purchase`);
     router.refresh();
-  }
-
-  async function handleCheckStatus() {
-    setError(null);
-    setChecking(true);
-    startTransition(async () => {
-      try {
-        const result = await checkPendingPurchaseAction(reference);
-        if (result.status === "confirmed") {
-          onConfirmed();
-        } else {
-          setError(result.reason ?? "The purchase is still being verified.");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not check the purchase status.");
-      } finally {
-        setChecking(false);
-      }
-    });
   }
 
   if (closed) {
@@ -168,13 +134,6 @@ export function SubscribeForm({
 
   return (
     <div className="rounded-2xl border border-primary/25 bg-white p-6 shadow-sm">
-      {error ? (
-        <Alert variant="destructive" className="mb-5">
-          <AlertTitle>Could not complete purchase</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-
       <p className="text-sm font-medium text-grey-800">Whole offer</p>
       <p className="mt-1.5 text-3xl font-semibold tracking-tight text-surface-dark tabular-nums">
         {formatXcg(remainingCents)}
@@ -220,17 +179,6 @@ export function SubscribeForm({
               <Link href="/account/apps">Link this wallet in Account</Link>
             </Button>
           ) : null}
-          {pendingRecovery ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full"
-              disabled={checking}
-              onClick={handleCheckStatus}
-            >
-              {checking ? "Checking…" : "Check purchase status"}
-            </Button>
-          ) : null}
         </div>
       )}
 
@@ -269,7 +217,6 @@ export function SubscribeForm({
         }
         runApprove={runApprove}
         runSend={runSend}
-        runCheckStatus={runCheckStatus}
         onConfirmed={onConfirmed}
       />
     </div>

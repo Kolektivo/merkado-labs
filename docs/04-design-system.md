@@ -153,8 +153,8 @@ use a standard wallet-connect control (Reown/AppKit (injected EIP-1193); WalletC
 versus Privy is a later choice and is not shown). Marketplace purchase and
 Pay each use **one primary button** that opens a single dialog running
 Approve USDC → wait for the successful approval receipt → purchase /
-`depositRent` → server verification, with a
-**Check status** action for a pending transaction; there is no separate
+  `depositRent` → server verification. Pending transactions remain submitted
+  without a manual status-check or resend button; there is no separate
 Approve step on the page. The QR and **copy address** / **copy amount**
 controls in the expanded **Pay with stablecoin** panel are
 informational only and never submit a payment. **Continue with Sentoo** is a

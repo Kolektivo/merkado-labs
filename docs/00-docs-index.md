@@ -55,11 +55,10 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Reset does **not** roll back the chain.
 - **Pending transaction recovery** = a submitted purchase / deposit / claim
   tx hash is bound to account + offer/payment request + token + chain +
-  contract + epoch; compare-and-set (first valid submission wins); the sender
-  is derived from verified chain facts, never a client-supplied address;
-  **Check status** re-verifies, never blind re-sends. Mint recovery pins to
-  the offer's original contract at broadcast; the env address is used only
-  for new broadcasts.
+  contract + epoch; compare-and-set (first valid submission wins); the
+  connected linked wallet is checked before the existing server receipt
+  verification. Pending UI states do not offer a manual status-check or resend
+  button.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
 - **Digital Participation Right (DPR)** = instrument name. The instrument
   is now a **transferable offer NFT** (`MerkadoRentOfferV1`, ERC-721) on
