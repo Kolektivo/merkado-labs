@@ -27,14 +27,12 @@ import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
-import { listAdminWallets, redirectIfNotAdmin } from "@/lib/wallet/admin";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
 
 export default async function AdminPage() {
-  await redirectIfNotAdmin();
-  const [book, adminWallets] = await Promise.all([loadBook(), listAdminWallets()]);
+  const book = await loadBook();
   const minterAddress = merkadoMinterAddressOrNull();
   const configured = Boolean(book.cryptoConfig?.offerNftContract);
   const offers = sortOffersForLandlordList(book.offers);
@@ -47,36 +45,6 @@ export default async function AdminPage() {
         title="Admin"
         description="Approve offers, record collections, set the payment network, and restore the starting book."
       />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Admin wallets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {adminWallets.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Wallet</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adminWallets.map((wallet) => (
-                  <TableRow key={wallet.wallet_address}>
-                    <TableCell className="font-mono text-xs">
-                      {wallet.wallet_address}
-                    </TableCell>
-                    <TableCell>{wallet.active ? "Active" : "Inactive"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-sm text-muted-foreground">No admin wallets configured.</p>
-          )}
-        </CardContent>
-      </Card>
 
       {review.length > 0 ? (
         <Card>

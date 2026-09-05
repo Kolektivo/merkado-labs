@@ -10,7 +10,6 @@ import {
   getDemoGateState,
   isValidGateCookie,
 } from "@/lib/demo-gate";
-import { getCurrentWalletIdentity } from "@/lib/wallet/identity";
 
 export async function isDemoUnlocked(): Promise<boolean> {
   const state = getDemoGateState();
@@ -26,7 +25,8 @@ export async function redirectIfDemoLocked(): Promise<void> {
 }
 
 export async function redirectEnterIfNotNeeded(): Promise<void> {
-  if ((await isDemoUnlocked()) && (await getCurrentWalletIdentity())) {
+  const state = getDemoGateState();
+  if (!state.active || (await isDemoUnlocked())) {
     redirect("/");
   }
 }

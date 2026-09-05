@@ -17,7 +17,6 @@ import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
 import { MintControl } from "./mint-control";
 import { MintSweep } from "@/components/rent-advance/mint-sweep";
-import { redirectIfNotAdmin } from "@/lib/wallet/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +32,6 @@ export async function generateMetadata({
 }
 
 export default async function AdminOfferPage({ params }: { params: Params }) {
-  await redirectIfNotAdmin();
   const { ref } = await params;
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();
