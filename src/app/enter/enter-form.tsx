@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,21 @@ export function EnterForm({
   const [linkSent, setLinkSent] = useState(false);
   const [pending, setPending] = useState<"" | "otp">("");
   const [showPassword, setShowPassword] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const errorId = useId();
+
+  const cooldownSeconds = Math.max(
+    0,
+    Math.ceil((cooldownUntil - now) / 1000),
+  );
+  const onCooldown = cooldownSeconds > 0;
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [cooldownUntil]);
 
   const isBusy = pending !== "";
 
@@ -124,6 +138,8 @@ export function EnterForm({
       setError("Enter a valid email address.");
       return;
     }
+
+    if (onCooldown) return;
 
     setError("");
     setLinkSent(false);
@@ -145,6 +161,7 @@ export function EnterForm({
 
       setLinkSent(true);
       setPending("");
+      setCooldownUntil(Date.now() + 10_000);
     } catch {
       setError("We couldn't send that sign-in link. Please try again.");
       setPending("");
@@ -185,12 +202,14 @@ export function EnterForm({
                 Check your email for the sign-in link.
               </p>
             ) : null}
-            <Button type="submit" disabled={isBusy} className="w-full">
+            <Button type="submit" disabled={isBusy || onCooldown} className="w-full">
               {pending === "otp" ? (
                 <>
                   <Loader2 className="animate-spin" aria-hidden="true" />
                   Sending…
                 </>
+              ) : onCooldown ? (
+                `Resend link in ${cooldownSeconds}s`
               ) : (
                 "Email me a sign-in link"
               )}

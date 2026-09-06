@@ -1,11 +1,15 @@
 import "server-only";
 
+const ACTIVE_LABS_PROJECT_REF = "csaefdkpwukshtouyixg";
 const LABS_PROJECT_REF = "ewoxmzznkavapcxdporm";
-const LABS_URL = `https://${LABS_PROJECT_REF}.supabase.co`;
 const WAVE6_FORK_PROJECT_REF = "ajbeqiwgpttpmzpqxepl";
+
+const ACTIVE_LABS_URL = `https://${ACTIVE_LABS_PROJECT_REF}.supabase.co`;
+const LABS_URL = `https://${LABS_PROJECT_REF}.supabase.co`;
 const WAVE6_FORK_URL = `https://${WAVE6_FORK_PROJECT_REF}.supabase.co`;
 
 const ALLOWED_PROJECTS = [
+  { ref: ACTIVE_LABS_PROJECT_REF, url: ACTIVE_LABS_URL },
   { ref: LABS_PROJECT_REF, url: LABS_URL },
   { ref: WAVE6_FORK_PROJECT_REF, url: WAVE6_FORK_URL },
 ] as const;
@@ -72,6 +76,8 @@ export function getSupabaseConfig() {
 
 export {
   ALLOWED_PROJECTS,
+  ACTIVE_LABS_PROJECT_REF,
+  ACTIVE_LABS_URL,
   LABS_PROJECT_REF,
   LABS_URL,
   WAVE6_FORK_PROJECT_REF,

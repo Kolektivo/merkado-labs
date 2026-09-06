@@ -72,8 +72,9 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
   behind config — deployed but NOT activated or merged. The chain store
   migration, controlled minter funding, hosted activation, and merging require
   explicit approval. Uncontrolled real funds and production stay blocked.
-- Allowed Supabase targets only: Labs project reference `ewoxmzznkavapcxdporm`
-  and isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
+- Allowed Supabase targets only: Labs project references `csaefdkpwukshtouyixg`
+  (active) and `ewoxmzznkavapcxdporm`, and isolated wave6 fork
+  `ajbeqiwgpttpmzpqxepl`.
 - Production project reference `jkrfyvukhhsapoivntms` is forbidden.
 - Never access or copy production data, users, schemas, secrets, or config.
 - Never run destructive SQL without explicit approval.
