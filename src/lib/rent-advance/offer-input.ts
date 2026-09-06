@@ -40,5 +40,6 @@ function sanitizeByTemplate(input: unknown, template: unknown): unknown {
 
 /** Strip undeclared client fields before an Offer reaches the shared demo book. */
 export function sanitizeOfferInput(input: unknown): Offer {
-  return sanitizeByTemplate(input, getSeedBook().offers[0]) as Offer;
+  const sanitized = sanitizeByTemplate(input, getSeedBook().offers[0]) as Offer;
+  return sanitized;
 }

@@ -23,19 +23,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
+import { proceedsPresentation } from "@/lib/rent-advance/custody";
 import {
   attentionItems,
   bookTotals,
+  customerStatusLabel,
   effectiveOfferStatus,
   offerDisplayName,
   sortOffersForLandlordList,
-  statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { loadBook } from "@/lib/rent-advance/store";
+import { loadBook, offersForAccount } from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "My Offers" };
@@ -67,15 +68,14 @@ const ATTENTION_TONE: Record<
 
 function nextOfferStep(
   offer: Offer,
-  proceeds: ReturnType<typeof landlordProceedsPresentation>,
+  proceeds: ReturnType<typeof proceedsPresentation>,
 ) {
   const status = effectiveOfferStatus(offer);
   if (status === "draft") return "Submit this request";
   if (status === "under_review") return "Wait for approval";
   if (status === "denied") return "Review the decision";
-  if (status === "expired") return "Listing window ended";
-  if (proceeds.status === "paid") return "Sale amount paid automatically";
-  if (proceeds.status === "processing") return "Automatic payout processing";
+  if (status === "live" || status === "collecting") return "Sale amount paid automatically";
+  if (proceeds.landlordPaid) return "Sale amount paid automatically";
   if (status === "funding") return "Listed for 60 days";
   return "Offer sold";
 }
@@ -96,19 +96,23 @@ export default async function OriginatePage({
 }) {
   const params = await searchParams;
   const status = parseStatus(params.status);
-  const book = await loadBook();
-  const totals = bookTotals(book);
-  const attention = attentionItems(book);
+  const [book, user] = await Promise.all([loadBook(), getOptionalUser()]);
+  const scopedBook = {
+    ...book,
+    offers: user ? offersForAccount(book, user.id) : [],
+  };
+  const totals = bookTotals(scopedBook);
+  const attention = attentionItems(scopedBook);
   const filtered =
     status === "all"
-      ? book.offers
+      ? scopedBook.offers
       : status === "live"
-        ? book.offers.filter(
+        ? scopedBook.offers.filter(
             (offer) =>
               effectiveOfferStatus(offer) === "collecting" ||
               effectiveOfferStatus(offer) === "live",
           )
-        : book.offers.filter((offer) => effectiveOfferStatus(offer) === status);
+        : scopedBook.offers.filter((offer) => effectiveOfferStatus(offer) === status);
   const offers = sortOffersForLandlordList(filtered);
 
   return (
@@ -130,7 +134,6 @@ export default async function OriginatePage({
           </div>
         }
       />
-
       <details
         open={status !== "all"}
         className="rounded-xl bg-card shadow-xs ring-1 ring-foreground/10"
@@ -171,7 +174,7 @@ export default async function OriginatePage({
         <>
           <div className="grid gap-3 md:hidden">
             {offers.map((offer) => {
-              const proceeds = landlordProceedsPresentation(offer);
+              const proceeds = proceedsPresentation(offer);
               const nextStep = nextOfferStep(offer, proceeds);
               const effectiveStatus = effectiveOfferStatus(offer);
               return (
@@ -180,7 +183,7 @@ export default async function OriginatePage({
                   href={`/originate/${offer.reference}`}
                   className={cn(
                     "rounded-xl border bg-card px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    proceeds.status === "processing" && "bg-primary/5",
+                    proceeds.minted && !proceeds.purchased && "bg-primary/5",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -191,17 +194,17 @@ export default async function OriginatePage({
                       </p>
                     </div>
                     <StatusBadge tone={statusTone(effectiveStatus)}>
-                      {statusLabel(effectiveStatus)}
+                      {customerStatusLabel(effectiveStatus)}
                     </StatusBadge>
                   </div>
                   <p className="mt-2 text-sm">
-                    <Money cents={offer.purchasePriceCents} /> · {offer.months}{" "}
+                    <Money cents={offer.purchasePriceCents} showUsd /> · {offer.months}{" "}
                     months
                   </p>
                   <p
                     className={cn(
                       "mt-1 text-sm",
-                      proceeds.status === "processing"
+                      proceeds.minted && !proceeds.purchased
                         ? "font-medium text-primary"
                         : "text-muted-foreground",
                     )}
@@ -226,20 +229,21 @@ export default async function OriginatePage({
               </TableHeader>
               <TableBody>
                 {offers.map((offer) => {
-                  const proceeds = landlordProceedsPresentation(offer);
+                  const proceeds = proceedsPresentation(offer);
                   const nextStep = nextOfferStep(offer, proceeds);
                   const effectiveStatus = effectiveOfferStatus(offer);
                   return (
                     <TableRow
                       key={offer.reference}
                       className={cn(
-                        proceeds.status === "processing" && "bg-primary/5",
+                        "relative",
+                        proceeds.minted && !proceeds.purchased && "bg-primary/5",
                       )}
                     >
                       <TableCell className="font-medium">
                         <Link
                           href={`/originate/${offer.reference}`}
-                          className="hover:underline"
+                          className="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                         >
                           {offer.reference}
                         </Link>
@@ -253,18 +257,18 @@ export default async function OriginatePage({
                         ) : null}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Money cents={offer.purchasePriceCents} />
+                        <Money cents={offer.purchasePriceCents} showUsd />
                       </TableCell>
                       <TableCell>{offer.months} months</TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTone(effectiveStatus)}>
-                          {statusLabel(effectiveStatus)}
+                          {customerStatusLabel(effectiveStatus)}
                         </StatusBadge>
                       </TableCell>
                       <TableCell
                         className={cn(
                           "text-sm",
-                          proceeds.status === "processing" &&
+                          proceeds.minted && !proceeds.purchased &&
                             "font-medium text-primary",
                         )}
                       >

@@ -10,9 +10,13 @@ import { Money } from "@/components/money-display";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ARREARS_LADDER } from "@/lib/rent-advance/arrears";
-import { canRecordCollection, statusLabel, statusTone } from "@/lib/rent-advance/helpers";
+import { canRecordCollection, customerStatusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { getOffer, loadBook } from "@/lib/rent-advance/store";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
+import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
+import { MintControl } from "./mint-control";
+import { requireAdminUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +32,17 @@ export async function generateMetadata({
 }
 
 export default async function AdminOfferPage({ params }: { params: Params }) {
+  await requireAdminUser();
   const { ref } = await params;
   const [offer, book] = await Promise.all([getOffer(ref), loadBook()]);
   if (!offer) notFound();
 
+  const onchain = mergeOnchain(offer.onchain);
+  const configured = Boolean(onchain.contractAddress ?? book.cryptoConfig?.offerNftContract);
+  const minterAddress = merkadoMinterAddressOrNull();
   const nextReceivable =
     offer.receivables.find((row) => row.status === "scheduled") ?? null;
   const missed = offer.receivables.find((row) => row.status === "missed");
-  const releasable = offer.collections.filter(
-    (row) => row.status === "received" || row.status === "reconciled",
-  );
 
   let quote = null;
   try {
@@ -60,7 +65,7 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
         actions={
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone={statusTone(offer.status)}>
-              {statusLabel(offer.status)}
+              {customerStatusLabel(offer.status)}
             </StatusBadge>
             <Button variant="outline" size="sm" asChild>
               <Link href="/admin">All offers</Link>
@@ -103,15 +108,26 @@ export default async function AdminOfferPage({ params }: { params: Params }) {
         </Card>
       </div>
 
+      <MintControl
+        configured={configured}
+        tokenId={onchain.tokenId}
+        contractAddress={onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null}
+        mintTxHash={onchain.mintTxHash}
+        purchased={onchain.purchased}
+        minterAddress={minterAddress}
+      />
+
       <OfferAdminForms
         reference={offer.reference}
         status={offer.status}
         nextReceivableN={nextReceivable?.n ?? null}
         actors={book.actors}
-        releasableCollections={releasable}
+        onchainPurchased={onchain.purchased}
+        onchainMinted={onchain.tokenId != null && onchain.mintTxHash != null}
+        onchainMintPending={onchain.tokenId == null && onchain.mintTxHash != null}
       />
 
-      {canRecordCollection(offer.status) ? (
+      {canRecordCollection(offer.status) && !onchain.purchased ? (
         <p className="text-sm text-muted-foreground">
           Live renter payments land on this listing’s offer. The holder then
           claims them from Portfolio. Record collection is the fallback.

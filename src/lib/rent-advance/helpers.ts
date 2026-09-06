@@ -1,4 +1,4 @@
-import { mergeCustody } from "@/lib/rent-advance/custody";
+import { mergeOnchain, type MintState } from "@/lib/rent-advance/custody";
 import { positionIdFor, receivableIdFor } from "@/lib/rent-advance/ids";
 import { formatXcg } from "@/lib/rent-advance/money";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
@@ -159,6 +159,11 @@ export function remainingOfferingCents(offer: { offeringCents: number; fundedCen
   return Math.max(0, offer.offeringCents - offer.fundedCents);
 }
 
+/**
+ * Display-only 60-day listing window. This is informational text only —
+ * it is never enforced. Offers stay purchasable after the date, no Expired
+ * status derives from it, and the contract has no expiry.
+ */
 export function listingExpiresAt(publishedAt: string | null): string | null {
   if (!publishedAt) return null;
   const expires = new Date(publishedAt);
@@ -167,27 +172,22 @@ export function listingExpiresAt(publishedAt: string | null): string | null {
   return expires.toISOString();
 }
 
-export function isListingExpired(
-  expiresAt: string | null | undefined,
-  at = new Date().toISOString(),
-): boolean {
-  if (!expiresAt) return false;
-  const expires = Date.parse(expiresAt);
-  const now = Date.parse(at);
-  return !Number.isFinite(expires) || !Number.isFinite(now) || expires <= now;
-}
-
 export function effectiveOfferStatus(
   offer: { status: OfferStatus; expiresAt?: string | null },
-  at = new Date().toISOString(),
 ): OfferStatus {
-  if (
-    offer.status === "funding" &&
-    (!offer.expiresAt || isListingExpired(offer.expiresAt, at))
-  ) {
-    return "expired";
-  }
   return offer.status;
+}
+
+
+/** True when an approved offer still needs minting (not broadcast, or broadcast
+ *  but not yet verified to 5-block depth). */
+export function isPendingMintOffer(offer: {
+  status: OfferStatus;
+  onchain?: Offer["onchain"];
+}): boolean {
+  if (offer.status !== "funding") return false;
+  const onchain = mergeOnchain(offer.onchain);
+  return onchain.mintTxHash == null || onchain.tokenId == null;
 }
 
 export function canSubscribe(
@@ -196,11 +196,11 @@ export function canSubscribe(
   fundedCents: number,
   expiresAt?: string | null,
   at?: string,
+  minted = true,
 ): boolean {
   return (
     (status === "funding" || status === "live" || status === "collecting") &&
-    (status !== "funding" || Boolean(expiresAt)) &&
-    !isListingExpired(expiresAt, at) &&
+    minted &&
     remainingOfferingCents({ offeringCents, fundedCents }) > 0
   );
 }
@@ -238,7 +238,7 @@ export function statusLabel(status: OfferStatus): string {
     case "live":
       return "Sold";
     case "funding":
-      return "Listed";
+      return "Mint pending";
     case "collecting":
       return "Sold";
     case "denied":
@@ -251,6 +251,57 @@ export function statusLabel(status: OfferStatus): string {
       return "Default";
     case "draft":
       return "Draft";
+  }
+}
+
+/**
+ * Customer-facing status label. Mint details never reach these surfaces:
+ * an approved offer reads "Listed" whether or not its NFT is minted, and a
+ * purchased offer stays "Sold" (the landlord proceeds card shows "Paid").
+ */
+export function customerStatusLabel(status: OfferStatus): string {
+  switch (status) {
+    case "under_review":
+      return "Under review";
+    case "funding":
+      return "Listed";
+    case "live":
+    case "collecting":
+      return "Sold";
+    case "denied":
+      return "Denied";
+    case "expired":
+      return "Expired";
+    case "closed":
+      return "Closed";
+    case "default":
+      // An arrears outcome after a sale: the offer is still sold to a holder,
+      // so customers keep reading "Sold". "Default" stays an internal label.
+      return "Sold";
+    case "draft":
+      return "Draft";
+  }
+}
+
+/**
+ * Mint-aware display label. A `funding` offer stays "Mint pending" only until
+ * its offer NFT is minted; once minted it reads "Listed" (matching the
+ * Marketplace card), even though `offer.status` is still `funding`. The status
+ * only moves to `live`/`collecting` on purchase.
+ */
+export function displayStatusLabel(status: OfferStatus, minted: boolean): string {
+  if (status === "funding") return minted ? "Listed" : "Mint pending";
+  return statusLabel(status);
+}
+
+export function mintStateLabel(state: MintState): string {
+  switch (state) {
+    case "not_minted":
+      return "Mint pending";
+    case "minted":
+      return "Listed";
+    case "purchased":
+      return "Sold";
   }
 }
 
@@ -271,6 +322,44 @@ export function paymentStatusLabel(
   }
 }
 
+const OPEN_PAYMENT_STATUSES = new Set<PaymentRequestStatus>([
+  "due",
+  "initiated",
+  "pending",
+  "failed",
+  "partial",
+  "overdue",
+]);
+
+export type PaymentRowLike = {
+  paymentRequestId: string;
+  status: PaymentRequestStatus;
+  dueDate: string;
+};
+
+/** Earliest-actionable open requests, oldest due date first. */
+export function openPaymentRequests<T extends PaymentRowLike>(requests: T[]): T[] {
+  return requests
+    .filter((row) => OPEN_PAYMENT_STATUSES.has(row.status))
+    .slice()
+    .sort(
+      (a, b) =>
+        a.dueDate.localeCompare(b.dueDate) ||
+        a.paymentRequestId.localeCompare(b.paymentRequestId),
+    );
+}
+
+/** True when an earlier open request exists before `row` (so `row` is Upcoming). */
+export function isUpcomingPaymentRequest<T extends PaymentRowLike>(
+  requests: T[],
+  row: T,
+): boolean {
+  if (!OPEN_PAYMENT_STATUSES.has(row.status)) return false;
+  const open = openPaymentRequests(requests);
+  const index = open.findIndex((item) => item.paymentRequestId === row.paymentRequestId);
+  return index > 0;
+}
+
 export function canRecordCollection(status: OfferStatus): boolean {
   return status === "live" || status === "collecting" || status === "default";
 }
@@ -279,14 +368,24 @@ export function isMarketplaceStatus(status: OfferStatus): boolean {
   return status !== "draft" && status !== "under_review" && status !== "denied";
 }
 
+export function marketplaceOfferFilter(offer: Offer): boolean {
+  const onchain = mergeOnchain(offer.onchain);
+  return (
+    ["funding", "live", "collecting"].includes(offer.status) &&
+    !isPendingMintOffer(offer) &&
+    !onchain.purchased &&
+    remainingOfferingCents(offer) > 0
+  );
+}
+
 export function canShowContribute(
   status: OfferStatus,
   expiresAt?: string | null,
+  minted = true,
 ): boolean {
   return (
     (status === "live" || status === "funding" || status === "collecting") &&
-    (status !== "funding" || Boolean(expiresAt)) &&
-    !isListingExpired(expiresAt)
+    minted
   );
 }
 
@@ -299,6 +398,7 @@ export function payerPayee(offer: Offer): string {
 export function anonymizeOffer(offer: Offer): BuyerOfferCard {
   const derived = propertyScoreFor(offer);
   const district = publicDistrictName(offer.property.district);
+  const onchain = mergeOnchain(offer.onchain);
   return {
     reference: offer.reference,
     district,
@@ -319,7 +419,13 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     scheduledAnnualised: offer.effectiveAnnualised > 0 ? 0.102 : 0.102,
     status: offer.status,
     expiresAt: offer.expiresAt,
+    publishedAt: offer.publishedAt,
     coverImageSrc: offer.property.coverImageSrc ?? null,
+    minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
+    tokenId: onchain.tokenId,
+    contractAddress: onchain.contractAddress,
+    purchased: onchain.purchased,
+    pendingPurchase: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
   };
 }
 
@@ -361,10 +467,10 @@ export function distributionTotals(book: DemoBook, offer: Offer) {
   return {
     collectedCents: distributionsReceivedCents(offer),
     pendingDistributionCents: rows
-      .filter((row) => row.status === "pending")
+      .filter((row) => row.status === "claimable")
       .reduce((sum, row) => sum + row.amountCents, 0),
     distributedCents: rows
-      .filter((row) => row.status === "distributed")
+      .filter((row) => row.status === "claimed")
       .reduce((sum, row) => sum + row.amountCents, 0),
     settlementTxHash: null,
   };
@@ -379,10 +485,11 @@ export function toPortfolioPosition(offer: Offer, book?: DemoBook): PortfolioPos
         distributedCents: distributionsReceivedCents(offer),
         settlementTxHash: null,
       };
+  const onchain = mergeOnchain(offer.onchain);
   return {
     ...anonymizeOffer(offer),
     positionId: positionIdFor(offer.reference),
-    offerAddress: mergeCustody(offer.custody).nftPaymentAddress,
+    offerAddress: onchain.contractAddress,
     receivedCents: money.collectedCents,
     remainingCents: outstandingCents(offer),
     collectedCents: money.collectedCents,
@@ -479,7 +586,7 @@ export function attentionItems(book: DemoBook): AttentionItem[] {
 export function bookTotals(book: DemoBook) {
   const counted = book.offers.filter(countsAsAdvanced);
   const totalAdvanced = counted.reduce(
-    (sum, offer) => sum + mergeCustody(offer.custody).landlordClaimedCents,
+    (sum, offer) => sum + (mergeOnchain(offer.onchain).landlordPaid ? offer.purchasePriceCents : 0),
     0,
   );
   const outstanding = counted.reduce(

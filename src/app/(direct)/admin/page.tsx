@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import { CopyValue } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
-import { PayNetworkControl } from "@/components/pay-network-control";
 import { ResetDemoButton } from "@/components/reset-demo-button";
+import { MintSweep } from "@/components/rent-advance/mint-sweep";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Money } from "@/components/money-display";
@@ -17,21 +17,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { isTestnetConfig, mainnetSelectionAllowed } from "@/lib/pay/networks";
-import { sortOffersForLandlordList, statusLabel, statusTone } from "@/lib/rent-advance/helpers";
+import { OP_MAINNET_NETWORK_LABEL } from "@/lib/pay/networks";
+import {
+  sortOffersForLandlordList,
+  statusTone,
+  customerStatusLabel,
+} from "@/lib/rent-advance/helpers";
+import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
 import { loadBook } from "@/lib/rent-advance/store";
+import { merkadoMinterAddressOrNull } from "@/lib/onchain/minter";
+import { requireAdminUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
 
 export default async function AdminPage() {
+  await requireAdminUser();
   const book = await loadBook();
+  const minterAddress = merkadoMinterAddressOrNull();
+  const configured = Boolean(book.cryptoConfig?.offerNftContract);
   const offers = sortOffersForLandlordList(book.offers);
   const review = offers.filter((offer) => offer.status === "under_review");
-  const funding = offers.filter((offer) => offer.status === "funding");
 
   return (
     <div className="space-y-6">
+      <MintSweep />
       <PageHeader
         title="Admin"
         description="Approve offers, record collections, set the payment network, and restore the starting book."
@@ -63,28 +73,13 @@ export default async function AdminPage() {
         </Card>
       ) : null}
 
-      {funding.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Open on Marketplace</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            {funding.map((offer) => (
-              <p key={offer.reference}>
-                {offer.reference} · {offer.property.summary} ·{" "}
-                <Money cents={offer.offeringCents - offer.fundedCents} /> remaining
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
-
       <div className="overflow-x-auto rounded-xl border bg-card">
-        <Table className="min-w-[720px]">
+        <Table className="min-w-[840px]">
           <TableHeader>
             <TableRow>
               <TableHead>Offer</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Chain</TableHead>
               <TableHead>Rent</TableHead>
               <TableHead>Purchase</TableHead>
               <TableHead>Filled</TableHead>
@@ -92,87 +87,107 @@ export default async function AdminPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {offers.map((offer) => (
-              <TableRow key={offer.reference}>
-                <TableCell>
-                  <p className="font-medium">{offer.reference}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {offer.property.district} · {offer.property.summary}
-                  </p>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge tone={statusTone(offer.status)}>
-                    {statusLabel(offer.status)}
-                  </StatusBadge>
-                </TableCell>
-                <TableCell>
-                  <Money cents={offer.monthlyRentCents} />
-                </TableCell>
-                <TableCell>
-                  <Money cents={offer.purchasePriceCents} />
-                </TableCell>
-                <TableCell>
-                  <Money cents={offer.fundedCents} compact /> /{" "}
-                  <Money cents={offer.offeringCents} compact />
-                </TableCell>
-                <TableCell>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/admin/${offer.reference}`}>Manage</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {offers.map((offer) => {
+              const onchain = mergeOnchain(offer.onchain);
+              const state = mintState(offer);
+              return (
+                <TableRow key={offer.reference}>
+                  <TableCell>
+                    <p className="font-medium">{offer.reference}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {offer.property.district} · {offer.property.summary}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge tone={statusTone(offer.status)}>
+                      {customerStatusLabel(offer.status)}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm font-medium">
+                      {state === "purchased"
+                        ? "Purchased"
+                        : state === "minted"
+                          ? `Minted · token ${onchain.tokenId}`
+                          : onchain.mintTxHash
+                            ? "Mint in progress"
+                            : "Not minted"}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Money cents={offer.monthlyRentCents} />
+                  </TableCell>
+                  <TableCell>
+                    <Money cents={offer.purchasePriceCents} />
+                  </TableCell>
+                  <TableCell>
+                    <Money cents={offer.fundedCents} compact /> /{" "}
+                    <Money cents={offer.offeringCents} compact />
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/admin/${offer.reference}`}>Manage</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Safes and listing offers (mocked)</CardTitle>
+          <CardTitle>Contract and addresses (Optimism Mainnet)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            Landlords never sign. Merkado creates one offer per listing from
-            the company Safe. Sale funds go to a separate sales proceeds Safe.
-            After a sale, that listing collects rent. Holders claim it from
-            Portfolio. Merkado is not holding monthly rent.
+            Landlords never sign. The backend mints one offer NFT per
+            listing. A buyer pays the purchase price to the payout address
+            locked at mint, and rent is deposited into the offer contract.
           </p>
           <div className="space-y-3">
             <AddressRow
-              title="Company Safe"
-              copyLabel="company Safe"
-              value={book.cryptoConfig?.companySafeAddress ?? ""}
-              tip="Merkado creates each listing offer from this address after approval. Landlords never connect a wallet or sign from here."
+              title="Merkado operator (minter)"
+              copyLabel="Merkado operator"
+              value={minterAddress ?? book.cryptoConfig?.companySafeAddress ?? ""}
+              tip="The backend key that mints each offer NFT after Admin approval. Landlords never connect a wallet or sign."
             />
             <AddressRow
-              title="Sales proceeds Safe"
-              copyLabel="sales proceeds Safe"
-              value={book.cryptoConfig?.salesProceedsSafeAddress ?? ""}
-              tip="Sale money from a purchased offer lands here. The landlord later claims the purchase price from this pot. Monthly rent does not go here."
+              title="USDC contract"
+              copyLabel="USDC contract"
+              value={book.cryptoConfig?.usdcContract ?? ""}
+              tip="Circle native USDC for the selected network. Rent and purchases settle 1:1 with stored USD."
             />
             <AddressRow
-              title="Offer factory"
-              copyLabel="offer factory"
+              title="Merkado offer contract"
+              copyLabel="offer contract"
               value={book.cryptoConfig?.offerNftContract ?? ""}
-              tip="The contract Merkado uses to create one listing offer per listing, so the product can track it and later collect rent on that listing. This is not a wallet and not where money sits."
+              tip={
+                configured
+                  ? "The deployed Merkado Rent Offer contract, from NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS. Mint and purchases happen here."
+                  : "Not configured. Set NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS to activate live flows."
+              }
             />
           </div>
         </CardContent>
       </Card>
 
-      <PayNetworkControl
-        networkKey={book.cryptoConfig?.networkKey ?? ""}
-        networkLabel={book.cryptoConfig?.networkLabel?.trim() || "Network to be confirmed"}
-        isTestnet={isTestnetConfig(book.cryptoConfig)}
-        allowMainnet={mainnetSelectionAllowed()}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment network</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          {OP_MAINNET_NETWORK_LABEL} is the only supported network for this deployment.
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium">Reset the book</p>
           <p className="text-sm text-muted-foreground">
             Restores the seeded offers, payments, and positions. Keeps the
-            selected test network.
+            active Optimism Mainnet configuration. Reset does not roll back the chain.
           </p>
         </div>
         <ResetDemoButton />

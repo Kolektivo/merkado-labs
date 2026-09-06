@@ -2,7 +2,7 @@
 
 **Purpose:** Privacy, authentication, authorization, RLS, and environment safety
 for Merkado Labs.
-**Last updated:** August 21, 2026 (payout-first and bank-preview privacy)
+**Last updated:** August 25, 2026 (display-only 60-day window, reset/new epoch, QR informational, customer statuses)
 
 **Enforcement:** `.cursor/rules/merkado-labs-safety.mdc` (do not weaken).
 **Related:** `05-architecture.md`, `06-data-model.md`, `12-deployment-runbook.md`.
@@ -17,7 +17,7 @@ The live Merkado system must remain completely untouched.
 **Allowed Supabase target only:**
 
 - name: `merkado-labs`
-- project reference: `csaefdkpwukshtouyixg`
+- project reference: `ewoxmzznkavapcxdporm`
 - region (Labs identity): `eu-west-3`
 
 **Forbidden production target:**
@@ -60,16 +60,15 @@ Never:
 
 ## 3. Demo access
 
-- There is no Merkado login and no admin cookie.
-- After this change is deployed with `LABS_DEMO_PASSWORD` set on Vercel
-  Production, the hosted demo uses a shared host password. Visitors see
-  `/enter` until that password is entered. This is not a customer
-  account. Do not use the paid Vercel password add-on. The live URL is
-  still open until that deploy.
+- Labs uses Supabase Auth with email magic links only. This is a
+  Labs demo identity, not production Merkado authentication.
+- `LABS_DEMO_PASSWORD` is a deployment gate before sign-in. When configured,
+  hosted users must pass the gate and authenticate before protected routes
+  open. Do not use the paid Vercel password add-on.
 - Local `npm run dev` stays open unless `LABS_DEMO_PASSWORD` is set.
 - Hosted production stays locked if that password is missing.
-- The Merkado account mock is fictional Labs UI. It does not reuse
-  production auth or profile queries.
+- Each authenticated user owns an isolated Labs demo book. The app uses the
+  Labs Supabase project only and does not reuse production profiles or data.
 - Reset the book is in Admin so a walkthrough can restore the seeded book.
 
 ## 4. Authorization and RLS
@@ -80,8 +79,7 @@ Never:
 - Server components and server actions use the Labs service role. Browser
   code never receives that key.
 - Offer server actions strip undeclared root and nested fields before writing
-  the shared JSON book. This also blocks crafted Girasol / Sentoo-style bank
-  fields from being retained; the visible previews stay client-only.
+  the shared JSON book. Crafted or unknown fields are never retained.
 - Dual-control release is rejected if instructor and signatory are the same person
   (application check on every save, and a database trigger on `ra_demo_state`).
 
@@ -105,61 +103,76 @@ point any leftover script at those names.
 - Do not add a new frontend surface, browser automation, AI framework, vector
   database, or knowledge-graph technology without an explicit task.
 - Keep work focused on the Curaçao Direct / Pay demo.
-- Wallet, Safe, USDC, transactions, and distributions remain mocked until
-  a separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK before that approval. When that adapter ships, flip
-  `PAYMENT_RAIL_MODE` to `"live"` in the same change and confirm Pay from
-  chain data on the server — do not keep the 1.4s client auto-confirm.
-- No real transaction can be initiated from any control.
+- The Optimism Mainnet flow is the only active crypto implementation
+  (ADR-0008): one non-upgradeable ERC-721 (`MerkadoRentOfferV1`), pooled USDC
+  rent per token id, backend mint key, transferable NFT where the current
+  owner is the holder, whole-offer purchase paid to the locked landlord
+  address, `depositRent` (exact monthly amount), and
+  `claimRent` by the current owner. There is no mock provider,
+  `PAYMENT_RAIL_MODE`, demo wallet, demo outcome menu, or demo hashes.
+- **Not approved and not activated:** contract deployment, applying the chain
+  store migration, sending test USDC, Safe transactions, hosted activation,
+  and merging the PR. Uncontrolled real funds and production stay blocked.
+  A client can never mark rent paid on its own; the server confirms from
+  verified chain events.
+- No real transaction can be initiated before the deployment gates close and
+  the Product Lead approves.
 
 Operational detail: `12-deployment-runbook.md`.
 
 ## 7. Privacy walls
 
+- Wallet addresses, token ids, and payout amounts are **public on-chain**
+  once the contract is active. Tenant and property identity stay off-chain.
 - Payer screens: no fee, purchase price, holders, or scheduled holder figures.
   The browser receives only public network facts (network, chain, token,
-  decimals, explorer), never company / proceeds Safe fields or the offer
-  factory from the full crypto config.
+  decimals, explorer) and the public contract address.
 - Purchaser screens: no tenant name, employer, address, contact, or exact
   income. Address-like free text is replaced with a neutral Curaçao label
   before entering the purchaser payload.
-- Landlord screens: no holder wallet or Safe address. The local mock accepts a
-  fictional `0xDEMO…` payout address before offer submission; users do not
-  connect a wallet. The whole-offer purchase marks payout automatic. That value
-  stays server-side and must not appear on
-  Marketplace, Pay, or Portfolio.
-- Automatic landlord payouts never show a mock transaction hash or explorer
-  link. Paid is final. There is no landlord claim action.
-- Merkado is not a custody product. After sale, monthly rent sits on the
-  listing offer until the holder claims it. Sale proceeds stay in the
-  sales proceeds Safe only until the automatic landlord payout executes.
+- Landlord screens: no holder wallet details beyond the public token owner.
+  The locked landlord payout address stays server-side and must not appear on
+  Marketplace, Pay, or Portfolio surfaces, even though it is on-chain.
+- The landlord payout address is chosen before submission and locked for the
+  offer; the buyer pays that exact address. There is no landlord claim action.
+- Merkado is not a custody product. After sale, monthly rent sits in the
+  pooled contract until the current NFT owner claims it.
 - No public offering copy. Sole-holder mode until written opinions exist.
 - The related-party flag and note are internal review facts. Neither enters
   the purchaser payload. They are not an excuse for softer arrears.
 
-## 8. Mock wallet and payment-link safety
+## 8. Chain safety (Optimism Mainnet flow)
 
-- Mock addresses must be obviously fictional and unusable for real funds.
-- Girasol and Sentoo fields are visual previews only. They must not persist,
-  transmit, log, or autofill real bank details. The UI explicitly asks for
-  fictional values and keeps the action disabled.
-- The mocked **Connect wallet** button must not imply ownership verification.
-  Real purchase and holder claim require server-enforced wallet ownership,
-  network checks, and authorization before this shared book can touch funds.
-- Never put secrets or sensitive identity in a URL.
-- Payment deep-link IDs in this demo are fictional. Production links need
-  opaque, scoped, expiring authorization.
-- Do not silently report a successful saved payment if Labs persistence is
-  unavailable.
+- Never expose the service-role key or `MERKADO_RPC_URL` credentials to
+  browser code, logs, or source control.
+- Server-side verification must check: correct chain (`cryptoConfig.chainId`),
+  exact expected event (mint / purchase / transfer / deposit / claim),
+  exact atomic amount, the current token owner for claims, and at most one
+  confirmed deposit per payment request.
+- A different address is rejected for a locked landlord payout once set.
+- The pooled USDC balance must always be ≥ total deposited-but-unclaimed
+  rent (the contract enforces the invariant; the server verifies it).
 - Show an explorer link only when the base URL is an official catalog
-  explorer (Base Sepolia, Base Mainnet, or a later catalog network) **and** the
-  hash is a real 64-hex `0x` value. Demo `0xDEMO…` hashes must not open
-  the explorer.
-- `confirmPaymentAction` is a Labs mock write. It must not trust a client
-  ledger id. Live Pay must confirm from chain data on the server.
-- The shared walkthrough persists **Base Sepolia**. Mainnet
-  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
+  official Optimism Mainnet explorer **and** the
+  hash is a real 64-hex `0x` value. There are no demo hashes.
+- The chain store tables (`ra_chain_*`, `ra_rent_*`) have RLS on and no
+  `anon` / `authenticated` grants. They are written only by server-side
+  verification.
+- The shared walkthrough persists **Optimism Mainnet** only. There is no
+  network selector or testnet fallback.
   Short names such as `base` or `op` must not select mainnet.
+- The Pay QR and **copy address** / **copy amount** controls are
+  **informational only** — they display the receiving address, USDC amount,
+  and payment reference and never submit (or encourage) a plain USDC
+  transfer. The only payment path is the wallet **Pay rent** action calling
+  `depositRent(tokenId, opaquePaymentId, amount)`.
+- Admin **Reset** does **not** roll back the chain. It seeds a fresh demo
+  book (canonical offers as `funding`, empty on-chain state) and starts a
+  **new chain-store epoch** so old on-chain facts are never reused; the env
+  contract address stays active so approved offers mint again on the same
+  deployment.
+- An empty `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` must show a not-configured
+  state and never fake a transaction.
 
 ## 9. Service-role credential rules
 

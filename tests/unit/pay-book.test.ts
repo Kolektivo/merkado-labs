@@ -2,17 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  BASE_MAINNET_NETWORK_KEY,
-  BASE_SEPOLIA_CHAIN_ID,
-  BASE_SEPOLIA_NETWORK_KEY,
-  BASE_SEPOLIA_NETWORK_LABEL,
-  BASE_SEPOLIA_USDC_CONTRACT,
   DEFAULT_PAY_NETWORK_KEY,
   OP_MAINNET_CHAIN_ID,
+  OP_MAINNET_NETWORK_LABEL,
   OP_MAINNET_NETWORK_KEY,
-  OP_SEPOLIA_CHAIN_ID,
-  OP_SEPOLIA_EXPLORER_BASE_URL,
-  OP_SEPOLIA_NETWORK_KEY,
+  OP_MAINNET_USDC_CONTRACT,
   canPersistPayNetwork,
   isOfficialExplorerBaseUrl,
   isSelectablePayNetwork,
@@ -23,23 +17,27 @@ import {
   visiblePayNetworks,
 } from "@/lib/pay/networks";
 import { formatUsd, usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
-import { createMockPaymentProvider } from "@/lib/pay/mock-provider";
 import { independentApproverById } from "@/lib/rent-advance/actors";
 import { attentionItems, bookTotals } from "@/lib/rent-advance/helpers";
+import { payoutAddressLocked } from "@/lib/rent-advance/custody";
 import {
   CANONICAL_PAYMENT_REQUEST_ID,
   collectionIdFor,
+  DEMO_LANDLORD_EOA,
   isExplorableTxHash,
   paymentTxIdFor,
 } from "@/lib/rent-advance/ids";
 import {
-  applyPaymentOutcome,
+  applyVerifiedPurchase,
+  applyVerifiedRentDeposit,
   cryptoConfigFor,
   currentRenterPaymentRequest,
   earlierOpenPaymentRequest,
   emptyCryptoConfig,
   mergeCryptoConfig,
   normalizeBook,
+  type VerifiedPurchaseFacts,
+  type VerifiedRentDepositFacts,
 } from "@/lib/rent-advance/payment-apply";
 import {
   CANONICAL_REFERENCE,
@@ -47,6 +45,75 @@ import {
   dropRetiredDemoOffers,
   getSeedBook,
 } from "@/lib/rent-advance/seed";
+import type { DemoBook } from "@/lib/rent-advance/types";
+
+const BUYER = "0x5555555555555555555555555555555555555555";
+const PAYER = "0x4444444444444444444444444444444444444444";
+const TX_PURCHASE = "0x" + "c".repeat(64);
+const TX_RENT = "0x" + "d".repeat(64);
+const OPAQUE = "0x" + "e".repeat(64);
+const CONTRACT = "0x1111111111111111111111111111111111111111";
+
+function mintOffer(book: DemoBook, reference: string, tokenId: number): DemoBook {
+  const offer = book.offers.find((row) => row.reference === reference);
+  assert.ok(offer);
+  offer.onchain = {
+    tokenId,
+    offerKey: "0x" + "a".repeat(64),
+    contractAddress: CONTRACT,
+    epochId: "epoch-test",
+    mintTxHash: "0x" + "b".repeat(64),
+    mintBlockNumber: "100",
+    purchased: false,
+    purchaseTxHash: null,
+    purchaserAddress: null,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    landlordPaid: false,
+    claimableRentCents: 0,
+    claimedRentCents: 0,
+  };
+  return book;
+}
+
+function buyOffer(
+  book: DemoBook,
+  reference: string,
+  at: string,
+  tokenId = 1,
+): DemoBook {
+  const minted = mintOffer(book, reference, tokenId);
+  const offer = minted.offers.find((row) => row.reference === reference);
+  assert.ok(offer);
+  const facts: VerifiedPurchaseFacts = {
+    tokenId,
+    purchaserAddress: BUYER,
+    txHash: TX_PURCHASE,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    purchasePriceAtomic: BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)),
+  };
+  return applyVerifiedPurchase(minted, reference, facts, at);
+}
+
+function payRent(
+  book: DemoBook,
+  paymentRequestId: string,
+  at: string,
+): DemoBook {
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  assert.ok(request);
+  const offer = book.offers.find((row) => row.reference === request.offerReference);
+  assert.ok(offer?.onchain?.tokenId != null);
+  const facts: VerifiedRentDepositFacts = {
+    tokenId: offer.onchain.tokenId,
+    opaquePaymentId: OPAQUE,
+    payerAddress: PAYER,
+    amountAtomic: BigInt(request.amountUsdcAtomic),
+    txHash: TX_RENT,
+  };
+  return applyVerifiedRentDeposit(book, paymentRequestId, facts, at);
+}
 
 test("MRA-001 USD 1800 becomes 1800000000 atomic USDC", () => {
   const atomic = usdcAtomicFromUsdCents(180000);
@@ -55,19 +122,13 @@ test("MRA-001 USD 1800 becomes 1800000000 atomic USDC", () => {
   assert.equal(formatUsd(180000), "$1,800.00");
 });
 
-test("demo crypto config defaults to Base Sepolia native USDC", () => {
+test("demo crypto config defaults to Optimism Mainnet native USDC", () => {
   const config = emptyCryptoConfig();
   assert.equal(config.networkKey, DEFAULT_PAY_NETWORK_KEY);
-  assert.equal(config.networkLabel, BASE_SEPOLIA_NETWORK_LABEL);
-  assert.equal(config.chainId, BASE_SEPOLIA_CHAIN_ID);
-  assert.equal(config.usdcContract, BASE_SEPOLIA_USDC_CONTRACT);
-  assert.equal(mergeCryptoConfig({ networkLabel: null }).networkLabel, BASE_SEPOLIA_NETWORK_LABEL);
-
-  const request = getSeedBook().paymentRequests?.find(
-    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
-  );
-  assert.ok(request);
-  assert.equal(request.amountUsdcAtomic, 1_800_000_000);
+   assert.equal(config.networkLabel, OP_MAINNET_NETWORK_LABEL);
+   assert.equal(config.chainId, OP_MAINNET_CHAIN_ID);
+   assert.equal(config.usdcContract, OP_MAINNET_USDC_CONTRACT);
+   assert.equal(mergeCryptoConfig({ networkLabel: null }).networkLabel, OP_MAINNET_NETWORK_LABEL);
 
   const publicConfig = toPublicCryptoConfig(getSeedBook().cryptoConfig);
   assert.ok(publicConfig);
@@ -77,38 +138,48 @@ test("demo crypto config defaults to Base Sepolia native USDC", () => {
   assert.equal("offerNftContract" in publicConfig, false);
 });
 
-test("Admin only offers Base networks until Luis opts into Optimism", () => {
-  const visible = visiblePayNetworks(false);
+test("Admin exposes only Optimism Mainnet", () => {
+  const visible = visiblePayNetworks();
   assert.deepEqual(
     visible.map((network) => network.key),
-    [BASE_SEPOLIA_NETWORK_KEY],
+    [OP_MAINNET_NETWORK_KEY],
   );
-  assert.equal(isSelectablePayNetwork(BASE_SEPOLIA_NETWORK_KEY), true);
-  assert.equal(isSelectablePayNetwork(OP_SEPOLIA_NETWORK_KEY), false);
-  assert.equal(isSelectablePayNetwork(BASE_MAINNET_NETWORK_KEY), false);
+  assert.equal(isSelectablePayNetwork(OP_MAINNET_NETWORK_KEY), true);
 });
 
-test("legacy OP books rematch to Base Sepolia", () => {
-  assert.equal(resolvePayNetworkKey({ networkKey: "optimism" }), DEFAULT_PAY_NETWORK_KEY);
+test("stored network configuration resolves to Optimism Mainnet", () => {
+  assert.equal(resolvePayNetworkKey({ networkKey: "base-sepolia", chainId: 84532 }), DEFAULT_PAY_NETWORK_KEY);
   assert.equal(
-    mergeCryptoConfig({ networkKey: "optimism", chainId: OP_MAINNET_CHAIN_ID }).networkKey,
-    BASE_SEPOLIA_NETWORK_KEY,
-  );
-  assert.equal(
-    mergeCryptoConfig({ networkKey: OP_SEPOLIA_NETWORK_KEY, chainId: OP_SEPOLIA_CHAIN_ID })
-      .networkKey,
-    BASE_SEPOLIA_NETWORK_KEY,
+    mergeCryptoConfig({ networkKey: "base-sepolia", chainId: 84532 }).networkKey,
+    OP_MAINNET_NETWORK_KEY,
   );
 });
 
-test("selected testnet and later mainnet facts stay catalog-owned", () => {
-  const baseSepolia = cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY);
-  assert.equal(baseSepolia.chainId, BASE_SEPOLIA_CHAIN_ID);
-  assert.equal(baseSepolia.usdcContract, BASE_SEPOLIA_USDC_CONTRACT);
-
+test("network facts stay catalog-owned", () => {
   const opMainnet = cryptoConfigFor(OP_MAINNET_NETWORK_KEY);
   assert.equal(opMainnet.networkKey, OP_MAINNET_NETWORK_KEY);
   assert.equal(opMainnet.chainId, OP_MAINNET_CHAIN_ID);
+});
+
+test("the env contract address is used every time, even after Reset clears it", () => {
+  const previous = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS;
+  process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS =
+    "0x1111111111111111111111111111111111111111";
+  try {
+    assert.equal(
+     cryptoConfigFor(OP_MAINNET_NETWORK_KEY, { offerNftContract: null })
+        .offerNftContract?.toLowerCase(),
+      "0x1111111111111111111111111111111111111111",
+    );
+    assert.equal(
+     cryptoConfigFor(OP_MAINNET_NETWORK_KEY, { offerNftContract: "0x9999999999999999999999999999999999999999" })
+        .offerNftContract?.toLowerCase(),
+      "0x1111111111111111111111111111111111111111",
+    );
+  } finally {
+    if (previous == null) delete process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS;
+    else process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS = previous;
+  }
 });
 
 test("short names do not persist as mainnet", () => {
@@ -118,24 +189,23 @@ test("short names do not persist as mainnet", () => {
   assert.equal(parseExactPayNetworkKey("optimism"), null);
 });
 
-test("stored mainnet rematches to the default testnet unless mainnet is enabled", () => {
-  assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), false);
+test("Optimism Mainnet is the only persistable network", () => {
+  assert.equal(canPersistPayNetwork(OP_MAINNET_NETWORK_KEY), true);
   assert.equal(
     mergeCryptoConfig({ networkKey: OP_MAINNET_NETWORK_KEY }).networkKey,
-    BASE_SEPOLIA_NETWORK_KEY,
+    OP_MAINNET_NETWORK_KEY,
   );
 });
 
-test("official explorers are allowlisted for every catalog network", () => {
-  assert.equal(isOfficialExplorerBaseUrl(OP_SEPOLIA_EXPLORER_BASE_URL), true);
+test("only the Optimism Mainnet explorer is allowlisted", () => {
   assert.equal(isOfficialExplorerBaseUrl("https://optimistic.etherscan.io"), true);
-  assert.equal(isOfficialExplorerBaseUrl("https://sepolia.basescan.org"), true);
-  assert.equal(isOfficialExplorerBaseUrl("https://basescan.org"), true);
+  assert.equal(isOfficialExplorerBaseUrl("https://sepolia.basescan.org"), false);
+  assert.equal(isOfficialExplorerBaseUrl("https://basescan.org"), false);
   assert.equal(isOfficialExplorerBaseUrl("https://evil.example"), false);
 });
 
 test("normalizeBook refreshes a stale USDC amount to the 1:1 USD figure", () => {
-  const book = getSeedBook();
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
   const stale = book.paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
@@ -146,6 +216,27 @@ test("normalizeBook refreshes a stale USDC amount to the 1:1 USD figure", () => 
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
   assert.equal(request?.amountUsdcAtomic, 1_800_000_000);
+});
+
+test("normalizeBook keeps product state shared and assigns stable renter identity", () => {
+  const raw = structuredClone(getSeedBook()) as DemoBook & { ownerAccountId?: string };
+  raw.ownerAccountId = "auth-user-a";
+  raw.offers = raw.offers.map((offer) => ({
+    ...offer,
+    status: "live" as const,
+    createdByAccountId: "auth-user-a",
+    renterWalletAddress: PAYER,
+  }));
+
+  const normalized = normalizeBook(raw);
+  assert.equal("ownerAccountId" in normalized, false);
+  assert.ok(normalized.offers.every((offer) => offer.createdByAccountId === "auth-user-a"));
+  assert.ok(normalized.paymentRequests?.length);
+  assert.ok(
+    normalized.paymentRequests?.every(
+      (request) => request.accountId === "acc-renter-001" && request.renterWalletAddress === PAYER,
+    ),
+  );
 });
 
 test("Admin approval offers Enrique and Luuk", () => {
@@ -177,6 +268,22 @@ test("the demo book seeds only the two walkthrough offers", () => {
   );
 });
 
+test("seeded offers use the approved landlord payout address", () => {
+  const book = getSeedBook();
+  for (const offer of book.offers) {
+    assert.equal(payoutAddressLocked(offer), DEMO_LANDLORD_EOA);
+  }
+
+  const legacy = structuredClone(book);
+  for (const offer of legacy.offers) {
+    offer.payout.cryptoAddress = "0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8";
+  }
+  const normalized = normalizeBook(legacy);
+  for (const offer of normalized.offers) {
+    assert.equal(payoutAddressLocked(offer), DEMO_LANDLORD_EOA);
+  }
+});
+
 test("retired filler offers are dropped without removing new drafts", () => {
   const book = getSeedBook();
   const cheap = book.offers.find((offer) => offer.reference === CHEAP_OFFER_REFERENCE);
@@ -200,7 +307,7 @@ test("retired filler offers are dropped without removing new drafts", () => {
   assert.equal(next.assignedTenancies.includes("tn-002"), false);
 });
 
-test("only paid landlord claims count toward the paid total", () => {
+test("only verified landlord-paid offers count toward the paid total", () => {
   const book = getSeedBook();
   const mra001 = book.offers.find((offer) => offer.reference === CANONICAL_REFERENCE);
   const cheap = book.offers.find((offer) => offer.reference === CHEAP_OFFER_REFERENCE);
@@ -222,11 +329,11 @@ test("only paid landlord claims count toward the paid total", () => {
   draft.status = "draft";
   draft.fundedCents = 0;
 
-  mra001.custody = {
-    ...mra001.custody!,
-    saleProceedsStatus: "claimed",
-    landlordClaimableCents: 0,
-    landlordClaimedCents: mra001.purchasePriceCents,
+  mra001.fundedCents = mra001.offeringCents;
+  mra001.onchain = {
+    ...mra001.onchain!,
+    landlordPaid: true,
+    purchased: true,
   };
 
   const totals = bookTotals({
@@ -237,26 +344,89 @@ test("only paid landlord claims count toward the paid total", () => {
   assert.equal(totals.totalAdvanced, mra001.purchasePriceCents);
 });
 
-test("confirming the same payment cannot duplicate collection or distribution", () => {
+test("seeded offers are pre-mint listings with no fabricated chain state", () => {
   const book = getSeedBook();
-  const first = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
+  for (const offer of book.offers) {
+    assert.equal(offer.status, "funding");
+    assert.equal(offer.fundedCents, 0);
+    assert.equal(offer.onchain?.tokenId, null);
+    assert.equal(offer.onchain?.mintTxHash, null);
+    assert.equal(offer.onchain?.purchased, false);
+    assert.equal(offer.onchain?.landlordPaid, false);
+    assert.equal(
+      (book.paymentRequests ?? []).filter((row) => row.offerReference === offer.reference)
+        .length,
+      0,
+    );
+  }
+});
+
+test("a verified purchase mints payment requests and marks the landlord paid once", () => {
+  const book = getSeedBook();
+  const first = buyOffer(book, CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const offer = first.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(offer);
+  assert.equal(offer.status, "live");
+  assert.equal(offer.fundedCents, offer.offeringCents);
+  assert.equal(offer.onchain?.purchased, true);
+  assert.equal(offer.onchain?.landlordPaid, true);
+  assert.equal(offer.onchain?.purchaserAddress, BUYER);
+  assert.equal(offer.onchain?.purchaseTxHash, TX_PURCHASE);
+
+  const requests = (first.paymentRequests ?? []).filter(
+    (row) => row.offerReference === CANONICAL_REFERENCE,
   );
-  const second = applyPaymentOutcome(
+  assert.equal(requests.length, 6);
+  const canonical = requests.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.ok(canonical);
+  assert.equal(canonical.amountUsdcAtomic, 1_800_000_000);
+  assert.equal(canonical.status, "due");
+
+  const second = applyVerifiedPurchase(
     first,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:01:00.000Z",
+    CANONICAL_REFERENCE,
+    {
+      tokenId: 1,
+      purchaserAddress: BUYER,
+      txHash: TX_PURCHASE,
+      payoutAddress: payoutAddressLocked(
+        first.offers.find((row) => row.reference === CANONICAL_REFERENCE) ?? getSeedBook().offers[0],
+      ) ?? "",
+      purchasePriceAtomic: BigInt(1_020_600 * 10_000),
+    },
+    "2026-08-20T12:01:00.000Z",
   );
-  const third = applyPaymentOutcome(
-    second,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:02:00.000Z",
+  const again = second.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.equal(
+    (second.paymentRequests ?? []).filter(
+      (row) => row.offerReference === CANONICAL_REFERENCE,
+    ).length,
+    6,
   );
+  assert.equal(again?.onchain?.purchaseTxHash, TX_PURCHASE);
+});
+
+test("a designated renter wallet receives the offer payment requests", () => {
+  const book = getSeedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  offer.renterWalletAddress = PAYER;
+
+  const purchased = buyOffer(book, CHEAP_OFFER_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const request = (purchased.paymentRequests ?? []).find(
+    (row) => row.offerReference === CHEAP_OFFER_REFERENCE,
+  );
+  assert.ok(request);
+  assert.equal(request.renterWalletAddress, PAYER);
+});
+
+test("confirming the same deposit cannot duplicate collection or distribution", () => {
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const first = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
+  const second = payRent(first, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:01:00.000Z");
+  const third = payRent(second, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:02:00.000Z");
 
   const collectionId = collectionIdFor("MRA-001", 1);
   for (const next of [first, second, third]) {
@@ -277,11 +447,31 @@ test("confirming the same payment cannot duplicate collection or distribution", 
         .length,
       1,
     );
+    const claimable = (next.distributions ?? []).find(
+      (row) => row.collectionId === collectionId,
+    );
+    assert.equal(claimable?.status, "claimable");
+    assert.equal(offer.onchain?.claimableRentCents, 180000);
   }
 });
 
+test("a verified rent deposit is pending until verification applies", () => {
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.equal(request?.status, "due");
+  assert.equal(request?.txHash, null);
+  const paid = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
+  assert.equal(
+    paid.paymentRequests?.find((row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID)
+      ?.status,
+    "confirmed",
+  );
+});
+
 test("later month cannot confirm while an earlier month is still open", () => {
-  const book = getSeedBook();
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
   const later = (book.paymentRequests ?? [])
     .filter((row) => row.offerReference === "MRA-001")
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[1];
@@ -289,8 +479,16 @@ test("later month cannot confirm while an earlier month is still open", () => {
   assert.ok(later);
   const earlier = earlierOpenPaymentRequest(book, later.paymentRequestId);
   assert.equal(earlier?.paymentRequestId, CANONICAL_PAYMENT_REQUEST_ID);
+  const offer = book.offers.find((row) => row.reference === "MRA-001");
   assert.throws(
-    () => applyPaymentOutcome(book, later.paymentRequestId, "confirmed"),
+    () =>
+      applyVerifiedRentDeposit(book, later.paymentRequestId, {
+        tokenId: offer?.onchain?.tokenId ?? 1,
+        opaquePaymentId: OPAQUE,
+        payerAddress: PAYER,
+        amountAtomic: BigInt(later.amountUsdcAtomic),
+        txHash: TX_RENT,
+      }, "2026-09-28T12:00:00.000Z"),
     /first/,
   );
 });
@@ -308,83 +506,37 @@ test("draft MRA-001 does not mint payment requests", () => {
   );
 });
 
-test("provider transaction hash is stored on confirm", () => {
-  const book = getSeedBook();
-  const hash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  const next = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-    { txHash: hash, transactionId: "tx-live-001" },
-  );
-  const request = next.paymentRequests?.find(
+test("a verified tx hash is stored on the confirmed request", () => {
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const paid = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
+  const request = paid.paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
-  assert.equal(request?.txHash, hash);
+  assert.equal(request?.txHash, TX_RENT);
   assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
 });
 
-test("client transaction ids cannot inject legacy settlement rows", () => {
-  const book = getSeedBook();
-  const attackerControlledId = "tx-settle-mra-001";
-  const next = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-    {
-      transactionId: attackerControlledId,
-      txHash: "not-a-hash",
-      fromLabel: "<script>",
-    },
-  );
-  const request = next.paymentRequests?.find(
-    (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
-  );
+test("no fabricated advance-settlement or landlord-claim ledger rows exist", () => {
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const paid = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
   assert.equal(
-    next.ledgerTransactions?.some(
-      (row) =>
-        row.transactionId === attackerControlledId ||
-        row.kind === "advance_settlement",
-    ),
+    paid.ledgerTransactions?.some((row) => (row.kind as unknown as string) === "advance_settlement"),
     false,
   );
-  assert.equal(request?.transactionId, paymentTxIdFor(CANONICAL_PAYMENT_REQUEST_ID));
-  assert.notEqual(request?.txHash, "not-a-hash");
   assert.equal(
-    next.ledgerTransactions?.find((row) => row.transactionId === request?.transactionId)
-      ?.fromLabel,
-    "Renter demo wallet",
+    paid.ledgerTransactions?.some((row) => (row.kind as unknown as string) === "landlord_claim"),
+    false,
   );
-});
-
-test("copy-address path can submit without a connected wallet", async () => {
-  const provider = createMockPaymentProvider();
-  const submitted = await provider.reportExternalTransfer({
-    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
-    expectedAtomicAmount: 1_800_000_000,
-    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
-    offerReference: "MRA-001",
-    receivableId: "rec-mra-001-1",
-    method: "external",
-  });
-  assert.equal(submitted.status, "submitted");
-  assert.ok(submitted.txHash);
-});
-
-test("wallet path fails until the demo wallet is connected", async () => {
-  const provider = createMockPaymentProvider();
-  const submitted = await provider.submitPayment({
-    paymentRequestId: CANONICAL_PAYMENT_REQUEST_ID,
-    expectedAtomicAmount: 1_800_000_000,
-    recipient: "0xDEMO0000SAFE00MERKADOPAY000000000000000",
-    offerReference: "MRA-001",
-    receivableId: "rec-mra-001-1",
-    method: "wallet",
-  });
-  assert.equal(submitted.status, "failed");
-  assert.equal(submitted.errorCode, "wallet_disconnected");
+  assert.equal(
+    paid.ledgerTransactions?.some((row) => (row.kind as unknown as string) === "company_fee"),
+    false,
+  );
+  const rent = paid.ledgerTransactions?.find(
+    (row) => row.kind === "rent_payment" && row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
+  );
+  assert.ok(rent);
+  assert.equal(rent.fromLabel, "Renter wallet");
+  assert.equal(rent.toLabel, "Merkado rent offer contract");
 });
 
 test("landlord attention does not include holder rent claims", () => {
@@ -394,51 +546,43 @@ test("landlord attention does not include holder rent claims", () => {
     false,
   );
   assert.equal(
-    (book.distributions ?? []).filter((row) => row.status === "pending").length,
+    (book.distributions ?? []).filter((row) => row.status === "claimable").length,
     0,
   );
 });
 
-test("confirming pay still updates the shared book on a Base testnet config", () => {
-  const book = normalizeBook({
+test("a verified deposit still updates the shared book on Optimism Mainnet", () => {
+  const seed = normalizeBook({
     ...getSeedBook(),
-    cryptoConfig: cryptoConfigFor(BASE_SEPOLIA_NETWORK_KEY),
+    cryptoConfig: cryptoConfigFor(OP_MAINNET_NETWORK_KEY),
   });
-  const next = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-  );
+  const bought = buyOffer(seed, CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
+  const next = payRent(bought, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
   const offer = next.offers.find((row) => row.reference === "MRA-001");
   const request = next.paymentRequests?.find(
     (row) => row.paymentRequestId === CANONICAL_PAYMENT_REQUEST_ID,
   );
-  assert.equal(next.cryptoConfig?.networkKey, BASE_SEPOLIA_NETWORK_KEY);
+  assert.equal(next.cryptoConfig?.networkKey, OP_MAINNET_NETWORK_KEY);
   assert.equal(request?.status, "confirmed");
   assert.equal(offer?.receivables.find((row) => row.n === 1)?.status, "received");
   assert.equal(offer?.collections.filter((row) => row.receivableN === 1).length, 1);
   assert.equal(
-    (next.distributions ?? []).filter((row) => row.collectionId === collectionIdFor("MRA-001", 1))
-      .length,
+    (next.distributions ?? []).filter(
+      (row) => row.collectionId === collectionIdFor("MRA-001", 1),
+    ).length,
     1,
   );
   assert.equal(currentRenterPaymentRequest(next)?.periodLabel, "October 2026");
 });
 
-test("next renter payment is the earliest unpaid request", () => {
-  const book = getSeedBook();
+test("next renter payment is the earliest unpaid request after a purchase", () => {
+  const book = buyOffer(getSeedBook(), CANONICAL_REFERENCE, "2026-08-20T12:00:00.000Z");
   assert.equal(
     currentRenterPaymentRequest(book)?.paymentRequestId,
     CANONICAL_PAYMENT_REQUEST_ID,
   );
 
-  const afterSeptember = applyPaymentOutcome(
-    book,
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-  );
+  const afterSeptember = payRent(book, CANONICAL_PAYMENT_REQUEST_ID, "2026-09-28T12:00:00.000Z");
   assert.equal(
     currentRenterPaymentRequest(afterSeptember)?.periodLabel,
     "October 2026",

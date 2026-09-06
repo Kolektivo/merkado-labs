@@ -1,76 +1,129 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-
-import {
-  canPersistPayNetwork,
-  isSelectablePayNetwork,
-  parseExactPayNetworkKey,
-} from "@/lib/pay/networks";
+import { requireAdminUser, requireUser } from "@/lib/auth/session";
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
+import { getLinkedWalletForAccount } from "@/lib/rent-advance/accounts";
 import { independentApproverById } from "@/lib/rent-advance/actors";
-import { assertDistinctOfficers, assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
+import { assertReleasesDistinct } from "@/lib/rent-advance/dual-control";
+import {
+  AutoMintResult,
+  mintOfferFor,
+  runPendingMintSweep,
+} from "@/lib/rent-advance/mint-sweep-run";
 import {
   buildScheduledReceivables,
   canRecordCollection,
-  listingExpiresAt,
 } from "@/lib/rent-advance/helpers";
 import {
-  applyHolderCollect,
   applyPayoutAddress,
-  isClaimableAddress,
-  mintOfferNft,
+  isValidPayoutAddress,
+  mergeOnchain,
+  normalizePayoutAddress,
+  payoutAddressLocked,
+  purchasePriceAtomicFor,
 } from "@/lib/rent-advance/custody";
-import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { sanitizeOfferInput } from "@/lib/rent-advance/offer-input";
 import {
   applyOpsCollection,
-  applyPaymentOutcome,
-  applySubscribe,
-  cryptoConfigFor,
-  mergeCryptoConfig,
-  type PaymentMockOutcome,
-  type PaymentOutcomeMeta,
+  applyVerifiedPurchase,
+  applyVerifiedRentClaim,
+  applyVerifiedRentDeposit,
+  earlierOpenPaymentRequest,
+  type VerifiedPurchaseFacts,
+  type VerifiedRentClaimFacts,
+  type VerifiedRentDepositFacts,
 } from "@/lib/rent-advance/payment-apply";
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
 import { getSeedBook } from "@/lib/rent-advance/seed";
-import { loadBook, resetBook, saveBook, updateOffer } from "@/lib/rent-advance/store";
+import {
+  loadBook,
+  resetBook,
+  saveBook,
+  updateOffer,
+} from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
+import { MERKADO_CHAIN_ID } from "@/lib/onchain/config";
+import { opaquePaymentId } from "@/lib/onchain/ids";
+import {
+  ensureActiveEpoch,
+  markOfferPurchased,
+  createPaymentAttempt,
+  recordChainEvent,
+  recordClaimVerification,
+  recordDepositVerification,
+} from "@/lib/onchain/chain-store";
+import {
+  verifyOfferPurchased,
+  verifyRentClaimed,
+  verifyRentDeposit,
+  MERKADO_CONFIRMATION_BLOCKS,
+  confirmationsReady,
+} from "@/lib/onchain/verify";
+import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 
 function refresh() {
   revalidatePath("/", "layout");
 }
 
+/** The book is only confirmed after the approved on-chain confirmation depth. */
+function confirmationDepthPending(result: {
+  confirmations?: bigint | null;
+}): string | null {
+  if (confirmationsReady(result.confirmations)) return null;
+  return `Waiting for confirmations (${result.confirmations ?? 0}/${MERKADO_CONFIRMATION_BLOCKS}).`;
+}
+
 function assertPayoutReady(offer: Offer) {
   if (
     offer.payout.method !== "crypto" ||
-    !isClaimableAddress(offer.payout.cryptoAddress)
+    !isValidPayoutAddress(offer.payout.cryptoAddress)
   ) {
     throw new Error(
-      "Add a fictional crypto payout address before submitting. Girasol bank payout is coming soon.",
+      "Add an Optimism Mainnet payout address before submitting. Girasol bank payout is coming soon.",
     );
   }
 }
 
-export async function resetDemoAction() {
-  await resetBook();
-  refresh();
+async function assertLinkedWalletMatches(
+  accountId: string,
+  chainId: number,
+  address: string,
+): Promise<void> {
+  const linked = await getLinkedWalletForAccount(accountId, chainId);
+  if (!linked) {
+    throw new Error("Link a wallet to this account before continuing.");
+  }
+  if (address.toLowerCase() !== linked.walletAddress.toLowerCase()) {
+    throw new Error(
+      "The connected wallet does not match the wallet linked to this account.",
+    );
+  }
 }
 
-export async function setPayNetworkAction(networkKey: string) {
-  const key = parseExactPayNetworkKey(networkKey);
-  if (!key || !isSelectablePayNetwork(key) || !canPersistPayNetwork(key)) {
-    throw new Error("That payment network is not available.");
+async function assertAccountHasLinkedWallet(
+  accountId: string,
+  chainId: number,
+): Promise<void> {
+  const linked = await getLinkedWalletForAccount(accountId, chainId);
+  if (!linked) {
+    throw new Error("Link a wallet to this account before continuing.");
   }
-  const book = await loadBook();
-  book.cryptoConfig = cryptoConfigFor(key, book.cryptoConfig);
-  await saveBook(book);
+}
+
+export async function resetDemoAction() {
+  const user = await requireAdminUser();
+  const linked = await getLinkedWalletForAccount(user.id, MERKADO_CHAIN_ID);
+  await resetBook(user.id, linked?.walletAddress);
+  await runPendingMintSweep();
   refresh();
 }
 
 export async function setOfferStatusAction(reference: string, status: OfferStatus) {
+  await requireAdminUser();
   if (status === "funding") {
-    throw new Error("Use independent approval to list an offer for 60 days.");
+    throw new Error("Use independent approval to move an offer into mint pending.");
   }
   await updateOffer(reference, (offer) => ({
     ...offer,
@@ -80,7 +133,7 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
         id: `ev-${reference}-${Date.now()}`,
         at: new Date().toISOString(),
         title: `Status set to ${status.replaceAll("_", " ")}`,
-        detail: "Demo action",
+        detail: "Operations action",
         actor: "D. Martina",
       },
       ...offer.events,
@@ -90,49 +143,46 @@ export async function setOfferStatusAction(reference: string, status: OfferStatu
 }
 
 export async function approveOfferAction(reference: string, actorId: string) {
+  await requireAdminUser();
   const approver = independentApproverById(actorId);
   if (!approver) {
     throw new Error("Select Enrique or Luuk as the independent approver.");
   }
   const at = new Date().toISOString();
-  const book = await loadBook();
   await updateOffer(reference, (offer) => {
     if (offer.status !== "under_review") {
       throw new Error("Only an offer under review can be approved.");
     }
     assertPayoutReady(offer);
     const publishedAt = at;
-    const approved = {
+    return {
       ...offer,
       status: "funding" as const,
       publishedAt,
-      expiresAt: listingExpiresAt(publishedAt),
-      nextAction: "Open on Marketplace",
+      expiresAt: null,
+      nextAction: "Minting automatically after approval",
       events: [
         {
           id: `ev-${reference}-approve-${Date.now()}`,
           at,
           title: "Approved",
-          detail: `${approver.name} · independent approver. Merkado created the offer and listed it for 60 days.`,
+          detail: `${approver.name} · independent approver. The offer will open on Marketplace shortly.`,
           actor: approver.name,
         },
         ...offer.events,
       ],
     };
-    return mintOfferNft(approved, mergeCryptoConfig(book.cryptoConfig), at);
   });
+  // Approval authorizes the server-side mint. The existing mint lease and
+  // receipt verification keep retries idempotent.
+  await mintOfferFor(reference);
   refresh();
 }
 
 export async function savePayoutAddressAction(address: string) {
+  await requireUser();
   const book = await loadBook();
-  await saveBook(applyPayoutAddress(book, address));
-  refresh();
-}
-
-export async function collectRentFromNftAction(reference: string, distributionId?: string) {
-  const book = await loadBook();
-  await saveBook(applyHolderCollect(book, reference, distributionId));
+  await saveBook(applyPayoutAddress(book, normalizePayoutAddress(address)));
   refresh();
 }
 
@@ -140,9 +190,16 @@ export async function recordCollectionAction(
   reference: string,
   receivableN: number,
 ) {
+  await requireAdminUser();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId != null && onchain.purchased) {
+    throw new Error(
+      "Sold listings collect rent on-chain through Merkado Pay (depositRent). Off-chain collection recording is disabled for on-chain offers.",
+    );
+  }
   if (!canRecordCollection(offer.status)) {
     throw new Error(
       "Collections can be recorded only on live, collecting, or defaulted offers.",
@@ -152,62 +209,8 @@ export async function recordCollectionAction(
   refresh();
 }
 
-export async function confirmPaymentAction(
-  paymentRequestId: string,
-  outcome: PaymentMockOutcome = "confirmed",
-  meta?: PaymentOutcomeMeta,
-) {
-  const book = await loadBook();
-  const request = book.paymentRequests?.find(
-    (row) => row.paymentRequestId === paymentRequestId,
-  );
-  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
-    throw new Error("Payment request not found.");
-  }
-  const next = applyPaymentOutcome(book, paymentRequestId, outcome, new Date().toISOString(), meta);
-  await saveBook(next);
-  refresh();
-}
-
-export async function releaseCollectionAction(input: {
-  reference: string;
-  collectionId: string;
-  instructorId: string;
-  signatoryId: string;
-}) {
-  assertDistinctOfficers(input.instructorId, input.signatoryId);
-  await updateOffer(input.reference, (offer) => {
-    const collection = offer.collections.find((row) => row.id === input.collectionId);
-    if (!collection) throw new Error("Collection not found.");
-    collection.status = "released";
-    return {
-      ...offer,
-      releases: [
-        {
-          id: `rel-${Date.now()}`,
-          collectionId: input.collectionId,
-          instructorId: input.instructorId,
-          signatoryId: input.signatoryId,
-          status: "released",
-        },
-        ...offer.releases,
-      ],
-      events: [
-        {
-          id: `ev-${input.reference}-rel-${Date.now()}`,
-          at: new Date().toISOString(),
-          title: "Collection released under dual control",
-          detail: "Instructing officer and foundation signatory are different people",
-          actor: "A. Sambo",
-        },
-        ...offer.events,
-      ],
-    };
-  });
-  refresh();
-}
-
 export async function closeChecklistItemAction(id: string, evidence: string) {
+  await requireAdminUser();
   const book = await loadBook();
   book.checklist = book.checklist.map((item) =>
     item.id === id ? { ...item, state: "closed", evidence } : item,
@@ -217,9 +220,13 @@ export async function closeChecklistItemAction(id: string, evidence: string) {
 }
 
 export async function submitOfferForReviewAction(reference: string) {
+  const user = await requireUser();
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
+  if (offer.createdByAccountId !== user.id) {
+    throw new Error("This offer belongs to a different account.");
+  }
   if (offer.status !== "draft") {
     throw new Error("Only a draft can be submitted for review.");
   }
@@ -251,19 +258,561 @@ export async function submitOfferForReviewAction(reference: string) {
   refresh();
 }
 
-export async function subscribeOfferAction(reference: string, amountCents: number) {
+/** Retry one approved offer when automatic minting needs recovery. */
+export type { AutoMintResult, PendingMintResult } from "@/lib/rent-advance/mint-sweep-run";
+
+export async function mintOfferAction(reference: string): Promise<AutoMintResult> {
+  await requireAdminUser();
+  await assertDemoUnlocked();
+  return mintOfferFor(reference);
+}
+
+/** Automatically mints or resumes all approved offers from an Admin flow. */
+export async function sweepPendingMintsAction() {
+  await requireAdminUser();
+  await assertDemoUnlocked();
+  return runPendingMintSweep();
+}
+
+/** Create the opaque on-chain payment id for a rent deposit. Returns the existing id when present. */
+export async function createRentPaymentAttemptAction(paymentRequestId: string) {
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
   const book = await loadBook();
-  await saveBook(applySubscribe(book, reference, new Date().toISOString(), amountCents));
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (
+    !request ||
+    request.accountId !== RENTER_ACCOUNT_ID ||
+    !request.renterWalletAddress
+  ) {
+    throw new Error("Payment request not found.");
+  }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    request.renterWalletAddress,
+  );
+  const earlier = earlierOpenPaymentRequest(book, paymentRequestId);
+  if (earlier) throw new Error(`Pay ${earlier.periodLabel} first.`);
+  const offer = book.offers.find((row) => row.reference === request.offerReference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId == null || !onchain.contractAddress) {
+    throw new Error("This listing is not ready for payment yet.");
+  }
+  const contractAddress = onchain.contractAddress;
+  if (request.opaquePaymentId) {
+    return { opaquePaymentId: request.opaquePaymentId };
+  }
+  const epoch = await ensureActiveEpoch();
+  const id = opaquePaymentId({
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress,
+    epochId: epoch.id,
+  });
+  await createPaymentAttempt({
+    epochId: epoch.id,
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress,
+    tokenId: onchain.tokenId,
+    paymentRequestId,
+    opaquePaymentId: id,
+    expectedAmount: request.amountUsdcAtomic,
+    status: "pending",
+  });
+  await saveBook({
+    ...book,
+    paymentRequests: (book.paymentRequests ?? []).map((row) =>
+      row.paymentRequestId === paymentRequestId
+        ? { ...row, opaquePaymentId: id }
+        : row,
+    ),
+  });
   refresh();
+  return { opaquePaymentId: id };
+}
+
+type RentDepositVerifiedResult = {
+  status: "pending" | "confirmed";
+  reason?: string;
+};
+
+/** Persist the submitted deposit tx so a pending payment can be re-verified later. */
+export async function attachSubmittedTxAction(
+  paymentRequestId: string,
+  txHash: string,
+  payerAddress: string,
+) {
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+    throw new Error("Payment request not found.");
+  }
+  if (request.submittedTxHash && request.submittedTxHash !== txHash) {
+    throw new Error("A payment transaction is already pending for this request.");
+  }
+  if (
+    !request.renterWalletAddress ||
+    request.renterWalletAddress.toLowerCase() !== payerAddress.toLowerCase()
+  ) {
+    throw new Error("This payment is assigned to a different wallet.");
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, payerAddress);
+  await saveBook({
+    ...book,
+    paymentRequests: (book.paymentRequests ?? []).map((row) =>
+      row.paymentRequestId === paymentRequestId
+        ? { ...row, submittedTxHash: txHash, submittedPayer: payerAddress }
+        : row,
+    ),
+  });
+}
+
+/** Re-verify a previously submitted deposit using the persisted hash. */
+export async function checkPendingPaymentAction(
+  paymentRequestId: string,
+): Promise<RentDepositVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+    throw new Error("Payment request not found.");
+  }
+  if (request.status === "confirmed") return { status: "confirmed" };
+  if (!request.submittedTxHash || !request.submittedPayer) {
+    return { status: "pending", reason: "No submitted transaction was recorded yet." };
+  }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    request.submittedPayer,
+  );
+  if (
+    !request.renterWalletAddress ||
+    request.renterWalletAddress.toLowerCase() !== request.submittedPayer.toLowerCase()
+  ) {
+    throw new Error("This payment is assigned to a different wallet.");
+  }
+  return verifyRentPaymentAction(
+    paymentRequestId,
+    request.submittedTxHash,
+    request.submittedPayer,
+  );
+}
+
+/** Verify a rent deposit receipt and update the book exactly once. */
+export async function verifyRentPaymentAction(
+  paymentRequestId: string,
+  txHash: string,
+  payerAddress: string,
+): Promise<RentDepositVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const request = book.paymentRequests?.find(
+    (row) => row.paymentRequestId === paymentRequestId,
+  );
+  if (!request || request.accountId !== RENTER_ACCOUNT_ID) {
+    throw new Error("Payment request not found.");
+  }
+  if (
+    !request.renterWalletAddress ||
+    request.renterWalletAddress.toLowerCase() !== payerAddress.toLowerCase()
+  ) {
+    throw new Error("This payment is assigned to a different wallet.");
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, payerAddress);
+  const offer = book.offers.find((row) => row.reference === request.offerReference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId == null || !onchain.contractAddress) {
+    throw new Error("This listing is not ready for payment yet.");
+  }
+  const opaque = request.opaquePaymentId;
+  if (!opaque) {
+    throw new Error("Start the payment first to create the on-chain payment id.");
+  }
+  const expectedAmount = BigInt(request.amountUsdcAtomic);
+  const result = await verifyRentDeposit(txHash, {
+    contractAddress: onchain.contractAddress,
+    tokenId: BigInt(onchain.tokenId),
+    paymentId: opaque,
+    payer: payerAddress,
+    amount: expectedAmount,
+  });
+  if (result.status === "pending") {
+    return { status: "pending", reason: result.reason };
+  }
+  if (!result.verified) {
+    throw new Error(result.reason ?? "The rent deposit could not be verified.");
+  }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
+  const epoch = await ensureActiveEpoch();
+  const logIndex = result.logIndex;
+  if (logIndex == null || result.blockNumber == null) {
+    return { status: "pending", reason: "Receipt details are not indexed yet." };
+  }
+  await recordDepositVerification({
+    chainId: MERKADO_CHAIN_ID,
+    txHash,
+    logIndex,
+    blockNumber: Number(result.blockNumber),
+    tokenId: onchain.tokenId,
+    opaquePaymentId: opaque,
+    amount: expectedAmount,
+    payerAddress,
+    paymentRequestId,
+    epochId: epoch.id,
+  });
+  await recordChainEvent({
+    epochId: epoch.id,
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress: onchain.contractAddress,
+    txHash,
+    logIndex,
+    blockNumber: Number(result.blockNumber),
+    blockHash: result.blockHash ?? "",
+    eventName: "RentDeposited",
+    eventArgs: {
+      tokenId: String(onchain.tokenId),
+      paymentId: opaque,
+      payer: payerAddress,
+      amount: expectedAmount.toString(),
+    },
+  });
+  // Apply the book even when the verification row already exists (a prior
+  // write may have succeeded before the book save). The helper is idempotent.
+  const facts: VerifiedRentDepositFacts = {
+    tokenId: onchain.tokenId,
+    opaquePaymentId: opaque,
+    payerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentDeposit(book, paymentRequestId, facts, new Date().toISOString()),
+  );
+  refresh();
+  return { status: "confirmed" };
+}
+
+type PurchaseVerifiedResult = {
+  status: "pending" | "confirmed";
+  reason?: string;
+};
+
+/** Persist the submitted purchase tx so a pending purchase can be re-verified later. */
+export async function attachSubmittedPurchaseTxAction(
+  reference: string,
+  txHash: string,
+  buyerAddress: string,
+) {
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (
+    onchain.submittedPurchaseBuyer &&
+    onchain.submittedPurchaseBuyer.toLowerCase() !== buyerAddress.toLowerCase()
+  ) {
+    throw new Error("A purchase is already pending for a different wallet.");
+  }
+  if (onchain.submittedPurchaseTxHash && onchain.submittedPurchaseTxHash !== txHash) {
+    throw new Error("A purchase transaction is already pending for this offer.");
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedPurchaseTxHash: txHash,
+      submittedPurchaseBuyer: buyerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted purchase using the persisted hash. */
+export async function checkPendingPurchaseAction(
+  reference: string,
+): Promise<PurchaseVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.purchased) return { status: "confirmed", reason: "Already purchased" };
+  if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
+    return { status: "pending", reason: " El caso es que, por De la mano del presidente, que es el presidente de la República, de la Unión Europea, de la Unión Europea, de la Unión Europea, de la Unión Europea.No submitted purchase transaction was recorded yet." };
+  }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    onchain.submittedPurchaseBuyer,
+  );
+  return verifyPurchaseAction(
+    reference,
+    onchain.submittedPurchaseTxHash,
+    onchain.submittedPurchaseBuyer,
+  );
+}
+
+/** Verify a whole-offer purchase receipt and update the book exactly once. */
+export async function verifyPurchaseAction(
+  reference: string,
+  txHash: string,
+  buyerAddress: string,
+): Promise<PurchaseVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId == null || !onchain.contractAddress) {
+    throw new Error("This offer is not available yet.");
+  }
+  if (onchain.purchased) {
+    return { status: "confirmed", reason: "Already purchased" };
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
+  const payoutAddress = payoutAddressLocked(offer);
+  if (!payoutAddress) {
+    throw new Error("This offer has no locked payout address.");
+  }
+  const purchasePrice = purchasePriceAtomicFor(offer);
+  const result = await verifyOfferPurchased(txHash, {
+    contractAddress: onchain.contractAddress,
+    tokenId: BigInt(onchain.tokenId),
+    buyer: buyerAddress,
+    payoutAddress,
+    purchasePrice,
+  });
+  if (result.status === "pending") {
+    return { status: "pending", reason: result.reason };
+  }
+  if (!result.verified) {
+    throw new Error(result.reason ?? "The purchase receipt could not be verified.");
+  }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
+  const epoch = await ensureActiveEpoch();
+  const logIndex = result.logIndex;
+  if (logIndex == null || result.blockNumber == null) {
+    return { status: "pending", reason: "Receipt details are not indexed yet." };
+  }
+  await markOfferPurchased({
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress: onchain.contractAddress,
+    tokenId: onchain.tokenId,
+    purchaseTxHash: txHash,
+    purchaseBlockNumber: Number(result.blockNumber),
+    purchaserAddress: buyerAddress,
+  });
+  await recordChainEvent({
+    epochId: epoch.id,
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress: onchain.contractAddress,
+    txHash,
+    logIndex,
+    blockNumber: Number(result.blockNumber),
+    blockHash: result.blockHash ?? "",
+    eventName: "OfferPurchased",
+    eventArgs: {
+      tokenId: String(onchain.tokenId),
+      buyer: buyerAddress,
+      payoutAddress,
+      purchasePrice: purchasePrice.toString(),
+    },
+  });
+  const facts: VerifiedPurchaseFacts = {
+    tokenId: onchain.tokenId,
+    purchaserAddress: buyerAddress,
+    txHash,
+    blockNumber: result.blockNumber,
+    payoutAddress,
+    purchasePriceAtomic: purchasePrice,
+  };
+  await saveBook(applyVerifiedPurchase(book, reference, facts, new Date().toISOString()));
+  refresh();
+  return { status: "confirmed" };
+}
+
+type RentClaimVerifiedResult = {
+  status: "pending" | "confirmed";
+  reason?: string;
+};
+
+/** Verify a rent claim receipt and update the book exactly once. */
+export async function verifyRentClaimAction(
+  reference: string,
+  txHash: string,
+  ownerAddress: string,
+): Promise<RentClaimVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (onchain.tokenId == null || !onchain.contractAddress) {
+    throw new Error("This listing is not ready for payment yet.");
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, ownerAddress);
+  const claimableCents = (book.distributions ?? [])
+    .filter((row) => row.offerReference === reference && row.status === "claimable")
+    .reduce((sum, row) => sum + row.amountCents, 0);
+  if (claimableCents <= 0) {
+    throw new Error("There is no rent waiting to be claimed from this listing.");
+  }
+  const expectedAmount = BigInt(usdcAtomicFromUsdCents(claimableCents));
+  const result = await verifyRentClaimed(txHash, {
+    contractAddress: onchain.contractAddress,
+    tokenId: BigInt(onchain.tokenId),
+    owner: ownerAddress,
+    amount: expectedAmount,
+  });
+  if (result.status === "pending") {
+    return { status: "pending", reason: result.reason };
+  }
+  if (!result.verified) {
+    throw new Error(result.reason ?? "The rent claim could not be verified.");
+  }
+  const depthPending = confirmationDepthPending(result);
+  if (depthPending) {
+    return { status: "pending", reason: depthPending };
+  }
+  const epoch = await ensureActiveEpoch();
+  const logIndex = result.logIndex;
+  if (logIndex == null || result.blockNumber == null) {
+    return { status: "pending", reason: "Receipt details are not indexed yet." };
+  }
+  await recordClaimVerification({
+    chainId: MERKADO_CHAIN_ID,
+    txHash,
+    logIndex,
+    blockNumber: Number(result.blockNumber),
+    contractAddress: onchain.contractAddress,
+    tokenId: onchain.tokenId,
+    ownerAddress,
+    amount: expectedAmount,
+    epochId: epoch.id,
+  });
+  await recordChainEvent({
+    epochId: epoch.id,
+    chainId: MERKADO_CHAIN_ID,
+    contractAddress: onchain.contractAddress,
+    txHash,
+    logIndex,
+    blockNumber: Number(result.blockNumber),
+    blockHash: result.blockHash ?? "",
+    eventName: "RentClaimed",
+    eventArgs: {
+      tokenId: String(onchain.tokenId),
+      owner: ownerAddress,
+      amount: expectedAmount.toString(),
+    },
+  });
+  const facts: VerifiedRentClaimFacts = {
+    tokenId: onchain.tokenId,
+    ownerAddress,
+    amountAtomic: expectedAmount,
+    txHash,
+    blockNumber: result.blockNumber,
+  };
+  await saveBook(
+    applyVerifiedRentClaim(book, reference, facts, new Date().toISOString()),
+  );
+  refresh();
+  return { status: "confirmed" };
+}
+
+
+/** Persist the submitted claim tx so a pending claim can be re-verified later. */
+export async function attachSubmittedClaimTxAction(
+  reference: string,
+  txHash: string,
+  ownerAddress: string,
+) {
+  const { id: accountId } = await requireUser();
+  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const existingOnchain = mergeOnchain(offer.onchain);
+  if (
+    existingOnchain.submittedClaimTxHash &&
+    existingOnchain.submittedClaimTxHash !== txHash
+  ) {
+    throw new Error("A claim transaction is already pending for this offer.");
+  }
+  if (
+    existingOnchain.submittedClaimOwner &&
+    existingOnchain.submittedClaimOwner.toLowerCase() !== ownerAddress.toLowerCase()
+  ) {
+    throw new Error("A claim is already pending for a different wallet.");
+  }
+  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, ownerAddress);
+  await updateOffer(reference, (current) => ({
+    ...current,
+    onchain: {
+      ...mergeOnchain(current.onchain),
+      submittedClaimTxHash: txHash,
+      submittedClaimOwner: ownerAddress,
+    },
+  }));
+}
+
+/** Re-verify a previously submitted claim using the persisted hash. */
+export async function checkPendingClaimAction(
+  reference: string,
+): Promise<RentClaimVerifiedResult> {
+  const { id: accountId } = await requireUser();
+  const book = await loadBook();
+  const offer = book.offers.find((row) => row.reference === reference);
+  if (!offer) throw new Error("Offer not found.");
+  const onchain = mergeOnchain(offer.onchain);
+  if (!onchain.submittedClaimTxHash || !onchain.submittedClaimOwner) {
+    if (onchain.claimedRentCents > 0 && onchain.claimableRentCents === 0) {
+      return { status: "confirmed" };
+    }
+    return { status: "pending", reason: "No submitted claim transaction was recorded yet." };
+  }
+  await assertLinkedWalletMatches(
+    accountId,
+    MERKADO_CHAIN_ID,
+    onchain.submittedClaimOwner,
+  );
+  return verifyRentClaimAction(
+    reference,
+    onchain.submittedClaimTxHash,
+    onchain.submittedClaimOwner,
+  );
 }
 
 export async function submitNewOfferAction(offer: Offer) {
+  const user = await requireUser();
   offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new offer instead.");
   }
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
+  }
+  if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+    throw new Error("Enter a valid checksummed 0x wallet address for the rent payer.");
   }
   assertPayoutReady(offer);
   const priced = priceOrBlock({
@@ -277,6 +826,7 @@ export async function submitNewOfferAction(offer: Offer) {
   const book = await loadBook();
   const toSave: Offer = {
     ...offer,
+    createdByAccountId: user.id,
     monthlyRentCents: priced.monthlyRentCents,
     months: priced.months,
     feeRate: priced.feeRate,
@@ -290,7 +840,6 @@ export async function submitNewOfferAction(offer: Offer) {
     effectiveAnnualised: priced.effectiveAnnualised,
     status: "under_review",
     nextAction: "Independent approval",
-    custody: undefined,
     relatedParty: false,
     relatedPartyNote: null,
     fundedCents: 0,
@@ -301,19 +850,26 @@ export async function submitNewOfferAction(offer: Offer) {
     holders: [],
     publishedAt: null,
     expiresAt: null,
+    onchain: mergeOnchain(undefined),
     events: [
       {
         id: `ev-${offer.reference}-submit-${Date.now()}`,
         at: new Date().toISOString(),
         title: "Offer request submitted",
         detail:
-          "Requested from the Merkado account. No wallet was needed. Merkado creates the offer after approval.",
+          "Requested from the Merkado account. No wallet was needed. Merkado prepares the offer for listing after approval.",
         actor: "D. Martina",
       },
       ...offer.events.filter((row) => row.id !== `ev-${offer.reference}-submit`),
     ],
   };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index !== -1 && book.offers[index].status !== "draft") {
+    throw new Error("Only an existing draft can be updated.");
+  }
+  if (index !== -1 && book.offers[index].createdByAccountId !== user.id) {
+    throw new Error("This offer belongs to a different account.");
+  }
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
   if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {
@@ -324,6 +880,7 @@ export async function submitNewOfferAction(offer: Offer) {
 }
 
 export async function saveDraftOfferAction(offer: Offer) {
+  const user = await requireUser();
   offer = sanitizeOfferInput(offer);
   if (offer.reference === "MRA-001") {
     throw new Error("MRA-001 is the locked reference deal. Create a new draft instead.");
@@ -331,16 +888,23 @@ export async function saveDraftOfferAction(offer: Offer) {
   if (offer.months !== 6) {
     throw new Error("Only the six-month term is approved for origination.");
   }
-  priceOrBlock({
-    monthlyRentCents: offer.monthlyRentCents,
-    months: offer.months,
-    feeRate: offer.feeRate,
-    relatedParty: offer.relatedParty,
-  });
+  // Drafts are not priced or cap-blocked: an in-progress draft may be
+  // incomplete or above the cap. Submission re-prices and blocks later.
   assertReleasesDistinct(offer.releases);
   const book = await loadBook();
-  const toSave = { ...offer, status: "draft" as const, custody: undefined };
+  const toSave = {
+    ...offer,
+    createdByAccountId: user.id,
+    status: "draft" as const,
+    onchain: mergeOnchain(undefined),
+  };
   const index = book.offers.findIndex((row) => row.reference === toSave.reference);
+  if (index !== -1 && book.offers[index].status !== "draft") {
+    throw new Error("Only an existing draft can be updated.");
+  }
+  if (index !== -1 && book.offers[index].createdByAccountId !== user.id) {
+    throw new Error("This offer belongs to a different account.");
+  }
   if (index === -1) book.offers.unshift(toSave);
   else book.offers[index] = toSave;
   if (toSave.tenant.id && !book.assignedTenancies.includes(toSave.tenant.id)) {
@@ -350,11 +914,8 @@ export async function saveDraftOfferAction(offer: Offer) {
   refresh();
 }
 
-export async function payerPayNowAction(paymentRequestId: string) {
-  return confirmPaymentAction(paymentRequestId, "confirmed");
-}
-
 export async function nextDraftReference(): Promise<string> {
+  await requireUser();
   const book = await loadBook();
   const numbers = book.offers.map((offer) => Number(offer.reference.replace("MRA-", "")));
   const next = Math.max(0, ...numbers) + 1;
@@ -362,6 +923,7 @@ export async function nextDraftReference(): Promise<string> {
 }
 
 export async function seedOfferTemplate(): Promise<Offer> {
+  await requireUser();
   await assertDemoUnlocked();
   const book = getSeedBook();
   const canonical = book.offers[0];
@@ -370,7 +932,7 @@ export async function seedOfferTemplate(): Promise<Offer> {
     ...structuredClone(canonical),
     offerId: `offer-${reference.toLowerCase()}`,
     settlementTransactionId: null,
-    custody: undefined,
+    onchain: mergeOnchain(undefined),
     reference,
     status: "draft",
     fundedCents: 0,

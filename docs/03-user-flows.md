@@ -1,32 +1,41 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
+**Last updated:** September 5, 2026 (authenticated Labs accounts, shared demo state, linked wallet, ADMIN_EMAILS admin)
 
 ## 1. Hosted access
 
-On the hosted URL, the first screen is a shared-password door (`/enter`).
-It is a Merkado-branded private walkthrough, not a Merkado account. After
-the correct password, the visitor continues to the requested page
-(Home by default). Local `npm run dev` skips this door unless
-`LABS_DEMO_PASSWORD` is set. Hosted production stays locked if that
-password is missing.
+On the hosted URL, the first screen is a sign-in door (`/enter`) that is a
+Merkado-branded private walkthrough, not a Merkado account and not live on
+merkado.cw. **Supabase Auth** is the primary identity: **Email me a sign-in
+link**. The legacy **host password**
+  (`LABS_DEMO_PASSWORD`) remains as a deployment gate before sign-in. Hosted
+  users must pass the gate and authenticate; hosted production fails closed at
+  `/enter`. Local `npm run dev` skips the deployment gate unless
+  `LABS_DEMO_PASSWORD` is set.
 
 ## 2. Home
 
 Visitor lands on Home (`/`), sees Merkado Direct totals, featured
 Marketplace offers, and doors to Simulator, Create offer, Portfolio, and
-Pay. Offer decisions, listing status, automatic sale payouts, and holder rent
-actions appear in the header bell and as a count on **My Offers** or
+Pay. Offer decisions and holder rent actions
+appear in the header bell and as a count on **My Offers** or
 **Portfolio**. Each update opens the existing offer or Portfolio page. Amounts are
 in XCG. Payment network and Reset live in **Admin**. Stage 0 legal
 questions stay open in documentation; they are not shown on customer
-Home.
+Home. **Reset the book** seeds a fresh demo book (canonical offers as
+`funding`, empty on-chain state) and starts a **new chain-store epoch**; it
+does **not** roll back the chain — the env contract address stays active so
+approved offers mint again on the same deployment.
 
 ## 3. Landlord (Merkado Direct)
 
-1. **My Offers** — the two-offer demo book appears as a table (compact rows on
+1. **My Offers** — offers created by the signed-in account appear as a table
+   (compact rows on
    a phone). Each row shows the sale amount, status, and one **Next** step.
+   Next steps are **Listed for 60 days** for a listed offer and **Sale amount
+   paid automatically** once sold. Listed offers also carry the
+   display-only **"Available until [date] · 60-day listing window"** text.
    Filters and book totals stay available in collapsed sections instead of
    competing with the main journey. **MRA-001** starts fully bought; **MRA-010**
    starts open on Marketplace. Create Offer can still add a draft.
@@ -37,108 +46,168 @@ Home.
    loads the XCG 1.79 monthly rent / about XCG 10 purchase quote.
 3. **Use this quote** — eligible six-month quotes under the 24% cap carry
    non-sensitive values into Create Offer.
-4. **Create Offer** — seven steps including a cover photo and **Payout**, then
-   **Submit request**. The landlord chooses the fictional crypto recipient before
-   submission. Girasol bank payout is a Coming soon preview with an illustrative
-   fee and browser-only fictional fields. No landlord wallet is needed. 9/12,
-   bank payout, and cap-breached quotes cannot be submitted.
-5. Offer detail — after approval Merkado creates **one offer for this
-   listing**. Every non-draft offer shows one **Landlord proceeds** card
-   (Waiting, Processing, or Paid). After a holder buys the whole offer, the sale
-   amount is marked paid automatically to the destination saved before
-   submission. There is no landlord claim action. Later rent is not paid to the
-   landlord again. Independent
-   approval, Record collection, and dual-control live in **Admin**.
+4. **Create Offer** — seven steps including a cover photo, the designated rent
+   payer wallet, and **Payout**, then **Submit request**. The landlord chooses
+   the payout destination and rent payer wallet before submission. No landlord
+   wallet is needed. An explicit **Save draft** button
+   persists the in-progress wizard (e.g. MRA-011) into **My Offers → Draft**;
+   drafts are landlord-only and have no chain or payment state. 9/12 and
+   cap-breached quotes cannot be submitted.
+5. Offer detail — after Admin approval the offer is **Listed** (the backend
+   mints one offer NFT from the backend mint key — an Admin/ops detail, never
+   shown to the landlord). Every purchased offer shows one
+   **Landlord proceeds** card (Waiting, Processing, or Paid). Processing means
+   the purchase was submitted but not yet verified; Paid appears automatically
+   when the sale completes. When a buyer
+   purchases the whole offer, the buyer pays the exact purchase price
+   **directly to the locked landlord payout address** and the offer transfers
+   to the buyer automatically. There is no landlord claim action and no
+   funding record. The **"Available until [date] · 60-day listing window"**
+   text is display-only and never enforced. Later rent is not paid to the
+   landlord again. Independent approval, Record collection, and
+   dual-control live in **Admin**.
 6. **Landlord proceeds** — use the property name (Sun Set Heights, Punda
-   studio) as the main label. MRA numbers stay secondary. Fully purchased
-   offers show **Paid automatically**; technical mock-funding detail is in a
-   tooltip. The amount is the hero. The fee is informational and already
-   included. Paid is final:
-   no retry, edit, transaction hash, or explorer link. Disclosure:
-   “No wallet ownership was verified and no on-chain transfer was sent.”
+   studio) as the main label. MRA numbers stay secondary. The card moves
+   **Waiting → Processing → Paid** automatically: Processing means the
+   purchase was submitted but not yet verified, and Paid appears when the
+   sale completes; the purchase price is the hero.
+   The fee is informational and already included. Paid is final.
+   Disclosure: the buyer pays the exact purchase price directly to the
+   locked landlord payout address; there is no landlord claim step.
 7. Landlord-facing lifecycle is **Under review → Listed → Sold → Paid**, with
-   **Denied** and **Expired** as explicit outcomes. Listed offers remain open for
-   60 days. Monthly collections and holder detail stay out of the landlord view.
+   **Denied / Expired / Closed** as explicit outcomes. There is no
+   expired-after-60-days state: the 60-day window is display-only and the
+   offer stays purchasable until sold. Monthly
+   collections and holder detail stay out of the landlord view.
 
 ## 4. Holder (Merkado Direct)
 
-1. Marketplace shows anonymised cards in merkado-cw listing-card chrome:
+1. Marketplace shows anonymised cards from the shared demo book
+   in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
-   term, whole-offer price, and 60-day availability. A holder clicks the mocked
-   **Connect wallet** button and buys 100% of the offer. WalletConnect versus
-   Privy is a later Luis choice and is not shown. The
-   cheap Punda studio (MRA-010) is the small walkthrough purchase.
-   A successful purchase opens a confirmation dialog on the new Portfolio
-   position so the buyer knows the action was recorded.
+   term, whole-offer price, and the display-only
+   **"Available until [date] · 60-day listing window"** text (never
+   enforced). A holder signs in, connects a real wallet (injected
+   EIP-1193, e.g. WalletConnect/Privy) and **links it** to the account by
+   signing a one-time, account/domain/chain/nonce-bound challenge — then
+   buys 100% of the offer. Wallet linking is managed only in Account; if the
+   connected wallet is not linked, the purchase action sends the holder to
+   Account before any transaction can start. The
+   buyer pays the exact purchase price **directly to the locked landlord
+   payout address**; the NFT moves minter → buyer atomically in the
+   same transaction. The cheap Punda studio (MRA-010) is the small
+   walkthrough purchase. A successful purchase opens a confirmation dialog
+   on the new Portfolio position.
 2. Offer detail stays privacy-walled. No tenant name, employer, income,
-   contact, or street address. A funded offer links to its Portfolio
+   contact, or street address. A purchased offer links to its Portfolio
    position.
-3. Portfolio shows pre-seeded positions with a stable Position ID,
-   per-offer rent address, collected / ready-to-claim / claimed amounts, and
-   mocked transaction references. When rent arrives, the holder connects the
-   mocked **Connect wallet** button and **Claims** it
-   from that listing. A success dialog confirms the rent amount claimed.
-   There is no secondary sale UI yet; one listing
-   offer exists so a later resale can be added.
+3. Portfolio shows pre-seeded positions with a stable Position ID, the
+   offer token id, accrued rent per token, and the current owner. The
+   **current NFT owner** calls **Claim rent** (`claimRent(tokenId)`) to
+   withdraw the token's accrued USDC. Because the NFT is transferable, a
+   holder can send the token to another wallet (or another wallet can
+   receive it) and that new owner becomes the holder and can claim. There
+   is no fractional purchase and no secondary sale UI beyond the transferable
+   token itself.
 
 ## 5. Renter (Merkado Pay)
 
-1. `/pay` opens the seeded current payment request. `/pay/[id]` is the
-   canonical deep link. Invalid IDs show a friendly not-found. A later
+1. `/pay` opens the signed-in user's linked-wallet payment request. `/pay/[id]`
+   is the
+   canonical deep link. Invalid IDs — and IDs that belong to another
+   shared book — show a friendly not-found when the request is not assigned to
+   the user's linked wallet. A later
    month cannot be paid while an earlier month on the same deal is still
    open — the page sends the renter back to the next payment.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
-   unique reference, fictional receiving address, selected payment
-   network (**Base Sepolia**).
-   A status badge and the default stablecoin card sit with the amount so they
-   stay visible on a phone.
-3. Stablecoin is the default expanded payment card (mocked until
-   `PAYMENT_RAIL_MODE` is `"live"`):
-   - scan the informational demo QR, which contains the fictional offer
-     address, amount, and reference but cannot open a real wallet;
-   - copy the address and amount, then **I’ve sent this payment**.
-   There is no Connect wallet action on Pay. The copy path shows pending →
-   confirmed / success, plus failure and incorrect-amount outcomes. Already
-   paid and overdue remain.
-4. **Continue with Sentoo** stays collapsed under the stablecoin card. Opening
-   it expands the fictional bank fields and Coming soon action, and collapses
-   the stablecoin details. It cannot submit or persist a payment.
-5. Notice that rent and lease are unchanged. Pay is English-only.
-6. No fee, purchase price, holder identity, or distribution economics.
+   unique reference, opaque payment id, selected payment
+   network (**Optimism Mainnet**). A status badge and the pay action sit with
+   the amount so they stay visible on a phone. The payment card has an
+   expanded **Pay with stablecoin** panel: the QR, **copy address**, and
+   **copy amount** controls are **informational only** (receiving address,
+   USDC amount, payment reference for display) and never submit a payment.
+    The live actions — **Connect** then a single **Pay rent** action — sit
+    inside that same stablecoin section. The wallet must be linked in Account
+    before **Pay rent** is available. **Pay rent** opens one dialog that
+    runs Approve USDC → waits for the successful approval receipt →
+     `depositRent` → automatic receipt wait and server verification until
+     settled (never a blind re-send or manual status check).
+    **Continue with Sentoo** returns as a collapsed panel with a **Coming
+    soon** badge.
+3. The renter deposits rent by calling `depositRent(tokenId,
+   opaquePaymentId, amount)` through the `MerkadoRentOfferV1` contract.
+   The amount must equal the exact monthly rent. The deposit is pending →
+   confirmed on chain. Already paid and overdue remain. The wallet **Pay
+   rent** action is the **only valid payment path**; the renter never sees
+   NFT / mint / contract / token / on-chain wording.
+4. Notice that rent and lease are unchanged. Pay is English-only.
+5. No fee, purchase price, holder identity, or distribution economics.
 
-## 6. Merkado account (Labs mock)
+## 6. Merkado account (Labs demo auth)
 
 1. `/account` opens Apps (or redirects there) inside merkado-cw account
    chrome. Other account and marketplace links are visibly disabled.
    Admin is hidden. Apps has its own sidebar group, above Account. Merkado
-   Pay and Merkado Direct are clickable. Account Settings stays visible
-   but inactive. Payouts is not shown here.
+   Pay and Merkado Direct are clickable. The shell profile comes from the
+   signed-in account email with **Luuk Weber** as the demo
+   fallback.
 2. Apps lists Merkado Pay and Merkado Direct. Internal Labs routes are
    used unless an external URL is configured. Merkado Pay opens the
-   payment link. Payment history sits on that same Pay page.
-3. Landlord automatic payout status stays on My Offers / the offer page. The
-   Direct header bell lists offer updates and opens those same pages.
-   Old `/account/payouts` and `/payouts` redirect to My Offers.
+   payment link. Payment history sits on that same Pay page. The Apps
+   **Wallet** panel links one wallet to the account (Connect then Link
+   via the signed challenge) or unlinks it. Purchase, Pay, and claim surfaces
+   do not expose wallet-link controls; an unlinked connected wallet is sent to
+   Account before an on-chain interaction can start.
+3. Old `/account/payouts` and `/payouts` redirect to My Offers.
    Old `/account/settings` and `/account/payments` redirect into Account
    Apps or Pay.
+4. The Direct header user menu shows the signed-in profile and **Sign
+   out**, which disconnects the wallet and ends the Supabase session.
 
 ## 7. Admin approval
 
-Submitted offers are approved in **Admin**. The approver selector contains the
+**Admin** is an operations page at the bottom of the left nav, shown only
+for emails on the server-side `ADMIN_EMAILS` allowlist and enforced on every
+Admin server action (fail closed when the allowlist is set). Submitted
+offers are approved there. The approver selector contains the
 two walkthrough options **Enrique** and **Luuk**. Approval remains independent
-from the person who submitted the request.
+from the person who submitted the request. After approval, operators execute
+the prepared `mintOffer` calldata from the backend mint key, and the server
+   verifies the mint receipt on Optimism Mainnet (requires the contract to be
+deployed and `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` set).
+
+Admin shows **one consistent mint state derived from verified facts only**:
+a broadcast-but-unverified mint reads **Mint in progress**, never **Minted**.
+After **Reset the book**, MRA-001 and MRA-010 return as fresh `funding`
+offers with **no on-chain facts** and a **new chain-store epoch** starts so
+old on-chain facts are never reused. Reset does **not** roll back the chain;
+the env contract address stays active so approved offers mint again on the
+same deployment.
+
+Customer-facing status wording (Under review → Listed → Sold → Paid plus
+Denied / Expired / Closed) stays on customer surfaces; **Mint pending,
+Minted, token #, NFT, contract, Safe mint, and Funding** wording lives in
+Admin only.
 
 ## 8. Shared payment
 
-One confirmed mock payment updates exactly once: the payment request,
-the matching receivable, one collection, and holder distribution
-activity. Refresh and retry are idempotent. Initiated / pending /
-confirmed stay distinct in the data model.
+One confirmed `depositRent` updates exactly once: the payment request,
+the matching receivable, one collection, and the holder's claimable rent.
+Refresh and retry are idempotent. Initiated / pending /
+confirmed stay distinct in the data model. Chain events are recorded in the
+chain store tables.
 
 ## 9. Privacy walls
 
+- Wallet addresses and payout amounts are **public on-chain** once the
+  contract is active. Tenant and property identity stay off-chain.
 - Payer never sees economics.
 - Purchaser never sees payer identity, employer, address, or exact income.
 - Purchaser never contacts the payer.
 - Payer never sees the purchaser.
-- Landlord never sees holder wallet details.
+- Landlord never sees holder wallet details beyond the public token owner.
+- The demo book is shared, but payment requests and Portfolio positions are
+  filtered by the signed-in user's linked wallet; landlord offers are filtered
+  by the signed-in account.
+- A copied `/pay/…` link opened in another account or a signed-out browser
+  never reveals the payment request or payer data.

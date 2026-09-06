@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { HelpTip } from "@/components/help-tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,13 +16,13 @@ import {
 } from "@/components/ui/select";
 import {
   approveOfferAction,
+  mintOfferAction,
   recordCollectionAction,
-  releaseCollectionAction,
   setOfferStatusAction,
   submitOfferForReviewAction,
 } from "@/lib/rent-advance/actions";
 import { canRecordCollection, statusLabel } from "@/lib/rent-advance/helpers";
-import type { Actor, Collection, OfferStatus } from "@/lib/rent-advance/types";
+import type { Actor, OfferStatus } from "@/lib/rent-advance/types";
 
 const STATUSES: OfferStatus[] = [
   "draft",
@@ -117,13 +116,17 @@ export function OfferAdminForms({
   status,
   nextReceivableN,
   actors,
-  releasableCollections = [],
+  onchainPurchased,
+  onchainMinted,
+  onchainMintPending,
 }: {
   reference: string;
   status: OfferStatus;
   nextReceivableN: number | null;
   actors: Actor[];
-  releasableCollections?: Collection[];
+  onchainPurchased: boolean;
+  onchainMinted: boolean;
+  onchainMintPending: boolean;
 }) {
   const { pending, error, run } = useOfferAction();
   const approvers = actors.filter((actor) => actor.role === "independent_approver");
@@ -171,8 +174,8 @@ export function OfferAdminForms({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Approval lets Merkado create the offer. The landlord does not
-              connect a wallet. It can then open on Marketplace.
+              Approval automatically starts the server-side mint. The landlord
+              never signs. Admin retry is available only if recovery is needed.
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="approver">Approver</Label>
@@ -192,7 +195,8 @@ export function OfferAdminForms({
             <Button
               type="button"
               disabled={pending || !approverId}
-              onClick={() => run(() => approveOfferAction(reference, approverId))}
+              onClick={() =>
+                run(() => approveOfferAction(reference, approverId))}
             >
               Approve offer
             </Button>
@@ -200,17 +204,31 @@ export function OfferAdminForms({
         </Card>
       ) : null}
 
-      {collecting ? (
+      {status === "funding" && !onchainMinted && !onchainMintPending ? (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Record collection
-              <HelpTip label="Collections">
-                Ops fallback if a month arrived outside Merkado Pay. Live
-                renter payments land on the listing. The holder then claims
-                them from Portfolio.
-              </HelpTip>
-            </CardTitle>
+            <CardTitle>Mint recovery</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Approval normally starts minting automatically. Use this only to
+              retry a failed or interrupted mint on Optimism Mainnet.
+            </p>
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={() => run(async () => { await mintOfferAction(reference); })}
+            >
+              Retry mint
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {collecting && !onchainPurchased ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Record collection</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-2">
             {nextReceivableN != null ? (
@@ -228,130 +246,14 @@ export function OfferAdminForms({
                 No scheduled receivable remains.
               </p>
             )}
+            <p className="text-sm text-muted-foreground">
+              Ops fallback if a month arrived outside Merkado Pay. Live renter
+              payments land on the offer contract and are verified from the
+              chain.
+            </p>
           </CardContent>
         </Card>
       ) : null}
-
-      {releasableCollections.length > 0 ? (
-        <DualControlForm
-          reference={reference}
-          releasableCollections={releasableCollections}
-          actors={actors}
-        />
-      ) : null}
     </div>
-  );
-}
-
-export function DualControlForm({
-  reference,
-  releasableCollections,
-  actors,
-}: {
-  reference: string;
-  releasableCollections: Collection[];
-  actors: Actor[];
-}) {
-  const { pending, error, run } = useOfferAction();
-  const [collectionId, setCollectionId] = useState(
-    releasableCollections[0]?.id ?? "",
-  );
-  const officers = actors.filter((actor) =>
-    ["operations", "independent_approver", "foundation_signatory"].includes(
-      actor.role,
-    ),
-  );
-  const [instructorId, setInstructorId] = useState("act-martina");
-  const [signatoryId, setSignatoryId] = useState("act-sambo");
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Dual-control release
-          <HelpTip label="Dual-control release">
-            Two different people must approve before collected rent is
-            released. Same person twice is rejected.
-          </HelpTip>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <FormError message={error} />
-        <p className="text-sm text-muted-foreground">
-          Two different people must approve. Same person twice is rejected.
-        </p>
-        {releasableCollections.length ? (
-          <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="release-collection">Collection</Label>
-                <Select value={collectionId} onValueChange={setCollectionId}>
-                  <SelectTrigger id="release-collection" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {releasableCollections.map((row) => (
-                      <SelectItem key={row.id} value={row.id}>
-                        Month {row.receivableN} · {row.status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="instructor">Instructor</Label>
-                <Select value={instructorId} onValueChange={setInstructorId}>
-                  <SelectTrigger id="instructor" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {officers.map((actor) => (
-                      <SelectItem key={actor.id} value={actor.id}>
-                        {actor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="signatory">Signatory</Label>
-                <Select value={signatoryId} onValueChange={setSignatoryId}>
-                  <SelectTrigger id="signatory" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {officers.map((actor) => (
-                      <SelectItem key={actor.id} value={actor.id}>
-                        {actor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <Button
-              type="button"
-              disabled={pending || !collectionId}
-              onClick={() =>
-                run(() =>
-                  releaseCollectionAction({
-                    reference,
-                    collectionId,
-                    instructorId,
-                    signatoryId,
-                  }),
-                )
-              }
-            >
-              Release this month’s rent
-            </Button>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No collection is waiting for release.
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }

@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Foundry dependency tree and Solidity sources (not linted by ESLint):
+    "lib/**",
+    "contracts/**",
+    "test/contracts/**",
+    "script/**",
+    "cache/**",
+    "broadcast/**",
   ]),
 ]);
 

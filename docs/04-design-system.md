@@ -1,19 +1,20 @@
 # 04 - Design System
 
 **Purpose:** UI rules for the Labs Direct / Pay demo.
-**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
+**Last updated:** September 1, 2026 (auth sign-in card, user menu, wallet link panel, admin-only nav)
 
 ## 1. Scope
 
 This document covers the Labs Next.js demo at the repository root.
 Production merkado.cw visual language stays in merkado-cw. The Labs
-**account mock** now mirrors merkado-cw navbar, footer, and account
-sidebar chrome visually. Do not copy AccountLayout data loading, auth,
+**account shell** mirrors merkado-cw navbar, footer, and account
+sidebar chrome visually and shows the signed-in Labs demo account profile.
+Do not copy AccountLayout data loading, auth,
 profiles, or Listing Score implementation. Marketplace, listing, and billing
 controls are visibly disabled, including **Account Settings**. There is
 no Payouts item in account chrome. Admin is not shown.
 Only Merkado Pay and Merkado Direct are live apps. Payment history lives on
-the Pay page.
+the Pay page. Customer copy never calls the sign-in a Merkado account.
 
 ## 2. Stack (verified)
 
@@ -23,7 +24,7 @@ the Pay page.
 | Styling | Tailwind CSS v4 + CSS variables in `src/app/globals.css` |
 | Components | shadcn/ui (`radix-nova`, `neutral`, Lucide) — one library only |
 | Fonts | Geist Sans + Geist Mono on Direct ops; Inter on `.theme-merkado` surfaces |
-| Chrome | Compact shadcn card at `/enter`; `AppShell` sidebar for Direct, with a header notifications bell and nav counts on My Offers / Portfolio; payment-link shell for Pay; account shell for the Labs account mock |
+| Chrome | Compact shadcn auth card at `/enter`; `AppShell` sidebar for Direct, with a header notifications bell, user menu, and nav counts on My Offers / Portfolio; payment-link shell for Pay; account shell for the Labs demo account |
 
 ## 3. Tokens
 
@@ -57,7 +58,9 @@ visible but inactive. Logo and Home return to the Labs Home.
 Marketplace offer cards use merkado-cw listing-card chrome: 12px radius,
 grey-200 border, 3:2 photo, 18px title, icon spec row, and a top-border
 price block. Labs fields stay on the card (status, term, Property Score,
-payer band, whole-offer price, and availability deadline). The whole card opens the offer. No tenant
+payer band, whole-offer price, and the display-only availability text
+**"Available until [date] · 60-day listing window"** — never enforced).
+The whole card opens the offer. No tenant
 name, street, employer, or income.
 
 Do not invent a second component library or a generic “fintech” theme
@@ -74,14 +77,36 @@ outside this scoped layer.
 - Apps **Open Pay** opens this month’s payment page, which includes
   payment history.
 - Customer screens stay quiet. Reset, payment network, and fee buildup live
-  on **Admin**. Buttons use Merkado violet, not near-black.
+  on **Admin**. One button style across the app, using Merkado violet, not
+  near-black. **Connect wallet** and **Claim rent** on Portfolio size to
+  their label and stay violet.
+- Customer status pills are limited to **Under review → Listed → Sold →
+  Paid** plus **Denied / Expired / Closed**. **Paid** is the landlord
+  proceeds card only; the offer itself stays **Sold**. **Mint pending,
+  Minted, token #, NFT, contract, Safe mint, and Funding** wording appears
+  on Admin surfaces only — never on customer screens.
 - Do not add a small page-level eyebrow or brand kicker above a clear page
   title. **Rent paid forward**, **My Offers**, and similar titles stand on
   their own. Field labels, status badges, nav groups, and the logo are not
   eyebrows.
-- The hosted password door (`/enter`) is a compact shadcn card: title,
-  one line of copy, **Shared password**, and **Continue**. No logo, pill,
+- The hosted sign-in door (`/enter`) is a compact shadcn card: title,
+  one line of copy, **Email me a sign-in link**,
+  and the legacy **host password** as a collapsed fallback. A quiet line
+  reads **Not a Merkado account · not live on merkado.cw**. No logo, pill,
   or prototype alert.
+- The Direct header user menu shows the signed-in profile (avatar, name,
+  email) and **Sign out**, which disconnects the wallet and ends the
+  session. A signed-out shell shows a **Sign in** link to `/enter`.
+- The Apps **Wallet** panel on `/account/apps` connects a wallet and links
+  it to the account by a signed challenge; it shows the linked address,
+  **Link wallet** / **Link this wallet instead**, **Unlink wallet**, and a
+  clear rejection alert (cancelled, wrong network, expired link, wrong
+  account). Purchase, Pay, and Portfolio claim surfaces only connect a wallet;
+  when it is not the account's linked wallet, their action leads to Account.
+- Admin nav appears only for allowlisted `ADMIN_EMAILS` users, at the
+  bottom of the left nav; everyone else never sees it.
+- When `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` is empty, Purchase and Pay
+  show a quiet **not configured** state instead of a fake transaction.
 - Customer scores: show **Property quality**, **Payment history**, and
   **Combined property view**. Official names Listing Score, Payer Score,
   and Property Score stay inside tooltips only.
@@ -101,15 +126,15 @@ outside this scoped layer.
   the next action.
 - Completed purchases and holder rent claims use one
   accessible success dialog with a check mark, plain-language result, and the
-  amount when it is useful. Mock claims must still say that no money was sent.
+  amount when it is useful.
 
 ## 5. Accessibility
 
 Skip link to `#main-content`, `aria-current` on nav, focus-visible rings,
-`prefers-reduced-motion` in `globals.css`. The password door uses the
-default shadcn field, a show/hide control, and a full-width continue
-action. Pay is mobile-first (~390px).
-The amount, due badge, copy details, **I’ve sent this payment**, and
+`prefers-reduced-motion` in `globals.css`. The sign-in door uses the
+default shadcn field, a show/hide password control, and full-width actions.
+Pay is mobile-first (~390px).
+The amount, due badge, wallet actions, and
 payment history stay visible. Extra explainers stay in tooltips. Pay is
 English-only.
 Payment status uses `aria-live`. Sliders expose live value and band.
@@ -118,13 +143,24 @@ external app URLs include accessible new-tab text.
 
 ## 6. What not to invent
 
-No gradients-as-brand, no “yield” badges, no loan calculators labeled as
+No gradients-as-brand, no "yield" badges, no loan calculators labeled as
 loans, no explorer link for demo hashes. The **Landlord proceeds** card
 uses Waiting (amber), Processing (blue), Failed (red), and Paid (quiet
-grey). Paid is automatic after the whole offer is purchased; there is no
-landlord claim button. Holder **Claim rent** stays a separate mocked,
-wallet-gated action, not a public token market. Marketplace and Portfolio
-use a standard **Connect wallet** button. WalletConnect versus Privy is a
-later Luis choice and is not shown. Pay has no Connect wallet control.
-Wallet chrome stays mocked until `PAYMENT_RAIL_MODE` is `"live"`. **Base
-Sepolia** is the default demo network. **Base Mainnet** is later.
+grey). Paid is the sale completing; there is no
+landlord claim button. Holder **Claim rent** is the current NFT owner's
+action in Portfolio. Marketplace and Portfolio
+use a standard wallet-connect control (Reown/AppKit (injected EIP-1193); WalletConnect
+versus Privy is a later choice and is not shown). Marketplace purchase and
+Pay each use **one primary button** that opens a single dialog running
+Approve USDC → wait for the successful approval receipt → purchase /
+`depositRent` → automatic receipt wait and server verification until settled;
+there is no manual status action or separate
+Approve step on the page. The QR and **copy address** / **copy amount**
+controls in the expanded **Pay with stablecoin** panel are
+informational only and never submit a payment. **Continue with Sentoo** is a
+ collapsed panel with a **Coming soon** badge. The Optimism Mainnet contract address comes from
+`NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` (the single source of truth, used every
+time); an empty value shows a not-configured
+state, never a fake hash. Explorer links open only for real 64-hex hashes.
+**Optimism Mainnet** is the fixed deployment network. There is no testnet
+fallback or network selector.

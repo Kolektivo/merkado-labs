@@ -64,10 +64,16 @@ actually built, and `docs/10-execution-roadmap.md` for approved remaining work.
 
 - Merkado Direct is the umbrella Labs demo. Merkado Pay is the renter
   payment experience.
-- Wallet, Safe, USDC, transactions, and distributions remain mocked until
-  a separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK.
-- Allowed Supabase target only: Labs project reference `csaefdkpwukshtouyixg`.
+- The only approved crypto implementation is the Optimism Mainnet transferable
+  NFT flow (ADR-0008): one non-upgradeable ERC-721 (`MerkadoRentOfferV1`)
+  holding pooled native USDC rent per token id, company Safe mint, buyer pays
+  the exact purchase price to the locked landlord payout address, renter
+  `depositRent`, and current-owner `claimRent`. It is implemented locally
+  behind config — deployed but NOT activated or merged. The chain store
+  migration, controlled minter funding, hosted activation, and merging require
+  explicit approval. Uncontrolled real funds and production stay blocked.
+- Allowed Supabase targets only: Labs project reference `ewoxmzznkavapcxdporm`
+  and isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
 - Production project reference `jkrfyvukhhsapoivntms` is forbidden.
 - Never access or copy production data, users, schemas, secrets, or config.
 - Never run destructive SQL without explicit approval.

@@ -9,11 +9,20 @@ alwaysApply: true
   Merkado Direct (umbrella) and Merkado Pay (renter payment) demo. Listing
   scrapers live on merkado-cw. Merkado Direct · Rent Advance may remain as
   the internal series name.
-- Wallet, Safe, USDC, transactions, and distributions remain mocked until a
-  separately approved Luis/Luuk integration task. Do not install a real
-  wallet or Safe SDK.
+- The only approved crypto implementation is the Optimism Mainnet transferable
+  NFT flow (ADR-0008 / ADR-0010): one non-upgradeable ERC-721
+  (`MerkadoRentOfferV1`) holding pooled native USDC rent per token id, backend
+  mint, buyer pays the exact purchase price to the locked landlord payout
+  address (NFT minter → buyer atomic), renter `depositRent` (exact monthly
+  amount), and current-owner `claimRent`. The flow is implemented locally
+  behind config — deployed but NOT activated or merged. Do not install a
+  wallet/Safe SDK outside this approved flow.
+- Contract funding, applying the chain store migration, hosted activation, and
+  merging this PR each require explicit Product Lead approval. Uncontrolled
+  real funds and production stay blocked.
 - Product/architecture source of truth: `docs/00-docs-index.md` (`docs/01`–`12`); dashboard ops: `docs/12-deployment-runbook.md` + root `README.md`; safety narrative: `docs/08-security-and-privacy.md`. Detailed historical evidence is local-only under `docs/private/` (gitignored); do not commit it.
-- Supabase operations may target only Labs project reference `csaefdkpwukshtouyixg`.
+- Supabase operations may target only the approved Labs projects
+  `ewoxmzznkavapcxdporm` and the isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
 - Project reference `jkrfyvukhhsapoivntms` is production and is strictly forbidden.
 - Never access or copy production data, users, schemas, secrets, credentials, or configuration.
 - Never run destructive SQL without explicit user approval.

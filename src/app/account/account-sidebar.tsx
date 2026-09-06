@@ -4,6 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import type { AuthProfile } from "@/lib/auth/profile";
 import { DEMO_RENTER_PROFILE } from "@/lib/demo-account-profile";
 
 import {
@@ -101,13 +102,16 @@ function SidebarNavGroups({
   );
 }
 
-export function AccountSidebar() {
+export function AccountSidebar({ profile }: { profile: AuthProfile }) {
   const pathname = usePathname();
   const [openForPath, setOpenForPath] = useState<string | null>(null);
   const isMobileNavOpen = openForPath === pathname;
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
   const mobileNavButtonRef = useRef<HTMLButtonElement | null>(null);
   const mobileNavItem = { label: "Apps", icon: <AppsIcon /> };
+  const displayName = profile.name ?? DEMO_RENTER_PROFILE.fullName;
+  const avatarSrc = profile.avatarUrl ?? DEMO_RENTER_PROFILE.avatarSrc;
+  const roleLabel = profile.email ?? DEMO_RENTER_PROFILE.roleLabel;
 
   useEffect(() => {
     if (!isMobileNavOpen) {
@@ -145,18 +149,18 @@ export function AccountSidebar() {
     <aside className="rounded-[16px] border border-grey-200 bg-surface p-5 min-[769px]:p-6">
       <div className="flex items-center gap-2">
         <Image
-          src={DEMO_RENTER_PROFILE.avatarSrc}
-          alt={DEMO_RENTER_PROFILE.fullName}
+          src={avatarSrc}
+          alt={displayName}
           width={32}
           height={32}
           className="size-8 shrink-0 rounded-full object-cover"
         />
         <div className="flex min-w-0 flex-col gap-[2px]">
           <p className="text-[10px] font-medium leading-[10px] text-grey-700">
-            {DEMO_RENTER_PROFILE.roleLabel}
+            {roleLabel}
           </p>
           <p className="truncate text-[14px] font-medium leading-5 text-surface-dark">
-            {DEMO_RENTER_PROFILE.fullName}
+            {displayName}
           </p>
         </div>
       </div>
