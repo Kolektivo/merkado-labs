@@ -3,7 +3,7 @@
 This folder holds the working context for the Merkado Labs **Merkado Direct**
 and **Merkado Pay** Buildathon demo.
 
-**Last updated:** September 1, 2026 (Supabase Auth identity, account-owned state, linked wallet, ADMIN_EMAILS admin)
+**Last updated:** September 5, 2026 (Supabase Auth identity, shared demo state, linked wallet, ADMIN_EMAILS admin)
 **Canonical set:** `00`–`12` (AI Product Development OS).
 **Agent entrypoints:** repository root `AGENTS.md` and `CLAUDE.md`.
 **Structure decision:** `docs/decisions/ADR-0001-standard-documentation-structure.md`
@@ -29,9 +29,9 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
 - **Merkado account (Labs demo auth)** = a **Supabase Auth** identity
-  (email magic link) that owns an isolated demo book.
-  Auth identity is separate from wallet authorization. Each account can
-  walk create → buy → pay → claim in its own book. Not production auth.
+  (email magic link) for the shared demo. Auth identity is separate from
+  wallet authorization. Different users see the same product state but can
+  have different wallet-based roles. Not production auth.
 - **Labs demo sign-in (`/enter`)** = Supabase Auth primary entry: **Email me a
   sign-in link**, plus the legacy **host
   password** as a deployment-gate fallback. Not a Merkado account and not
@@ -45,20 +45,22 @@ series/legal wording may remain. “Merkado Premium” is retired.
 - **ADMIN_EMAILS admin** = server-side comma-separated allowlist. Admin is
   enforced on Admin pages and on every Admin server action. Missing or empty
   configuration fails closed. Admin nav appears only for allowlisted emails.
-- **Account-owned demo state** = each authenticated account's book is keyed
-  `ra_demo_state id='live' + account_id=<auth user id>`. The legacy shared
-  `NULL` row is ignored by the account-scoped code paths.
+- **Shared demo state** = all authenticated users read and mutate the one
+  `ra_demo_state id='live'` row with `account_id IS NULL`. Supabase Auth,
+  linked wallets, and Admin permission remain account-specific. Landlord offers
+  use the authenticated account; renter payments and holder actions use the
+  linked wallet.
 - **Global Reset (Admin)** = preserves the current Reset UX and the mint
-  sweep, and starts a **new chain-store epoch** (prior active epochs are
-  deactivated atomically). Old Base Sepolia transactions stay tied to their
-  original account / contract / epoch and cannot mutate fresh reset state.
+  sweep, resets the shared book, and starts a new chain-store epoch. Old Base
+  Sepolia transactions stay tied to their original contract / epoch and cannot
+  mutate fresh reset state.
   Reset does **not** roll back the chain.
 - **Pending transaction recovery** = a submitted purchase / deposit / claim
-  tx hash is bound to account + offer/payment request + token + chain +
-  contract + epoch; compare-and-set (first valid submission wins); the
-  connected linked wallet is checked before the existing server receipt
-  verification. Pending UI states do not offer a manual status-check or resend
-  button.
+  tx hash is bound to the shared offer/payment request + token + chain +
+  contract + epoch; the current user's linked wallet authorizes the action;
+  **Check status** re-verifies, never blind re-sends. Mint recovery pins to
+  the offer's original contract at broadcast; the env address is used only
+  for new broadcasts.
 - **Merkado Direct · Rent Advance** = first series name (internal / legal).
 - **Digital Participation Right (DPR)** = instrument name. The instrument
   is now a **transferable offer NFT** (`MerkadoRentOfferV1`, ERC-721) on
@@ -139,12 +141,12 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically. Display-only "Available until [date] · 60-day listing window" — never enforced |
 | Portfolio | [LABS] Seeded positions plus purchases; current NFT owner claims rent (`claimRent`) |
 | Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC. QR / copy controls informational only; depositRent is the only payment path |
-| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (email magic link only). Each account owns an isolated demo book; one linked wallet per account; same account can create → buy → pay → claim. Identity-only OAuth authorization is supported. Not activated or merged |
+| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (email magic link only). All users share one demo book; each account has one linked wallet and identity-specific role access. Identity-only OAuth authorization is supported. Not activated or merged |
 | Admin | [LABS] Bottom of left nav, gated by `ADMIN_EMAILS` allowlist — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
-| Account-owned state + wallet linking (ADR-0009) | [LABS] Implemented behind config; account-owned state and wallet linking are applied to the approved Labs branch. Not live |
+| Shared state + wallet linking (ADR-0009) | [LABS] Implemented behind config; shared demo state, Supabase Auth, and per-account wallet linking are applied to the working branch. Not live |
 | Listing scrapers in this repo | Removed — live on merkado-cw |
 | Public holder offering | Blocked (M.1.2 / M.1.4) |
-| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; migrations not applied; hosted flow not activated or merged |
+| Base Sepolia NFT flow (ADR-0008) | [LABS] Implemented locally behind config: test deployment exists for local/staging verification; Labs chain-store and shared-state migrations are applied; hosted flow not activated or merged |
 | Real wallet / Safe / mainnet | Base Mainnet, real funds, production, and deployment gates stay blocked. See `09`, `10`, `12` |
 
 ## Reading order

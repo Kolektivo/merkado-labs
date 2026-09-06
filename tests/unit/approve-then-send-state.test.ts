@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { settledApproveThenSendState } from "@/lib/pay/approve-then-send-state";
 
-test("a pending send stays submitted without allowing a resend", () => {
+test("a pending send exposes Check status instead of allowing a resend", () => {
   assert.deepEqual(
     settledApproveThenSendState({ status: "pending", reason: "Waiting for confirmations." }),
     {

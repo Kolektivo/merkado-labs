@@ -170,17 +170,16 @@ MRA-001 locked Pay request:
 | Holder purchase | Marketplace | Pay exact purchase price to the locked landlord address; NFT Safe → buyer atomic. |
 | Holder claim | Portfolio | `claimRent(tokenId)`; only the current owner; verify non-owner rejection. |
 | Book write / no double-pay | `src/lib/rent-advance/payment-apply.ts` | Do not rewrite. Confirm once from verified chain events. |
-| Chain store | `supabase/migrations` | `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`. RLS on; no `anon`/`authenticated` grants. Migration not applied yet. |
+| Chain store | `supabase/migrations` | `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`. RLS on; no `anon`/`authenticated` grants. Labs migrations are applied; hosted activation remains blocked. |
 | Server save | server actions | Only verified chain events may write the book as confirmed. |
 
 ### Pending-transaction recovery
 
 When a purchase or rent deposit is broadcast, the submitted tx hash is
 persisted server-side (on the payment request / offer). If the client poll is
-interrupted before 5 confirmations, the Pay / Marketplace page keeps the
-transaction in its submitted/pending state without exposing a manual
-status-check or resend button. Portfolio keeps claim recovery server-side
-without exposing a separate status button for the demo. A
+interrupted before 5 confirmations, the Pay / Marketplace page shows a
+**Check status** button that re-verifies the stored hash. Portfolio keeps claim
+recovery server-side without exposing a separate status button for the demo. A
 background cron (`/api/cron/mint`, protected by `CRON_SECRET`) resumes
 minted-but-unverified offers.
 

@@ -51,14 +51,14 @@ export default async function PortfolioDetailPage({
   searchParams: Promise<{ success?: string }>;
 }) {
   const [{ ref }, query] = await Promise.all([params, searchParams]);
-  const [position, book] = await Promise.all([
-    getPortfolioPosition(ref),
-    loadBook(),
-  ]);
-  if (!position) notFound();
   const user = await getOptionalUser();
   const linked = user ? await getLinkedWalletForAccount(user.id) : null;
   const linkedWalletAddress = linked?.walletAddress ?? null;
+  const [position, book] = await Promise.all([
+    getPortfolioPosition(ref, linkedWalletAddress),
+    loadBook(),
+  ]);
+  if (!position) notFound();
   const offer = book.offers.find((row) => row.reference === position.reference);
   const onchain = mergeOnchain(offer?.onchain);
   const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;

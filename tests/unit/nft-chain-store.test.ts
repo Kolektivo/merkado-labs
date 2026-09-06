@@ -385,9 +385,17 @@ test("ensureActiveEpoch creates a default epoch when none is active", async () =
 });
 
 test("newEpoch records a labelled epoch", async () => {
+  mockClient.store.ra_chain_epochs.rows.push({
+    id: "epoch-old",
+    label: "previous",
+    active: true,
+    created_at: "2026-08-20T10:00:00.000Z",
+  });
   const epoch = await chain.newEpoch("2026-08-21 snapshot");
   assert.equal(epoch.label, "2026-08-21 snapshot");
-  assert.equal(mockClient.store.ra_chain_epochs.rows.length, 1);
+  assert.equal(mockClient.store.ra_chain_epochs.rows.length, 2);
+  assert.equal(mockClient.store.ra_chain_epochs.rows[0]?.active, false);
+  assert.equal(mockClient.store.ra_chain_epochs.rows[1]?.active, true);
 });
 
 test("recordOffer stores decimal-string amounts and token ids", async () => {

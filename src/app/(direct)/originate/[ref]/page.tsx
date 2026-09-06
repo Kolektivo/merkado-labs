@@ -32,7 +32,8 @@ import {
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
 import { proceedsPresentation } from "@/lib/rent-advance/custody";
-import { getOffer } from "@/lib/rent-advance/store";
+import { getOfferForAccount } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,8 @@ export default async function OfferOpsPage({
   params: Params;
 }) {
   const { ref } = await params;
-  const offer = await getOffer(ref);
+  const user = await getOptionalUser();
+  const offer = user ? await getOfferForAccount(ref, user.id) : null;
   if (!offer) notFound();
 
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;

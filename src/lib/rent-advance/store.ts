@@ -28,104 +28,122 @@ import type {
 import { assertDemoUnlocked } from "@/lib/demo-gate-server";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
 import { newEpoch } from "@/lib/onchain/chain-store";
-import { readCurrentOfferClaimable } from "@/lib/onchain/verify";
+import {
+  readCurrentOfferClaimable,
+  readCurrentOfferOwner,
+} from "@/lib/onchain/verify";
 import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
-import { getAccountId } from "@/lib/rent-advance/accounts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const STATE_ID = "live";
 
 /** A fresh book seeded with the canonical demo offers (MRA-001 + MRA-010). */
-function cloneBook(accountId: string | null): DemoBook {
-  return normalizeBook(getSeedBook(), { bookAccountId: accountId ?? undefined });
+function cloneBook(
+  seedOwnerAccountId?: string | null,
+  seedRenterWalletAddress?: string | null,
+): DemoBook {
+  const seed = structuredClone(getSeedBook());
+  seed.seedOwnerAccountId = seedOwnerAccountId ?? null;
+  if (seedOwnerAccountId || seedRenterWalletAddress) {
+    seed.offers = seed.offers.map((offer) => ({
+      ...offer,
+      createdByAccountId: seedOwnerAccountId ?? null,
+      renterWalletAddress: seedRenterWalletAddress ?? offer.renterWalletAddress,
+    }));
+  }
+  return normalizeBook(seed);
+}
+
+function nextRevision(previous?: string | null): string {
+  const previousMs = previous ? Date.parse(previous) : 0;
+  return new Date(Math.max(Date.now(), previousMs + 1)).toISOString();
 }
 
 function isMissingRelationError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
-  if (code === "PGRST204") return true;
+  if (code === "42P01" || code === "PGRST204" || code === "PGRST205") return true;
   const message = (error as { message?: unknown }).message;
-  return typeof message === "string" && message.includes("PGRST204");
+  return typeof message === "string" && /relation .* does not exist|table .* not found/i.test(message);
 }
 
-async function readOrCreateAccountRow(
-  supabase: SupabaseClient,
-  accountId: string | null,
-): Promise<DemoBook> {
-  let query = supabase
+async function readOrCreateSharedRow(supabase: SupabaseClient): Promise<DemoBook> {
+  const { data, error } = await supabase
     .from("ra_demo_state")
-    .select("payload")
-    .eq("id", STATE_ID);
-  query = accountId ? query.eq("account_id", accountId) : query.is("account_id", null);
-  const { data, error } = await query.maybeSingle();
+    .select("payload,updated_at")
+    .eq("id", STATE_ID)
+    .is("account_id", null)
+    .maybeSingle();
   if (error) throw error;
   if (!data?.payload) {
-    const seed = cloneBook(accountId);
-    const row = {
+    const updatedAt = nextRevision();
+    const seed = { ...cloneBook(), sharedStateUpdatedAt: updatedAt };
+    const { error: writeError } = await supabase.from("ra_demo_state").insert({
       id: STATE_ID,
-      account_id: accountId,
+      account_id: null,
       payload: seed,
-      updated_at: new Date().toISOString(),
-    };
-    const { error: writeError } = accountId
-      ? await supabase.from("ra_demo_state").upsert(row, {
-          onConflict: "id,account_id",
-        })
-      : await supabase.from("ra_demo_state").insert(row);
-    if (writeError) throw writeError;
+      updated_at: updatedAt,
+    });
+    if (writeError) {
+      const retry = await supabase
+        .from("ra_demo_state")
+        .select("payload,updated_at")
+        .eq("id", STATE_ID)
+        .is("account_id", null)
+        .maybeSingle();
+      if (retry.error) throw retry.error;
+      if (retry.data?.payload) {
+        return {
+          ...normalizeBook(retry.data.payload),
+          sharedStateUpdatedAt: retry.data.updated_at ?? null,
+        };
+      }
+      throw writeError;
+    }
     return seed;
   }
-  const incoming = normalizeBook(data.payload, {
-    bookAccountId: accountId ?? undefined,
-  });
+  const incoming = {
+    ...normalizeBook(data.payload),
+    sharedStateUpdatedAt: data.updated_at ?? null,
+  };
   const book = dropRetiredDemoOffers(incoming);
   const known = new Set(book.offers.map((offer) => offer.reference));
   const missing = getSeedBook().offers.filter(
     (offer) => !known.has(offer.reference),
   );
-  if (missing.length || book !== incoming) {
+  if (missing.length || book.offers.length !== incoming.offers.length) {
     book.offers.push(...missing);
-    return saveAccountRow(supabase, accountId, book);
+    return saveSharedRow(supabase, book);
   }
   if (storedMoneyOrNetworkStale(data.payload, book)) {
-    return saveAccountRow(supabase, accountId, book);
+    return saveSharedRow(supabase, book);
   }
   return book;
 }
 
-async function saveAccountRow(
-  supabase: SupabaseClient,
-  accountId: string | null,
-  book: DemoBook,
-): Promise<DemoBook> {
+async function saveSharedRow(supabase: SupabaseClient, book: DemoBook): Promise<DemoBook> {
   for (const offer of book.offers) {
     assertReleasesDistinct(offer.releases);
   }
-  const normalized = normalizeBook(book, {
-    bookAccountId: accountId ?? undefined,
-  });
-  if (accountId) {
-    const { error } = await supabase.from("ra_demo_state").upsert(
-      {
-        id: STATE_ID,
-        account_id: accountId,
-        payload: normalized,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id,account_id" },
-    );
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("ra_demo_state")
-      .update({
-        payload: normalized,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", STATE_ID)
-      .is("account_id", null);
-    if (error) throw error;
+  const expectedRevision = book.sharedStateUpdatedAt;
+  if (!expectedRevision) {
+    throw new Error("Shared demo state revision is missing; reload and retry.");
   }
+  const updatedAt = nextRevision(expectedRevision);
+  const normalized = normalizeBook({ ...book, sharedStateUpdatedAt: updatedAt });
+  const { data, error } = await supabase
+    .from("ra_demo_state")
+    .update({
+      payload: normalized,
+      updated_at: updatedAt,
+    })
+    .eq("id", STATE_ID)
+    .is("account_id", null)
+    .eq("updated_at", expectedRevision)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Shared demo state changed; reload and retry.");
   return normalized;
 }
 
@@ -157,83 +175,68 @@ function storedMoneyOrNetworkStale(raw: unknown, book: DemoBook): boolean {
 export async function loadBook(): Promise<DemoBook> {
   await assertDemoUnlocked();
   const supabase = createLabsAdminClient();
-  const accountId = await getAccountId();
-  return readOrCreateAccountRow(supabase, accountId);
+  return readOrCreateSharedRow(supabase);
 }
 
 export async function saveBook(book: DemoBook): Promise<DemoBook> {
   await assertDemoUnlocked();
   const supabase = createLabsAdminClient();
-  const accountId = await getAccountId();
-  return saveAccountRow(supabase, accountId, book);
+  return saveSharedRow(supabase, book);
 }
 
-export async function resetBook(): Promise<DemoBook> {
+export async function resetBook(
+  seedOwnerAccountId: string,
+  seedRenterWalletAddress?: string | null,
+): Promise<DemoBook> {
   await assertDemoUnlocked();
   const supabase = createLabsAdminClient();
-  const accountId = await getAccountId();
   // Start a new chain-store epoch so old on-chain facts are never reused.
   // Reset does NOT roll back the chain; the env contract address keeps
   // working so approved offers mint again on the same deployment.
   try {
     await newEpoch(`reset ${new Date().toISOString()}`);
   } catch (error) {
-    // Only the "table missing" case (chain-store migration not applied) is an
-    // expected book-only reset. Any other error must surface.
+    // The chain-store migration is optional for the local book walkthrough.
     if (!isMissingRelationError(error)) throw error;
   }
-  const seed = cloneBook(accountId);
+  const seed = cloneBook(seedOwnerAccountId, seedRenterWalletAddress);
   const { data, error: readError } = await supabase
     .from("ra_demo_state")
-    .select("payload")
+    .select("payload,updated_at")
     .eq("id", STATE_ID)
-    .eq("account_id", accountId)
+    .is("account_id", null)
     .maybeSingle();
   if (readError) throw readError;
   if (data?.payload) {
     const current = mergeCryptoConfig((data.payload as DemoBook).cryptoConfig);
     seed.cryptoConfig = cryptoConfigFor(resolvePayNetworkKey(current), current);
+    seed.sharedStateUpdatedAt = data.updated_at ?? null;
+  } else {
+    const updatedAt = nextRevision();
+    const initial = { ...seed, sharedStateUpdatedAt: updatedAt };
+    const { error: insertError } = await supabase.from("ra_demo_state").insert({
+      id: STATE_ID,
+      account_id: null,
+      payload: initial,
+      updated_at: updatedAt,
+    });
+    if (insertError) throw insertError;
+    return initial;
   }
-  return saveAccountRow(supabase, accountId, seed);
-}
-
-/** Reset every Labs account while keeping the current global reset semantics. */
-export async function resetAllBooks(): Promise<void> {
-  await assertDemoUnlocked();
-  const supabase = createLabsAdminClient();
-  try {
-    await newEpoch(`reset ${new Date().toISOString()}`);
-  } catch (error) {
-    if (!isMissingRelationError(error)) throw error;
-  }
-
-  const { data, error } = await supabase
-    .from("ra_demo_state")
-    .select("account_id,payload")
-    .order("account_id", { ascending: true, nullsFirst: true });
-  if (error) throw error;
-
-  const rows = data ?? [];
-  if (rows.length === 0) {
-    const accountId = await getAccountId();
-    await saveAccountRow(supabase, accountId, cloneBook(accountId));
-    return;
-  }
-
-  for (const row of rows) {
-    const accountId = (row.account_id as string | null) ?? null;
-    const seed = cloneBook(accountId);
-    if (row.payload) {
-      const current = mergeCryptoConfig((row.payload as DemoBook).cryptoConfig);
-      seed.cryptoConfig = cryptoConfigFor(resolvePayNetworkKey(current), current);
-    }
-    await saveAccountRow(supabase, accountId, seed);
-  }
+  return saveSharedRow(supabase, seed);
 }
 
 export async function getOffer(reference: string): Promise<Offer | null> {
   const book = await loadBook();
   return book.offers.find((offer) => offer.reference === reference) ?? null;
+}
+
+export async function getOfferForAccount(
+  reference: string,
+  accountId: string,
+): Promise<Offer | null> {
+  const offer = await getOffer(reference);
+  return offer && offer.createdByAccountId === accountId ? offer : null;
 }
 
 export async function listMarketplaceCards(): Promise<BuyerOfferCard[]> {
@@ -249,7 +252,24 @@ export async function getPurchaserOffer(
   return toPurchaserOffer(offer);
 }
 
-export async function listPortfolioPositions(): Promise<{
+function sameWallet(left: string | null | undefined, right: string): boolean {
+  return Boolean(left && left.toLowerCase() === right.toLowerCase());
+}
+
+export function paymentRequestsForWallet(
+  book: DemoBook,
+  walletAddress: string,
+): NonNullable<DemoBook["paymentRequests"]> {
+  return (book.paymentRequests ?? []).filter((request) =>
+    sameWallet(request.renterWalletAddress, walletAddress),
+  );
+}
+
+export function offersForAccount(book: DemoBook, accountId: string): Offer[] {
+  return book.offers.filter((offer) => offer.createdByAccountId === accountId);
+}
+
+export async function listPortfolioPositions(walletAddress?: string | null): Promise<{
   positions: PortfolioPosition[];
   contributed: number;
   received: number;
@@ -257,7 +277,20 @@ export async function listPortfolioPositions(): Promise<{
   active: number;
 }> {
   const book = await loadBook();
-  const funded = book.offers.filter((offer) => offer.fundedCents > 0);
+  const funded: Offer[] = [];
+  for (const offer of book.offers) {
+    if (offer.fundedCents <= 0 || !walletAddress) continue;
+    const onchain = mergeOnchain(offer.onchain);
+    const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+    const liveOwner =
+      configuredContract && onchain.tokenId != null && onchain.contractAddress
+        ? await readCurrentOfferOwner(onchain.contractAddress, onchain.tokenId)
+        : null;
+    const owns = configuredContract && onchain.tokenId != null && onchain.contractAddress
+      ? sameWallet(liveOwner, walletAddress)
+      : sameWallet(onchain.purchaserAddress, walletAddress);
+    if (owns) funded.push(offer);
+  }
   const positions = await Promise.all(
     funded.map(async (offer) => {
       const position = toPortfolioPosition(offer, book);
@@ -291,13 +324,23 @@ export async function listPortfolioPositions(): Promise<{
 
 export async function getPortfolioPosition(
   reference: string,
+  walletAddress?: string | null,
 ): Promise<PortfolioPositionDetail | null> {
   const book = await loadBook();
   const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer || offer.fundedCents <= 0) return null;
-  const position = toPortfolioPositionDetail(offer, book);
-  const onchain = mergeOnchain(offer.onchain);
+  const onchain = mergeOnchain(offer?.onchain);
   const configuredContract = process.env.NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS?.trim();
+  const liveOwner =
+    configuredContract && onchain.tokenId != null && onchain.contractAddress && walletAddress
+      ? await readCurrentOfferOwner(onchain.contractAddress, onchain.tokenId)
+      : null;
+  const owns = offer && walletAddress
+    ? configuredContract && onchain.tokenId != null && onchain.contractAddress
+      ? sameWallet(liveOwner, walletAddress)
+      : sameWallet(onchain.purchaserAddress, walletAddress)
+    : false;
+  if (!offer || offer.fundedCents <= 0 || !owns) return null;
+  const position = toPortfolioPositionDetail(offer, book);
   if (!configuredContract || onchain.tokenId == null || !onchain.contractAddress) {
     return position;
   }
@@ -329,48 +372,25 @@ export async function updateOffer(
  * password gate. Only safe to call from a server-authorized job (e.g. the
  * CRON_SECRET-protected mint sweep). Never expose these to client code.
  *
- * They are account-agnostic by default for the cron caller. An optional
- * accountId scopes the operation to that account.
+ * They always operate on the shared demo book.
  */
-export async function loadBookForJob(
-  accountId?: string | null,
-): Promise<DemoBook> {
+export async function loadBookForJob(): Promise<DemoBook> {
   const supabase = createLabsAdminClient();
-  return readOrCreateAccountRow(supabase, accountId ?? null);
+  return readOrCreateSharedRow(supabase);
 }
 
-export async function saveBookForJob(
-  book: DemoBook,
-  accountId?: string | null,
-): Promise<DemoBook> {
+export async function saveBookForJob(book: DemoBook): Promise<DemoBook> {
   const supabase = createLabsAdminClient();
-  return saveAccountRow(supabase, accountId ?? null, book);
+  return saveSharedRow(supabase, book);
 }
 
 export async function updateOfferForJob(
   reference: string,
   updater: (offer: Offer, book: DemoBook) => Offer,
-  accountId?: string | null,
 ): Promise<DemoBook> {
-  const book = await loadBookForJob(accountId);
+  const book = await loadBookForJob();
   const index = book.offers.findIndex((offer) => offer.reference === reference);
   if (index === -1) throw new Error(`Offer ${reference} was not found.`);
   book.offers[index] = updater(book.offers[index], book);
-  return saveBookForJob(book, accountId);
-}
-
-/**
- * Account ids of every owned live book, for job iteration. Payloads are
- * never exposed; only the account identifiers are returned.
- */
-export async function listAccountRows(): Promise<string[]> {
-  const supabase = createLabsAdminClient();
-  const { data, error } = await supabase
-    .from("ra_demo_state")
-    .select("account_id")
-    .not("account_id", "is", null);
-  if (error) throw error;
-  return (data ?? [])
-    .map((row) => row.account_id as string | null)
-    .filter((value): value is string => Boolean(value));
+  return saveBookForJob(book);
 }

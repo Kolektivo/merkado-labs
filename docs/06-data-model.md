@@ -1,7 +1,7 @@
 # 06 - Data Model
 
 **Purpose:** Entities, money, and lifecycle for the Direct / Pay demo.
-**Last updated:** September 1, 2026 (account-owned state, wallet linking, pending-attempt binding, epoch semantics)
+**Last updated:** September 5, 2026 (shared demo state, wallet linking, pending-attempt binding, epoch semantics)
 
 ## 1. Money
 
@@ -81,14 +81,13 @@ shown on Marketplace and My Offers is **display-only** and never enforced.
 
 ### Account ownership and wallet linking
 
-Each authenticated account (Supabase Auth user id) owns an isolated demo
-book. `ra_demo_state` is keyed by the composite `(id, account_id)` with
-`id='live'`; a partial unique index enforces exactly one live row per
-account. The legacy shared row (`id='live'`, `account_id NULL`) is left in
-place and ignored by the account-scoped code paths. The renter identity is
-per-account: `book.ownerAccountId` (falling back to the legacy
-`RENTER_ACCOUNT_ID`) scopes Pay and payment requests to the signed-in
-account's book.
+All authenticated users read and mutate one shared demo book. The active row
+is `ra_demo_state id='live'` with `account_id IS NULL`; existing account-owned
+rows are dormant and are not read by the shared-state paths. Supabase Auth,
+linked wallets, and Admin permission remain account-specific. The offer's
+`createdByAccountId` scopes the landlord workflow; linked-wallet selectors
+scope renter payment requests and Portfolio positions without creating separate
+books. The landlord does not need to link a wallet to create or submit an offer.
 
 `ra_link_challenges` holds server-issued, one-time wallet-linking
 challenges: `nonce` (unique), `domain`, `chain_id`, `issued_at`,
@@ -128,7 +127,7 @@ and the only claimant.
 - Contract store is **USD cents** in the book and **USDC atomic units** (6
   decimals) on chain, 1:1 with USD.
 
-### Chain store tables (new migration, not yet applied)
+### Chain store tables (applied in Labs)
 
 | Table | Purpose |
 |---|---|

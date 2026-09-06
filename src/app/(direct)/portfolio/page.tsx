@@ -15,13 +15,17 @@ import {
 } from "@/components/ui/table";
 import { statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { listPortfolioPositions } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Portfolio" };
 
 export default async function PortfolioPage() {
+  const user = await getOptionalUser();
+  const linkedWallet = user ? await getActiveLinkedWallet(user.id) : null;
   const { positions, contributed, received, expectedRemaining, active } =
-    await listPortfolioPositions();
+    await listPortfolioPositions(linkedWallet);
 
   return (
     <ThemeMerkado className="space-y-6">

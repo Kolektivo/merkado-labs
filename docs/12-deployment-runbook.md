@@ -1,7 +1,7 @@
 # 12 - Deployment Runbook
 
 **Purpose:** How to run the Labs demo locally. No production deploy unless asked.
-**Last updated:** September 1, 2026 (Labs Auth/account/wallet implementation — not activated)
+**Last updated:** September 5, 2026 (Labs Auth/shared state/account/wallet implementation — not activated)
 
 ## Local dashboard
 
@@ -41,13 +41,13 @@ and the Labs hosted URL. When `LABS_DEMO_PASSWORD` is set, it is required
 before sign-in; protected hosted routes then require the authenticated session.
 
 The reviewed account/wallet migration
-`20260831000000_labs_accounts_and_wallets.sql` and the follow-on atomic
-wallet-link migration `20260905130000_atomic_wallet_link.sql` are applied to
-the approved Labs branch. The remote
-Labs database contains the chain-store tables, but local migration history does
-not record `20260821120000` as applied. Reconcile that history before relying
-on or changing the chain store. Do not apply any other migration without
-explicit approval.
+`20260831000000_labs_accounts_and_wallets.sql`, atomic wallet-link migration
+`20260905130000_atomic_wallet_link.sql`, chain-store migration
+`20260821120000`, shared-state migration
+`20260905140000_shared_demo_state.sql`, and chain-epoch invariant migration
+`20260905150000_chain_epoch_invariant.sql` are applied to the approved Labs
+project. Migration history is reconciled. Do not apply migrations to
+production.
 
 ## Vercel (Labs demo host)
 
@@ -85,12 +85,10 @@ Required Vercel env (Labs project `ewoxmzznkavapcxdporm` only):
 
 ## Database
 
-Migrations live in `supabase/migrations/`. The Rent Advance rebuild and
-dual-control trigger are applied. The Base Sepolia chain store migration
-(`ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`,
-`ra_rent_payment_attempts`, `ra_rent_deposit_verifications`,
-`ra_rent_claim_verifications`) is **not applied** — applying it requires
-explicit approval. Do not apply any of this to production.
+Migrations live in `supabase/migrations/`. The Rent Advance rebuild,
+dual-control trigger, account/wallet migrations, chain-store migration, and
+shared-state/epoch-invariant follow-ons are applied to Labs. Do not apply any
+of this to production.
 
 ## Contract deployment gates
 

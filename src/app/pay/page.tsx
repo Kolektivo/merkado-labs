@@ -10,11 +10,12 @@ import {
   openPaymentRequests,
   paymentStatusLabel,
 } from "@/lib/rent-advance/helpers";
-import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { formatUsdcAtomic, formatXcg } from "@/lib/rent-advance/money";
-import { loadBook } from "@/lib/rent-advance/store";
+import { loadBook, paymentRequestsForWallet } from "@/lib/rent-advance/store";
 import { NOT_CONFIGURED } from "@/lib/rent-advance/copy";
 import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Merkado Pay" };
@@ -28,11 +29,10 @@ function tone(status: PaymentRequestStatus) {
 }
 
 export default async function PayIndexPage() {
-  const book = await loadBook();
+  const [book, user] = await Promise.all([loadBook(), getOptionalUser()]);
   const configured = Boolean(book.cryptoConfig?.offerNftContract);
-  const renterAccountId = book.ownerAccountId ?? RENTER_ACCOUNT_ID;
-  const requests = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === renterAccountId)
+  const linkedWallet = user ? await getActiveLinkedWallet(user.id) : null;
+  const requests = (linkedWallet ? paymentRequestsForWallet(book, linkedWallet) : [])
     .slice()
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const open = openPaymentRequests(requests);

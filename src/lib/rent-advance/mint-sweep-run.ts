@@ -32,11 +32,7 @@ import {
 import {
   isPendingMintOffer,
 } from "@/lib/rent-advance/helpers";
-import {
-  listAccountRows,
-  loadBookForJob,
-  updateOfferForJob,
-} from "@/lib/rent-advance/store";
+import { loadBookForJob, updateOfferForJob } from "@/lib/rent-advance/store";
 
 export type AutoMintResult = {
   status: "submitted" | "pending" | "confirmed";
@@ -51,6 +47,8 @@ export type PendingMintResult = {
   txHash?: string;
   reason?: string;
 };
+
+const MINT_LEASE_MS = 2 * 60 * 1000;
 
 /** The book is only confirmed after the approved on-chain confirmation depth. */
 function confirmationDepthPending(result: {
@@ -73,13 +71,9 @@ function revalidate() {
  * Mints a single approved offer from the server mint key. Idempotent: a retry
  * resumes an already-broadcast mint, and a reverted receipt clears the stored
  * hash so the next call broadcasts a fresh transaction.
- * The optional accountId scopes the operation to one account's book.
  */
-export async function mintOfferFor(
-  reference: string,
-  accountId?: string | null,
-): Promise<AutoMintResult> {
-  const book = await loadBookForJob(accountId ?? null);
+export async function mintOfferFor(reference: string): Promise<AutoMintResult> {
+  const book = await loadBookForJob();
   const offer = book.offers.find((row) => row.reference === reference);
   if (!offer) throw new Error("Offer not found.");
   if (offer.status !== "funding") {
@@ -89,21 +83,69 @@ export async function mintOfferFor(
   if (onchain.tokenId != null && onchain.mintTxHash) {
     return { status: "confirmed", txHash: onchain.mintTxHash, tokenId: onchain.tokenId };
   }
-  const contractAddress =
-    normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
+  const contractAddress = onchain.mintTxHash
+    ? normalizeContractAddress(onchain.contractAddress) ??
+      (() => {
+        throw new Error("The existing mint has no recorded contract address.");
+      })()
+    : normalizeContractAddress(book.cryptoConfig?.offerNftContract) ?? merkadoContractAddress();
   const payoutAddress = payoutAddressLocked(offer);
   if (!payoutAddress) {
     throw new Error("Add a payout address before minting.");
   }
   const purchasePrice = purchasePriceAtomicFor(offer);
   const rentInstallmentAmount = rentInstallmentAtomicFor(offer);
-  const epoch = await ensureActiveEpoch();
+  const epoch = onchain.mintTxHash && onchain.epochId
+    ? { id: onchain.epochId }
+    : await ensureActiveEpoch();
   // A fresh random key avoids the contract's usedOfferKeys collision if the
   // demo book is ever reset; the key is persisted with the broadcast.
   const key = onchain.offerKey ?? randomOfferKey();
 
   let txHash = onchain.mintTxHash;
   if (!txHash) {
+    const now = Date.now();
+    if (
+      onchain.mintLeaseId &&
+      onchain.mintLeaseExpiresAt &&
+      Date.parse(onchain.mintLeaseExpiresAt) > now
+    ) {
+      return { status: "pending", reason: "Another mint attempt is already in progress." };
+    }
+    const leaseId = randomOfferKey();
+    const claimedBook = await updateOfferForJob(reference, (current) => {
+      const currentOnchain = mergeOnchain(current.onchain);
+      if (
+        currentOnchain.mintLeaseId &&
+        currentOnchain.mintLeaseExpiresAt &&
+        Date.parse(currentOnchain.mintLeaseExpiresAt) > Date.now()
+      ) {
+        throw new Error("Another mint attempt is already in progress.");
+      }
+      return {
+        ...current,
+        nextAction: "Listing being prepared",
+        onchain: {
+          ...currentOnchain,
+          offerKey: currentOnchain.offerKey ?? key,
+          contractAddress,
+          epochId: epoch.id,
+          mintLeaseId: leaseId,
+          mintLeaseExpiresAt: new Date(Date.now() + MINT_LEASE_MS).toISOString(),
+        },
+      };
+    });
+    const claimedOffer = claimedBook.offers.find((row) => row.reference === reference);
+    const claimedOnchain = mergeOnchain(claimedOffer?.onchain);
+    if (claimedOnchain.mintTxHash) {
+      txHash = claimedOnchain.mintTxHash;
+    }
+    const claimedKey = claimedOnchain.offerKey ?? key;
+    if (txHash) {
+      // A concurrent invocation persisted the broadcast while this call was
+      // claiming the lease. Recover that transaction instead of sending again.
+      return mintOfferFor(reference);
+    }
     const account = merkadoMinterAccount();
     const walletClient = createWalletClient({
       account,
@@ -115,7 +157,7 @@ export async function mintOfferFor(
       abi: MERKADO_OFFER_ABI,
       functionName: "mintOffer",
       args: [
-        key as `0x${string}`,
+         claimedKey as `0x${string}`,
         payoutAddress as `0x${string}`,
         purchasePrice,
         rentInstallmentAmount,
@@ -128,10 +170,12 @@ export async function mintOfferFor(
         nextAction: "Listing being prepared",
         onchain: {
           ...mergeOnchain(current.onchain),
-          offerKey: key,
+          offerKey: claimedKey,
           contractAddress,
           epochId: epoch.id,
           mintTxHash: txHash,
+          mintLeaseId: null,
+          mintLeaseExpiresAt: null,
         },
         events: [
           {
@@ -144,7 +188,6 @@ export async function mintOfferFor(
           ...current.events,
         ],
       }),
-      accountId ?? null,
     );
   }
 
@@ -177,7 +220,6 @@ export async function mintOfferFor(
           ...current.events,
         ],
       }),
-      accountId ?? null,
     );
     return { status: "pending", txHash, reason: "The mint transaction reverted. Press Mint now to retry." };
   }
@@ -277,7 +319,6 @@ export async function mintOfferFor(
         ...current.events,
       ],
     }),
-    accountId ?? null,
   );
   revalidate();
   return { status: "confirmed", txHash, tokenId: Number(mintedTokenId) };
@@ -286,38 +327,29 @@ export async function mintOfferFor(
 /**
  * Mints every approved offer that still needs minting (including ones that
  * were broadcast but not yet verified). Safe to run from a scheduled job.
- * With no accountId it sweeps every account's book so each account's offers
- * are minted exactly once; an optional accountId scopes the sweep to that
- * account. The legacy shared (null-account) book is intentionally not swept:
- * it is ignored by the account-scoped code paths.
  */
-export async function runPendingMintSweep(
-  accountId?: string | null,
-): Promise<{
+export async function runPendingMintSweep(): Promise<{
   minted: number;
   results: PendingMintResult[];
 }> {
-  const scopes = accountId != null ? [accountId] : await listAccountRows();
+  const book = await loadBookForJob();
+  const pending = book.offers.filter(isPendingMintOffer);
   const results: PendingMintResult[] = [];
-  for (const scope of scopes) {
-    const book = await loadBookForJob(scope);
-    const pending = book.offers.filter(isPendingMintOffer);
-    for (const offer of pending) {
-      try {
-        const result = await mintOfferFor(offer.reference, scope);
-        results.push({
-          reference: offer.reference,
-          status: result.status,
-          txHash: result.txHash,
-          reason: result.reason,
-        });
-      } catch (err) {
-        results.push({
-          reference: offer.reference,
-          status: "pending",
-          reason: err instanceof Error ? err.message : "The mint could not be completed.",
-        });
-      }
+  for (const offer of pending) {
+    try {
+      const result = await mintOfferFor(offer.reference);
+      results.push({
+        reference: offer.reference,
+        status: result.status,
+        txHash: result.txHash,
+        reason: result.reason,
+      });
+    } catch (err) {
+      results.push({
+        reference: offer.reference,
+        status: "pending",
+        reason: err instanceof Error ? err.message : "The mint could not be completed.",
+      });
     }
   }
   revalidate();

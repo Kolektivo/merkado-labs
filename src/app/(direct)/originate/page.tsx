@@ -33,9 +33,10 @@ import {
   sortOffersForLandlordList,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { loadBook } from "@/lib/rent-advance/store";
+import { loadBook, offersForAccount } from "@/lib/rent-advance/store";
 import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
 import { cn } from "@/lib/utils";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "My Offers" };
@@ -95,7 +96,11 @@ export default async function OriginatePage({
 }) {
   const params = await searchParams;
   const status = parseStatus(params.status);
-  const scopedBook = await loadBook();
+  const [book, user] = await Promise.all([loadBook(), getOptionalUser()]);
+  const scopedBook = {
+    ...book,
+    offers: user ? offersForAccount(book, user.id) : [],
+  };
   const totals = bookTotals(scopedBook);
   const attention = attentionItems(scopedBook);
   const filtered =

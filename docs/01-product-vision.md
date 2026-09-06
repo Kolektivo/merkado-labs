@@ -1,7 +1,7 @@
 # 01 - Product Vision
 
 **Purpose:** Why Merkado Labs exists now, who it is for, and what success looks like.
-**Last updated:** September 1, 2026 (authenticated Labs accounts, linked wallet, password as deployment gate)
+**Last updated:** September 5, 2026 (authenticated Labs accounts, shared demo state, linked wallet, password as deployment gate)
 
 ## 1. One-sentence vision
 
@@ -28,11 +28,11 @@ locally behind configuration; a Base Sepolia test deployment exists for
 local/staging verification, but the hosted flow is **not activated or merged**.
 
 The walkthrough now runs under **authenticated Labs demo accounts**
-(Supabase Auth: email magic link). Each account owns an
-isolated demo book and can walk the whole journey itself — create → buy →
-pay → claim. The shared host password is only a **deployment gate** (the
-hosted app fails closed at `/enter` until a sign-in completes); it is not
-identity and not a Merkado account.
+(Supabase Auth: email magic link). All authenticated users share one demo book;
+the authenticated account determines the landlord workflow, while linked
+wallets authorize renter and holder actions. The shared host password is only a
+**deployment gate** (the hosted app fails closed at `/enter` until a sign-in
+completes); it is not identity and not a Merkado account.
 
 ## 3. Who it is for
 
@@ -85,9 +85,10 @@ contract until the current NFT owner claims it.
   choose payout and request an offer → Admin
   approval → whole-offer Marketplace purchase (NFT Safe → buyer, buyer pays
   the landlord payout address) → renter USDC rent deposit on Base Sepolia →
-  holder `claimRent`, all within one account-owned demo book.
-- The same authenticated account can create, buy, pay, and claim in its own
-  isolated book.
+  holder `claimRent`, using one shared demo book.
+- Multiple authenticated demo users see the same product state while their
+  accounts provide landlord ownership and linked wallets provide renter and
+  holder authorization.
 - Pricing reproduces the locked pack ($10,206 purchase price, 5.50% fee,
   ~21.6% effective annualised) and **blocks** anything over 24%.
 - Property Score never changes quote pricing.

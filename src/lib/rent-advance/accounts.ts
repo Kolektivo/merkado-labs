@@ -1,16 +1,6 @@
 import "server-only";
 
-import { requireUser } from "@/lib/auth/session";
 import { createLabsAdminClient } from "@/lib/supabase/admin";
-
-export async function getAccountId(): Promise<string> {
-  const user = await requireUser();
-  return user.id;
-}
-
-export function ownerAccountIdFor(accountId: string): string {
-  return accountId;
-}
 
 export type LinkedWallet = {
   accountId: string;

@@ -163,6 +163,9 @@ export type OnchainOfferState = {
   epochId: string | null;
   mintTxHash: string | null;
   mintBlockNumber: bigint | string | null;
+  /** Short server-side lease preventing overlapping mint broadcasts. */
+  mintLeaseId?: string | null;
+  mintLeaseExpiresAt?: string | null;
   /** True once a verified OfferPurchased event exists. */
   purchased: boolean;
   purchaseTxHash: string | null;
@@ -246,7 +249,7 @@ export type PaymentRequest = {
   submittedTxHash?: string | null;
   /** The payer (msg.sender) of the submitted deposit, needed to re-verify on resume. */
   submittedPayer?: string | null;
-  /** Wallet identity assigned to this renter request in the interim flow. */
+  /** Wallet designated to pay this renter request. */
   renterWalletAddress?: string | null;
 };
 
@@ -407,7 +410,9 @@ export type Offer = {
   agency: string;
   /** Verified on-chain NFT facts. Nulls until a verified mint event exists. */
   onchain?: OnchainOfferState;
-  /** Wallet identity that created or owns the landlord workflow. */
+  /** Supabase account identity that created or owns the landlord workflow. */
+  createdByAccountId?: string | null;
+  /** Legacy wallet identity retained for older payloads. */
   createdByWalletAddress?: string | null;
   /** Wallet designated to pay rent for this offer. */
   renterWalletAddress?: string | null;
@@ -433,16 +438,16 @@ export type DemoBook = {
   checklist: ChecklistItem[];
   openQuestions: OpenQuestion[];
   assignedTenancies: string[];
-  /** Server-set owning account id. Never set by the client; defaults to null. */
-  ownerAccountId?: string | null;
   cryptoConfig?: CryptoConfig;
   accounts?: DemoAccount[];
   paymentRequests?: PaymentRequest[];
   ledgerTransactions?: LedgerTransaction[];
   distributions?: DistributionRecord[];
   positions?: PositionRecord[];
-  /** Wallet that triggered the most recent Reset for this demo epoch. */
-  seedOwnerWalletAddress?: string | null;
+  /** Supabase account that triggered the most recent Reset for this demo epoch. */
+  seedOwnerAccountId?: string | null;
+  /** Server-managed revision used to reject stale shared-book writes. */
+  sharedStateUpdatedAt?: string | null;
 };
 
 export type BuyerOfferCard = {

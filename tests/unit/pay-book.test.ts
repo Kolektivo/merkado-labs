@@ -235,6 +235,27 @@ test("normalizeBook refreshes a stale USDC amount to the 1:1 USD figure", () => 
   assert.equal(request?.amountUsdcAtomic, 1_800_000_000);
 });
 
+test("normalizeBook keeps product state shared and assigns stable renter identity", () => {
+  const raw = structuredClone(getSeedBook()) as DemoBook & { ownerAccountId?: string };
+  raw.ownerAccountId = "auth-user-a";
+  raw.offers = raw.offers.map((offer) => ({
+    ...offer,
+    status: "live" as const,
+    createdByAccountId: "auth-user-a",
+    renterWalletAddress: PAYER,
+  }));
+
+  const normalized = normalizeBook(raw);
+  assert.equal("ownerAccountId" in normalized, false);
+  assert.ok(normalized.offers.every((offer) => offer.createdByAccountId === "auth-user-a"));
+  assert.ok(normalized.paymentRequests?.length);
+  assert.ok(
+    normalized.paymentRequests?.every(
+      (request) => request.accountId === "acc-renter-001" && request.renterWalletAddress === PAYER,
+    ),
+  );
+});
+
 test("Admin approval offers Enrique and Luuk", () => {
   const book = getSeedBook();
   book.actors = [];

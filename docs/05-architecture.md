@@ -1,7 +1,7 @@
 # 05 - Architecture
 
 **Purpose:** How the Labs demo is put together.
-**Last updated:** September 1, 2026 (Supabase Auth, account-owned store, linked wallet, ADMIN_EMAILS admin)
+**Last updated:** September 5, 2026 (Supabase Auth, shared store, linked wallet, ADMIN_EMAILS admin)
 
 ## 1. Surfaces
 
@@ -32,10 +32,11 @@ Customer-facing surfaces:
 
 ## 2. Dashboard
 
-- Server components load the signed-in account's demo book from Labs
-  Supabase (`ra_demo_state id='live' + account_id`) with a seed fallback and
-  `normalizeBook()` for older JSON. The legacy shared `NULL` row is left in
-  place and ignored by the account-scoped paths.
+- Server components load the one shared demo book from Labs Supabase
+  (`ra_demo_state id='live' AND account_id IS NULL`) with a seed fallback and
+  `normalizeBook()` for older JSON. Account-specific selectors provide the
+  landlord workflow, while wallet-specific selectors provide renter and holder
+  role views.
 - Identity is **Supabase Auth** (email magic links only). Server
   components and server actions resolve the user through `@supabase/ssr`
   (`src/lib/supabase/server-client.ts`); browser code uses a matching
@@ -54,9 +55,11 @@ Customer-facing surfaces:
   at most one active row in `ra_account_wallets`.
 - Pending transaction recovery: a submitted purchase / deposit / claim hash
   is bound to the account + offer/payment request + token + chain + contract
-  + epoch (compare-and-set, first valid submission wins). The connected linked
-  wallet is checked before the existing server receipt verification. Pending UI
-  states do not offer a manual status-check or resend button.
+  + epoch (compare-and-set, first valid submission wins). Verification
+  derives the sender from verified chain facts, never a client-supplied
+  address; **Check status** re-verifies the stored hash, never blind
+  re-sends. Mint recovery pins to the offer's original contract at
+  broadcast; the env address is used only for new broadcasts.
 - The hosted edge gate (`src/proxy.ts`) fails closed: `/enter` (Supabase
   Auth sign-in) is reachable; an authenticated Supabase session or a valid
   legacy `LABS_DEMO_PASSWORD` gate cookie may pass, hosted production
@@ -86,11 +89,11 @@ Direct presentation and filtering only. Never feed it back into the engine.
 Labs project `ewoxmzznkavapcxdporm` only. RLS on. `anon` / `authenticated`
 have no grants. Service-role is server-only.
 
-The persisted Labs book is one JSON row in `ra_demo_state`, keyed
-`id='live' + account_id=<auth user id>` so each authenticated account owns
-an isolated book. A trigger on that
-payload rejects same-person releases. Purchaser pages load an anonymised
-card, not the full payer file.
+The persisted Labs book is one shared JSON row in `ra_demo_state`, keyed
+`id='live'` with `account_id IS NULL`. Existing account-owned rows are dormant
+and are not read by the shared-state paths. A trigger on that payload rejects
+same-person releases. Purchaser pages load an anonymised card, not the full
+payer file.
 
 Wallet linking adds two tables from
 `20260831000000_labs_accounts_and_wallets.sql`: `ra_link_challenges`
@@ -140,9 +143,10 @@ are the on-chain evidence record; the JSON book is the product state.
 - **Pending-transaction recovery.** A submitted purchase / deposit / claim
   tx hash is bound to the account + offer/payment request + token + chain +
   contract + epoch and persisted compare-and-set (first valid submission
-  wins). The connected linked wallet is checked before the existing server
-  receipt verification. Pending UI states do not offer a manual status-check
-  or resend button.
+  wins). Verification derives the sender from verified chain facts, never a
+  client-supplied address; **Check status** re-verifies the stored hash,
+  never blind re-sends. Mint recovery pins to the offer's original contract
+  at broadcast; the env address is used only for new broadcasts.
 - **Chain-store epochs.** Exactly one active epoch exists after any write:
   a new epoch first deactivates every prior active row, then inserts the new
   one, so a stale active epoch is never picked up. Reset starts a new epoch

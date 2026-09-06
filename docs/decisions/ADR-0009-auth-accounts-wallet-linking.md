@@ -1,20 +1,27 @@
-# ADR-0009: Labs Auth, Account-Owned State, and Wallet Linking
+# ADR-0009: Labs Auth, Shared Demo State, and Wallet Linking
 
 **Status:** Approved for local implementation; not activated or merged
 **Date:** 2026-09-01
 
 ## Context
 
-The Labs walkthrough previously used one shared mutable demo book. Product
-testing with multiple users could mix drafts, payments, purchases, and claims.
+The Labs walkthrough uses one shared mutable demo book. Product testing with
+multiple users needs shared product state without mixing wallet-authorized
+landlord, renter, holder, and Admin actions.
 The production `merkado-cw` application uses Supabase Auth with the
 `@supabase/ssr` server/browser client structure.
 
 ## Decision
 
 Merkado Labs uses Supabase Auth with email magic links only. Identity-only OAuth
-authorization is supported separately. Each
-authenticated user owns an isolated demo book keyed by `auth.users.id`.
+authorization is supported separately. All authenticated users read and mutate
+the shared `ra_demo_state` row where `id='live'` and `account_id IS NULL`.
+
+Landlord workflow ownership is stored on each offer as the authenticated
+`createdByAccountId`; creating or submitting an offer does not require a linked
+wallet. The existing renter wallet field remains a checksummed Ethereum address
+chosen in Create Offer. Linked wallets authorize on-chain purchase, payment,
+and claim actions.
 
 Each account may have one active linked wallet. Linking requires a short-lived,
 one-time, domain-, chain-, account-, and nonce-bound signed challenge. Wallet
@@ -26,18 +33,17 @@ both Admin pages and Admin actions. `LABS_DEMO_PASSWORD` remains a deployment
 gate before sign-in when configured.
 
 Global Reset remains an Admin operation with its current UX and mint sweep. It
-resets the Labs account books, starts a new chain epoch, preserves network and
+resets the shared Labs book, starts a new chain epoch, preserves network and
 contract configuration, and does not roll back Base Sepolia. Old transaction
-facts remain bound to their original account, contract, and epoch.
+facts remain bound to their original contract and epoch.
 
 ## Consequences
 
 - Labs gains a production-parity Auth structure without becoming production
   authentication.
-- Account isolation requires the reviewed account/wallet migration.
-- The account/wallet migration is applied to Labs. The remote chain-store
-  tables exist, but local migration history does not record the chain-store
-  migration as applied; that history must be reconciled before relying on or
-  changing the chain store.
+- Wallet-specific role views require the reviewed account/wallet migration.
+- The account/wallet, chain-store, shared-state, and epoch-invariant migrations
+  are applied to Labs, and migration history is reconciled. Hosted activation
+  remains a separate approval gate.
 - Base Mainnet, real funds, production access, and hosted activation remain
   blocked.

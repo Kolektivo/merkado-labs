@@ -118,3 +118,15 @@ test("confirmed rent adds a Portfolio claim notification", () => {
     2,
   );
 });
+
+test("shared notifications still vary by the signed-in account and wallet", () => {
+  const book = minted(getSeedBook(), CANONICAL_REFERENCE);
+  const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(offer);
+  offer.createdByAccountId = "account-landlord";
+  const landlordItems = dashboardNotifications(book, "account-landlord", PAYER);
+  const otherUserItems = dashboardNotifications(book, "account-other", BUYER);
+
+  assert.ok(landlordItems.some((item) => item.href === `/originate/${CANONICAL_REFERENCE}`));
+  assert.equal(otherUserItems.some((item) => item.href === `/originate/${CANONICAL_REFERENCE}`), false);
+});

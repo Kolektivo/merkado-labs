@@ -1,7 +1,7 @@
 # 11 - Testing and UAT
 
 **Purpose:** How we verify the Direct / Pay Buildathon demo.
-**Last updated:** September 5, 2026 (Supabase Auth and account-owned wallet linking)
+**Last updated:** September 5, 2026 (Supabase Auth, shared demo state, and linked wallet)
 
 ## Automated
 
@@ -20,8 +20,9 @@ Property Score, payment book, app-link, host-gate, chain-verification, or
 contract-helper behaviour changes incorrectly.
 
 Wallet-link tests cover challenge binding, signature verification, expiry, and
-single-use challenges. Supabase Auth and account ownership require manual
-verification that two signed-in accounts remain isolated, wallet linking is
+single-use challenges. Supabase Auth and shared state require manual
+verification that two signed-in accounts see the same book while linked-wallet
+role views remain distinct, wallet linking is
 available only in Account, and purchase, Pay, and claim actions redirect an
 unlinked connected wallet to Account before any transaction starts.
 
@@ -38,7 +39,7 @@ self-transfers, wrong amounts, wrong network, and duplicate confirmations.
 Tests must also cover: the display-only 60-day window (offer stays
 purchasable after the date, no Expired status derives from it), Reset
 starting a new chain-store epoch (old on-chain facts are never reused), the approval receipt completing before
- purchase/deposit begins, pending outcomes exposing no manual status-check or resend button,
+purchase/deposit begins, pending outcomes exposing only **Check status**,
 informational-only Pay QR / copy controls (they never submit a payment;
 `depositRent` is the only path), customer statuses (Paid = proceeds card
 only; the offer stays Sold), **Save draft** persistence, and Admin
@@ -97,14 +98,15 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
     extra comparison figures. Status pills stay limited to **Under review →
     Listed → Sold → Paid** plus **Denied / Expired / Closed**; no mint / NFT
     / contract wording appears on customer surfaces.
-13. Two authenticated accounts have isolated books. A draft, payment request,
-    offer, wallet link, or Portfolio position from Account A is not visible to
-    Account B. A copied foreign URL returns a safe not-found response.
+13. Two authenticated accounts see the same shared book. Landlord offers,
+    payment requests, and Portfolio positions remain filtered by linked wallet;
+    landlord offers remain filtered by account; a copied foreign role URL
+    returns a safe not-found response.
 14. The same authenticated account can create an offer, buy an offer with its
     linked wallet, pay rent, and claim rent. Wallet connection alone does not
     link the wallet; replayed or expired link signatures are rejected.
 15. Non-admin accounts cannot open Admin or invoke Reset. Admin Reset keeps
-    the current confirmation UX, resets all account books, starts one active
+    the current confirmation UX, resets the shared book, starts one active
     epoch, preserves network/contract configuration, and does not roll back
     Base Sepolia.
 

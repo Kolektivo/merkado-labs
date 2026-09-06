@@ -121,6 +121,7 @@ export default async function BuyerOfferPage({
               configured={configured}
               tokenId={offer.tokenId}
               contractAddress={offer.contractAddress}
+              pendingRecovery={offer.pendingPurchase}
               linkedWalletAddress={linkedWalletAddress}
             />
           ) : (

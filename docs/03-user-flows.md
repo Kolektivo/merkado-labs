@@ -1,7 +1,7 @@
 # 03 - User Flows
 
 **Purpose:** The journeys the Labs demo must support.
-**Last updated:** September 1, 2026 (authenticated Labs accounts, linked wallet, ADMIN_EMAILS admin, account-owned books)
+**Last updated:** September 5, 2026 (authenticated Labs accounts, shared demo state, linked wallet, ADMIN_EMAILS admin)
 
 ## 1. Hosted access
 
@@ -30,7 +30,7 @@ approved offers mint again on the same deployment.
 
 ## 3. Landlord (Merkado Direct)
 
-1. **My Offers** — the signed-in account's demo book appears as a table
+1. **My Offers** — offers created by the signed-in account appear as a table
    (compact rows on
    a phone). Each row shows the sale amount, status, and one **Next** step.
    Next steps are **Listed for 60 days** for a listed offer and **Sale amount
@@ -82,7 +82,7 @@ approved offers mint again on the same deployment.
 
 ## 4. Holder (Merkado Direct)
 
-1. Marketplace shows anonymised cards from the signed-in account's own book
+1. Marketplace shows anonymised cards from the shared demo book
    in merkado-cw listing-card chrome:
    photo, district, beds, type, combined property view, payment history,
    term, whole-offer price, and the display-only
@@ -112,10 +112,11 @@ approved offers mint again on the same deployment.
 
 ## 5. Renter (Merkado Pay)
 
-1. `/pay` opens the signed-in account's current payment request. `/pay/[id]`
+1. `/pay` opens the signed-in user's linked-wallet payment request. `/pay/[id]`
    is the
    canonical deep link. Invalid IDs — and IDs that belong to another
-   account's book — show a friendly not-found that leaks nothing. A later
+   shared book — show a friendly not-found when the request is not assigned to
+   the user's linked wallet. A later
    month cannot be paid while an earlier month on the same deal is still
    open — the page sends the renter back to the next payment.
 2. Due state: period, primary USDC amount (1:1 with USD rent), due date,
@@ -129,8 +130,8 @@ approved offers mint again on the same deployment.
     inside that same stablecoin section. The wallet must be linked in Account
     before **Pay rent** is available. **Pay rent** opens one dialog that
     runs Approve USDC → waits for the successful approval receipt →
-     `depositRent` → server verification. A pending transaction remains
-     submitted without a manual status-check or resend button.
+    `depositRent` → server verification, with a **Check status** action for a
+    pending transaction (never a blind re-send).
     **Continue with Sentoo** returns as a collapsed panel with a **Coming
     soon** badge.
 3. The renter deposits rent by calling `depositRent(tokenId,
@@ -205,7 +206,8 @@ chain store tables.
 - Purchaser never contacts the payer.
 - Payer never sees the purchaser.
 - Landlord never sees holder wallet details beyond the public token owner.
-- Account books are isolated: a payment request, offer, or portfolio link
-  from another account's book shows a friendly not-found and leaks nothing.
+- The demo book is shared, but payment requests and Portfolio positions are
+  filtered by the signed-in user's linked wallet; landlord offers are filtered
+  by the signed-in account.
 - A copied `/pay/…` link opened in another account or a signed-out browser
   never reveals the payment request or payer data.

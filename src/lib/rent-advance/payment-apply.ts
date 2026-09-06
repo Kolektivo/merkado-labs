@@ -129,10 +129,6 @@ function ensureOfferIds(offer: Offer): Offer {
   };
 }
 
-function renterAccountIdFor(accountId?: string | null): string {
-  return accountId ?? RENTER_ACCOUNT_ID;
-}
-
 function shouldMintPaymentRequests(offer: Offer): boolean {
   return offer.status === "live" || offer.status === "collecting" || offer.status === "default";
 }
@@ -215,7 +211,7 @@ function paymentRequestForReceivable(
   offer: Offer,
   n: number,
   receivingAddress: string | null,
-  renterAccount?: string | null,
+  renterWalletAddress: string | null,
 ): PaymentRequest | null {
   const receivable = offer.receivables.find((row) => row.n === n);
   if (!receivable) return null;
@@ -226,7 +222,7 @@ function paymentRequestForReceivable(
   const confirmed = receivable.status === "received";
   return {
     paymentRequestId,
-    accountId: renterAccountIdFor(renterAccount),
+    accountId: RENTER_ACCOUNT_ID,
     offerId: offer.offerId ?? offerIdFromReference(offer.reference),
     offerReference: offer.reference,
     propertyId: offer.property.id,
@@ -238,7 +234,7 @@ function paymentRequestForReceivable(
     amountUsdcAtomic: usdcAtomicFromUsdCents(receivable.amountCents),
     paymentReference: `${offer.reference}-${String(n).padStart(2, "0")}`,
     receivingAddress: receivingAddress ?? "",
-    renterWalletAddress: offer.renterWalletAddress ?? null,
+    renterWalletAddress,
     status: confirmed ? "confirmed" : receivable.status === "missed" ? "overdue" : "due",
     initiatedAt: null,
     confirmedAt: confirmed ? receivable.dueDate : null,
@@ -276,15 +272,18 @@ function positionForOffer(offer: Offer): PositionRecord | null {
     holderId: offer.holders[0]?.holderId ?? "act-purchaser",
     settlementTransactionId: null,
     externalTokenId: onchain.tokenId != null ? String(onchain.tokenId) : null,
+    holderWalletAddress: onchain.purchaserAddress ?? null,
   };
 }
 
 export function normalizeBook(
   raw: unknown,
-  opts?: { bookAccountId?: string | null },
 ): DemoBook {
   const book = (raw ?? {}) as DemoBook;
-  const accountId = opts?.bookAccountId ?? book.ownerAccountId ?? null;
+  const sharedBook = { ...book } as DemoBook & {
+    ownerAccountId?: string | null;
+  };
+  delete sharedBook.ownerAccountId;
   const cryptoConfig = mergeCryptoConfig(book.cryptoConfig);
   const offers = (book.offers ?? [])
     .map(ensureOfferIds)
@@ -303,7 +302,7 @@ export function normalizeBook(
         offer,
         receivable.n,
         rentReceivingAddressFor(offer, cryptoConfig),
-        accountId,
+        offer.renterWalletAddress ?? null,
       );
       if (!next) continue;
       const previous = existingRequests.get(next.paymentRequestId);
@@ -402,6 +401,8 @@ export function normalizeBook(
             ...existing,
             settlementTransactionId: null,
             externalTokenId: row.externalTokenId ?? existing.externalTokenId,
+            holderWalletAddress:
+              row.holderWalletAddress ?? existing.holderWalletAddress ?? null,
           }
         : row;
     });
@@ -415,8 +416,7 @@ export function normalizeBook(
   }
 
   return {
-    ...book,
-    ownerAccountId: accountId,
+    ...sharedBook,
     offers,
     actors: ACTORS,
     checklist: book.checklist ?? [],
@@ -428,6 +428,7 @@ export function normalizeBook(
     ledgerTransactions,
     distributions,
     positions,
+    sharedStateUpdatedAt: book.sharedStateUpdatedAt ?? null,
   };
 }
 
@@ -746,11 +747,9 @@ const OPEN_PAYMENT_STATUSES = new Set([
 
 export function currentRenterPaymentRequest(
   book: DemoBook,
-  accountId?: string | null,
 ): PaymentRequest | null {
-  const renterAccount = accountId ?? book.ownerAccountId ?? RENTER_ACCOUNT_ID;
   const requests = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === renterAccount)
+    .filter((row) => row.accountId === RENTER_ACCOUNT_ID)
     .slice()
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   return requests.find((row) => OPEN_PAYMENT_STATUSES.has(row.status)) ?? null;

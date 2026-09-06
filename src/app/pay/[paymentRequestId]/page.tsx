@@ -1,10 +1,10 @@
 import { formatDayMonthYear, isUpcomingPaymentRequest } from "@/lib/rent-advance/helpers";
-import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { earlierOpenPaymentRequest } from "@/lib/rent-advance/payment-apply";
-import { loadBook } from "@/lib/rent-advance/store";
+import { loadBook, paymentRequestsForWallet } from "@/lib/rent-advance/store";
 import { toPublicCryptoConfig } from "@/lib/pay/networks";
 import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 import { PayApp } from "../pay-app";
 import { PayNotFound } from "../pay-not-found";
@@ -18,20 +18,18 @@ export default async function PayRequestPage({
   params: Promise<{ paymentRequestId: string }>;
 }) {
   const { paymentRequestId } = await params;
-  const book = await loadBook();
-  const renterAccountId = book.ownerAccountId ?? RENTER_ACCOUNT_ID;
-  const request = book.paymentRequests?.find(
-    (row) => row.paymentRequestId === paymentRequestId,
-  );
-  if (!request || request.accountId !== renterAccountId) {
+  const [book, user] = await Promise.all([loadBook(), getOptionalUser()]);
+  const linkedWallet = user ? await getActiveLinkedWallet(user.id) : null;
+  const requests = linkedWallet ? paymentRequestsForWallet(book, linkedWallet) : [];
+  const request = requests.find((row) => row.paymentRequestId === paymentRequestId);
+  if (!request) {
     return <PayNotFound />;
   }
 
   const offer = book.offers.find((row) => row.reference === request.offerReference);
   const onchain = mergeOnchain(offer?.onchain);
   const earlier = earlierOpenPaymentRequest(book, request.paymentRequestId);
-  const history = (book.paymentRequests ?? [])
-    .filter((row) => row.accountId === renterAccountId)
+  const history = requests
     .map((row) => ({
       paymentRequestId: row.paymentRequestId,
       offerReference: row.offerReference,
@@ -45,7 +43,7 @@ export default async function PayRequestPage({
   const publicCryptoConfig = toPublicCryptoConfig(book.cryptoConfig);
   const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
   const configured = Boolean(contractAddress);
-  const linkedWalletAddress = await getActiveLinkedWallet(renterAccountId);
+  const linkedWalletAddress = linkedWallet;
 
   return (
     <PayApp
@@ -68,6 +66,10 @@ export default async function PayRequestPage({
       tokenId={onchain.tokenId}
        contractAddress={contractAddress}
        linkedWalletAddress={linkedWalletAddress}
-     />
+      pendingRecovery={
+        Boolean(request.submittedTxHash) &&
+        (request.status === "pending" || request.status === "initiated" || request.status === "due")
+      }
+    />
   );
 }

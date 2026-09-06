@@ -39,15 +39,16 @@ export function navNotificationCounts(
 
 export function dashboardNotifications(
   book: DemoBook,
+  accountId?: string | null,
   walletAddress?: string | null,
 ): DashboardNotification[] {
-  if (walletAddress === null) return [];
+  if (accountId === null) return [];
   const items: DashboardNotification[] = [];
 
   for (const offer of book.offers) {
     if (
-      walletAddress &&
-      !sameWallet(offer.createdByWalletAddress ?? "", walletAddress)
+      accountId &&
+      offer.createdByAccountId !== accountId
     ) {
       continue;
     }
