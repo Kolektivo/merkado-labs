@@ -14,10 +14,12 @@ Merged from former `docs/labs/SAFETY_RULES.md` and safety sections of former
 
 The live Merkado system must remain completely untouched.
 
-**Allowed Supabase target only:**
+**Allowed non-production Supabase targets:**
 
 - name: `merkado-labs`
+- project reference: `csaefdkpwukshtouyixg`
 - project reference: `ewoxmzznkavapcxdporm`
+- isolated wave6 fork: `ajbeqiwgpttpmzpqxepl`
 - region (Labs identity): `eu-west-3`
 
 **Forbidden production target:**

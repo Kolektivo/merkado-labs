@@ -7,7 +7,8 @@
 
 | System | Use |
 |---|---|
-| Labs Supabase `ewoxmzznkavapcxdporm` | Demo book, chain store, RLS, service-role server access |
+| Labs Supabase `csaefdkpwukshtouyixg` | Active Labs demo book, chain store, RLS, service-role server access |
+| Labs Supabase `ewoxmzznkavapcxdporm` or isolated wave6 fork `ajbeqiwgpttpmzpqxepl` | Approved Labs alternatives for isolated work |
 | Supabase Auth (same Labs project) | Primary Labs identity: **email magic links only**. Auth identity is separate from wallet authorization. Identity-only OAuth authorization is supported. |
 | Optimism Mainnet (`mainnet.optimism.io`) | Read-only RPC for the server to read receipts and events |
 | Injected wallet (EIP-1193) | Holder purchase and `claimRent`; renter `depositRent`; signs the wallet-linking challenge (WalletConnect / Privy later) |
@@ -131,7 +132,7 @@ but old on-chain facts remain excluded by the cold-start epoch.
 | Renter deposit | `depositRent(tokenId, opaquePaymentId, amount)`; exact monthly amount; app schedules the six-month term, contract has no deposit cap. |
 | Pay QR / copy controls | Informational only. The QR shows the receiving address, USDC amount, and payment reference; **copy address** / **copy amount** never submit a payment. `depositRent` via the wallet **Pay rent** action is the only valid payment path. **Continue with Sentoo** is a collapsed **Coming soon** panel. The renter never sees NFT / mint / contract / token wording. |
 | Wallet | Injected EIP-1193. WalletConnect versus Privy is a later choice. No mock provider or demo wallet. |
-| Supabase | Labs `ewoxmzznkavapcxdporm` only; service-role server-only; RLS on. |
+| Supabase | Labs `csaefdkpwukshtouyixg`, `ewoxmzznkavapcxdporm`, or isolated wave6 fork `ajbeqiwgpttpmzpqxepl`; service-role server-only; RLS on. |
 
 MRA-001 locked Pay request:
 
@@ -314,7 +315,8 @@ Use these. Do not invent a second amount. Do not hard-code a chain.
 
 ### Data ownership and privacy
 
-- Allowed Supabase: Labs `ewoxmzznkavapcxdporm` only.
+- Allowed Supabase: Labs `csaefdkpwukshtouyixg`, `ewoxmzznkavapcxdporm`, or
+  isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
 - Forbidden: production `jkrfyvukhhsapoivntms`.
 - On-chain wallet addresses and payout amounts are public once active;
   tenant and property identity stay off-chain.

@@ -92,7 +92,7 @@ repo**. They live on merkado-cw.
 | Admin mint state | Admin shows a single consistent mint state **derived from verified facts only**; a broadcast-but-unverified mint shows **Mint in progress**, never **Minted**. After reset, MRA-001 is a fresh `funding` offer with no on-chain facts. |
 | Demo book | Auto-seeds **MRA-001** + **MRA-010**, both approved (`funding`) and minted as offer NFTs on the deployed contract. After **Reset** they are fresh `funding` offers with **empty on-chain state** until the backend mints them again. `MRA-001` is the locked reference deal and cannot be re-created. Additional offers are created via Create Offer. |
 | Production marketplace | merkado-cw only |
-| Supabase | Labs `ewoxmzznkavapcxdporm` only |
+| Supabase | Labs `csaefdkpwukshtouyixg`, `ewoxmzznkavapcxdporm`, or the isolated wave6 fork `ajbeqiwgpttpmzpqxepl` |
 | Chain store | New tables `ra_chain_epochs`, `ra_chain_offers`, `ra_chain_events`, `ra_rent_payment_attempts`, `ra_rent_deposit_verifications`, `ra_rent_claim_verifications` (RLS on; service-role only) |
 | Account chrome | Labs `/account` mirrors merkado-cw navbar, sidebar, and footer visually. Marketplace, listing, billing, and other chrome stay visibly disabled. Direct **Admin** is a separate operations page at the bottom of the left nav. Apps has its own group, above Account. Only **Merkado Pay** and **Merkado Direct** are live apps. **My Payments** lives inside Merkado Pay. |
 | Auth identity | **Supabase Auth** is the primary Labs identity: **Email me a sign-in link** only. Auth identity is separate from wallet authorization. The account shell profile comes from the signed-in user email or the seeded **Luuk Weber** fallback. Identity-only OAuth authorization is supported. Not production auth. |

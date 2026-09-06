@@ -87,7 +87,8 @@ Direct presentation and filtering only. Never feed it back into the engine.
 
 ## 4. Data
 
-Labs project `ewoxmzznkavapcxdporm` only. RLS on. `anon` / `authenticated`
+Labs projects `csaefdkpwukshtouyixg`, `ewoxmzznkavapcxdporm`, and the isolated
+wave6 fork `ajbeqiwgpttpmzpqxepl`. RLS on. `anon` / `authenticated`
 have no grants. Service-role is server-only.
 
 The persisted Labs book is one shared JSON row in `ra_demo_state`, keyed

@@ -199,7 +199,8 @@ filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 
 ## 3. Database `[LABS]`
 
-Allowed project only: `ewoxmzznkavapcxdporm`.
+Allowed non-production projects: `csaefdkpwukshtouyixg`,
+`ewoxmzznkavapcxdporm`, and isolated wave6 fork `ajbeqiwgpttpmzpqxepl`.
 
 Migration `supabase/migrations/20260814120000_rent_advance_rebuild.sql` dropped
 the old listing / pipeline tables and created `ra_*` tables with RLS on and no
