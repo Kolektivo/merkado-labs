@@ -1,23 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useEffect, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-import { HelpTip } from "@/components/help-tip";
-import { WalletConnection } from "@/components/wallet-connection";
-import { Money } from "@/components/money-display";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
-import { OP_MAINNET_CHAIN_ID } from "@/lib/pay/networks";
-import { claimRent, waitForSuccessfulWalletTransaction } from "@/lib/pay/wallet-adapter";
+import { HelpTip } from '@/components/help-tip';
+import { WalletConnection } from '@/components/wallet-connection';
+import { Money } from '@/components/money-display';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { useMerkadoWallet } from '@/hooks/use-merkado-wallet';
+import { OP_MAINNET_CHAIN_ID } from '@/lib/pay/networks';
+import {
+  claimRent,
+  waitForSuccessfulWalletTransaction,
+} from '@/lib/pay/wallet-adapter';
 import {
   attachSubmittedClaimTxAction,
   checkPendingClaimAction,
   verifyRentClaimAction,
-} from "@/lib/rent-advance/actions";
-import { formatXcg } from "@/lib/rent-advance/money";
+} from '@/lib/rent-advance/actions';
+import { formatXcg } from '@/lib/rent-advance/money';
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -54,36 +57,43 @@ export function ClaimRentForm({
     linkedWalletAddress != null &&
     wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
   const walletReady = connectedMatchesLinked && onOptimismMainnet;
-  const canClaim =
-    configured && tokenId != null && walletReady && !claiming;
+  const canClaim = configured && tokenId != null && walletReady && !claiming;
 
   function handleClaim() {
     setError(null);
     startTransition(async () => {
       setClaiming(true);
       try {
-        const { hash } = await claimRent(wallet, BigInt(tokenId ?? 0), contractAddress);
+        const { hash } = await claimRent(
+          wallet,
+          BigInt(tokenId ?? 0),
+          contractAddress,
+        );
         await attachSubmittedClaimTxAction(
           reference,
           hash,
-          wallet.address ?? "0x0000000000000000000000000000000000000000",
+          wallet.address ?? '0x0000000000000000000000000000000000000000',
         );
-        await waitForSuccessfulWalletTransaction(wallet.provider!, hash, "Rent claim");
+        await waitForSuccessfulWalletTransaction(
+          wallet.provider!,
+          hash,
+          'Rent claim',
+        );
         let result = await verifyRentClaimAction(
           reference,
           hash,
-          wallet.address ?? "0x0000000000000000000000000000000000000000",
+          wallet.address ?? '0x0000000000000000000000000000000000000000',
         );
-        while (result.status === "pending") {
+        while (result.status === 'pending') {
           await wait(4000);
           result = await verifyRentClaimAction(
             reference,
             hash,
-            wallet.address ?? "0x0000000000000000000000000000000000000000",
+            wallet.address ?? '0x0000000000000000000000000000000000000000',
           );
         }
-        if (result.status !== "confirmed") {
-          setError(result.reason ?? "The claim is still being verified.");
+        if (result.status !== 'confirmed') {
+          setError(result.reason ?? 'The claim is still being verified.');
           return;
         }
         try {
@@ -97,7 +107,7 @@ export function ClaimRentForm({
         router.push(`/portfolio/${reference}?success=rent`);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "The claim failed.");
+        setError(err instanceof Error ? err.message : 'The claim failed.');
       } finally {
         setClaiming(false);
       }
@@ -111,7 +121,7 @@ export function ClaimRentForm({
       if (cancelled) return;
       try {
         const result = await checkPendingClaimAction(reference);
-        if (result.status === "confirmed") {
+        if (result.status === 'confirmed') {
           router.refresh();
           return;
         }
@@ -120,7 +130,11 @@ export function ClaimRentForm({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "The claim is still being verified.");
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'The claim is still being verified.',
+          );
         }
         return;
       }
@@ -132,29 +146,29 @@ export function ClaimRentForm({
   }, [pendingRecovery, reference, router]);
 
   return (
-    <div className="space-y-3">
+    <div className='space-y-3'>
       {error ? (
-        <Alert variant="destructive">
+        <Alert variant='destructive'>
           <AlertTitle>Could not claim</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
       {!pendingRecovery ? (
-      <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Rent ready</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-primary">
-            <Money cents={amountCents} />
-          </p>
+        <div className='flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4'>
+          <div>
+            <p className='text-sm text-muted-foreground'>Rent ready</p>
+            <p className='mt-1 text-2xl font-semibold tracking-tight text-primary'>
+              <Money cents={amountCents} />
+            </p>
+          </div>
+          <HelpTip label='claiming rent'>
+            This is monthly rent the renter paid. It belongs to the current
+            holder, not the landlord.
+          </HelpTip>
         </div>
-        <HelpTip label="claiming rent">
-          This is monthly rent the renter paid. It belongs to the current
-          holder, not the landlord.
-        </HelpTip>
-      </div>
       ) : null}
       {!configured ? (
-        <Alert variant="destructive">
+        <Alert variant='destructive'>
           <AlertTitle>Claims are not configured yet</AlertTitle>
           <AlertDescription>
             Live claiming is not enabled yet. Nothing was claimed.
@@ -172,33 +186,35 @@ export function ClaimRentForm({
           <Alert>
             <AlertTitle>Claim transaction submitted</AlertTitle>
             <AlertDescription>
-              The claim was sent to Optimism Mainnet. Portfolio will update when the
-              verified result is available. Do not submit another claim.
+              The claim was sent to Optimism Mainnet. Portfolio will update when
+              the verified result is available. Do not submit another claim.
             </AlertDescription>
           </Alert>
         </>
       ) : (
         <>
           <WalletConnection onConnectedChange={setConnected} />
-          <Button
-            type="button"
-            className="min-h-11 w-full px-4 md:w-auto"
-            disabled={!canClaim || pending || claiming}
-            onClick={handleClaim}
-          >
-            {claiming ? "Claiming…" : "Claim rent"}
-          </Button>
+          {connected && (
+            <Button
+              type='button'
+              className='min-h-11 w-full px-4 md:w-auto'
+              disabled={!canClaim || pending || claiming}
+              onClick={handleClaim}
+            >
+              {claiming ? 'Claiming…' : 'Claim rent'}
+            </Button>
+          )}
           {connected && !connectedMatchesLinked ? (
             <Button
               asChild
-              type="button"
-              variant="outline"
-              className="min-h-11 w-full px-4 md:w-auto"
+              type='button'
+              variant='outline'
+              className='min-h-11 w-full px-4 md:w-auto'
             >
-              <Link href="/account/apps">Link this wallet in Account</Link>
+              <Link href='/account/apps'>Link this wallet in Account</Link>
             </Button>
           ) : null}
-          <p className="text-xs text-muted-foreground">
+          <p className='text-xs text-muted-foreground'>
             The current holder claims rent that was paid for this listing.
           </p>
         </>
