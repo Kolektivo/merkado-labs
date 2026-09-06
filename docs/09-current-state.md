@@ -1,22 +1,56 @@
 # 09 - Current Product State
 
 **Purpose:** Ground truth. Nothing may be described as live unless it is available on `merkado.cw`.
-**Last updated:** August 21, 2026 (payout-first, whole-offer flow)
+**Last updated:** September 6, 2026 (Optimism Mainnet deployment and app cutover — not merged or activated)
 
 **Labs rebuild (2026-08-14 Product Lead):** Merkado Labs is no longer the
 property-scraper kitchen. That work lives on **merkado-cw**. This repository is
 the working **Merkado Direct + Merkado Pay** Buildathon demo. The Next.js app
-lives at the repository root. There is no Merkado login. The hosted URL
-uses a shared host password.
+lives at the repository root. Labs now has an Auth implementation behind
+configuration; it is not production Merkado authentication. The hosted URL
+retains the deployment gate before sign-in.
 
-This demo is **not** live on merkado.cw. It may later sit at a surface such as
-`app.merkado.cw`. There is no public offering. Wallet and USDC payments are
-**mocked**. Direct operations show **XCG** at **1.79 to the dollar**. Pay still
-settles in USDC 1:1 with stored USD rent on **Base Sepolia** facts by
-default. Base Mainnet stays later. The wallet is still mocked.
+This demo is **not** live on merkado.cw. There is no public offering.
+Direct operations show **XCG** at **1.79 to the dollar**. Pay settles in USDC
+1:1 with stored USD rent on **Optimism Mainnet** facts. There is no testnet
+fallback or network selector.
+
+The Optimism Mainnet NFT flow (ADR-0008 and ADR-0010) is **implemented locally
+behind configuration — NOT activated, NOT merged**. The contract is deployed,
+but hosted activation is not approved.
+The remote Labs database contains the chain-store tables, but local migration
+history does not record `20260821120000` as applied; reconcile that history
+before relying on or changing the chain store. No project-authorized test-USDC
+or Safe transaction has been executed, and no PR has been merged. The mock
+payment/wallet layer (`PAYMENT_RAIL_MODE`, mock provider, demo wallet, demo
+outcome menu, demo hashes) is removed.
+
+> **Note (2026-08-25) — approved but NOT yet live:** the Product Lead
+> approved a new stacked implementation on branch **`wave6-main-ui-restore`**
+> covering: a **display-only** 60-day listing window, **Reset = fresh demo
+> book + new chain-store epoch** (chain is not rolled back; the env contract
+> address stays active), **informational-only Pay QR / copy controls**, limited
+> **customer statuses**
+> (Paid = landlord proceeds card only; mint/NFT/contract wording Admin-only),
+> **Save draft** persistence into My Offers → Draft, and an **Admin mint
+> state** derived from verified facts only ("Mint in progress"). Automated
+> verification now passes after fixing the approval-receipt race, the pending
+> Check-status state, and restoring the env address as the single source of
+> truth. The branch remains **NOT merged or
+> live**; implementation-audit findings in `10` still block activation.
+
+> **Note (2026-09-01, revised 2026-09-05) — implemented locally but NOT yet
+> live:** the approved Supabase Auth flow (email magic links only, plus
+> identity-only OAuth authorization), one shared demo book, one linked wallet
+> per account, `ADMIN_EMAILS` Admin authorization, and wallet-specific role
+> views are implemented on the working branch behind configuration. The
+> account/wallet, chain-store, shared-state, and epoch-invariant migrations are
+> applied to Labs with reconciled migration history; this work is not
+> merged, hosted, or activated. Global Admin Reset remains the current reset
+> operation and does not roll back Optimism Mainnet.
 
 merkado-cw remains the live cars + real-estate marketplace. Its **Property
-Passport** is listing history on a property page. This demo’s **Listing Score**
+Passport** is listing history on a property page. This demo's **Listing Score**
 is the raw underwriting input. **Property Score** is a derived presentation
 figure. They are different products.
 
@@ -31,30 +65,25 @@ a public product.
 
 ## 2. Labs demo today `[LABS]`
 
-Local automated checks were re-run from the repository root on 2026-08-21
-after the compact-action follow-up: lint, typecheck, unit tests (80),
-and build passed. Vercel Production follows `main`. Hosted production
-fails closed at `/enter`. Unlocking it requires `LABS_DEMO_PASSWORD`.
-**Connect wallet** fills the offer ticket. On Portfolio it sizes to the
-label on desktop and stretches on smaller screens. **Claim rent** follows
-the same rule. Marketplace and Portfolio no longer paint a second page
-canvas over the Direct shell.
-
-Local stays open. No Merkado login. Operations live on **Admin**.
+The flow is implemented locally behind configuration. It is **not deployed to
+the hosted app, not activated, and not merged**. The Optimism Mainnet contract
+is not a public activation. Local stays open. No
+Merkado login. Operations live on **Admin**. Hosted production fails closed at
+`/enter`; unlocking it requires `LABS_DEMO_PASSWORD`.
 
 | Surface | What a visitor sees |
 |---|---|
 | Enter `/enter` | Compact shadcn card: Merkado Labs, Shared password, show/hide, Continue. Not a Merkado account. Local without `LABS_DEMO_PASSWORD` skips this page. Hosted production stays locked if the password env is missing. |
 | Home `/` | Product home headed **Rent paid forward**. Offer updates stay in the header bell and nav counts only. Two featured Marketplace cards remain. |
-| My Offers `/originate` | A table focuses on Under review, Listed, Denied, Sold, Expired, and automatic payout. Phones use compact rows. Filters and book totals are collapsed. There is no landlord sale claim action. |
-| Create offer `/originate/new` | Seven-step wizard with cover photo and Payout before Review. The active demo path requires a fictional `0xDEMO…` crypto address. Girasol bank payout is a Coming soon preview with an illustrative 1.5% fee and unsaved fictional fields. No landlord wallet. Only six months can be submitted. |
+| My Offers `/originate` | A table focuses on Under review, Listed, Sold, and Paid. Draft/unfunded rows are not counted. There is no landlord claim action and no listing expiry. |
+| Create offer `/originate/new` | Seven-step wizard with cover photo and Payout before Review. The landlord locks a payout destination before submission. No landlord wallet. Only six months can be submitted. |
 | Simulator `/originate/simulator` | Rent and typical nearby rent in XCG, Property quality and Payment history sliders, live combined property view, 3 months disabled, 6 months approved, 9/12 simulation-only. Typical home and Small studio presets. Copy quote and Use this quote. Cap quotes cannot be saved. |
-| Offer detail `/originate/MRA-*` | Property name first. Three short facts lead into a Landlord proceeds card: Waiting, Processing, Failed, or Paid automatically. The landlord timeline excludes monthly collections and holder detail. Listed / sold offers can be shared. |
-| Marketplace `/offers` | Two anonymised cards. Open offers show one whole-offer price and a 60-day deadline. Purchase requires the mocked **Connect wallet** button; the server helper rejects fractions and expired offers. A successful purchase lands on Portfolio. |
-| Portfolio `/portfolio` | Property name leads. The per-offer rent address, collected / ready to claim / claimed remain visible. Claim rent requires the mocked **Connect wallet** button, then opens the existing success dialog. |
-| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement. Stablecoin is the default expanded card with an informational demo QR, copy details, and **I’ve sent this payment**. There is no Connect wallet action. **Continue with Sentoo** stays collapsed until opened; its fictional fields are not saved and its action is disabled. A later month cannot be paid while an earlier month on the same offer is open. |
-| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, payment network, and Reset. Independent approval offers **Enrique** or **Luuk**. Fee buildup lives here. |
-| Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. **Merkado Pay** and **Merkado Direct** are enabled. **Account Settings** stays visible but inactive. Payouts is not in this chrome. Old `/account/payouts` and `/payouts` open My Offers. |
+| Offer detail `/originate/MRA-*` | Property name first. A Landlord proceeds card shows Waiting, Processing, Failed, or Paid. Paid is final when the sale completes (buyer pays the locked landlord address). Listed offers stay purchasable (no expiry). |
+| Marketplace `/offers` | Anonymised cards for minted, whole offers only — an approved offer that is still **mint pending is not listed** until its mint receipt is verified (its detail page stays reachable and shows a Mint pending alert). Purchase connects a real Reown/AppKit wallet; one dialog waits for the successful USDC approval receipt and then automatically waits for purchase receipt and server verification. There is no manual status check or resend. An empty active contract address shows not configured. |
+| Portfolio `/portfolio` | Property name leads. The offer token id, accrued rent per token, and current owner remain visible. The current NFT owner calls **Claim rent** (`claimRent`); non-owners are rejected. Transferring the NFT moves claim rights with it. |
+| Pay `/pay` → `/pay/[paymentRequestId]` | Amounts show XCG with USDC settlement, inside a **Pay with stablecoin** section. One Pay rent dialog waits for the successful approval receipt before `depositRent(tokenId, opaquePaymentId, amount)`, then automatically waits for the payment receipt and server verification. There is no manual status check or resend. A later month cannot be paid while an earlier month is open. QR/copy controls are informational; Sentoo is Coming soon. |
+| Admin `/admin` | Bottom of the left nav. Offer table, approval, collections, dual-control, fixed Optimism Mainnet configuration, automatic mint recovery, and Reset. Independent approval offers **Enrique** or **Luuk**. |
+| Account `/account` → `/account/apps` | Labs demo renter **Luuk Weber**. Account chrome still hides the merkado.cw Admin item. **Apps** sits above **Account**. **Merkado Pay** and **Merkado Direct** are enabled. Old `/account/payouts` and `/payouts` open My Offers. |
 
 Old URLs (`/login`, `/settings`, `/originate/readiness`, `/pay/home`, and the
 other retired payer subpages) still redirect. `/pay/history` is not reused.
@@ -70,122 +99,107 @@ other retired payer subpages) still redirect. `/pay/history` is not reused.
 - Effective annualised **≈ 21.6%** (under the 24% hard cap)
 - Listing Score **89** (pricing input). Derived Property Score **98**.
 - Pay request amount: **XCG 3,222.00** / **1,800.00 USDC** (atomic `1800000000`)
-- Network default: **Base Sepolia** (chain ID 84532). Circle native USDC
-  `0x036CbD53842c5426634e7929541eC2318f3dCF7e`. Base Mainnet stays later
-  and is hidden unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`.
+- Network: **Optimism Mainnet** (chain ID 10). Circle native USDC
+  `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85`.
+- Backend mint key: server-held EOA mint key (`MERKADO_MINTER_PRIVATE_KEY`). The legacy `NEXT_PUBLIC_MERKADO_COMPANY_SAFE` value is display-only.
 
 A weak-score + related-party quote is blocked by the 24% cap. Use this quote
 stays disabled. There is no override.
 
-MRA-001 starts fully purchased with its sale proceeds marked **Paid
-automatically** to the saved fictional address. MRA-010 starts created by
-Merkado, listed for 60 days, and still unsold. After Reset,
-that seed is restored.
+The demo book seeds **MRA-001** and **MRA-010** as approved (`funding`) offers
+with empty on-chain state after Reset. Reset immediately starts their server
+mints, and opening Admin resumes any pending seeded mint on the deployed
+Optimism Mainnet contract. The Product Lead creates any additional offers via
+Create Offer;
+`MRA-001` stays reserved (locked reference deal) and cannot be re-created.
 
 ### Shared demo book (verified)
 
-One JSON book in `ra_demo_state.payload`. Confirming Pay once writes the
-payment request as paid, the receivable as received, one collection, and a
-**pending** holder claim. The holder then claims it. Refreshing or
-retrying the same request does not duplicate collection.
+One JSON book in `ra_demo_state.payload`. A confirmed `depositRent` writes the
+payment request as paid, the receivable as received, one collection, and
+claimable rent for the current NFT owner. Refreshing or retrying the same
+request does not duplicate collection.
 
-After the September Pay confirmation in the walkthrough:
+Reset restores the demo book to the seeded offers (**MRA-001** + **MRA-010**,
+`funding`). Loading the book also adds any missing seed offer and drops retired
+filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 
-- My Payments next card moved to **October 2026**
-- My Offers MRA-001 showed the September rent as collected
-- Portfolio `pos-mra-001` showed that rent as ready to claim until
-  **Claim rent** is clicked
-- Revisiting `/pay/payreq-mra-001-202609` stayed on **Rent paid**
-
-Reset restores the two seeded offers (**MRA-001** and **MRA-010**), payments,
-transactions, and distributions. Loading the book also adds any missing seed
-offer and drops retired filler offers (**MRA-002**–**MRA-006**) without wiping
-new drafts.
-
-### Privacy walls (verified in the browser)
+### Privacy walls (verified)
 
 - Marketplace shows a property photo, district, Property Score, payer band,
   and term. No tenant name, employer, street address, agency, or income
   figure. Holder payloads also omit agency, employment status, and
   rent-to-income band, plus the internal related-party flag and note.
-  Rent-to-market is inside the Property Score, not published as a
-  standalone marketplace figure.
 - Marketplace purchase takes the complete open offer only. A Portfolio position
-  appears immediately and Pay requests mint in the same update. It stays a Labs
-  walkthrough, not a public offering.
+  appears immediately. It stays a Labs walkthrough, not a public offering.
 - Drafts are not shown as marketplace offers.
-- Pay and account show rent to the property, USDC + matching USD rent, due date, and a
-  fictional **offer collection address** after sale. No fee, purchase price, holder, or
-  distribution economics.
+- Pay and account show rent to the property, USDC + matching USD rent, due date,
+  opaque payment id, and the public contract address. No fee, purchase price,
+  holder, or distribution economics.
 - Holder pages stay district-only. Street address is off those screens.
 - Invalid Pay links do not reveal other payment requests.
+- On-chain wallet addresses, token ids, and payout amounts become public once
+  the contract is active; tenant and property identity stay off-chain.
 
-### Working demo actions (verified)
+### Working demo actions (verified locally behind config)
 
 - Simulator 9/12 months can be simulated; Use this quote stays disabled.
 - Use this quote prefills Create Offer on the Quote step with the locked
   MRA-001 six-month figures when defaults are used.
 - Record collection is offered only on live, collecting, or defaulted offers,
   lives in Admin, and uses the same stable collection IDs as Pay.
-- Dual-control release stays in Admin. Pay-confirmed collections
-  land on the listing. The holder claims them from Portfolio. They do
-  not re-queue dual-control release.
+- Dual-control release stays in Admin. Pay-confirmed deposits land as claimable
+  rent for the current owner. They do not re-queue dual-control release.
 - Dual-control still rejects the same person twice (app check plus the trigger
   on `ra_demo_state`).
-- Independent approval still moves a newly submitted Create Offer request to
-  funding from Admin and records that Merkado created the offer.
+- Independent approval moves a newly submitted Create Offer request to funding
+  from Admin. Independent Admin approval automatically starts the server mint.
+  Opening Admin and Reset also run the idempotent pending-mint sweep for seeded
+  or interrupted approved offers; `/api/cron/mint` remains disabled.
+- Status labels are mint-aware: an approved offer reads **Mint pending** only
+  until its offer NFT is verified, then **Listed** — on Admin, the offer detail,
+  My Offers, and the Marketplace card alike. The underlying `status` stays
+  `funding` until a buyer purchases the whole offer (`live`/`collecting`).
 - Create offer can save a new six-month draft (MRA-007 in the walkthrough;
   Reset removes it). 9/12 still cannot be saved.
 - Pay is English-only. Copy address, amount, and payment history stay visible.
 - Later-month Pay links stay readable but send the renter back to the next unpaid month.
 - My Payments **Open** is the month due now (plus failed or overdue). **Upcoming** is later months only.
-- Copy-address path: **I’ve sent this payment** → pending → Rent paid.
-  Pay has no Connect wallet action.
 - A draft can be submitted for independent approval. No wallet is required.
-- After MRA-010 is purchased, the **Landlord proceeds** card becomes Paid
-  automatically to the address saved before submission. There is no landlord
-  claim button, settlement hash, or explorer link.
-- After Pay is confirmed, Portfolio requires the mocked owner-wallet step;
-  **Claim rent** then moves that month to the holder. Whole-offer purchase and
-  holder rent claim each show a clear success dialog.
-- Open Marketplace offers carry `expiresAt = publishedAt + 60 days`. The
-  server purchase helper rejects an expired offer.
-- The Pay QR uses an inert `merkado-demo:` payload containing the fictional
-  offer address, USDC amount, and human reference. The Sentoo and Girasol bank
-  fields are visual only and are never persisted.
-- Failed and incorrect-amount outcomes stay in the typed mock provider for
-  a later live rail. Pay no longer shows a demo-outcomes menu.
-- Admin Payment network shows **Base Sepolia**. Base Mainnet
-  stays off unless `NEXT_PUBLIC_PAY_NETWORK` is `base-mainnet`. Pay labels
-  update. Reset keeps the selected test network.
-- Admin Reset the book asks to confirm, then restores the seeded book.
+- After MRA-010 is purchased, the **Landlord proceeds** card becomes **Paid**:
+  the buyer paid the exact purchase price to the locked landlord address. There
+  is no landlord claim button.
+- After a rent deposit is confirmed, the current NFT owner calls **Claim rent**
+  in Portfolio; non-owners are rejected. Whole-offer purchase and holder rent
+  claim each show a clear success dialog.
+- There is no listing expiry; offers stay purchasable until sold.
+- Admin shows fixed **Optimism Mainnet** configuration. There is no network
+  selector or testnet fallback.
+- Admin Reset the book asks to confirm, restores the seeded book, and keeps
+  the selected test network and env contract address active.
+- With `NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS` empty, purchase and pay actions
+  show a quiet **not configured** state and never fake a transaction.
 
-### Mock crypto boundary (Labs only)
+### Optimism Mainnet flow status (NOT activated / NOT merged)
 
-UI talks to `createPaymentProvider()` (`src/lib/pay/create-provider.ts`)
-and `src/lib/pay/provider.ts`. The only implementation is still
-`src/lib/pay/mock-provider.ts`. There is no wallet, Safe, RPC, or USDC
-SDK. `PAYMENT_RAIL_MODE` in `src/lib/pay/mode.ts` is still `"mock"`, so
-Pay confirms with **I’ve sent this payment** and mocked settlement copy.
-Marketplace and Portfolio keep mocked Connect wallet wording. **Base Sepolia** is the default
-in `cryptoConfig`. **Base Mainnet** is later. Optimism networks stay in
-the catalog if Luis later opts in; they are not shown in Admin.
-Luis/Luuk reconcile the provider seam and flip that switch only after the
-audit blockers are fixed and approved. Draft PRs 19, 20, and 22 stay
-unmerged. See `docs/07-integrations.md` and ADR-0005 / ADR-0006.
-
-Marketplace and Portfolio show a mocked **Connect wallet** button that sets
-only a local fictional address and never calls WalletConnect or Privy.
-`qrcode.react` renders the public mock Pay payload; it is not a payment or
-wallet dependency. Pay does not show Connect wallet.
-
-The local mock also normalizes away legacy `advance_settlement` ledger
-rows and clears their offer / position references. Landlord and
-sale-proceeds demo hashes are discarded instead of merely hidden.
+- `MerkadoRentOfferV1` is deployed on Optimism Mainnet at
+  `0x97439e4352b9428F56651be7DE95224B1c83b711` (ADR-0010).
+  Deployment transaction: `0xc6734e3c31b71d46c05c8055c8bfe46bb12dfb27551cd5fa7b655a686f1fdd35`.
+  Readback confirms chain ID 10, native USDC
+  `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85`, and minter
+  `0x27D9333E178BEeaA92EE0e5C80DE75C133eA19E5`.
+- The chain store migration (`ra_chain_epochs`, `ra_chain_offers`,
+  `ra_chain_events`, `ra_rent_payment_attempts`,
+  `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`) is **not
+  applied**.
+- No Mainnet USDC has been sent and no Safe transaction has executed.
+- Hosted activation and merging this PR are **not approved**.
+- The mock layer (`PAYMENT_RAIL_MODE`, `src/lib/pay/mock-provider.ts`, demo
+  wallet, demo outcome menu, demo hashes) is **removed**.
 
 ## 3. Database `[LABS]`
 
-Allowed project only: `csaefdkpwukshtouyixg`.
+Allowed project only: `ewoxmzznkavapcxdporm`.
 
 Migration `supabase/migrations/20260814120000_rent_advance_rebuild.sql` dropped
 the old listing / pipeline tables and created `ra_*` tables with RLS on and no
@@ -197,8 +211,11 @@ trigger that rejects same-person releases inside that JSON book.
 
 The Buildathon book extension (accounts, payment requests, ledger,
 distributions, positions, crypto config) lives **inside the existing JSON
-payload**. No new migration was applied. A failed Labs read no longer
-overwrites the live book with seed.
+payload**. A failed Labs read no longer overwrites the live book with seed.
+
+The chain store migration for the Optimism Mainnet flow is planned but **not yet
+applied**. All new tables have RLS on and no `anon` / `authenticated` grants;
+they are written only by server-side verification.
 
 ## 4. What was removed from this repo
 
@@ -209,13 +226,17 @@ overwrites the live book with seed.
 - The nested `apps/labs-dashboard` app (the demo is now the repository root)
 - Login, Settings, admin cookie, readiness, audit, and extra payer subpages
 - Historical listing migrations from the working tree
+- The mock payment/wallet layer: `PAYMENT_RAIL_MODE`, the mock provider, the
+  demo wallet, the demo outcome menu, and demo `0xDEMO…` hashes
 
 ## 5. What this is not
 
 - Not live on merkado.cw
 - Not a loan, yield product, fund, or public offering
-- Not a real wallet, Safe, or USDC product
+- Not an activated NFT flow: the Optimism Mainnet contract is deployed, but
+  hosted activation remains blocked
 - Not authorised for third-party subscribe until M.1.2 and M.1.4 are closed
   in writing
-- Not a public token market or secondary market. The offer is created by
-  Merkado and later held by the buyer (ADR-0006). Crypto stays mocked.
+- Not a public token market or secondary market. Merkado mints the offer NFT,
+  then the buyer holds it (ADR-0008)
+- Not activated for real funds or production

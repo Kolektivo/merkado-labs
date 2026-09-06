@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -8,33 +8,37 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { CopyValue } from "@/components/copy-value";
 import { HelpTip } from "@/components/help-tip";
-import { SentooMark } from "@/components/sentoo-mark";
 import { StatusBadge } from "@/components/status-badge";
 import { UsdcMark } from "@/components/usdc-mark";
+import { SentooMark } from "@/components/sentoo-mark";
+import { WalletConnection } from "@/components/wallet-connection";
+import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-send-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { createPaymentProvider } from "@/lib/pay/create-provider";
-import { isTestnetConfig } from "@/lib/pay/networks";
-import type { SubmittedPayment } from "@/lib/pay/provider";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
+import { OP_MAINNET_CHAIN_ID } from "@/lib/pay/networks";
 import {
-  applyPaymentRailCopy,
-  payerCopy,
-  type PayerCopy,
-} from "@/lib/rent-advance/copy";
-import { confirmPaymentAction } from "@/lib/rent-advance/actions";
+  approveUsdc,
+  depositRent,
+  waitForSuccessfulWalletTransaction,
+} from "@/lib/pay/wallet-adapter";
+import {
+  attachSubmittedTxAction,
+  checkPendingPaymentAction,
+  createRentPaymentAttemptAction,
+  verifyRentPaymentAction,
+} from "@/lib/rent-advance/actions";
+import { payerCopy, type PayerCopy } from "@/lib/rent-advance/copy";
 import { formatUsdcAtomic, formatUsdcAtomicAmount, formatXcg } from "@/lib/rent-advance/money";
 import { truncateHash } from "@/lib/rent-advance/ids";
-import type {
-  PaymentRequestStatus,
-  PublicCryptoConfig,
-} from "@/lib/rent-advance/types";
+import type { PaymentRequestStatus } from "@/lib/rent-advance/types";
 
 import { cn } from "@/lib/utils";
 
 import { usePayerLocale } from "./payer-locale";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type HistoryRow = {
   paymentRequestId: string;
@@ -44,17 +48,22 @@ type HistoryRow = {
   amountUsdcAtomic: number;
   amountXcgCents: number;
   dueDateLabel: string;
+  upcoming: boolean;
 };
 
 type WalletUi =
   | "disconnected"
-  | "connecting"
   | "connected"
-  | "awaiting"
   | "pending"
-  | "success"
+  | "confirmed"
   | "failed"
-  | "partial";
+  | "reverted";
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function PaymentMethodPanel({
   expanded,
@@ -202,15 +211,12 @@ function SentooPreview() {
   );
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
+
 
 function historyStatusLabel(
   status: PaymentRequestStatus,
   copy: PayerCopy,
+  upcoming = false,
 ) {
   if (status === "confirmed") return copy.paid;
   if (status === "pending" || status === "initiated") return copy.pending;
@@ -218,18 +224,30 @@ function historyStatusLabel(
   if (status === "partial") return copy.partial;
   if (status === "overdue") return copy.overdue;
   if (status === "expired") return copy.expired;
-  return copy.dueStatus;
+  return upcoming ? copy.scheduled : copy.dueStatus;
 }
 
 function statusTone(
   status: PaymentRequestStatus,
   wallet: WalletUi,
 ): "success" | "warning" | "error" | "info" | "neutral" {
-  if (status === "confirmed" || wallet === "success") return "success";
-  if (wallet === "pending" || wallet === "awaiting" || status === "pending") return "info";
-  if (wallet === "failed" || status === "failed" || status === "expired") return "error";
-  if (wallet === "partial" || status === "partial" || status === "overdue") return "warning";
+  if (status === "confirmed" || wallet === "confirmed") return "success";
+  if (wallet === "pending" || status === "pending") return "info";
+  if (wallet === "failed" || wallet === "reverted" || status === "failed" || status === "expired") {
+    return "error";
+  }
+  if (status === "overdue" || status === "partial") return "warning";
   return "neutral";
+}
+
+function isUserSafeConfigError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const name = (error as { name?: unknown }).name;
+  const message = (error as { message?: unknown }).message;
+  return (
+    name === "MerkadoConfigurationError" ||
+    (typeof message === "string" && message.includes("NEXT_PUBLIC_MERKADO_CONTRACT_ADDRESS"))
+  );
 }
 
 export function PayApp({
@@ -247,9 +265,12 @@ export function PayApp({
   district,
   earlierPeriodLabel,
   history,
-  cryptoConfig,
-  offerReference,
-  receivableId,
+  configured,
+  minted,
+  tokenId,
+  contractAddress,
+  linkedWalletAddress,
+  pendingRecovery,
 }: {
   paymentRequestId: string;
   periodLabel: string;
@@ -265,105 +286,162 @@ export function PayApp({
   district: string;
   earlierPeriodLabel: string | null;
   history: HistoryRow[];
-  cryptoConfig?: PublicCryptoConfig | null;
-  offerReference: string;
-  receivableId: string;
+  configured: boolean;
+  minted: boolean;
+  tokenId: number | null;
+  contractAddress: string | null;
+  linkedWalletAddress: string | null;
+  pendingRecovery: boolean;
 }) {
   const { locale } = usePayerLocale();
-  const copy = useMemo(
-    () =>
-      applyPaymentRailCopy(payerCopy[locale], {
-        locale,
-        isTestnet: isTestnetConfig(cryptoConfig),
-        networkLabel: cryptoConfig?.networkLabel,
-      }),
-    [locale, cryptoConfig],
-  );
+  const copy = useMemo(() => payerCopy[locale], [locale]);
   const router = useRouter();
-  const provider = useMemo(() => createPaymentProvider(cryptoConfig), [cryptoConfig]);
-  const [wallet, setWallet] = useState<WalletUi>(
+  const wallet = useMerkadoWallet();
+  const [walletUi, setWalletUi] = useState<WalletUi>(
     status === "confirmed"
-      ? "success"
-      : status === "pending"
-        ? "pending"
-        : status === "failed"
-          ? "failed"
-          : status === "partial"
-            ? "partial"
-            : "disconnected",
+      ? "confirmed"
+      : status === "failed"
+        ? "failed"
+        : status === "pending"
+          ? "pending"
+          : "disconnected",
   );
+  const [connected, setConnected] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [paymentRail, setPaymentRail] = useState<"stablecoin" | "sentoo">(
-    "stablecoin",
-  );
+  const [paymentRail, setPaymentRail] = useState<"stablecoin" | "sentoo">("stablecoin");
 
-  const locked = status === "confirmed" || wallet === "success";
+  const locked = status === "confirmed" || walletUi === "confirmed";
   const overdue = status === "overdue";
   const expired = status === "expired";
-  const inFlight = wallet === "awaiting" || wallet === "pending" || busy;
+  const onOptimismMainnet = wallet.chainId === OP_MAINNET_CHAIN_ID;
+  const connectedMatchesLinked =
+    connected &&
+    linkedWalletAddress != null &&
+    wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
+  const walletReady = connectedMatchesLinked && onOptimismMainnet;
 
-  const submitInput = {
-    paymentRequestId,
-    expectedAtomicAmount: amountUsdcAtomic,
-    recipient: receivingAddress,
-    offerReference,
-    receivableId,
-  };
+  const blockedByEarlier = Boolean(earlierPeriodLabel) && !locked && !expired;
+
   const qrValue = `merkado-demo:pay?address=${encodeURIComponent(receivingAddress)}&amount=${encodeURIComponent(formatUsdcAtomicAmount(amountUsdcAtomic))}&reference=${encodeURIComponent(paymentReference)}`;
 
-  async function settle(submitted: SubmittedPayment) {
-    const meta = {
-      txHash: submitted.txHash,
+  async function runApprove() {
+    if (!walletReady) throw new Error("Link this wallet to your account before paying rent.");
+    await approveUsdc(wallet, BigInt(amountUsdcAtomic), contractAddress);
+  }
+
+  async function runSend() {
+    if (!walletReady) throw new Error("Link this wallet to your account before paying rent.");
+    let hash: string | null = null;
+    let hashAttached = false;
+    try {
+      const attempt = await createRentPaymentAttemptAction(paymentRequestId);
+      const paymentId = attempt.opaquePaymentId as `0x${string}`;
+      const amountAtomic = BigInt(amountUsdcAtomic);
+      const { hash: txHash } = await depositRent(
+        wallet,
+        {
+          tokenId: BigInt(tokenId ?? 0),
+          paymentId,
+          amountAtomic,
+        },
+        contractAddress,
+      );
+      hash = txHash;
+      await attachSubmittedTxAction(
+        paymentRequestId,
+        txHash,
+        wallet.address ?? "0x0000000000000000000000000000000000000000",
+      );
+      hashAttached = true;
+      setWalletUi("pending");
+      await waitForSuccessfulWalletTransaction(wallet.provider!, txHash, "Rent payment");
+      let result = await verifyRentPaymentAction(
+        paymentRequestId,
+        txHash,
+        wallet.address ?? "0x0000000000000000000000000000000000000000",
+      );
+      while (result.status === "pending") {
+        await wait(4000);
+        result = await verifyRentPaymentAction(
+          paymentRequestId,
+          txHash,
+          wallet.address ?? "0x0000000000000000000000000000000000000000",
+        );
+      }
+      if (result.status === "confirmed") {
+        return { status: "confirmed" as const };
+      }
+      return {
+        status: "pending" as const,
+        reason: result.reason ?? copy.awaiting,
+      };
+    } catch (err) {
+      if (isUserSafeConfigError(err)) {
+        throw new Error(copy.notConfiguredBody);
+      }
+      if (hash && hashAttached) {
+        return {
+          status: "pending" as const,
+          reason: err instanceof Error ? err.message : copy.awaiting,
+        };
+      }
+      throw err;
+    }
+  }
+
+  async function runVerifyPending() {
+    const result = await checkPendingPaymentAction(paymentRequestId);
+    if (result.status === "confirmed") return { status: "confirmed" as const };
+    return {
+      status: "pending" as const,
+      reason: result.reason ?? copy.awaiting,
     };
-    if (submitted.errorCode === "amount_mismatch") {
-      await confirmPaymentAction(paymentRequestId, "partial", meta);
-      setWallet("partial");
-      setError(copy.partial);
-      return;
-    }
-    if (submitted.errorCode === "mock_failed" || submitted.status === "failed") {
-      await confirmPaymentAction(paymentRequestId, "failed", meta);
-      setWallet("failed");
-      setError(submitted.errorMessage ?? copy.failed);
-      return;
-    }
-    setWallet("pending");
-    await confirmPaymentAction(paymentRequestId, "pending", meta);
-    await wait(1400);
-    await confirmPaymentAction(paymentRequestId, "confirmed", meta);
-    setWallet("success");
+  }
+
+  function onConfirmed() {
+    setWalletUi("confirmed");
     router.refresh();
   }
 
-  async function reportSent() {
-    setError(null);
-    setBusy(true);
-    setWallet("pending");
-    try {
-      const submitted = await provider.reportExternalTransfer({
-        ...submitInput,
-        method: "external",
-      });
-      await settle(submitted);
-    } catch (err) {
-      setWallet("failed");
-      setError(
-        err instanceof Error
-          ? err.message
-          : "The payment could not be saved. Nothing was recorded.",
-      );
-    } finally {
-      setBusy(false);
+  function openPaymentDialog() {
+    if (!walletReady) {
+      setError("Link this wallet to your account before paying rent.");
+      return;
     }
+    setError(null);
+    setDialogOpen(true);
   }
 
-  const blockedByEarlier = Boolean(earlierPeriodLabel) && !locked && !expired;
+  useEffect(() => {
+    if (!pendingRecovery) return;
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        try {
+          const result = await checkPendingPaymentAction(paymentRequestId);
+          if (result.status === "confirmed") {
+            setWalletUi("confirmed");
+            router.refresh();
+            return;
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : copy.awaiting);
+          return;
+        }
+        await wait(4000);
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [copy.awaiting, pendingRecovery, paymentRequestId, router]);
+
   const statusLabel = historyStatusLabel(
-    wallet === "success" ? "confirmed" : wallet === "pending" ? "pending" : status,
+    walletUi === "confirmed" ? "confirmed" : walletUi === "pending" ? "pending" : status,
     copy,
   );
-
   const place = [district.trim(), "Curaçao"].filter(Boolean).join(", ");
 
   return (
@@ -379,7 +457,12 @@ export function PayApp({
       </div>
 
       <div aria-live="polite" className="space-y-4">
-        {locked ? (
+        {!configured ? (
+          <Alert variant="destructive">
+            <AlertTitle>{copy.notConfiguredTitle}</AlertTitle>
+            <AlertDescription>{copy.notConfiguredBody}</AlertDescription>
+          </Alert>
+        ) : locked ? (
           <Card>
             <CardContent className="space-y-4 pt-6">
               <StatusBadge tone="success">{copy.paid}</StatusBadge>
@@ -404,6 +487,10 @@ export function PayApp({
         ) : expired ? (
           <Alert variant="destructive">
             <AlertTitle>{copy.expired}</AlertTitle>
+          </Alert>
+        ) : !minted ? (
+          <Alert>
+            <AlertTitle>{copy.notMinted}</AlertTitle>
           </Alert>
         ) : blockedByEarlier ? (
           <Card>
@@ -437,7 +524,7 @@ export function PayApp({
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone={statusTone(status, wallet)}>{statusLabel}</StatusBadge>
+                <StatusBadge tone={statusTone(status, walletUi)}>{statusLabel}</StatusBadge>
                 <p className="text-sm text-muted-foreground">{periodLabel}</p>
               </div>
 
@@ -454,24 +541,21 @@ export function PayApp({
                 </p>
               </div>
 
-              <p className="text-sm">
-                {copy.due} {dueDateLabel}
-              </p>
+              <p className="text-sm">{copy.due} {dueDateLabel}</p>
 
               <div className="flex flex-col gap-3" aria-label="Payment method">
                 <PaymentMethodPanel
                   expanded={paymentRail === "stablecoin"}
                   onExpand={() => setPaymentRail("stablecoin")}
                   title="Pay with stablecoin"
-                  compactTitle="Pay with stablecoin"
+                  compactTitle={copy.payByStablecoinTitle}
                   compactHint="USDC · QR and copy details"
                 >
                   <div className="flex flex-col gap-4">
-                    {wallet === "pending" || wallet === "awaiting" ? (
+                    {walletUi === "pending" ? (
                       <Alert>
-                        <AlertTitle>
-                          {wallet === "awaiting" ? copy.awaiting : copy.pending}
-                        </AlertTitle>
+                        <AlertTitle>{copy.pending}</AlertTitle>
+                        <AlertDescription>{copy.awaiting}</AlertDescription>
                       </Alert>
                     ) : null}
                     <div className="flex flex-col gap-3">
@@ -484,9 +568,7 @@ export function PayApp({
                           {copy.network}
                           <HelpTip label={copy.network}>{copy.networkTip}</HelpTip>
                         </span>
-                        <span className="font-medium">
-                          {networkLabel || copy.networkUnset}
-                        </span>
+                        <span className="font-medium">{networkLabel || copy.networkUnset}</span>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <p className="text-sm text-muted-foreground">{copy.receiving}</p>
@@ -505,9 +587,8 @@ export function PayApp({
                           title={`Stablecoin payment QR for ${paymentReference}`}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Demo information QR only. It contains the fictional
-                          offer address, amount, and reference; it cannot open a
-                          real wallet.
+                          Informational QR only. Use Pay rent below to submit
+                          your payment.
                         </p>
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -518,17 +599,37 @@ export function PayApp({
                         />
                       </div>
                     </div>
+
+                    <WalletConnection onConnectedChange={setConnected} />
+
                     <Button
                       type="button"
                       className="min-h-11 w-full"
-                      disabled={inFlight}
-                      onClick={() => void reportSent()}
+                      disabled={!walletReady}
+                      onClick={openPaymentDialog}
                     >
-                      {copy.iveSentPayment}
+                      {copy.confirmPay}
                     </Button>
+
+                    {connected && !connectedMatchesLinked ? (
+                      <Alert>
+                        <AlertTitle>Link this wallet before paying</AlertTitle>
+                        <AlertDescription>
+                          Connect the wallet linked to this account before any
+                          payment can be submitted. Manage it in{" "}
+                          <Link href="/account/apps" className="underline">
+                            Account
+                          </Link>
+                          .
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+
                     {error ? (
                       <Alert variant="destructive">
-                        <AlertTitle>{copy.failed}</AlertTitle>
+                        <AlertTitle>
+                          {walletUi === "reverted" ? copy.reverted : copy.failed}
+                        </AlertTitle>
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     ) : null}
@@ -538,7 +639,7 @@ export function PayApp({
                 <PaymentMethodPanel
                   expanded={paymentRail === "sentoo"}
                   onExpand={() => setPaymentRail("sentoo")}
-                  title="Pay with Sentoo"
+                  title="Continue with Sentoo"
                   compactTitle="Continue with Sentoo"
                   compactHint="Bank payment · Coming soon"
                   mark={<SentooMark expanded={paymentRail === "sentoo"} />}
@@ -572,7 +673,7 @@ export function PayApp({
                     <span>
                       <span className="font-medium">{row.periodLabel}</span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {row.offerReference} · {historyStatusLabel(row.status, copy)}
+                        {row.offerReference} · {historyStatusLabel(row.status, copy, row.upcoming)}
                       </span>
                     </span>
                     <span className="tabular-nums">
@@ -587,8 +688,37 @@ export function PayApp({
       </Card>
 
       <p className="text-center text-xs text-muted-foreground" role="note">
-        {copy.demoOnly}
+        {copy.memoNote}
       </p>
+
+      <ApproveThenSendDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={copy.payThisMonth}
+        description={`${formatUsdcAtomic(amountUsdcAtomic)} · ${networkLabel || copy.networkUnset}`}
+        confirmLabel={`${copy.approveUsdc} & ${copy.confirmPay}`}
+        sendLabel={copy.confirmPay}
+        needsApproval
+        summary={
+          <div className="rounded-xl bg-muted/40 p-4 text-sm">
+            <p className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{copy.reference}</span>
+              <span className="font-medium">{paymentReference}</span>
+            </p>
+            <p className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">USDC</span>
+              <span className="font-medium tabular-nums">{formatUsdcAtomic(amountUsdcAtomic)}</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {copy.payByWalletBody}
+            </p>
+          </div>
+        }
+        runApprove={runApprove}
+        runSend={runSend}
+        runVerifyPending={runVerifyPending}
+        onConfirmed={onConfirmed}
+      />
     </div>
   );
 }

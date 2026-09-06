@@ -1,6 +1,7 @@
 # ADR-0007 — Payout-first landlord and whole-offer purchase
 
-**Status:** Accepted  
+**Status:** Accepted; mock crypto boundary, sales-proceeds Safe payout,
+and listing expiry superseded by ADR-0008
 **Date:** 2026-08-21
 
 ## Context
@@ -51,3 +52,12 @@ Safes, renter-to-offer rent, and holder-initiated rent claim.
 
 - Product Lead: implement the Luuk meeting decisions and update the build/docs,
   2026-08-21.
+
+## Supersession — 2026-08-21
+
+ADR-0008 (Base Sepolia transferable NFT rent offer) supersedes the mock
+details of this ADR: the typed mock provider boundary, the sales-proceeds Safe
+automatic payout, the mocked **Connect wallet**, the 60-day listing expiry,
+and fictional `0xDEMO…` addresses. Whole-offer purchase, payout before
+submission, walletless landlord origination, and holder-initiated rent claim
+remain accepted; they now run on the `MerkadoRentOfferV1` contract.

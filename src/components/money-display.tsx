@@ -1,17 +1,26 @@
-import { formatPercent, formatXcg } from "@/lib/rent-advance/money";
+import { formatPercent, formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { cn } from "@/lib/utils";
 
 export function Money({
   cents,
   className,
   compact = false,
+  showUsd = false,
 }: {
   cents: number;
   className?: string;
   compact?: boolean;
+  showUsd?: boolean;
 }) {
   return (
-    <span className={cn("tabular-nums", className)}>{formatXcg(cents, compact)}</span>
+    <span className={cn("tabular-nums", className)}>
+      {formatXcg(cents, compact)}
+      {showUsd && !compact ? (
+        <span className="ml-1.5 text-muted-foreground" aria-label={`USD ${formatUsd(cents)}`}>
+          ({formatUsd(cents)})
+        </span>
+      ) : null}
+    </span>
   );
 }
 

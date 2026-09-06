@@ -5,7 +5,11 @@ import { MarketplaceOfferCard } from "@/components/marketplace/marketplace-offer
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatXcg } from "@/lib/rent-advance/money";
-import { bookTotals, effectiveOfferStatus } from "@/lib/rent-advance/helpers";
+import {
+  bookTotals,
+  effectiveOfferStatus,
+  isPendingMintOffer,
+} from "@/lib/rent-advance/helpers";
 import { listMarketplaceCards, loadBook } from "@/lib/rent-advance/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +21,8 @@ export default async function DirectPage() {
   ]);
   const totals = bookTotals(book);
   const openFunding = book.offers.filter(
-    (offer) => effectiveOfferStatus(offer) === "funding",
+    (offer) =>
+      effectiveOfferStatus(offer) === "funding" && !isPendingMintOffer(offer),
   ).length;
   const featured = [...marketplace]
     .filter((card) => effectiveOfferStatus(card) === "funding")

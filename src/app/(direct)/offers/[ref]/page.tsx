@@ -12,16 +12,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeMerkado } from "@/components/theme-merkado";
 import { HOLDER_NO_PROMISE, PLAIN } from "@/lib/rent-advance/copy";
 import {
-  canShowContribute,
   coverSrcFor,
+  customerStatusLabel,
   formatDayMonthYear,
-  isListingExpired,
+  listingExpiresAt,
   remainingOfferingCents,
-  statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
-import { formatXcg } from "@/lib/rent-advance/money";
+import { formatUsd, formatXcg } from "@/lib/rent-advance/money";
 import { getPurchaserOffer } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 import { SubscribeForm } from "./subscribe-form";
 
@@ -45,16 +46,19 @@ export default async function BuyerOfferPage({
   const offer = await getPurchaserOffer(ref);
   if (!offer) notFound();
 
+  const user = await getOptionalUser();
+  const linkedWalletAddress = user ? await getActiveLinkedWallet(user.id) : null;
+
   const remaining = remainingOfferingCents(offer);
+  const expiresAt = listingExpiresAt(offer.publishedAt);
+  const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
   const bedsLabel = `${offer.bedrooms} ${offer.bedrooms === 1 ? "bed" : "beds"}`;
   const monthsLabel = `${offer.months} ${offer.months === 1 ? "month" : "months"}`;
   const title = offer.summary.trim() || `${offer.type} in ${offer.district}`;
   const monthlyRentCents = offer.receivables[0]?.amountCents ?? null;
-  const expired = isListingExpired(offer.expiresAt);
-  const openToBuy = canShowContribute(offer.status, offer.expiresAt);
-  const expiresLabel = offer.expiresAt
-    ? formatDayMonthYear(offer.expiresAt)
-    : null;
+  const openToBuy =
+    (offer.status === "funding" || offer.status === "live" || offer.status === "collecting");
+  const configured = Boolean(offer.contractAddress);
 
   return (
     <ThemeMerkado className="mx-auto max-w-5xl space-y-6">
@@ -80,7 +84,7 @@ export default async function BuyerOfferPage({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge tone={statusTone(offer.status)}>
-                {statusLabel(offer.status)}
+                {customerStatusLabel(offer.status)}
               </StatusBadge>
               <span className="text-xs tracking-wide text-grey-800">
                 {offer.reference}
@@ -112,10 +116,16 @@ export default async function BuyerOfferPage({
               fundedCents={offer.fundedCents}
               offeringCents={offer.offeringCents}
               expiresLabel={expiresLabel}
+              minted={offer.minted}
+              configured={configured}
+              tokenId={offer.tokenId}
+              contractAddress={offer.contractAddress}
+              pendingRecovery={offer.pendingPurchase}
+              linkedWalletAddress={linkedWalletAddress}
             />
           ) : (
             <ClosedOfferCard
-              status={expired ? "Expired" : statusLabel(offer.status)}
+              status={customerStatusLabel(offer.status)}
               offeringCents={offer.offeringCents}
             />
           )}
@@ -307,7 +317,7 @@ function ClosedOfferCard({
         Closed
       </p>
       <p className="mt-1 text-sm text-grey-800">
-        {formatXcg(offeringCents)} offering · not open to purchase
+        {formatXcg(offeringCents)} ({formatUsd(offeringCents)}) offering · not open to purchase
       </p>
     </div>
   );

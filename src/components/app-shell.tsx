@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
   Home,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Plus,
   Shield,
   Store,
@@ -30,6 +32,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -47,6 +52,9 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import type { AuthProfile } from "@/lib/auth/profile";
+import { signOutAction } from "@/lib/auth/sign-out";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
 import { resolveCrumbs, type BreadcrumbCrumb } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
 
@@ -135,8 +143,10 @@ function NavLinks({
 
 function AppSidebar({
   notifications,
+  isAdmin,
 }: {
   notifications: DashboardNotification[];
+  isAdmin: boolean;
 }) {
   const pathname = usePathname() ?? "";
   const counts = useNavNotificationCounts(notifications);
@@ -184,26 +194,28 @@ function AppSidebar({
           </SidebarGroup>
         </nav>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActivePath(pathname, "/admin")}
-              tooltip="Admin"
-              className="min-h-9"
-            >
-              <Link
-                href="/admin"
-                aria-current={isActivePath(pathname, "/admin") ? "page" : undefined}
+      {isAdmin ? (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActivePath(pathname, "/admin")}
+                tooltip="Admin"
+                className="min-h-9"
               >
-                <Shield />
-                <span>Admin</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+                <Link
+                  href="/admin"
+                  aria-current={isActivePath(pathname, "/admin") ? "page" : undefined}
+                >
+                  <Shield />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      ) : null}
       <SidebarRail />
     </Sidebar>
   );
@@ -238,10 +250,102 @@ function BreadcrumbTrail({ crumbs }: { crumbs: BreadcrumbCrumb[] }) {
   );
 }
 
+function UserMenu({ user }: { user: AuthProfile | null }) {
+  const router = useRouter();
+  const wallet = useMerkadoWallet();
+  const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  if (!user) {
+    return (
+      <Button asChild variant="ghost" size="sm" className="h-8 px-3">
+        <Link href="/enter">Sign in</Link>
+      </Button>
+    );
+  }
+
+  const initials = (user.name ?? user.email ?? "M").slice(0, 2).toUpperCase();
+
+  async function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      wallet.disconnect();
+      await signOutAction();
+    } catch {
+      setError("Could not sign out. Try again.");
+      setSigningOut(false);
+      return;
+    }
+    router.push("/enter");
+    router.refresh();
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className="inline-flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          {user.avatarUrl ? (
+            <Image
+              src={user.avatarUrl}
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 object-cover"
+            />
+          ) : (
+            <span aria-hidden>{initials}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="space-y-1.5">
+          <p className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Signed in
+          </p>
+          <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">
+              {user.name ?? "Demo account"}
+            </p>
+            {user.email ? (
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            ) : null}
+          </div>
+          {error ? (
+            <p className="px-1 text-xs text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <Separator />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+            disabled={signingOut}
+            onClick={() => void handleSignOut()}
+          >
+            <LogOut className="size-4" aria-hidden />
+            {signingOut ? "Signing out…" : "Sign out"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function SiteHeader({
   notifications,
+  user,
 }: {
   notifications: DashboardNotification[];
+  user: AuthProfile | null;
 }) {
   const pathname = usePathname() ?? "";
   return (
@@ -251,6 +355,7 @@ function SiteHeader({
         <BreadcrumbTrail crumbs={resolveCrumbs(pathname)} />
       </div>
       <DashboardNotifications items={notifications} />
+      <UserMenu user={user} />
     </header>
   );
 }
@@ -258,15 +363,19 @@ function SiteHeader({
 export function AppShell({
   children,
   notifications,
+  user,
+  isAdmin,
 }: {
   children: React.ReactNode;
   notifications: DashboardNotification[];
+  user: AuthProfile | null;
+  isAdmin: boolean;
 }) {
   return (
     <SidebarProvider>
-      <AppSidebar notifications={notifications} />
+      <AppSidebar notifications={notifications} isAdmin={isAdmin} />
       <SidebarInset className="min-w-0">
-        <SiteHeader notifications={notifications} />
+        <SiteHeader notifications={notifications} user={user} />
         <div className="flex min-w-0 flex-1 flex-col">
           <main
             id="main-content"

@@ -20,9 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PropertyCover } from "@/components/property-cover";
-import { submitNewOfferAction } from "@/lib/rent-advance/actions";
+import { submitNewOfferAction, saveDraftOfferAction } from "@/lib/rent-advance/actions";
 import { readCoverImage } from "@/lib/rent-advance/cover-image";
-import { isClaimableAddress } from "@/lib/rent-advance/custody";
+import { isValidPayoutAddress } from "@/lib/rent-advance/custody";
 import { buildScheduledReceivables, coverSrcFor } from "@/lib/rent-advance/helpers";
 import { CapExceededError, usdCentsToXcgInput, xcgMajorToUsdCents } from "@/lib/rent-advance/money";
 import { priceOrBlock, priceQuote, type Quote } from "@/lib/rent-advance/pricing";
@@ -128,6 +128,7 @@ export function NewOfferWizard({
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const quote = useMemo(() => {
     if (offer.months !== 6) return null;
@@ -162,6 +163,9 @@ export function NewOfferWizard({
     if (currentStep === 2) {
       if (!offer.tenant.fullName.trim()) return "Add the renter’s full name.";
       if (!offer.tenant.initials.trim()) return "Add the renter’s initials.";
+      if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+        return "Add the renter’s checksummed 0x wallet address.";
+      }
     }
     if (currentStep === 3) {
       if (offer.monthlyRentCents <= 0) return "Enter a monthly rent above zero.";
@@ -184,13 +188,26 @@ export function NewOfferWizard({
     }
     if (currentStep === 6) {
       if (offer.payout.method === "bank") {
-        return "Girasol bank payout is a preview and cannot be used in this demo. Choose crypto payout.";
+        return "Girasol bank payout is a preview and cannot be used in this demo. Choose an Optimism Mainnet payout address.";
       }
-      if (!isClaimableAddress(offer.payout.cryptoAddress)) {
-        return "Use a fictional payout address beginning with 0xDEMO.";
+      if (!isValidPayoutAddress(offer.payout.cryptoAddress)) {
+        return "Enter a valid checksummed Optimism Mainnet 0x payout address.";
       }
     }
     return null;
+  }
+
+  function saveDraft() {
+    setError(null);
+    setDraftSaved(false);
+    startTransition(async () => {
+      try {
+        await saveDraftOfferAction(offer);
+        setDraftSaved(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save this draft.");
+      }
+    });
   }
 
   function submitForReview() {
@@ -466,6 +483,26 @@ export function NewOfferWizard({
                 information. Demo records may be visible to other reviewers.
               </AlertDescription>
             </Alert>
+            <Field
+              id="renter-wallet"
+              label="Rent payer wallet"
+              hint="This wallet will receive the payment link and pay rent on Optimism Mainnet."
+              tip="The renter connects this wallet on Merkado Pay. It is separate from the landlord payout wallet."
+            >
+              <Input
+                id="renter-wallet"
+                placeholder="0x..."
+                spellCheck={false}
+                autoCapitalize="none"
+                value={offer.renterWalletAddress ?? ""}
+                onChange={(event) =>
+                  patch((current) => ({
+                    ...current,
+                    renterWalletAddress: event.target.value,
+                  }))
+                }
+              />
+            </Field>
             <Field
               id="full-name"
               label="Full name"
@@ -815,7 +852,8 @@ export function NewOfferWizard({
                 <WalletCards className="mb-3 size-5 text-primary" aria-hidden />
                 <p className="font-medium">Stablecoin address</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Available in this mock. No real funds are sent.
+                  The buyer pays the sale amount here once the offer is
+                  purchased. It is locked for this offer.
                 </p>
               </button>
               <button
@@ -851,7 +889,7 @@ export function NewOfferWizard({
               <Field
                 id="payout-address"
                 label="Recipient address"
-                hint="Demo only. Use a fictional address beginning with 0xDEMO. This is saved with the offer."
+                 hint="A checksummed Optimism Mainnet 0x address. It is locked for this offer; it is never shown on payer or purchaser screens."
               >
                 <Input
                   id="payout-address"
@@ -866,7 +904,7 @@ export function NewOfferWizard({
                       },
                     }))
                   }
-                  placeholder="0xDEMOLANDLORDPAYOUT0001"
+                  placeholder="0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"
                 />
               </Field>
             ) : (
@@ -940,11 +978,17 @@ export function NewOfferWizard({
                 {offer.months} months
               </p>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
-                <p className="font-medium">Automatic payout</p>
+                <p className="font-medium">Payout address (locked for this offer)</p>
                 <p className="mt-1 text-muted-foreground">
                   {offer.payout.method === "crypto"
-                    ? `Stablecoin demo address · ${offer.payout.cryptoAddress}`
+                    ? offer.payout.cryptoAddress
                     : "Girasol bank payout preview · Coming soon (cannot submit)"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                <p className="font-medium">Rent payer wallet</p>
+                <p className="mt-1 break-all text-muted-foreground">
+                  {offer.renterWalletAddress}
                 </p>
               </div>
               <label className="flex items-start gap-2 text-sm">
@@ -963,14 +1007,24 @@ export function NewOfferWizard({
       ) : null}
 
       <div className="flex flex-wrap justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={step === 1 || pending}
-          onClick={() => setStep((current) => Math.max(1, current - 1))}
-        >
-          Back
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={step === 1 || pending}
+            onClick={() => setStep((current) => Math.max(1, current - 1))}
+          >
+            Back
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={saveDraft}
+          >
+            {pending ? "Saving…" : draftSaved ? "Draft saved" : "Save draft"}
+          </Button>
+        </div>
         {step < 7 ? (
           <Button
             type="button"

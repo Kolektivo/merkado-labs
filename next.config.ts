@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  webpack: (config) => {
+    // Reown/AppKit + wagmi pull optional Node deps that must stay external.
+    config.externals.push("pino-pretty", "lokijs", "encoding");
+    return config;
+  },
   devIndicators: {
     position: "bottom-right",
   },

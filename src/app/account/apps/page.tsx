@@ -1,7 +1,10 @@
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
+import { WalletLinkPanel } from "@/components/wallet-link-panel";
 import { merkadoDirectHref, merkadoPayHref } from "@/lib/pay/config";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 import { AccountPageHeader } from "../account-page-header";
 
@@ -40,9 +43,11 @@ function AppCard({
   );
 }
 
-export default function AppsPage() {
+export default async function AppsPage() {
   const pay = merkadoPayHref();
   const direct = merkadoDirectHref();
+  const user = await getOptionalUser();
+  const linkedWalletAddress = user ? await getActiveLinkedWallet(user.id) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,6 +71,25 @@ export default function AppsPage() {
           actionLabel="Open Direct"
         />
       </div>
+      <section className="rounded-[16px] border border-grey-200 bg-surface p-5 min-[769px]:p-6">
+        <h2 className="text-[18px] font-semibold leading-[26px] text-surface-dark">
+          Wallet
+        </h2>
+        <p className="mt-2 text-[14px] leading-5 font-normal text-grey-900">
+          Link one wallet to this account. Marketplace purchases and Portfolio
+          rent claims use the linked wallet.
+        </p>
+        {user ? (
+          <WalletLinkPanel
+            initialLinkedAddress={linkedWalletAddress}
+            className="mt-4"
+          />
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Sign in to link a wallet to your account.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

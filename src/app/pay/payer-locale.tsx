@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  applyPaymentRailCopy,
   payerCopy,
   type PayerCopy,
   type PayerLocale,
@@ -40,7 +39,7 @@ export function PayerLocaleProvider({
     () => ({
       locale,
       setLocale,
-      copy: applyPaymentRailCopy(payerCopy[locale], { locale }),
+      copy: payerCopy[locale],
     }),
     [locale],
   );

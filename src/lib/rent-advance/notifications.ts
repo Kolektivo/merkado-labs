@@ -1,10 +1,11 @@
-import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
-import {
-  formatDayMonthYear,
-  offerDisplayName,
-} from "@/lib/rent-advance/helpers";
+import { mergeOnchain, mintState } from "@/lib/rent-advance/custody";
+import { offerDisplayName } from "@/lib/rent-advance/helpers";
 import { formatXcg } from "@/lib/rent-advance/money";
 import type { DemoBook } from "@/lib/rent-advance/types";
+
+function sameWallet(left: string, right: string): boolean {
+  return Boolean(left && right && left.toLowerCase() === right.toLowerCase());
+}
 
 export type DashboardNotificationKind = "offer_update" | "rent_claim";
 
@@ -38,30 +39,48 @@ export function navNotificationCounts(
 
 export function dashboardNotifications(
   book: DemoBook,
+  accountId?: string | null,
+  walletAddress?: string | null,
 ): DashboardNotification[] {
+  if (accountId === null) return [];
   const items: DashboardNotification[] = [];
 
   for (const offer of book.offers) {
-    const proceeds = landlordProceedsPresentation(offer);
-    if (proceeds.status === "paid") {
+    if (
+      accountId &&
+      offer.createdByAccountId !== accountId
+    ) {
+      continue;
+    }
+    const onchain = mergeOnchain(offer.onchain);
+    const state = mintState(offer);
+    if (state === "purchased" && onchain.landlordPaid) {
       items.push({
         id: `sale-paid:${offer.reference}`,
         kind: "offer_update",
-        title: "Sale amount paid automatically",
+        title: "Offer sold · sale proceeds paid",
         subject: offerDisplayName(offer),
-        detail: formatXcg(proceeds.amountCents),
+        detail: formatXcg(offer.purchasePriceCents),
         href: `/originate/${offer.reference}`,
         actionLabel: "View payout",
       });
-    } else if (offer.status === "funding") {
+    } else if (state === "minted") {
       items.push({
         id: `listed:${offer.reference}`,
         kind: "offer_update",
-        title: "Offer accepted and listed",
+        title: "Offer listed on Marketplace",
         subject: offerDisplayName(offer),
-        detail: offer.expiresAt
-          ? `Available until ${formatDayMonthYear(offer.expiresAt)}`
-          : "Available for 60 days",
+        detail: "Open for purchase on Marketplace",
+        href: `/originate/${offer.reference}`,
+        actionLabel: "View offer",
+      });
+    } else if (offer.status === "funding") {
+      items.push({
+        id: `mint-pending:${offer.reference}`,
+        kind: "offer_update",
+        title: "Offer approved · Listed",
+        subject: offerDisplayName(offer),
+        detail: "Opening on Marketplace shortly",
         href: `/originate/${offer.reference}`,
         actionLabel: "View offer",
       });
@@ -78,17 +97,23 @@ export function dashboardNotifications(
     }
   }
 
-  const pendingByOffer = new Map<string, number>();
+  const claimableByOffer = new Map<string, number>();
   for (const row of book.distributions ?? []) {
-    if (row.status !== "pending") continue;
-    pendingByOffer.set(
+    if (row.status !== "claimable") continue;
+    claimableByOffer.set(
       row.offerReference,
-      (pendingByOffer.get(row.offerReference) ?? 0) + row.amountCents,
+      (claimableByOffer.get(row.offerReference) ?? 0) + row.amountCents,
     );
   }
 
-  for (const [reference, amountCents] of pendingByOffer) {
+  for (const [reference, amountCents] of claimableByOffer) {
     const offer = book.offers.find((row) => row.reference === reference);
+    if (
+      walletAddress &&
+      !sameWallet(offer?.onchain?.purchaserAddress ?? "", walletAddress)
+    ) {
+      continue;
+    }
     items.push({
       id: `rent:${reference}`,
       kind: "rent_claim",

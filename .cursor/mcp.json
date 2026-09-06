@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "supabase-merkado-labs": {
-      "url": "https://mcp.supabase.com/mcp?project_ref=csaefdkpwukshtouyixg&features=database,docs"
+      "url": "https://mcp.supabase.com/mcp?project_ref=ewoxmzznkavapcxdporm&features=database,docs"
     }
   }
 }

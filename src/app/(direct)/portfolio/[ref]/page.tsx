@@ -25,7 +25,12 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/rent-advance/helpers";
+import { mergeOnchain } from "@/lib/rent-advance/custody";
 import { getPortfolioPosition, loadBook } from "@/lib/rent-advance/store";
+import { readCurrentOfferClaimable } from "@/lib/onchain/verify";
+import { usdCentsFromUsdcAtomic } from "@/lib/rent-advance/money";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 export const dynamic = "force-dynamic";
 
@@ -46,16 +51,33 @@ export default async function PortfolioDetailPage({
   searchParams: Promise<{ success?: string }>;
 }) {
   const [{ ref }, query] = await Promise.all([params, searchParams]);
+  const user = await getOptionalUser();
+  const linkedWalletAddress = user ? await getActiveLinkedWallet(user.id) : null;
   const [position, book] = await Promise.all([
-    getPortfolioPosition(ref),
+    getPortfolioPosition(ref, linkedWalletAddress),
     loadBook(),
   ]);
   if (!position) notFound();
+  const offer = book.offers.find((row) => row.reference === position.reference);
+  const onchain = mergeOnchain(offer?.onchain);
+  const contractAddress = onchain.contractAddress ?? book.cryptoConfig?.offerNftContract ?? null;
+  const configured = Boolean(contractAddress);
   const distributions = (book.distributions ?? []).filter(
     (row) => row.offerReference === position.reference,
   );
-  const pendingCollect = distributions.filter((row) => row.status === "pending");
-  const pendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
+  const pendingCollect = distributions.filter((row) => row.status === "claimable");
+  const bookPendingCents = pendingCollect.reduce((sum, row) => sum + row.amountCents, 0);
+  const liveClaimableAtomic =
+    configured && onchain.tokenId != null
+      ? await readCurrentOfferClaimable(contractAddress!, onchain.tokenId)
+      : null;
+  const onchainPosition = configured && onchain.tokenId != null;
+  const submittedClaim = Boolean(onchain.submittedClaimTxHash);
+  const pendingCents = onchainPosition
+    ? liveClaimableAtomic == null
+      ? null
+      : usdCentsFromUsdcAtomic(liveClaimableAtomic)
+    : bookPendingCents;
 
   return (
     <ThemeMerkado className="space-y-6">
@@ -69,7 +91,7 @@ export default async function PortfolioDetailPage({
       ) : query.success === "rent" ? (
         <RouteSuccessDialog
           title="Rent claimed"
-          description={`${position.summary} rent was added to your claimed total. No money was sent.`}
+          description={`${position.summary} rent was added to your claimed total.`}
           storageKey={`merkado:success:rent:${position.reference}`}
           closeHref={`/portfolio/${position.reference}`}
         />
@@ -103,7 +125,12 @@ export default async function PortfolioDetailPage({
           },
           {
             label: "Ready to claim",
-            value: <Money cents={position.pendingDistributionCents} compact />,
+            value:
+              pendingCents == null ? (
+                <span className="text-sm">Not verified</span>
+              ) : (
+                <Money cents={pendingCents} compact />
+              ),
           },
           {
             label: "Claimed",
@@ -111,25 +138,7 @@ export default async function PortfolioDetailPage({
           },
         ]}
       />
-      {position.offerAddress ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Offer rent address</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <CopyValue
-              value={position.offerAddress}
-              label="offer rent address"
-              truncate
-            />
-            <p className="text-xs text-muted-foreground">
-              Merkado Pay sends this offer&apos;s rent here. A mocked demo
-              wallet claims rent from Portfolio.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-      {pendingCents > 0 ? (
+      {pendingCents != null && pendingCents > 0 ? (
         <Card className="ring-primary/30 shadow-md">
           <CardHeader>
             <CardTitle>Rent ready to claim</CardTitle>
@@ -137,8 +146,39 @@ export default async function PortfolioDetailPage({
           <CardContent>
             <ClaimRentForm
               reference={position.reference}
+              tokenId={onchain.tokenId}
               amountCents={pendingCents}
+              configured={configured}
+              contractAddress={contractAddress}
+              linkedWalletAddress={linkedWalletAddress}
             />
+          </CardContent>
+        </Card>
+      ) : submittedClaim && bookPendingCents > 0 ? (
+        <Card className="ring-primary/30 shadow-md">
+          <CardHeader>
+            <CardTitle>Claim submitted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ClaimRentForm
+              reference={position.reference}
+              tokenId={onchain.tokenId}
+              amountCents={bookPendingCents}
+              configured={configured}
+              contractAddress={contractAddress}
+              pendingRecovery
+              linkedWalletAddress={linkedWalletAddress}
+            />
+          </CardContent>
+        </Card>
+      ) : pendingCents == null && bookPendingCents > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Rent ready to claim</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            The current Optimism Mainnet rent balance could not be verified. Refresh
+            this page before trying to claim.
           </CardContent>
         </Card>
       ) : position.distributedCents > 0 ? (
@@ -147,7 +187,7 @@ export default async function PortfolioDetailPage({
             <CardTitle>Rent claimed</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            <Money cents={position.distributedCents} /> claimed so far.
+            <Money cents={position.distributedCents} showUsd /> claimed so far.
           </CardContent>
         </Card>
       ) : null}
@@ -164,10 +204,17 @@ export default async function PortfolioDetailPage({
                 <TableHead>Due</TableHead>
                 <TableHead>Collected</TableHead>
                 <TableHead>Distribution</TableHead>
+                <TableHead>Payment transaction</TableHead>
+                <TableHead>Claim transaction</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {position.receivables.map((row) => {
+                const payment = book.paymentRequests?.find(
+                  (item) =>
+                    item.offerReference === position.reference &&
+                    item.receivableN === row.n,
+                );
                 const distribution = distributions.find((item) =>
                   item.collectionId.endsWith(`-${row.n}`) ||
                   item.distributionId.endsWith(`-${row.n}`),
@@ -192,20 +239,35 @@ export default async function PortfolioDetailPage({
                       {distribution ? (
                         <div className="space-y-1">
                           <p>
-                            {distribution.status === "pending"
+                            {distribution.status === "claimable"
                               ? "Ready to claim"
-                              : distribution.status === "distributed"
+                              : distribution.status === "claimed"
                                 ? "Claimed"
                                 : distribution.status}
                           </p>
-                          {distribution.txHash ? (
-                            <CopyValue
-                              value={distribution.txHash}
-                              label="distribution reference"
-                              truncate
-                            />
-                          ) : null}
                         </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {payment?.txHash ? (
+                              <CopyValue
+                                value={payment.txHash}
+                                label="payment transaction"
+                                truncate
+                              />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {distribution?.status === "claimed" && distribution.txHash ? (
+                        <CopyValue
+                          value={distribution.txHash}
+                          label="claim transaction"
+                          truncate
+                        />
                       ) : (
                         "—"
                       )}

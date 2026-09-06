@@ -37,7 +37,13 @@ export function CopyValue({
 
   return (
     <span className={cn("inline-flex min-w-0 items-center gap-2", className)}>
-      <code className="truncate font-mono text-sm" title={value}>
+      <code
+        className={cn(
+          "font-mono text-sm",
+          truncate ? "truncate" : "break-all whitespace-normal",
+        )}
+        title={value}
+      >
         {visible}
       </code>
       <Button

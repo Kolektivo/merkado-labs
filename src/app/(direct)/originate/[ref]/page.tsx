@@ -19,18 +19,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import {
   effectiveOfferStatus,
   rentToMarket,
   offerDisplayName,
-  statusLabel,
+  customerStatusLabel,
+  listingExpiresAt,
+  formatDayMonthYear,
   statusTone,
 } from "@/lib/rent-advance/helpers";
 import { formatPercent } from "@/lib/rent-advance/money";
 import { bandLabel, payerBandLabel } from "@/lib/rent-advance/scoring";
-import { landlordProceedsPresentation } from "@/lib/rent-advance/custody";
-import { getOffer } from "@/lib/rent-advance/store";
+import { proceedsPresentation } from "@/lib/rent-advance/custody";
+import { getOfferForAccount } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";
 
@@ -51,15 +54,23 @@ export default async function OfferOpsPage({
   params: Params;
 }) {
   const { ref } = await params;
-  const offer = await getOffer(ref);
+  const user = await getOptionalUser();
+  const offer = user ? await getOfferForAccount(ref, user.id) : null;
   if (!offer) notFound();
 
   const belowMarket = Number.isFinite(rentToMarket(offer)) && rentToMarket(offer) < 1;
-  const proceeds = landlordProceedsPresentation(offer);
+  const proceeds = proceedsPresentation(offer);
   const effectiveStatus = effectiveOfferStatus(offer);
+  const sold =
+    proceeds.purchased ||
+    proceeds.landlordPaid ||
+    effectiveStatus === "live" ||
+    effectiveStatus === "collecting";
   const showProceedsCard = offer.status !== "draft";
+  const expiresAt = listingExpiresAt(offer.publishedAt);
+  const expiresLabel = expiresAt ? formatDayMonthYear(expiresAt) : null;
   const lifecycleEvents = offer.events.filter((event) =>
-    /offer request|approved|denied|offer created|listed|offer sold|whole offer|sale amount|status set/i.test(
+    /offer request|approved|denied|offer created|listed|listing|offer sold|whole offer|sale amount|status set/i.test(
       event.title,
     ),
   );
@@ -72,7 +83,7 @@ export default async function OfferOpsPage({
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge tone={statusTone(effectiveStatus)}>
-              {statusLabel(effectiveStatus)}
+              {customerStatusLabel(effectiveStatus)}
             </StatusBadge>
             {effectiveStatus === "funding" ||
             effectiveStatus === "live" ||
@@ -98,6 +109,7 @@ export default async function OfferOpsPage({
             <Money
               cents={offer.purchasePriceCents}
               className="text-xl font-semibold text-primary"
+              showUsd
             />
           </CardContent>
         </Card>
@@ -108,7 +120,7 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {statusLabel(effectiveStatus)}
+            {customerStatusLabel(effectiveStatus)}
           </CardContent>
         </Card>
         <Card>
@@ -118,13 +130,17 @@ export default async function OfferOpsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xl font-semibold">
-            {effectiveStatus === "expired"
-              ? "Listing expired"
-              : offer.expiresAt && effectiveStatus === "funding"
-              ? `Until ${formatDate(offer.expiresAt)}`
-              : effectiveStatus === "live" || effectiveStatus === "collecting"
-                ? "Offer sold"
-                : "60 days after approval"}
+            {sold
+              ? "Offer sold"
+              : effectiveStatus === "funding"
+                ? "Open on Marketplace"
+                : "Not on the marketplace"}
+            {expiresLabel &&
+            !sold && effectiveStatus === "funding" ? (
+              <span className="mt-1 block text-sm font-normal text-muted-foreground">
+                Available until {expiresLabel} · 60-day listing window
+              </span>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -132,11 +148,7 @@ export default async function OfferOpsPage({
       {showProceedsCard ? (
         <LandlordProceedsCard
           propertyName={offerDisplayName(offer)}
-          status={proceeds.status}
-          purchasePriceCents={proceeds.purchasePriceCents}
-          feeCents={proceeds.feeCents}
-          amountCents={proceeds.amountCents}
-          lockedAddress={proceeds.lockedAddress}
+          presentation={proceeds}
         />
       ) : null}
 
@@ -300,7 +312,7 @@ export default async function OfferOpsPage({
                       </TableCell>
                       <TableCell>{row.district}</TableCell>
                       <TableCell className="text-right">
-                        <Money cents={row.rentCents} />
+                        <Money cents={row.rentCents} showUsd />
                       </TableCell>
                       <TableCell>{row.bedrooms}</TableCell>
                       <TableCell>{row.interiorM2}</TableCell>

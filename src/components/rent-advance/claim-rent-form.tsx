@@ -1,29 +1,135 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { HelpTip } from "@/components/help-tip";
-import { MockWalletConnection } from "@/components/mock-wallet-connection";
+import { WalletConnection } from "@/components/wallet-connection";
 import { Money } from "@/components/money-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { collectRentFromNftAction } from "@/lib/rent-advance/actions";
+import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
+import { OP_MAINNET_CHAIN_ID } from "@/lib/pay/networks";
+import { claimRent, waitForSuccessfulWalletTransaction } from "@/lib/pay/wallet-adapter";
+import {
+  attachSubmittedClaimTxAction,
+  checkPendingClaimAction,
+  verifyRentClaimAction,
+} from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 export function ClaimRentForm({
   reference,
+  tokenId,
   amountCents,
-  distributionId,
+  configured,
+  contractAddress,
+  pendingRecovery = false,
+  linkedWalletAddress,
 }: {
   reference: string;
+  tokenId: number | null;
   amountCents: number;
-  distributionId?: string;
+  configured: boolean;
+  contractAddress: string | null;
+  pendingRecovery?: boolean;
+  linkedWalletAddress: string | null;
 }) {
   const router = useRouter();
+  const wallet = useMerkadoWallet();
   const [pending, startTransition] = useTransition();
+  const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const onOptimismMainnet = wallet.chainId === OP_MAINNET_CHAIN_ID;
+  const connectedMatchesLinked =
+    connected &&
+    linkedWalletAddress != null &&
+    wallet.address?.toLowerCase() === linkedWalletAddress.toLowerCase();
+  const walletReady = connectedMatchesLinked && onOptimismMainnet;
+  const canClaim =
+    configured && tokenId != null && walletReady && !claiming;
+
+  function handleClaim() {
+    setError(null);
+    startTransition(async () => {
+      setClaiming(true);
+      try {
+        const { hash } = await claimRent(wallet, BigInt(tokenId ?? 0), contractAddress);
+        await attachSubmittedClaimTxAction(
+          reference,
+          hash,
+          wallet.address ?? "0x0000000000000000000000000000000000000000",
+        );
+        await waitForSuccessfulWalletTransaction(wallet.provider!, hash, "Rent claim");
+        let result = await verifyRentClaimAction(
+          reference,
+          hash,
+          wallet.address ?? "0x0000000000000000000000000000000000000000",
+        );
+        while (result.status === "pending") {
+          await wait(4000);
+          result = await verifyRentClaimAction(
+            reference,
+            hash,
+            wallet.address ?? "0x0000000000000000000000000000000000000000",
+          );
+        }
+        if (result.status !== "confirmed") {
+          setError(result.reason ?? "The claim is still being verified.");
+          return;
+        }
+        try {
+          window.sessionStorage.setItem(
+            `merkado:success:rent:${reference}`,
+            formatXcg(amountCents),
+          );
+        } catch {
+          // The claim succeeded; the amount is optional dialog detail.
+        }
+        router.push(`/portfolio/${reference}?success=rent`);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "The claim failed.");
+      } finally {
+        setClaiming(false);
+      }
+    });
+  }
+
+  useEffect(() => {
+    if (!pendingRecovery) return;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const result = await checkPendingClaimAction(reference);
+        if (result.status === "confirmed") {
+          router.refresh();
+          return;
+        }
+        if (!cancelled) {
+          window.setTimeout(poll, 4000);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "The claim is still being verified.");
+        }
+        return;
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingRecovery, reference, router]);
 
   return (
     <div className="space-y-3">
@@ -33,6 +139,7 @@ export function ClaimRentForm({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+      {!pendingRecovery ? (
       <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/5 p-4">
         <div>
           <p className="text-sm text-muted-foreground">Rent ready</p>
@@ -41,46 +148,61 @@ export function ClaimRentForm({
           </p>
         </div>
         <HelpTip label="claiming rent">
-          This is monthly rent that the renter paid. It belongs to the holder,
-          not the landlord.
+          This is monthly rent the renter paid. It belongs to the current
+          holder, not the landlord.
         </HelpTip>
       </div>
-      <MockWalletConnection
-        connected={connected}
-        onConnect={() => setConnected(true)}
-      />
-      {connected ? (
-        <Button
-          type="button"
-          className="min-h-11 w-full px-4 md:w-auto"
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            startTransition(async () => {
-              try {
-                await collectRentFromNftAction(reference, distributionId);
-                try {
-                  window.sessionStorage.setItem(
-                    `merkado:success:rent:${reference}`,
-                    formatXcg(amountCents),
-                  );
-                } catch {
-                  // The claim succeeded; the amount is optional dialog detail.
-                }
-                router.push(`/portfolio/${reference}?success=rent`);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "The claim failed.");
-              }
-            });
-          }}
-        >
-          Claim rent
-        </Button>
       ) : null}
-      <p className="text-xs text-muted-foreground">
-        Demo only — no money is transferred.
-      </p>
-
+      {!configured ? (
+        <Alert variant="destructive">
+          <AlertTitle>Claims are not configured yet</AlertTitle>
+          <AlertDescription>
+            Live claiming is not enabled yet. Nothing was claimed.
+          </AlertDescription>
+        </Alert>
+      ) : tokenId == null ? (
+        <Alert>
+          <AlertTitle>Not available yet</AlertTitle>
+          <AlertDescription>
+            This listing has no rent to claim yet.
+          </AlertDescription>
+        </Alert>
+      ) : pendingRecovery ? (
+        <>
+          <Alert>
+            <AlertTitle>Claim transaction submitted</AlertTitle>
+            <AlertDescription>
+              The claim was sent to Optimism Mainnet. Portfolio will update when the
+              verified result is available. Do not submit another claim.
+            </AlertDescription>
+          </Alert>
+        </>
+      ) : (
+        <>
+          <WalletConnection onConnectedChange={setConnected} />
+          <Button
+            type="button"
+            className="min-h-11 w-full px-4 md:w-auto"
+            disabled={!canClaim || pending || claiming}
+            onClick={handleClaim}
+          >
+            {claiming ? "Claiming…" : "Claim rent"}
+          </Button>
+          {connected && !connectedMatchesLinked ? (
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full px-4 md:w-auto"
+            >
+              <Link href="/account/apps">Link this wallet in Account</Link>
+            </Button>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            The current holder claims rent that was paid for this listing.
+          </p>
+        </>
+      )}
     </div>
   );
 }

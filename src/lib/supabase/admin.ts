@@ -5,8 +5,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   DashboardConfigurationError,
   getSupabaseConfig,
-  LABS_PROJECT_REF,
-  LABS_URL,
 } from "@/lib/supabase/config";
 
 function isPlaceholder(value: string) {
@@ -24,16 +22,10 @@ function isPlaceholder(value: string) {
 
 /**
  * Server-only Labs service-role client.
- * Refuses any URL that is not the merkado-labs project.
+ * getSupabaseConfig() rejects URLs outside the explicit Labs allowlist.
  */
 export function createLabsAdminClient(): SupabaseClient {
   const { url } = getSupabaseConfig();
-
-  if (url !== LABS_URL) {
-    throw new DashboardConfigurationError(
-      `Refusing service-role access: URL must be Labs project ${LABS_PROJECT_REF}.`,
-    );
-  }
 
   const secretKey =
     process.env.SUPABASE_SECRET_KEY?.trim() ||

@@ -1,44 +1,109 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { payoutAddressLocked } from "@/lib/rent-advance/custody";
 import { CANONICAL_PAYMENT_REQUEST_ID } from "@/lib/rent-advance/ids";
+import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import {
   dashboardNotifications,
   navNotificationCounts,
   visibleNotifications,
 } from "@/lib/rent-advance/notifications";
-import { applyPaymentOutcome, normalizeBook } from "@/lib/rent-advance/payment-apply";
+import {
+  applyVerifiedPurchase,
+  applyVerifiedRentDeposit,
+  normalizeBook,
+} from "@/lib/rent-advance/payment-apply";
 import { CANONICAL_REFERENCE, getSeedBook } from "@/lib/rent-advance/seed";
 
-test("seeded book notifies that MRA-001 was paid automatically", () => {
+const BUYER = "0x5555555555555555555555555555555555555555";
+const PAYER = "0x4444444444444444444444444444444444444444";
+const TX_PURCHASE = "0x" + "c".repeat(64);
+const TX_RENT = "0x" + "d".repeat(64);
+const OPAQUE = "0x" + "e".repeat(64);
+const CONTRACT = "0x1111111111111111111111111111111111111111";
+
+function minted(book: ReturnType<typeof getSeedBook>, reference: string) {
+  const offer = book.offers.find((row) => row.reference === reference);
+  assert.ok(offer);
+  offer.onchain = {
+    tokenId: 1,
+    offerKey: "0x" + "a".repeat(64),
+    contractAddress: CONTRACT,
+    epochId: "epoch-test",
+    mintTxHash: "0x" + "b".repeat(64),
+    mintBlockNumber: "100",
+    purchased: false,
+    purchaseTxHash: null,
+    purchaserAddress: null,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    landlordPaid: false,
+    claimableRentCents: 0,
+    claimedRentCents: 0,
+  };
+  return book;
+}
+
+test("seeded pre-mint offers notify as Listed with no mint wording", () => {
   const items = dashboardNotifications(normalizeBook(getSeedBook()));
-  const sale = items.find(
-    (item) => item.id === `sale-paid:${CANONICAL_REFERENCE}`,
-  );
-  assert.ok(sale);
-  assert.equal(sale.title, "Sale amount paid automatically");
-  assert.equal(sale.href, `/originate/${CANONICAL_REFERENCE}`);
+  const pending = items.find((item) => item.id === `mint-pending:${CANONICAL_REFERENCE}`);
+  assert.ok(pending);
+  assert.equal(pending.title, "Offer approved · Listed");
+  assert.equal(pending.href, `/originate/${CANONICAL_REFERENCE}`);
   assert.equal(
     items.some((item) => item.kind === "rent_claim"),
     false,
   );
+  assert.equal(
+    items.some((item) => item.id.startsWith("sale-paid:")),
+    false,
+  );
 });
 
-test("seeded open offer notifies that it was accepted and listed", () => {
-  const items = dashboardNotifications(normalizeBook(getSeedBook()));
-  const listed = items.find((item) => item.id === "listed:MRA-010");
+test("a minted offer notifies as listed on Marketplace with no mint wording", () => {
+  const items = dashboardNotifications(minted(getSeedBook(), CANONICAL_REFERENCE));
+  const listed = items.find((item) => item.id === `listed:${CANONICAL_REFERENCE}`);
   assert.ok(listed);
-  assert.equal(listed.title, "Offer accepted and listed");
-  assert.equal(listed.actionLabel, "View offer");
+  assert.equal(listed.title, "Offer listed on Marketplace");
+  assert.equal(listed.href, `/originate/${CANONICAL_REFERENCE}`);
+});
+
+test("a verified purchase notifies that sale proceeds were paid", () => {
+  const book = minted(getSeedBook(), CANONICAL_REFERENCE);
+  const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(offer);
+  const bought = applyVerifiedPurchase(book, CANONICAL_REFERENCE, {
+    tokenId: 1,
+    purchaserAddress: BUYER,
+    txHash: TX_PURCHASE,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    purchasePriceAtomic: BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)),
+  }, "2026-08-20T12:00:00.000Z");
+  const items = dashboardNotifications(bought);
+  const sale = items.find((item) => item.id === `sale-paid:${CANONICAL_REFERENCE}`);
+  assert.ok(sale);
+  assert.equal(sale.title, "Offer sold · sale proceeds paid");
+  assert.equal(sale.href, `/originate/${CANONICAL_REFERENCE}`);
 });
 
 test("confirmed rent adds a Portfolio claim notification", () => {
-  const paid = applyPaymentOutcome(
-    normalizeBook(getSeedBook()),
-    CANONICAL_PAYMENT_REQUEST_ID,
-    "confirmed",
-    "2026-09-28T12:00:00.000Z",
-  );
+  const book = minted(getSeedBook(), CANONICAL_REFERENCE);
+  const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(offer);
+  const bought = applyVerifiedPurchase(book, CANONICAL_REFERENCE, {
+    tokenId: 1,
+    purchaserAddress: BUYER,
+    txHash: TX_PURCHASE,
+    payoutAddress: payoutAddressLocked(offer) ?? "",
+    purchasePriceAtomic: BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents)),
+  }, "2026-08-20T12:00:00.000Z");
+  const paid = applyVerifiedRentDeposit(bought, CANONICAL_PAYMENT_REQUEST_ID, {
+    tokenId: 1,
+    opaquePaymentId: OPAQUE,
+    payerAddress: PAYER,
+    amountAtomic: BigInt(1_800_000_000),
+    txHash: TX_RENT,
+  }, "2026-09-28T12:00:00.000Z");
   const items = dashboardNotifications(paid);
   const rent = items.find((item) => item.id === `rent:${CANONICAL_REFERENCE}`);
   assert.ok(rent);
@@ -52,4 +117,16 @@ test("confirmed rent adds a Portfolio claim notification", () => {
     visibleNotifications(items, [`sale-paid:${CANONICAL_REFERENCE}`]).length,
     2,
   );
+});
+
+test("shared notifications still vary by the signed-in account and wallet", () => {
+  const book = minted(getSeedBook(), CANONICAL_REFERENCE);
+  const offer = book.offers.find((row) => row.reference === CANONICAL_REFERENCE);
+  assert.ok(offer);
+  offer.createdByAccountId = "account-landlord";
+  const landlordItems = dashboardNotifications(book, "account-landlord", PAYER);
+  const otherUserItems = dashboardNotifications(book, "account-other", BUYER);
+
+  assert.ok(landlordItems.some((item) => item.href === `/originate/${CANONICAL_REFERENCE}`));
+  assert.equal(otherUserItems.some((item) => item.href === `/originate/${CANONICAL_REFERENCE}`), false);
 });

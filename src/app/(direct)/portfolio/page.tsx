@@ -15,13 +15,17 @@ import {
 } from "@/components/ui/table";
 import { statusLabel, statusTone } from "@/lib/rent-advance/helpers";
 import { listPortfolioPositions } from "@/lib/rent-advance/store";
+import { getOptionalUser } from "@/lib/supabase/server-client";
+import { getActiveLinkedWallet } from "@/lib/wallet-link/service";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Portfolio" };
 
 export default async function PortfolioPage() {
+  const user = await getOptionalUser();
+  const linkedWallet = user ? await getActiveLinkedWallet(user.id) : null;
   const { positions, contributed, received, expectedRemaining, active } =
-    await listPortfolioPositions();
+    await listPortfolioPositions(linkedWallet);
 
   return (
     <ThemeMerkado className="space-y-6">
@@ -33,19 +37,19 @@ export default async function PortfolioPage() {
         items={[
           {
             label: "Contributed",
-            value: <Money cents={contributed} compact />,
+            value: <Money cents={contributed} compact showUsd />,
             helper: `across ${positions.length} positions`,
             tip: "What the holder contributed. The landlord receives a lower one-time purchase price.",
           },
           {
             label: "Collected",
-            value: <Money cents={received} compact />,
+            value: <Money cents={received} compact showUsd />,
             helper: "actual collections only",
             tip: "Rent that actually arrived — never a promised figure.",
           },
           {
             label: "Expected remaining",
-            value: <Money cents={expectedRemaining} compact />,
+            value: <Money cents={expectedRemaining} compact showUsd />,
             helper: "if remaining collections arrive",
             tip: "Scheduled leftover only if later months are collected.",
           },
@@ -83,19 +87,19 @@ export default async function PortfolioPage() {
               <div>
                 <dt className="text-xs text-muted-foreground">Collected</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.collectedCents} />
+                  <Money cents={position.collectedCents} showUsd />
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Ready</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.pendingDistributionCents} />
+                  <Money cents={position.pendingDistributionCents} showUsd />
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Claimed</dt>
                 <dd className="mt-1 font-medium">
-                  <Money cents={position.distributedCents} />
+                  <Money cents={position.distributedCents} showUsd />
                 </dd>
               </div>
             </dl>
@@ -117,11 +121,11 @@ export default async function PortfolioPage() {
           </TableHeader>
           <TableBody>
             {positions.map((position) => (
-              <TableRow key={position.positionId}>
+              <TableRow key={position.positionId} className="relative">
                 <TableCell className="font-medium">
                   <Link
                     href={`/portfolio/${position.reference}`}
-                    className="hover:underline"
+                    className="after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   >
                     {position.summary}
                   </Link>
@@ -131,13 +135,13 @@ export default async function PortfolioPage() {
                 </TableCell>
                 <TableCell>{position.positionId}</TableCell>
                 <TableCell>
-                  <Money cents={position.collectedCents} />
+                  <Money cents={position.collectedCents} showUsd />
                 </TableCell>
                 <TableCell>
-                  <Money cents={position.pendingDistributionCents} />
+                  <Money cents={position.pendingDistributionCents} showUsd />
                 </TableCell>
                 <TableCell>
-                  <Money cents={position.distributedCents} />
+                  <Money cents={position.distributedCents} showUsd />
                 </TableCell>
                 <TableCell>
                   <StatusBadge tone={statusTone(position.status)}>
@@ -151,8 +155,8 @@ export default async function PortfolioPage() {
         </div>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        When rent arrives, open the position, connect a demo wallet, and
-        claim rent from the offer.
+        When rent arrives, link a wallet in Account, connect it on Optimism Mainnet,
+        and claim the rent.
       </p>
     </ThemeMerkado>
   );
