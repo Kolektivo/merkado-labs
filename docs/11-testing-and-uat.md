@@ -52,7 +52,7 @@ The first passing remote run on `main` was 2026-08-19 (run 32228015203).
 ## Critical flows (engineering)
 
 1. Home shows Merkado Direct entry points. Hosted access first requires the
-   deployment pass, then email magic-link sign-in. Reset lives in
+   deployment pass, then email magic-link or Google sign-in. Reset lives in
    Admin.
 2. Direct nav is Home, My Offers, Create Offer, Simulator, Marketplace,
    Portfolio, plus Pay, Account, and Admin at the bottom.

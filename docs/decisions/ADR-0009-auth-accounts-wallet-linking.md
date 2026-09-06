@@ -13,8 +13,9 @@ The production `merkado-cw` application uses Supabase Auth with the
 
 ## Decision
 
-Merkado Labs uses Supabase Auth with email magic links only. Identity-only OAuth
-authorization is supported separately. All authenticated users read and mutate
+Merkado Labs uses Supabase Auth with email magic links and optional Google
+social sign-in. Identity-only OAuth authorization is supported separately. All
+authenticated users read and mutate
 the shared `ra_demo_state` row where `id='live'` and `account_id IS NULL`.
 
 Landlord workflow ownership is stored on each offer as the authenticated

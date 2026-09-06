@@ -60,7 +60,8 @@ Never:
 
 ## 3. Demo access
 
-- Labs uses Supabase Auth with email magic links only. This is a
+- Labs uses Supabase Auth with email magic links and optional Google social
+  sign-in. This is a
   Labs demo identity, not production Merkado authentication.
 - `LABS_DEMO_PASSWORD` is a deployment gate before sign-in. When configured,
   hosted users must pass the gate and authenticate before protected routes

@@ -6,8 +6,9 @@
 ## Now
 
 - **Labs Auth and shared demo state (branch `feat/labs-auth-accounts`):** email
-  magic links are the first-party sign-in path, with identity-only Supabase
-  OAuth authorization supported through `/oauth/consent`. All users share one
+  magic links and optional Google social sign-in are the first-party sign-in
+  paths, with identity-only Supabase OAuth authorization supported through
+  `/oauth/consent`. All users share one
   demo book, while each account has one linked wallet. The account/wallet migration and
   atomic wallet-link follow-on are applied to the approved Labs branch; hosted
   activation and merging remain blocked.

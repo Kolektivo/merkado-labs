@@ -90,7 +90,7 @@ outside this scoped layer.
   their own. Field labels, status badges, nav groups, and the logo are not
   eyebrows.
 - The hosted sign-in door (`/enter`) is a compact shadcn card: title,
-  one line of copy, **Email me a sign-in link**,
+  one line of copy, **Continue with Google** or **Email me a sign-in link**,
   and the legacy **host password** as a collapsed fallback. A quiet line
   reads **Not a Merkado account · not live on merkado.cw**. No logo, pill,
   or prototype alert.

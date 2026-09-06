@@ -19,8 +19,8 @@ publish listings.
 Customer-facing surfaces:
 
 - `/` Labs demo hub
-- `/enter` sign-in door (Supabase Auth email magic link; legacy host password fallback)
-- `/auth/callback` and `/auth/complete` Supabase Auth PKCE / magic-link completion
+- `/enter` sign-in door (Supabase Auth email magic link or Google; legacy host password fallback)
+- `/auth/callback` and `/auth/complete` Supabase Auth PKCE / magic-link / Google completion
 - `/originate*` Merkado Direct operations (My Offers, Create Offer, Simulator)
 - `/admin*` operations (approval, collections, reset) — ADMIN_EMAILS allowlist only
 - `/offers*` Marketplace
@@ -37,7 +37,8 @@ Customer-facing surfaces:
   `normalizeBook()` for older JSON. Account-specific selectors provide the
   landlord workflow, while wallet-specific selectors provide renter and holder
   role views.
-- Identity is **Supabase Auth** (email magic links only). Server
+- Identity is **Supabase Auth** (email magic links plus optional Google social
+  sign-in). Server
   components and server actions resolve the user through `@supabase/ssr`
   (`src/lib/supabase/server-client.ts`); browser code uses a matching
   browser client. An optional **stay signed in** cookie preference controls

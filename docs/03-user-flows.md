@@ -8,7 +8,7 @@
 On the hosted URL, the first screen is a sign-in door (`/enter`) that is a
 Merkado-branded private walkthrough, not a Merkado account and not live on
 merkado.cw. **Supabase Auth** is the primary identity: **Email me a sign-in
-link**. The legacy **host password**
+link** or optional **Continue with Google**. The legacy **host password**
   (`LABS_DEMO_PASSWORD`) remains as a deployment gate before sign-in. Hosted
   users must pass the gate and authenticate; hosted production fails closed at
   `/enter`. Local `npm run dev` skips the deployment gate unless

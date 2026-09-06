@@ -35,10 +35,18 @@ Optional:
 - `CRON_SECRET` — server-only secret authorizing `/api/cron/mint` (the background mint sweep)
 - `MERKADO_RPC_URL` — server-only; defaults to `https://sepolia.base.org`
 
-Supabase Auth is configured in the Labs project only, with email magic links.
-Identity-only OAuth authorization is also supported. Approved callback origins include local `http://localhost:3000`
+Supabase Auth is configured in the Labs project only, with email magic links
+and optional Google social sign-in. Identity-only OAuth authorization is also
+supported. Approved callback origins include local `http://localhost:3000`
 and the Labs hosted URL. When `LABS_DEMO_PASSWORD` is set, it is required
 before sign-in; protected hosted routes then require the authenticated session.
+
+To enable Google sign-in, open the Labs project in Supabase and go to
+**Authentication → Providers → Google**. Add the Google OAuth client ID and
+client secret, and use the Supabase callback URL shown there (normally
+`https://ewoxmzznkavapcxdporm.supabase.co/auth/v1/callback`) in Google Cloud.
+Keep the application return URLs configured under **Authentication → URL
+Configuration**. Do not put the Google client secret in this repository.
 
 The reviewed account/wallet migration
 `20260831000000_labs_accounts_and_wallets.sql`, atomic wallet-link migration

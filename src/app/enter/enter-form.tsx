@@ -27,6 +27,29 @@ function buildCallbackUrl(nextPath: string): string {
   return url.toString();
 }
 
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4">
+      <path
+        fill="#4285F4"
+        d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.96h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.26Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.7-1.72-5.47-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.53 13.78a5.85 5.85 0 0 1 0-3.56V7.69H3.29a9.74 9.74 0 0 0 0 8.62l3.24-2.53Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6.19c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.28 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.24 2.53C7.3 7.91 9.46 6.19 12 6.19Z"
+      />
+    </svg>
+  );
+}
+
 function LegacyPasswordForm({ nextPath }: { nextPath: string }) {
   const initialState: UnlockDemoState = {};
   const [state, formAction, pending] = useActionState(
@@ -110,11 +133,33 @@ export function EnterForm({
     initialError ? (ENTER_ERROR_MESSAGES[initialError] ?? "") : "",
   );
   const [linkSent, setLinkSent] = useState(false);
-  const [pending, setPending] = useState<"" | "otp">("");
+  const [pending, setPending] = useState<"" | "google" | "otp">("");
   const [showPassword, setShowPassword] = useState(false);
   const errorId = useId();
 
   const isBusy = pending !== "";
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setPending("google");
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: buildCallbackUrl(nextPath),
+        },
+      });
+
+      if (signInError) {
+        setError("Google sign-in is not available yet. Please use email instead.");
+        setPending("");
+      }
+    } catch {
+      setError("Google sign-in is not available yet. Please use email instead.");
+      setPending("");
+    }
+  };
 
   const handleMagicLinkSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -155,6 +200,25 @@ export function EnterForm({
     <div className="flex flex-col gap-4">
       {authAvailable ? (
         <>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isBusy}
+            className="w-full"
+            onClick={() => void handleGoogleSignIn()}
+          >
+            {pending === "google" ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Continue with Google
+          </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            <span>or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
           <form
             onSubmit={(event) => void handleMagicLinkSubmit(event)}
             className="flex flex-col gap-4"

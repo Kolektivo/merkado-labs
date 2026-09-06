@@ -28,7 +28,8 @@ locally behind configuration; a Base Sepolia test deployment exists for
 local/staging verification, but the hosted flow is **not activated or merged**.
 
 The walkthrough now runs under **authenticated Labs demo accounts**
-(Supabase Auth: email magic link). All authenticated users share one demo book;
+(Supabase Auth: email magic link, with optional Google sign-in). All
+authenticated users share one demo book;
 the authenticated account determines the landlord workflow, while linked
 wallets authorize renter and holder actions. The shared host password is only a
 **deployment gate** (the hosted app fails closed at `/enter` until a sign-in
@@ -81,7 +82,7 @@ contract until the current NFT owner claims it.
 
 ## 5. Success for this phase
 
-- A visitor signs in with an email magic link and walks Simulator →
+- A visitor signs in with an email magic link or Google and walks Simulator →
   choose payout and request an offer → Admin
   approval → whole-offer Marketplace purchase (NFT Safe → buyer, buyer pays
   the landlord payout address) → renter USDC rent deposit on Base Sepolia →

@@ -29,9 +29,10 @@ series/legal wording may remain. “Merkado Premium” is retired.
   Customer screens show **XCG** at **1 USD = 1.79 XCG**. USDC still settles
   1:1 with the stored USD rent.
 - **Merkado account (Labs demo auth)** = a **Supabase Auth** identity
-  (email magic link) for the shared demo. Auth identity is separate from
-  wallet authorization. Different users see the same product state but can
-  have different wallet-based roles. Not production auth.
+  (email magic link or optional Google sign-in) for the shared demo. Auth
+  identity is separate from wallet authorization. Different users see the
+  same product state but can have different wallet-based roles. Not production
+  auth.
 - **Labs demo sign-in (`/enter`)** = Supabase Auth primary entry: **Email me a
   sign-in link**, plus the legacy **host
   password** as a deployment-gate fallback. Not a Merkado account and not
@@ -141,7 +142,7 @@ Connect wallet, listing expiry, landlord claim after sale).
 | Marketplace | [LABS] Whole-offer purchase; buyer pays the landlord payout address directly; NFT moves Safe → buyer atomically. Display-only "Available until [date] · 60-day listing window" — never enforced |
 | Portfolio | [LABS] Seeded positions plus purchases; current NFT owner claims rent (`claimRent`) |
 | Merkado Pay (USDC rent deposit) | [LABS] Live flow on Base Sepolia via `depositRent`; UI in XCG; 1:1 USDC. QR / copy controls informational only; depositRent is the only payment path |
-| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (email magic link only). All users share one demo book; each account has one linked wallet and identity-specific role access. Identity-only OAuth authorization is supported. Not activated or merged |
+| Labs sign-in / accounts | [LABS] Supabase Auth primary identity (email magic link, with optional Google sign-in). All users share one demo book; each account has one linked wallet and identity-specific role access. Identity-only OAuth authorization is supported. Not activated or merged |
 | Admin | [LABS] Bottom of left nav, gated by `ADMIN_EMAILS` allowlist — approval, collections, reset. Reset = fresh seed + new chain-store epoch (chain not rolled back); mint/funding wording Admin-only |
 | Shared state + wallet linking (ADR-0009) | [LABS] Implemented behind config; shared demo state, Supabase Auth, and per-account wallet linking are applied to the working branch. Not live |
 | Listing scrapers in this repo | Removed — live on merkado-cw |

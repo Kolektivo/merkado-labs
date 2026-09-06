@@ -40,7 +40,8 @@ outcome menu, demo hashes) is removed.
 > live**; implementation-audit findings in `10` still block activation.
 
 > **Note (2026-09-01, revised 2026-09-05) — implemented locally but NOT yet
-> live:** the approved Supabase Auth flow (email magic links only, plus
+> live:** the approved Supabase Auth flow (email magic links plus optional
+> Google social sign-in, plus
 > identity-only OAuth authorization), one shared demo book, one linked wallet
 > per account, `ADMIN_EMAILS` Admin authorization, and wallet-specific role
 > views are implemented on the working branch behind configuration. The
