@@ -220,6 +220,14 @@ export function NewOfferWizard({
       setError("Only the six-month term is approved for origination.");
       return;
     }
+    if (!isValidPayoutAddress(offer.renterWalletAddress)) {
+      setError("Add the renter's checksummed 0x wallet address.");
+      return;
+    }
+    if (offer.payout.method !== "crypto" || !isValidPayoutAddress(offer.payout.cryptoAddress)) {
+      setError("Enter a valid checksummed Optimism Mainnet 0x payout address.");
+      return;
+    }
     startTransition(async () => {
       try {
         const priced = priceOrBlock({
@@ -979,17 +987,45 @@ export function NewOfferWizard({
               </p>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
                 <p className="font-medium">Payout address (locked for this offer)</p>
-                <p className="mt-1 text-muted-foreground">
-                  {offer.payout.method === "crypto"
-                    ? offer.payout.cryptoAddress
-                    : "Girasol bank payout preview · Coming soon (cannot submit)"}
-                </p>
+                {offer.payout.method === "crypto" ? (
+                  <Input
+                    className="mt-1.5 font-mono text-xs"
+                    autoComplete="off"
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    value={offer.payout.cryptoAddress ?? ""}
+                    onChange={(event) =>
+                      patch((current) => ({
+                        ...current,
+                        payout: {
+                          ...current.payout,
+                          cryptoAddress: event.target.value,
+                        },
+                      }))
+                    }
+                    placeholder="0x351a767a5Bbfe0EE9ca3aA246c2b6732Dc4e43D8"
+                  />
+                ) : (
+                  <p className="mt-1 text-muted-foreground">
+                    Girasol bank payout preview · Coming soon (cannot submit)
+                  </p>
+                )}
               </div>
               <div className="rounded-xl bg-muted/50 p-3 text-sm">
                 <p className="font-medium">Rent payer wallet</p>
-                <p className="mt-1 break-all text-muted-foreground">
-                  {offer.renterWalletAddress}
-                </p>
+                <Input
+                  className="mt-1.5 font-mono text-xs"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  value={offer.renterWalletAddress ?? ""}
+                  onChange={(event) =>
+                    patch((current) => ({
+                      ...current,
+                      renterWalletAddress: event.target.value,
+                    }))
+                  }
+                  placeholder="0x..."
+                />
               </div>
               <label className="flex items-start gap-2 text-sm">
                 <input
