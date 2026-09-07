@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { canSubscribe } from "@/lib/rent-advance/helpers";
-import { payoutAddressLocked } from "@/lib/rent-advance/custody";
+import { mergeOnchain, payoutAddressLocked } from "@/lib/rent-advance/custody";
 import { RENTER_ACCOUNT_ID } from "@/lib/rent-advance/ids";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
 import { applyVerifiedPurchase } from "@/lib/rent-advance/payment-apply";
+import {
+  appendPurchaseAttempt,
+  hasPendingPurchaseAttempt,
+  purchaseAttemptsFor,
+} from "@/lib/rent-advance/purchase-attempts";
 import { priceQuote } from "@/lib/rent-advance/pricing";
 import { CHEAP_OFFER_REFERENCE, getSeedBook } from "@/lib/rent-advance/seed";
 import type { DemoBook } from "@/lib/rent-advance/types";
@@ -206,6 +211,87 @@ test("already purchased offers cannot be purchased again", () => {
   const second = buy(first, whole, "2026-08-20T12:01:00.000Z");
   const again = second.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
   assert.equal(again?.status, "live");
+  assert.equal(
+    (second.paymentRequests ?? []).filter((row) => row.offerReference === CHEAP_OFFER_REFERENCE)
+      .length,
+    6,
+  );
+});
+
+test("an old pending attempt never blocks a later successful purchase", () => {
+  const book = mintedBook();
+  const offer = book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(offer);
+  const whole = BigInt(usdcAtomicFromUsdCents(offer.purchasePriceCents));
+
+  const staleHash = "0x" + "d".repeat(64);
+  const staleBuyer = "0x4444444444444444444444444444444444444444";
+  const nextBuyer = BUYER;
+  const nextHash = TX_PURCHASE;
+
+  const withStale = structuredClone(book);
+  const withStaleOffer = withStale.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(withStaleOffer);
+  withStaleOffer.onchain = appendPurchaseAttempt(
+    mergeOnchain(withStaleOffer.onchain),
+    {
+      txHash: staleHash,
+      buyerAddress: staleBuyer,
+      accountId: "stale-account",
+      submittedAt: "2026-08-20T11:00:00.000Z",
+    },
+  );
+  withStaleOffer.onchain = appendPurchaseAttempt(
+    mergeOnchain(withStaleOffer.onchain),
+    {
+      txHash: nextHash,
+      buyerAddress: nextBuyer,
+      accountId: "next-account",
+      submittedAt: "2026-08-20T12:00:00.000Z",
+    },
+  );
+
+  const next = applyVerifiedPurchase(withStale, CHEAP_OFFER_REFERENCE, {
+    tokenId: 2,
+    purchaserAddress: nextBuyer,
+    txHash: nextHash,
+    payoutAddress: payoutAddressLocked(withStaleOffer) ?? "",
+    purchasePriceAtomic: whole,
+  }, "2026-08-20T12:00:00.000Z");
+
+  const settled = next.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE);
+  assert.ok(settled);
+  assert.equal(settled.onchain?.purchased, true);
+  assert.equal(settled.onchain?.purchaseTxHash, nextHash);
+  assert.equal(settled.onchain?.purchaserAddress, nextBuyer);
+  assert.equal(hasPendingPurchaseAttempt(mergeOnchain(settled.onchain)), false);
+
+  const attempts = purchaseAttemptsFor(mergeOnchain(settled.onchain));
+  const byHash = new Map(attempts.map((row) => [row.txHash, row.status]));
+  assert.equal(byHash.get(nextHash), "confirmed");
+  assert.equal(byHash.get(staleHash), "superseded");
+  assert.equal(
+    (next.paymentRequests ?? []).filter((row) => row.offerReference === CHEAP_OFFER_REFERENCE)
+      .length,
+    6,
+  );
+});
+
+test("duplicate verification of the same winner does not duplicate the position", () => {
+  const book = mintedBook();
+  const whole = BigInt(
+    usdcAtomicFromUsdCents(
+      book.offers.find((row) => row.reference === CHEAP_OFFER_REFERENCE)!
+        .purchasePriceCents,
+    ),
+  );
+  const first = buy(book, whole, "2026-08-20T12:00:00.000Z");
+  const second = buy(first, whole, "2026-08-20T12:01:00.000Z");
+  assert.equal(
+    (second.positions ?? []).filter((row) => row.offerReference === CHEAP_OFFER_REFERENCE)
+      .length,
+    1,
+  );
   assert.equal(
     (second.paymentRequests ?? []).filter((row) => row.offerReference === CHEAP_OFFER_REFERENCE)
       .length,

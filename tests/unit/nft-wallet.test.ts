@@ -4,16 +4,19 @@ import test from "node:test";
 import { decodeFunctionData, pad, toHex, type EIP1193Provider } from "viem";
 
 import type { MerkadoWallet } from "@/hooks/use-merkado-wallet";
+import { normalizeChainId } from "@/hooks/use-merkado-wallet";
 import { OP_MAINNET_CHAIN_ID, OP_MAINNET_USDC_CONTRACT } from "@/lib/pay/networks";
 import {
   MERKADO_ABI,
   USDC_ABI,
   approveUsdc,
+  checkWalletPurchaseReadiness,
   claimRent,
   depositRent,
   ensureOptimismMainnet,
   merkadoContractAddress,
   purchaseOffer,
+  simulateWalletPurchase,
 } from "@/lib/pay/wallet-adapter";
 
 const CONTRACT = "0x1111111111111111111111111111111111111111";
@@ -36,10 +39,11 @@ function fakeProvider(opts: {
   receiptStatus?: "0x0" | "0x1";
   claimOwner?: `0x${string}`;
   claimableAmount?: bigint;
+  usdcBalance?: bigint;
+  purchaseReverts?: boolean;
   failRequest?: { method: string; error: unknown };
 } = {}): { provider: EIP1193Provider; requests: RequestRecord[] } {
   const requests: RequestRecord[] = [];
-  let ethCallCount = 0;
   const provider = {
     request: async ({ method, params }: { method: string; params?: unknown }) => {
       requests.push({ method, params });
@@ -67,11 +71,28 @@ function fakeProvider(opts: {
           return "0x0";
         case "eth_getTransactionReceipt":
           return { status: opts.receiptStatus ?? "0x1", transactionHash: TX_HASH };
-        case "eth_call":
-          ethCallCount += 1;
-          return ethCallCount === 1
-            ? pad((opts.claimOwner ?? FROM) as `0x${string}`)
-            : toHex(opts.claimableAmount ?? AMOUNT_100_USDC, { size: 32 });
+        case "eth_call": {
+          const call = Array.isArray(params)
+            ? (params[0] as { data?: string } | undefined)
+            : undefined;
+          const selector = (call?.data ?? "0x").slice(0, 10).toLowerCase();
+          if (selector === "0x70a08231") {
+            return toHex(opts.usdcBalance ?? AMOUNT_100_USDC, { size: 32 });
+          }
+          if (selector === "0x6352211e") {
+            return pad((opts.claimOwner ?? FROM) as `0x${string}`);
+          }
+          if (selector === "0x1364f61c") {
+            return toHex(opts.claimableAmount ?? AMOUNT_100_USDC, { size: 32 });
+          }
+          if (selector === "0xefef39a1") {
+            if (opts.purchaseReverts) {
+              throw new Error("execution reverted: OfferAlreadyPurchased");
+            }
+            return "0x";
+          }
+          throw new Error(`Unhandled eth_call selector: ${selector}`);
+        }
         default:
           throw new Error(`Unhandled request method: ${method}`);
       }
@@ -306,6 +327,52 @@ test("write helpers require a connected wallet", async () => {
     /Connect a wallet first\./,
   );
   await assert.rejects(claimRent(disconnected, BigInt(1)), /Connect a wallet first\./);
+});
+
+test("normalizeChainId accepts number, decimal, hex, and CAIP forms", () => {
+  assert.equal(normalizeChainId(10), 10);
+  assert.equal(normalizeChainId("10"), 10);
+  assert.equal(normalizeChainId("0xa"), 10);
+  assert.equal(normalizeChainId("0xA"), 10);
+  assert.equal(normalizeChainId("eip155:10"), 10);
+  assert.equal(normalizeChainId("not-a-chain"), null);
+  assert.equal(normalizeChainId(null), null);
+});
+
+test("checkWalletPurchaseReadiness passes when USDC balance covers the price", async () => {
+  const { provider } = fakeProvider({ usdcBalance: AMOUNT_1800_USDC });
+  const result = await checkWalletPurchaseReadiness(
+    makeWallet({ provider }),
+    AMOUNT_100_USDC,
+  );
+  assert.equal(result.ok, true);
+});
+
+test("checkWalletPurchaseReadiness blocks when USDC balance is insufficient", async () => {
+  const { provider } = fakeProvider({ usdcBalance: BigInt(1_000_000) });
+  const result = await checkWalletPurchaseReadiness(
+    makeWallet({ provider }),
+    AMOUNT_100_USDC,
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.error, /USDC balance/);
+});
+
+test("checkWalletPurchaseReadiness requires a connected wallet", async () => {
+  const result = await checkWalletPurchaseReadiness(makeWallet({ provider: null }), AMOUNT_100_USDC);
+  assert.equal(result.ok, false);
+});
+
+test("simulateWalletPurchase passes for a purchasable offer", async () => {
+  const { provider } = fakeProvider();
+  const result = await simulateWalletPurchase(makeWallet({ provider }), BigInt(1));
+  assert.equal(result.ok, true);
+});
+
+test("simulateWalletPurchase reports a reverting purchase as a controlled error", async () => {
+  const { provider } = fakeProvider({ purchaseReverts: true });
+  const result = await simulateWalletPurchase(makeWallet({ provider }), BigInt(1));
+  assert.equal(result.ok, false);
 });
 
 test("write helpers reject a wrong chain before sending", async () => {

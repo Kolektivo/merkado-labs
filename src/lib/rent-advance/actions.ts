@@ -29,12 +29,19 @@ import {
   applyVerifiedPurchase,
   applyVerifiedRentClaim,
   applyVerifiedRentDeposit,
+  canSubscribeOffer,
   earlierOpenPaymentRequest,
   type VerifiedPurchaseFacts,
   type VerifiedRentClaimFacts,
   type VerifiedRentDepositFacts,
 } from "@/lib/rent-advance/payment-apply";
 import { priceOrBlock } from "@/lib/rent-advance/pricing";
+import {
+  appendPurchaseAttempt,
+  isTransactionHash,
+  purchaseAttemptsFor,
+  settlePurchaseAttempt,
+} from "@/lib/rent-advance/purchase-attempts";
 import { getSeedBook } from "@/lib/rent-advance/seed";
 import {
   loadBook,
@@ -42,7 +49,7 @@ import {
   saveBook,
   updateOffer,
 } from "@/lib/rent-advance/store";
-import type { Offer, OfferStatus } from "@/lib/rent-advance/types";
+import type { DemoBook, Offer, OfferStatus } from "@/lib/rent-advance/types";
 import { MERKADO_CHAIN_ID } from "@/lib/onchain/config";
 import { opaquePaymentId } from "@/lib/onchain/ids";
 import {
@@ -54,6 +61,7 @@ import {
   recordDepositVerification,
 } from "@/lib/onchain/chain-store";
 import {
+  readLiveOfferPurchaseState,
   verifyOfferPurchased,
   verifyRentClaimed,
   verifyRentDeposit,
@@ -508,65 +516,233 @@ export async function verifyRentPaymentAction(
 }
 
 type PurchaseVerifiedResult = {
-  status: "pending" | "confirmed";
+  status: "confirmed" | "pending" | "failed";
   reason?: string;
 };
 
-/** Persist the submitted purchase tx so a pending purchase can be re-verified later. */
+function isDemoStateConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const message = (error as { message?: unknown }).message;
+  return (
+    typeof message === "string" &&
+    /shared demo state changed|revision is missing/i.test(message)
+  );
+}
+
+/** Apply a verified purchase exactly once, tolerating concurrent writers. */
+async function saveVerifiedPurchase(
+  book: DemoBook,
+  reference: string,
+  facts: VerifiedPurchaseFacts,
+  at: string,
+): Promise<DemoBook> {
+  let current = book;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const next = applyVerifiedPurchase(current, reference, facts, at);
+    try {
+      return await saveBook(next);
+    } catch (error) {
+      if (!isDemoStateConflict(error)) throw error;
+      current = await loadBook();
+      const offer = current.offers.find((row) => row.reference === reference);
+      if (offer && mergeOnchain(offer.onchain).purchased) return current;
+    }
+  }
+  throw new Error("The demo state changed repeatedly; reload and retry.");
+}
+
+/**
+ * Read-only purchase preflight. Runs before approval and again before the
+ * purchase broadcast. The chain remains the final concurrency lock.
+ */
+export async function preflightPurchaseAction(
+  reference: string,
+  buyerAddress: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { id: accountId } = await requireUser();
+    await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
+    const book = await loadBook();
+    const offer = book.offers.find((row) => row.reference === reference);
+    if (!offer) return { ok: false, error: "Offer not found." };
+    const onchain = mergeOnchain(offer.onchain);
+    if (onchain.purchased) {
+      return { ok: false, error: "This offer has already been purchased." };
+    }
+    if (onchain.tokenId == null || !onchain.contractAddress) {
+      return { ok: false, error: "This offer is not available yet." };
+    }
+    if (!canSubscribeOffer(offer)) {
+      return { ok: false, error: "This offer is not open to purchase." };
+    }
+    const payoutAddress = payoutAddressLocked(offer);
+    if (!payoutAddress) {
+      return { ok: false, error: "This offer has no locked payout address." };
+    }
+    const expectedPrice = purchasePriceAtomicFor(offer);
+    const live = await readLiveOfferPurchaseState(
+      onchain.contractAddress,
+      onchain.tokenId,
+    );
+    if (!live) {
+      return {
+        ok: false,
+        error: "Could not read the offer from Optimism Mainnet. Try again.",
+      };
+    }
+    if (live.purchased) {
+      return {
+        ok: false,
+        error: "This offer was already purchased on Optimism Mainnet.",
+      };
+    }
+    if (live.owner.toLowerCase() !== live.minter.toLowerCase()) {
+      return {
+        ok: false,
+        error: "This offer was already purchased by another wallet.",
+      };
+    }
+    if (live.purchasePrice !== expectedPrice) {
+      return {
+        ok: false,
+        error:
+          "The on-chain price no longer matches this offer. Reload and try again.",
+      };
+    }
+    if (live.payoutAddress.toLowerCase() !== payoutAddress.toLowerCase()) {
+      return {
+        ok: false,
+        error:
+          "The payout address no longer matches this offer. Reload and try again.",
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not prepare the purchase.",
+    };
+  }
+}
+
+/** Record a broadcast purchase attempt. Older attempts never block a new one. */
 export async function attachSubmittedPurchaseTxAction(
   reference: string,
   txHash: string,
   buyerAddress: string,
-) {
-  const { id: accountId } = await requireUser();
-  await assertAccountHasLinkedWallet(accountId, MERKADO_CHAIN_ID);
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (
-    onchain.submittedPurchaseBuyer &&
-    onchain.submittedPurchaseBuyer.toLowerCase() !== buyerAddress.toLowerCase()
-  ) {
-    throw new Error("A purchase is already pending for a different wallet.");
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { id: accountId } = await requireUser();
+    if (!isTransactionHash(txHash)) {
+      return { ok: false, error: "The submitted transaction hash is invalid." };
+    }
+    const normalizedBuyer = normalizePayoutAddress(buyerAddress);
+    await updateOffer(reference, (current) => {
+      const onchain = mergeOnchain(current.onchain);
+      return {
+        ...current,
+        onchain: {
+          ...appendPurchaseAttempt(onchain, {
+            txHash,
+            buyerAddress: normalizedBuyer,
+            accountId,
+            submittedAt: new Date().toISOString(),
+          }),
+        },
+      };
+    });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not record the submitted purchase.",
+    };
   }
-  if (onchain.submittedPurchaseTxHash && onchain.submittedPurchaseTxHash !== txHash) {
-    throw new Error("A purchase transaction is already pending for this offer.");
-  }
-  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
-  await updateOffer(reference, (current) => ({
-    ...current,
-    onchain: {
-      ...mergeOnchain(current.onchain),
-      submittedPurchaseTxHash: txHash,
-      submittedPurchaseBuyer: buyerAddress,
-    },
-  }));
 }
 
-/** Re-verify a previously submitted purchase using the persisted hash. */
+/** Mark a known attempt failed/superseded (e.g. it reverted on chain). */
+export async function settlePurchaseAttemptAction(
+  reference: string,
+  txHash: string,
+  status: "failed" | "superseded",
+  reason?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireUser();
+    await updateOffer(reference, (current) => {
+      const onchain = mergeOnchain(current.onchain);
+      return {
+        ...current,
+        onchain: { ...settlePurchaseAttempt(onchain, txHash, status, reason) },
+      };
+    });
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not update the purchase attempt.",
+    };
+  }
+}
+
+/** Re-verify every recorded purchase attempt, newest first. */
 export async function checkPendingPurchaseAction(
   reference: string,
 ): Promise<PurchaseVerifiedResult> {
-  const { id: accountId } = await requireUser();
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (onchain.purchased) return { status: "confirmed", reason: "Already purchased" };
-  if (!onchain.submittedPurchaseTxHash || !onchain.submittedPurchaseBuyer) {
-    return { status: "pending", reason: " El caso es que, por De la mano del presidente, que es el presidente de la República, de la Unión Europea, de la Unión Europea, de la Unión Europea, de la Unión Europea.No submitted purchase transaction was recorded yet." };
+  try {
+    await requireUser();
+    const book = await loadBook();
+    const offer = book.offers.find((row) => row.reference === reference);
+    if (!offer) return { status: "failed", reason: "Offer not found." };
+    const onchain = mergeOnchain(offer.onchain);
+    if (onchain.purchased) {
+      return { status: "confirmed", reason: "Already purchased" };
+    }
+    const pending = purchaseAttemptsFor(onchain)
+      .filter((attempt) => attempt.status === "pending")
+      .sort(
+        (left, right) =>
+          (right.submittedAt ?? "").localeCompare(left.submittedAt ?? ""),
+      );
+    if (pending.length === 0) {
+      return {
+        status: "pending",
+        reason: "No submitted purchase transaction was recorded yet.",
+      };
+    }
+    for (const attempt of pending) {
+      const result = await verifyPurchaseAction(
+        reference,
+        attempt.txHash,
+        attempt.buyerAddress,
+      );
+      if (result.status === "confirmed" || result.status === "pending") {
+        return result;
+      }
+      await settlePurchaseAttemptAction(
+        reference,
+        attempt.txHash,
+        "failed",
+        result.reason,
+      );
+    }
+    return {
+      status: "failed",
+      reason: "The recorded purchase transactions could not be verified.",
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      reason:
+        error instanceof Error ? error.message : "Could not check the purchase.",
+    };
   }
-  await assertLinkedWalletMatches(
-    accountId,
-    MERKADO_CHAIN_ID,
-    onchain.submittedPurchaseBuyer,
-  );
-  return verifyPurchaseAction(
-    reference,
-    onchain.submittedPurchaseTxHash,
-    onchain.submittedPurchaseBuyer,
-  );
 }
 
 /** Verify a whole-offer purchase receipt and update the book exactly once. */
@@ -575,80 +751,90 @@ export async function verifyPurchaseAction(
   txHash: string,
   buyerAddress: string,
 ): Promise<PurchaseVerifiedResult> {
-  const { id: accountId } = await requireUser();
-  const book = await loadBook();
-  const offer = book.offers.find((row) => row.reference === reference);
-  if (!offer) throw new Error("Offer not found.");
-  const onchain = mergeOnchain(offer.onchain);
-  if (onchain.tokenId == null || !onchain.contractAddress) {
-    throw new Error("This offer is not available yet.");
-  }
-  if (onchain.purchased) {
-    return { status: "confirmed", reason: "Already purchased" };
-  }
-  await assertLinkedWalletMatches(accountId, MERKADO_CHAIN_ID, buyerAddress);
-  const payoutAddress = payoutAddressLocked(offer);
-  if (!payoutAddress) {
-    throw new Error("This offer has no locked payout address.");
-  }
-  const purchasePrice = purchasePriceAtomicFor(offer);
-  const result = await verifyOfferPurchased(txHash, {
-    contractAddress: onchain.contractAddress,
-    tokenId: BigInt(onchain.tokenId),
-    buyer: buyerAddress,
-    payoutAddress,
-    purchasePrice,
-  });
-  if (result.status === "pending") {
-    return { status: "pending", reason: result.reason };
-  }
-  if (!result.verified) {
-    throw new Error(result.reason ?? "The purchase receipt could not be verified.");
-  }
-  const depthPending = confirmationDepthPending(result);
-  if (depthPending) {
-    return { status: "pending", reason: depthPending };
-  }
-  const epoch = await ensureActiveEpoch();
-  const logIndex = result.logIndex;
-  if (logIndex == null || result.blockNumber == null) {
-    return { status: "pending", reason: "Receipt details are not indexed yet." };
-  }
-  await markOfferPurchased({
-    chainId: MERKADO_CHAIN_ID,
-    contractAddress: onchain.contractAddress,
-    tokenId: onchain.tokenId,
-    purchaseTxHash: txHash,
-    purchaseBlockNumber: Number(result.blockNumber),
-    purchaserAddress: buyerAddress,
-  });
-  await recordChainEvent({
-    epochId: epoch.id,
-    chainId: MERKADO_CHAIN_ID,
-    contractAddress: onchain.contractAddress,
-    txHash,
-    logIndex,
-    blockNumber: Number(result.blockNumber),
-    blockHash: result.blockHash ?? "",
-    eventName: "OfferPurchased",
-    eventArgs: {
-      tokenId: String(onchain.tokenId),
+  try {
+    await requireUser();
+    const book = await loadBook();
+    const offer = book.offers.find((row) => row.reference === reference);
+    if (!offer) return { status: "failed", reason: "Offer not found." };
+    const onchain = mergeOnchain(offer.onchain);
+    if (onchain.purchased) {
+      return { status: "confirmed", reason: "Already purchased" };
+    }
+    if (onchain.tokenId == null || !onchain.contractAddress) {
+      return { status: "failed", reason: "This offer is not available yet." };
+    }
+    const payoutAddress = payoutAddressLocked(offer);
+    if (!payoutAddress) {
+      return { status: "failed", reason: "This offer has no locked payout address." };
+    }
+    const purchasePrice = purchasePriceAtomicFor(offer);
+    const result = await verifyOfferPurchased(txHash, {
+      contractAddress: onchain.contractAddress,
+      tokenId: BigInt(onchain.tokenId),
       buyer: buyerAddress,
       payoutAddress,
-      purchasePrice: purchasePrice.toString(),
-    },
-  });
-  const facts: VerifiedPurchaseFacts = {
-    tokenId: onchain.tokenId,
-    purchaserAddress: buyerAddress,
-    txHash,
-    blockNumber: result.blockNumber,
-    payoutAddress,
-    purchasePriceAtomic: purchasePrice,
-  };
-  await saveBook(applyVerifiedPurchase(book, reference, facts, new Date().toISOString()));
-  refresh();
-  return { status: "confirmed" };
+      purchasePrice,
+    });
+    if (result.status === "pending") {
+      return { status: "pending", reason: result.reason };
+    }
+    if (!result.verified) {
+      return {
+        status: "failed",
+        reason: result.reason ?? "The purchase receipt could not be verified.",
+      };
+    }
+    const depthPending = confirmationDepthPending(result);
+    if (depthPending) {
+      return { status: "pending", reason: depthPending };
+    }
+    const epoch = await ensureActiveEpoch();
+    const logIndex = result.logIndex;
+    if (logIndex == null || result.blockNumber == null) {
+      return { status: "pending", reason: "Receipt details are not indexed yet." };
+    }
+    await markOfferPurchased({
+      chainId: MERKADO_CHAIN_ID,
+      contractAddress: onchain.contractAddress,
+      tokenId: onchain.tokenId,
+      purchaseTxHash: txHash,
+      purchaseBlockNumber: Number(result.blockNumber),
+      purchaserAddress: buyerAddress,
+    });
+    await recordChainEvent({
+      epochId: epoch.id,
+      chainId: MERKADO_CHAIN_ID,
+      contractAddress: onchain.contractAddress,
+      txHash,
+      logIndex,
+      blockNumber: Number(result.blockNumber),
+      blockHash: result.blockHash ?? "",
+      eventName: "OfferPurchased",
+      eventArgs: {
+        tokenId: String(onchain.tokenId),
+        buyer: buyerAddress,
+        payoutAddress,
+        purchasePrice: purchasePrice.toString(),
+      },
+    });
+    const facts: VerifiedPurchaseFacts = {
+      tokenId: onchain.tokenId,
+      purchaserAddress: buyerAddress,
+      txHash,
+      blockNumber: result.blockNumber,
+      payoutAddress,
+      purchasePriceAtomic: purchasePrice,
+    };
+    await saveVerifiedPurchase(book, reference, facts, new Date().toISOString());
+    refresh();
+    return { status: "confirmed" };
+  } catch (error) {
+    return {
+      status: "failed",
+      reason:
+        error instanceof Error ? error.message : "The purchase could not be verified.",
+    };
+  }
 }
 
 type RentClaimVerifiedResult = {

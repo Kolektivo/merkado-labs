@@ -184,6 +184,23 @@ export type OnchainOfferState = {
   /** Submitted purchase tx hash + buyer, persisted so a pending purchase can be re-verified. */
   submittedPurchaseTxHash?: string | null;
   submittedPurchaseBuyer?: string | null;
+  /** Append-only attempts; the exact verified on-chain winner settles the offer. */
+  purchaseAttempts?: PurchaseAttempt[];
+};
+
+export type PurchaseAttemptStatus =
+  | "pending"
+  | "failed"
+  | "confirmed"
+  | "superseded";
+
+export type PurchaseAttempt = {
+  txHash: string;
+  buyerAddress: string;
+  accountId: string | null;
+  submittedAt: string | null;
+  status: PurchaseAttemptStatus;
+  failureReason?: string | null;
 };
 
 export type LedgerTransactionStatus = "initiated" | "pending" | "confirmed" | "failed";

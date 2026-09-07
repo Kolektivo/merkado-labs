@@ -3,6 +3,7 @@ import { encodeFunctionData, getAddress, type Hex } from "viem";
 import { MERKADO_OFFER_ABI } from "@/lib/onchain/abi";
 import { DEMO_LANDLORD_EOA } from "@/lib/rent-advance/ids";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import { hasPendingPurchaseAttempt } from "@/lib/rent-advance/purchase-attempts";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -180,7 +181,7 @@ export function proceedsPresentation(offer: Offer): ProceedsPresentation {
     minted: onchain.tokenId != null && Boolean(onchain.mintTxHash),
     purchased: onchain.purchased,
     landlordPaid: onchain.landlordPaid,
-    processing: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
+    processing: hasPendingPurchaseAttempt(onchain) && !onchain.purchased,
     payoutAddress: payoutAddressLocked(offer),
     purchaseTxHash: onchain.purchaseTxHash,
     purchasePriceCents: offer.purchasePriceCents,

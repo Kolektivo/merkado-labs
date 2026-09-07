@@ -30,6 +30,7 @@ import {
   resolvedCompanySafe,
 } from "@/lib/pay/networks";
 import { usdcAtomicFromUsdCents } from "@/lib/rent-advance/money";
+import { settlePurchaseAttempt } from "@/lib/rent-advance/purchase-attempts";
 import type {
   CryptoConfig,
   DemoAccount,
@@ -175,7 +176,7 @@ export function applyVerifiedPurchase(
   offer.status = "live";
   offer.nextAction = "Sale proceeds paid to the locked payout address";
   offer.onchain = {
-    ...onchain,
+    ...settlePurchaseAttempt(onchain, facts.txHash, "confirmed"),
     purchased: true,
     purchaseTxHash: acceptedLiveTxHash(facts.txHash),
     purchaserAddress: facts.purchaserAddress,

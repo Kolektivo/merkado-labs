@@ -1,6 +1,7 @@
 import { mergeOnchain, type MintState } from "@/lib/rent-advance/custody";
 import { positionIdFor, receivableIdFor } from "@/lib/rent-advance/ids";
 import { formatXcg } from "@/lib/rent-advance/money";
+import { hasPendingPurchaseAttempt } from "@/lib/rent-advance/purchase-attempts";
 import { derivePropertyScore } from "@/lib/rent-advance/property-score";
 import { bandLabel, payerBandLabel, scoreBand } from "@/lib/rent-advance/scoring";
 import type {
@@ -425,7 +426,7 @@ export function anonymizeOffer(offer: Offer): BuyerOfferCard {
     tokenId: onchain.tokenId,
     contractAddress: onchain.contractAddress,
     purchased: onchain.purchased,
-    pendingPurchase: Boolean(onchain.submittedPurchaseTxHash) && !onchain.purchased,
+    pendingPurchase: hasPendingPurchaseAttempt(onchain) && !onchain.purchased,
   };
 }
 

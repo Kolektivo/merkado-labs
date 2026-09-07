@@ -164,6 +164,19 @@ it felt wrong.
   backend mint key is the initial owner on the explorer (real 64-hex mint
   hash only).
 
+### 3b. Purchase preflight and recovery regression (2026-09-06)
+
+- With an old reverted purchase attempt present, starting a new purchase runs
+  a read-only preflight (account link, offer, contract, token, price, live
+  owner) **before** the USDC approval and again before broadcast.
+- A reverted attempt is marked failed and never blocks a retry.
+- The on-chain winner settles the offer; other pending attempts show as
+  superseded and the offer appears Sold/Portfolio once.
+- Refreshing or re-verifying after a confirmed purchase never duplicates the
+  position or the six payment requests.
+- Link a wallet in Account, then navigate to Direct in the same tab: the same
+  browser wallet stays connected without asking to connect again.
+
 ### 4. Marketplace — whole-offer purchase
 
 - Open **Marketplace**. You see the funded Sun Set Heights house and the

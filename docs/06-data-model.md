@@ -79,6 +79,14 @@ deposit. `Offer.payout` stores the selected method and the locked landlord
 set to the minted NFT token id. There is no listing expiry; the 60-day window
 shown on Marketplace and My Offers is **display-only** and never enforced.
 
+The on-chain offer state keeps an **append-only `purchaseAttempts` list**
+(`txHash`, `buyerAddress`, `accountId`, `submittedAt`, `status` where status is
+`pending` / `failed` / `confirmed` / `superseded`). Legacy single-hash fields
+(`submittedPurchaseTxHash` / `submittedPurchaseBuyer`) are normalized into the
+list on read. A verified `OfferPurchased` event confirms one attempt and marks
+the remaining pending attempts superseded, so a reverted or stale attempt can
+never block a later valid purchase.
+
 ### Account ownership and wallet linking
 
 All authenticated users read and mutate one shared demo book. The active row

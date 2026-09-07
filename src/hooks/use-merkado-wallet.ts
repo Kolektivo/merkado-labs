@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   useAppKitAccount,
   useAppKitNetwork,
@@ -10,6 +10,7 @@ import {
 import type { EIP1193Provider } from "viem";
 
 import { isReownConfigured, openReownModal } from "@/lib/pay/reown-config";
+import { MerkadoWalletContext } from "@/lib/pay/wallet-context";
 
 export type MerkadoWallet = {
   /** The active EIP-1193 provider (Reown wallet or window.ethereum). */
@@ -27,11 +28,27 @@ export type MerkadoWallet = {
 const NO_WALLET_MESSAGE =
   "No wallet was found. Connect one from the wallet modal, or install a browser wallet (such as MetaMask or Rabby).";
 
-function parseHexChainId(value: unknown): number | null {
+/** Normalize AppKit chain ids: number, decimal string, hex string, or eip155:n. */
+export function normalizeChainId(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) ? value : null;
+  }
   if (typeof value !== "string") return null;
-  if (!/^0x[0-9a-f]+$/i.test(value)) return null;
-  const parsed = Number.parseInt(value, 16);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  const trimmed = value.trim();
+  const caip = /^eip155:(\d+)$/i.exec(trimmed);
+  if (caip) {
+    const parsed = Number.parseInt(caip[1], 10);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  if (/^0x[0-9a-f]+$/i.test(trimmed)) {
+    const parsed = Number.parseInt(trimmed, 16);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  if (/^\d+$/.test(trimmed)) {
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function getUserSafeError(error: unknown): Error {
@@ -71,7 +88,7 @@ function useInjectedWallet(): Omit<
   const syncChainId = useCallback(async (target: EIP1193Provider) => {
     try {
       const value = await target.request({ method: "eth_chainId" });
-      setChainId(parseHexChainId(value));
+      setChainId(normalizeChainId(value));
     } catch {
       setChainId(null);
     }
@@ -83,7 +100,7 @@ function useInjectedWallet(): Omit<
     if (!ethereum) return;
     providerRef.current = ethereum;
     const onAccounts = (accounts: string[]) => applyAccount(accounts);
-    const onChain = (hexChainId: string) => setChainId(parseHexChainId(hexChainId));
+    const onChain = (hexChainId: string) => setChainId(normalizeChainId(hexChainId));
     const onDisconnect = () => {
       setAddress(null);
       setChainId(null);
@@ -148,12 +165,7 @@ function useInjectedWallet(): Omit<
   };
 }
 
-/**
- * Wallet boundary. When Reown AppKit is configured it drives connection through
- * the Reown modal; otherwise it falls back to the injected EIP-1193 path.
- * `connect` opens the modal (never blocks), `disconnect` disconnects.
- */
-export function useMerkadoWallet(): MerkadoWallet {
+export function useWalletState(): MerkadoWallet {
   const reownEnabled = isReownConfigured();
   const injected = useInjectedWallet();
   const { address: reownAddress, isConnected: reownConnected } = useAppKitAccount();
@@ -174,11 +186,15 @@ export function useMerkadoWallet(): MerkadoWallet {
     };
   }
 
+  const provider = (walletProvider as unknown as EIP1193Provider | undefined) ?? null;
+  const address = reownConnected ? (reownAddress as `0x${string}` | null) : null;
+  const ready = reownConnected && Boolean(address) && Boolean(provider);
+
   return {
-    provider: (walletProvider as unknown as EIP1193Provider | undefined) ?? null,
-    address: reownConnected ? (reownAddress as `0x${string}` | null) : null,
-    chainId: typeof reownChain === "number" ? reownChain : null,
-    isConnected: reownConnected,
+    provider,
+    address,
+    chainId: normalizeChainId(reownChain),
+    isConnected: ready,
     connecting,
     connect: async () => {
       setConnecting(true);
@@ -192,4 +208,12 @@ export function useMerkadoWallet(): MerkadoWallet {
       reownDisconnect();
     },
   };
+}
+
+export function useMerkadoWallet(): MerkadoWallet {
+  const shared = useContext(MerkadoWalletContext);
+  if (!shared) {
+    throw new Error("MerkadoWalletProvider is missing from the component tree.");
+  }
+  return shared;
 }

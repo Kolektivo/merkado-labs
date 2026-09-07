@@ -143,6 +143,18 @@ filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
 
 ### Working demo actions (verified locally behind config)
 
+- **Purchase recovery (2026-09-06):** a verified Mainnet purchase that the app
+  previously failed to record (stale single-hash lock) exposed a
+  broadcast-before-reserve ordering bug. The fix records every submitted
+  purchase as an append-only attempt, runs a read-only server **preflight**
+  before approval and again before broadcast, re-verifies all attempts against
+  the exact `OfferPurchased` event, and lets the on-chain winner settle the
+  offer (reverted attempts become retryable, others superseded). The one
+  browser wallet instance is now shared across Account and Direct, and AppKit
+  chain ids such as `eip155:10` are normalized, so a linked wallet no longer
+  appears disconnected after same-site navigation. The incident transaction
+  (token 18, `0xcfbb…af3a`) is NOT yet reconciled into the Labs book; that is a
+  separate controlled write requiring explicit approval.
 - Simulator 9/12 months can be simulated; Use this quote stays disabled.
 - Use this quote prefills Create Offer on the Quote step with the locked
   MRA-001 six-month figures when defaults are used.
@@ -188,12 +200,19 @@ filler offers (**MRA-002**–**MRA-006**) without wiping new drafts.
   Readback confirms chain ID 10, native USDC
   `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85`, and minter
   `0x27D9333E178BEeaA92EE0e5C80DE75C133eA19E5`.
+- **Incident (2026-09-06):** a real Optimism Mainnet purchase occurred on
+  token 18 (`0xcfbb6d48cfdd281258f574baa35e74d2d957000e77f50daa84fee465e307af3a`,
+  5.68 USDC to the locked payout address). The on-chain sale is final; the app
+  failed to record it at the time. The purchase-recovery fix prevents
+  recurrence. Reconciling this historical transaction into the Labs book and
+  chain store remains a **separate controlled write requiring explicit
+  Product Lead approval**.
 - The chain store migration (`ra_chain_epochs`, `ra_chain_offers`,
   `ra_chain_events`, `ra_rent_payment_attempts`,
-  `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`) is **not
-  applied**.
-- No Mainnet USDC has been sent and no Safe transaction has executed.
-- Hosted activation and merging this PR are **not approved**.
+  `ra_rent_deposit_verifications`, `ra_rent_claim_verifications`) is **applied**
+  to the active Labs project (pushed 2026-09-06).
+- No further Mainnet USDC has been sent and no Safe transaction has executed.
+- Hosted activation and further merging are **not approved**.
 - The mock layer (`PAYMENT_RAIL_MODE`, `src/lib/pay/mock-provider.ts`, demo
   wallet, demo outcome menu, demo hashes) is **removed**.
 

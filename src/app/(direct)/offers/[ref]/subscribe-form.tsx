@@ -9,20 +9,23 @@ import { ApproveThenSendDialog } from "@/components/rent-advance/approve-then-se
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useMerkadoWallet } from "@/hooks/use-merkado-wallet";
+import type { ApproveThenSendOutcome } from "@/lib/pay/approve-then-send-state";
 import { OP_MAINNET_CHAIN_ID } from "@/lib/pay/networks";
 import {
   approveUsdc,
+  checkWalletPurchaseReadiness,
   purchaseOffer,
+  simulateWalletPurchase,
   waitForSuccessfulWalletTransaction,
 } from "@/lib/pay/wallet-adapter";
 import {
   attachSubmittedPurchaseTxAction,
   checkPendingPurchaseAction,
+  preflightPurchaseAction,
+  settlePurchaseAttemptAction,
   verifyPurchaseAction,
 } from "@/lib/rent-advance/actions";
 import { formatXcg } from "@/lib/rent-advance/money";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -59,7 +62,7 @@ export function SubscribeForm({
   const wallet = useMerkadoWallet();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+  const connected = wallet.isConnected;
   const onOptimismMainnet = wallet.chainId === OP_MAINNET_CHAIN_ID;
   const connectedMatchesLinked =
     connected &&
@@ -68,36 +71,86 @@ export function SubscribeForm({
   const walletReady = connectedMatchesLinked && onOptimismMainnet;
 
   const closed = remainingCents <= 0;
+  const amountAtomic = BigInt(remainingCents * 10_000);
 
   async function runApprove() {
-    await approveUsdc(wallet, BigInt(remainingCents * 10_000), contractAddress);
+    const buyer = wallet.address;
+    if (!buyer) throw new Error("Connect a wallet first.");
+    const preflight = await preflightPurchaseAction(reference, buyer);
+    if (!preflight.ok) throw new Error(preflight.error);
+    const readiness = await checkWalletPurchaseReadiness(
+      wallet,
+      amountAtomic,
+    );
+    if (!readiness.ok) throw new Error(readiness.error);
+    await approveUsdc(wallet, amountAtomic, contractAddress);
   }
 
-  async function runSend() {
+  async function runSend(): Promise<ApproveThenSendOutcome> {
+    const buyer = wallet.address;
+    if (!buyer) return { status: "error", message: "Connect a wallet first." };
+    const preflight = await preflightPurchaseAction(reference, buyer);
+    if (!preflight.ok) return { status: "error", message: preflight.error };
+    const simulation = await simulateWalletPurchase(
+      wallet,
+      BigInt(tokenId ?? 0),
+      contractAddress,
+    );
+    if (!simulation.ok) {
+      return { status: "error", message: simulation.error };
+    }
     let hash: string | null = null;
-    let hashAttached = false;
     try {
-      const { hash: txHash } = await purchaseOffer(wallet, BigInt(tokenId ?? 0), contractAddress);
+      const { hash: txHash } = await purchaseOffer(
+        wallet,
+        BigInt(tokenId ?? 0),
+        contractAddress,
+      );
       hash = txHash;
-      await attachSubmittedPurchaseTxAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
-      hashAttached = true;
-      await waitForSuccessfulWalletTransaction(wallet.provider!, txHash, "Purchase");
-      let result = await verifyPurchaseAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
+      const attach = await attachSubmittedPurchaseTxAction(
+        reference,
+        txHash,
+        buyer,
+      );
+      if (!attach.ok) {
+        // The chain is authoritative: verification still applies this hash
+        // even if the attachment could not be recorded.
+      }
+      try {
+        await waitForSuccessfulWalletTransaction(
+          wallet.provider!,
+          txHash,
+          "Purchase",
+        );
+      } catch (err) {
+        await settlePurchaseAttemptAction(
+          reference,
+          txHash,
+          "failed",
+          err instanceof Error ? err.message : "reverted",
+        );
+        return {
+          status: "error",
+          message:
+            "The purchase transaction reverted on Optimism Mainnet. You can try again.",
+        };
+      }
+      let result = await verifyPurchaseAction(reference, txHash, buyer);
       while (result.status === "pending") {
         await wait(4000);
-        result = await verifyPurchaseAction(reference, txHash, wallet.address ?? ZERO_ADDRESS);
+        result = await verifyPurchaseAction(reference, txHash, buyer);
       }
       if (result.status === "confirmed") {
-        return { status: "confirmed" as const };
+        return { status: "confirmed" };
       }
       return {
-        status: "pending" as const,
-        reason: result.reason ?? "The purchase is still being verified.",
+        status: "error",
+        message: result.reason ?? "The purchase could not be verified.",
       };
     } catch (err) {
-      if (hash && hashAttached) {
+      if (hash) {
         return {
-          status: "pending" as const,
+          status: "pending",
           reason:
             err instanceof Error
               ? err.message
@@ -108,13 +161,16 @@ export function SubscribeForm({
     }
   }
 
-  async function runVerifyPending() {
+  async function runVerifyPending(): Promise<ApproveThenSendOutcome> {
     const result = await checkPendingPurchaseAction(reference);
-    if (result.status === "confirmed") return { status: "confirmed" as const };
-    return {
-      status: "pending" as const,
-      reason: result.reason ?? "The purchase is still being verified.",
-    };
+    if (result.status === "confirmed") return { status: "confirmed" };
+    if (result.status === "failed") {
+      return {
+        status: "error",
+        message: result.reason ?? "The purchase could not be verified.",
+      };
+    }
+    return { status: "pending", reason: result.reason };
   }
 
   function onConfirmed() {
@@ -130,12 +186,37 @@ export function SubscribeForm({
     router.refresh();
   }
 
-  function openPurchaseDialog() {
+  async function openPurchaseDialog() {
     if (!walletReady) {
       setError("Link this wallet to your account before purchasing.");
       return;
     }
+    const buyer = wallet.address;
+    if (!buyer) {
+      setError("Connect a wallet first.");
+      return;
+    }
     setError(null);
+    try {
+      const preflight = await preflightPurchaseAction(reference, buyer);
+      if (!preflight.ok) {
+        setError(preflight.error);
+        return;
+      }
+      const readiness = await checkWalletPurchaseReadiness(
+        wallet,
+        amountAtomic,
+      );
+      if (!readiness.ok) {
+        setError(readiness.error);
+        return;
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not prepare the purchase.",
+      );
+      return;
+    }
     setDialogOpen(true);
   }
 
@@ -159,8 +240,18 @@ export function SubscribeForm({
             router.refresh();
             return;
           }
+          if (result.status === "failed") {
+            setError(
+              result.reason ?? "The purchase could not be verified.",
+            );
+            return;
+          }
         } catch (err) {
-          setError(err instanceof Error ? err.message : "The purchase is still being verified.");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "The purchase is still being verified.",
+          );
           return;
         }
         await wait(4000);
@@ -231,12 +322,12 @@ export function SubscribeForm({
         </Alert>
       ) : (
         <div className="mt-6 space-y-3">
-          <WalletConnection onConnectedChange={setConnected} />
+          <WalletConnection />
           <Button
             type="button"
             className="h-11 w-full"
             disabled={!walletReady}
-            onClick={openPurchaseDialog}
+            onClick={() => void openPurchaseDialog()}
           >
             {`Purchase whole offer · ${formatXcg(remainingCents)}`}
           </Button>

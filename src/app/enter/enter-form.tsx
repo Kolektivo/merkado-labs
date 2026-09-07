@@ -113,7 +113,7 @@ export function EnterForm({
   const [pending, setPending] = useState<"" | "otp">("");
   const [showPassword, setShowPassword] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const errorId = useId();
 
   const cooldownSeconds = Math.max(
@@ -161,6 +161,7 @@ export function EnterForm({
 
       setLinkSent(true);
       setPending("");
+      setNow(Date.now());
       setCooldownUntil(Date.now() + 10_000);
     } catch {
       setError("We couldn't send that sign-in link. Please try again.");

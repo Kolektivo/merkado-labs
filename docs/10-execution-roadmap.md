@@ -76,6 +76,7 @@
 
 | Item | Blocker |
 |---|---|
+| Reconciling incident token 18 purchase (2026-09-06) | Separate controlled Labs write; needs explicit Product Lead approval |
 | Third-party subscribe | M.1.2 |
 | Real collection flow | M.1.3 |
 | Public Merkado Direct page | M.1.4 |

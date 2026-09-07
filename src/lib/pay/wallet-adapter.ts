@@ -66,6 +66,13 @@ export const USDC_ABI = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 export type MerkadoTxResult = {
@@ -258,6 +265,68 @@ export async function purchaseOffer(
     return { hash, from };
   } catch (error) {
     throw toUserSafeError(error);
+  }
+}
+
+export type WalletReadinessResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Pre-sign checks that only need the wallet's own RPC: correct network and a
+ * USDC balance that covers the exact purchase price. Runs before approval.
+ */
+export async function checkWalletPurchaseReadiness(
+  wallet: MerkadoWallet,
+  amountAtomic: bigint,
+): Promise<WalletReadinessResult> {
+  if (!wallet.provider || !wallet.address) {
+    return { ok: false, error: CONNECT_FIRST_MESSAGE };
+  }
+  try {
+    await ensureOptimismMainnet(wallet);
+    const { publicClient, from } = walletContext(wallet);
+    const usdcBalance = await publicClient.readContract({
+      address: OP_MAINNET_USDC_CONTRACT,
+      abi: USDC_ABI,
+      functionName: "balanceOf",
+      args: [from],
+    });
+    if (usdcBalance < amountAtomic) {
+      return {
+        ok: false,
+        error: "Your USDC balance is lower than the purchase price.",
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: toUserSafeError(error).message };
+  }
+}
+
+/**
+ * Simulate `purchase(tokenId)` with the freshly approved allowance so a
+ * reverted transaction is caught before broadcast. Runs after approval.
+ */
+export async function simulateWalletPurchase(
+  wallet: MerkadoWallet,
+  tokenId: bigint,
+  contractAddress?: string | null,
+): Promise<WalletReadinessResult> {
+  if (!wallet.provider || !wallet.address) {
+    return { ok: false, error: CONNECT_FIRST_MESSAGE };
+  }
+  try {
+    await ensureOptimismMainnet(wallet);
+    const { publicClient, from } = walletContext(wallet);
+    await publicClient.simulateContract({
+      address: resolveMerkadoContractAddress(contractAddress),
+      abi: MERKADO_ABI,
+      functionName: "purchase",
+      args: [tokenId],
+      account: from,
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: toUserSafeError(error).message };
   }
 }
 

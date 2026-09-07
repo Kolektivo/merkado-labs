@@ -119,6 +119,56 @@ export async function readCurrentOfferOwner(
   }
 }
 
+export type LiveOfferPurchaseState = {
+  offerKey: string;
+  payoutAddress: string;
+  purchasePrice: bigint;
+  rentInstallmentAmount: bigint;
+  purchased: boolean;
+  owner: string;
+  minter: string;
+};
+
+/** Read the contract facts needed to block an invalid purchase before signing. */
+export async function readLiveOfferPurchaseState(
+  contractAddress: string,
+  tokenId: number,
+): Promise<LiveOfferPurchaseState | null> {
+  try {
+    const address = contractAddress as `0x${string}`;
+    const [terms, owner, minter] = await Promise.all([
+      publicClient.readContract({
+        address,
+        abi: MERKADO_OFFER_ABI,
+        functionName: "offers",
+        args: [BigInt(tokenId)],
+      }),
+      publicClient.readContract({
+        address,
+        abi: MERKADO_OFFER_ABI,
+        functionName: "ownerOf",
+        args: [BigInt(tokenId)],
+      }),
+      publicClient.readContract({
+        address,
+        abi: MERKADO_OFFER_ABI,
+        functionName: "minter",
+      }),
+    ]);
+    return {
+      offerKey: terms[0],
+      payoutAddress: terms[1],
+      purchasePrice: terms[2],
+      rentInstallmentAmount: terms[3],
+      purchased: terms[4],
+      owner,
+      minter,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Read the live claimable USDC balance for a token. */
 export async function readCurrentOfferClaimable(
   contractAddress: string,

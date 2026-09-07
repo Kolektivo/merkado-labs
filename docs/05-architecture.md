@@ -53,14 +53,20 @@ Customer-facing surfaces:
   never links — the wallet signs a server-issued, account/domain/chain/nonce
   bound challenge stored in `ra_link_challenges`, consumed atomically, with
   at most one active row in `ra_account_wallets`.
-- Pending transaction recovery: a submitted purchase / deposit / claim hash
-  is bound to the account + offer/payment request + token + chain + contract
-  + epoch (compare-and-set, first valid submission wins). Verification
-  derives the sender from verified chain facts, never a client-supplied
-  address; the client waits for the receipt and automatically re-verifies the
-  stored hash until settled, never blind re-sends or manual status checks. Mint
-  recovery pins to the offer's original contract at broadcast; the env address
-  is used only for new broadcasts.
+- Pending transaction recovery: a submitted purchase hash is recorded as an
+  **append-only purchase attempt** (hash + buyer + account + submitted time +
+  status) inside the shared book. Initiation is protected by the account's
+  linked wallet and a read-only server **preflight** that re-checks the
+  account link, offer, contract, token, exact price, and live on-chain owner
+  before approval and again immediately before broadcast. After broadcast the
+  chain is authoritative: every recorded attempt is re-verified against the
+  exact `OfferPurchased` event, reverted attempts become retryable, and the
+  first successful on-chain winner settles the offer (other pending attempts
+  are marked superseded). The buyer is derived from the verified chain event,
+  never from stale browser state. The client never blind re-sends and never
+  reports a server-recording failure as an on-chain failure. Mint recovery pins
+  to the offer's original contract at broadcast; the env address is used only
+  for new broadcasts.
 - The hosted edge gate (`src/proxy.ts`) fails closed: `/enter` (Supabase
   Auth sign-in) is reachable; an authenticated Supabase session or a valid
   legacy `LABS_DEMO_PASSWORD` gate cookie may pass, hosted production
